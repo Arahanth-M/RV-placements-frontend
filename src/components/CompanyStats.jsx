@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import CompanyCard from "../components/CompanyCard";
+import { BASE_URL } from "../utils/constants";
 
 function CompanyStats() {
   const [companies, setCompanies] = useState([]);
