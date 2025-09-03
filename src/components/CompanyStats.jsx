@@ -11,7 +11,7 @@ function CompanyStats() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:7779/api/companies", { withCredentials: true })
+      .get(BASE_URL+"/api/companies", { withCredentials: true })
       .then((res) => {
         setCompanies(res.data);
         setIsLoggedIn(true);

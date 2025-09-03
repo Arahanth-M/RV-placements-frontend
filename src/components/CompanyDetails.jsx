@@ -12,7 +12,7 @@ function CompanyDetails() {
     if (!user) return;
 
     axios
-      .get(`http://localhost:7779/api/companies/${id}`, { withCredentials: true })
+      .get(BASE_URL+`/api/companies/${id}`, { withCredentials: true })
       .then((res) => setCompany(res.data))
       .catch((err) => console.error("❌ Error fetching company details:", err));
   }, [id, user]);
