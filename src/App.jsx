@@ -7,10 +7,10 @@ import Home from "./components/Home";
 import Login from "./components/Login";
 import CompanyStats from "./components/CompanyStats";
 import CompanyDetails from "./components/CompanyDetails";
-import About from "./components/About";
 import Contact from "./components/Contact";
 import Chatbot from "./components/Chatbot";
 import Resources from "./components/Resources";
+import InternshipExperience from "./components/InternshipExperience";
 
 function App() {
   return (
@@ -24,8 +24,8 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/companystats" element={<CompanyStats />} />
-              <Route path="/company/:id" element={<CompanyDetails />} />
-              <Route path="/about" element={<About />} />
+              <Route path="/companies/:id" element={<CompanyDetails />} /> 
+              <Route path="/internshipExperience" element={<InternshipExperience />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/chatbot" element={<Chatbot />} />
               <Route path="/resources" element={<Resources />} />

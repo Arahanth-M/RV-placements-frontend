@@ -1,15 +1,31 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { removeUser } from "../utils/userSlice";
-import { useDispatch, useSelector } from "react-redux"; 
-import { BASE_URL } from "../utils/constants";
 import axios from "axios";
+import { BASE_URL } from "../utils/constants";
+import { useDispatch, useSelector } from "react-redux";
+import { addUser, removeUser } from "../utils/userSlice";
 
 function Header() {
-  const user = useSelector((store) => store.user); 
+  const user = useSelector((store) => store.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await axios.get(BASE_URL + "/auth/me", {
+          withCredentials: true,
+        });
+        dispatch(addUser(res.data));
+      } catch (err) {
+        dispatch(removeUser());
+      }
+    }
+    checkAuth();
+  }, [dispatch]);
+
+  // ✅ Logout
   const handleLogout = async () => {
     try {
       await axios.post(BASE_URL + "/logout", {}, { withCredentials: true });
@@ -39,8 +55,11 @@ function Header() {
           <Link to="/companystats" className="hover:text-yellow-300 transition">
             Company Stats
           </Link>
-          <Link to="/about" className="hover:text-yellow-300 transition">
-            About Us
+          <Link
+            to="/internshipExperience"
+            className="hover:text-yellow-300 transition"
+          >
+            Internship
           </Link>
           <Link to="/contact" className="hover:text-yellow-300 transition">
             Contact Us
@@ -52,7 +71,6 @@ function Header() {
             Resources
           </Link>
 
-        
           {user ? (
             <button
               onClick={handleLogout}
