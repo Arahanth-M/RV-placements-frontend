@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { BASE_URL } from "../utils/constants";
 
 function InternshipExperience() {
   const [files, setFiles] = useState([]);
@@ -14,7 +15,7 @@ function InternshipExperience() {
   useEffect(() => {
     async function fetchExperiences() {
       try {
-        const res = await axios.get("http://localhost:7779/api/experiences", {
+        const res = await axios.get(BASE_URL+"/api/experiences", {
           withCredentials: true,
         });
 
