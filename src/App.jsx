@@ -9,7 +9,6 @@ import CompanyStats from "./components/CompanyStats";
 import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
 import Chatbot from "./components/Chatbot";
-import Resources from "./components/Resources";
 import InternshipExperience from "./components/InternshipExperience";
 
 function App() {
@@ -28,7 +27,6 @@ function App() {
               <Route path="/internshipExperience" element={<InternshipExperience />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/chatbot" element={<Chatbot />} />
-              <Route path="/resources" element={<Resources />} />
             </Routes>
           </main>
 

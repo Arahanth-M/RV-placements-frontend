@@ -7,7 +7,7 @@ function InternshipExperience() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openIndex, setOpenIndex] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // ✅ state to track login
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   const navigate = useNavigate();
 
@@ -19,12 +19,12 @@ function InternshipExperience() {
         });
 
         setFiles(Array.isArray(res.data) ? res.data : []);
-        setIsLoggedIn(true); // if API works → logged in
+        setIsLoggedIn(true); 
       } catch (err) {
         console.error("❌ Error fetching experiences:", err);
 
         if (err.response && err.response.status === 401) {
-          setIsLoggedIn(false); // not logged in
+          setIsLoggedIn(false); 
         } else {
           setError("Could not load internship experiences.");
         }
@@ -40,7 +40,7 @@ function InternshipExperience() {
     setOpenIndex(openIndex === idx ? null : idx);
   };
 
-  // 🔒 If not logged in, show styled login prompt
+  
   if (!isLoggedIn) {
     return (
       <div className="p-6 flex justify-center items-center min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50">
@@ -95,4 +95,5 @@ function InternshipExperience() {
 }
 
 export default InternshipExperience;
+
 

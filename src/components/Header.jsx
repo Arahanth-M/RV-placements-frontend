@@ -62,14 +62,12 @@ function Header() {
             Internship
           </Link>
           <Link to="/contact" className="hover:text-yellow-300 transition">
-            Contact Us
+            Feedback
           </Link>
           <Link to="/chatbot" className="hover:text-yellow-300 transition">
             Chatbot
           </Link>
-          <Link to="/resources" className="hover:text-yellow-300 transition">
-            Resources
-          </Link>
+          
 
           {user ? (
             <button
