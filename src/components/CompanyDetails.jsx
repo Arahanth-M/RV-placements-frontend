@@ -4,8 +4,8 @@ import axios from "axios";
 import { BASE_URL } from "../utils/constants";
 
 import GeneralTab from "./CompanyTabs/GeneralTab";
-import OATab from "./companyTabs/OATab";
-import InterviewTab from "./companyTabs/InterviewTab";
+import OATab from "./CompanyTabs/OATab";
+import InterviewTab from "./CompanyTabs/InterviewTab";
 
 function CompanyDetails() {
   const { id } = useParams();
