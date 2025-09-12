@@ -18,6 +18,11 @@ function CompanyCard({ company }) {
       <p className="text-sm text-gray-500 mb-3 italic">{company.type}</p>
 
       <div className="mb-3">
+        <span className="font-semibold text-gray-700">Date of interview: </span>
+        <span className="text-gray-600">{company.date_of_visit}</span>
+      </div>
+
+      <div className="mb-3">
         <span className="font-semibold text-gray-700">Business Model: </span>
         <span className="text-gray-600">{company.business_model}</span>
       </div>
@@ -42,4 +47,6 @@ function CompanyCard({ company }) {
 }
 
 export default CompanyCard;
+
+
 
