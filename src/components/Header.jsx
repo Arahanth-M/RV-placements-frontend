@@ -221,11 +221,7 @@ function Header() {
         
         {/* Logo + Title (always left) */}
         <div className="flex items-center space-x-3 self-start md:self-center">
-          <img
-            src="src/assets/logo.png"
-            alt="RVCE Logo"
-            className="h-12 w-12 object-contain rounded-full"
-          />
+          
           <h1 className="text-xl md:text-2xl font-bold">Placed@RVCE</h1>
         </div>
 
