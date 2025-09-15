@@ -247,7 +247,7 @@ function GeneralTab({ company = {} }) {
         ))}
       </div>
 
-      {/* Job Descriptions */}
+      {/* Job Descriptions
       <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
         <h2 className="text-xl font-bold text-blue-800 mb-4">Job Descriptions</h2>
         {(company.jobDescription ?? []).map((jd, index) => (
@@ -273,7 +273,7 @@ function GeneralTab({ company = {} }) {
             )}
           </div>
         ))}
-      </div>
+      </div> */}
     </div>
   );
 }
