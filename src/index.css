@@ -1,1 +1,27 @@
 @import "tailwindcss";
+/* Make sure the page cannot accidentally scroll horizontally */
+html, body, #root {
+    /* optional: uncomment to aggressively hide any accidental horizontal overflow
+       (safer to keep commented and prefer component-level fixes first) */
+    /* overflow-x: hidden; */
+    box-sizing: border-box;
+  }
+  
+  /* Ensure images never exceed their container */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* Make long/preformatted code scrollable and wrap nicely */
+  pre, code {
+    white-space: pre-wrap; /* wrap long words where possible */
+    word-break: break-word;
+  }
+  
+  pre {
+    overflow-x: auto; /* allow horizontal scroll inside pre rather than page */
+    max-width: 100%;
+  }
+  
