@@ -11,7 +11,7 @@ import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
 import Chatbot from "./components/Chatbot";
 import InternshipExperience from "./components/InternshipExperience";
-import ProtectedRoute from "./components/protectedRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   const [headerHeight, setHeaderHeight] = useState(0);
