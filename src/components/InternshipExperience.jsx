@@ -1,31 +1,23 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { BASE_URL } from "../utils/constants";
+import { useAuth } from "../utils/AuthContext";
+import { experienceAPI } from "../utils/api";
 
 function InternshipExperience() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openIndex, setOpenIndex] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
-
-  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     async function fetchExperiences() {
       try {
-        const res = await axios.get(BASE_URL+"/api/experiences", {
-          withCredentials: true,
-        });
-
+        const res = await experienceAPI.getExperiences();
         setFiles(Array.isArray(res.data) ? res.data : []);
-        setIsLoggedIn(true); 
       } catch (err) {
         console.error("❌ Error fetching experiences:", err);
-
         if (err.response && err.response.status === 401) {
-          setIsLoggedIn(false); 
+          setError("Please login to view experiences.");
         } else {
           setError("Could not load internship experiences.");
         }
@@ -34,30 +26,17 @@ function InternshipExperience() {
       }
     }
 
-    fetchExperiences();
-  }, []);
+    if (user) {
+      fetchExperiences();
+    } else {
+      setLoading(false);
+      setError("Please login to view experiences.");
+    }
+  }, [user]);
 
   const toggleExpand = (idx) => {
     setOpenIndex(openIndex === idx ? null : idx);
   };
-
-  
-  if (!isLoggedIn) {
-    return (
-      <div className="p-6 flex justify-center items-center min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50">
-        <p className="text-gray-700 text-lg font-medium">
-          Please{" "}
-          <span
-            className="text-indigo-600 font-semibold cursor-pointer"
-            onClick={() => navigate("/login")}
-          >
-            login
-          </span>{" "}
-          to view the data.
-        </p>
-      </div>
-    );
-  }
 
   if (loading) return <p className="p-4 text-gray-600">Loading experiences...</p>;
   if (error) return <p className="p-4 text-red-500">{error}</p>;
@@ -65,7 +44,6 @@ function InternshipExperience() {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-bold text-center">Internship Experiences</h1>
-
       {files.length === 0 ? (
         <p className="text-gray-600">No experiences found.</p>
       ) : (
@@ -81,7 +59,6 @@ function InternshipExperience() {
                 {openIndex === idx ? "▲ Collapse" : "▼ Expand"}
               </span>
             </h2>
-
             {openIndex === idx && (
               <div
                 className="mt-3 prose max-w-none"
@@ -96,5 +73,3 @@ function InternshipExperience() {
 }
 
 export default InternshipExperience;
-
-

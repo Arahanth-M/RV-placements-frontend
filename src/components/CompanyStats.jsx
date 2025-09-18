@@ -15,7 +15,7 @@ function CompanyStats() {
 
   useEffect(() => {
     axios
-      .get(BASE_URL + "/api/companies", { withCredentials: true })
+      .get(BASE_URL + "/api/companies")
       .then((res) => {
         setCompanies(res.data);
         setIsLoggedIn(true);
@@ -42,22 +42,7 @@ function CompanyStats() {
   );
   const totalPages = Math.ceil(filteredCompanies.length / companiesPerPage);
 
-  if (!isLoggedIn) {
-    return (
-      <div className="p-6 flex justify-center items-center min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50">
-        <p className="text-gray-700 text-lg font-medium">
-          Please{" "}
-          <span
-            className="text-indigo-600 font-semibold cursor-pointer"
-            onClick={() => navigate("/login")}
-          >
-            login
-          </span>{" "}
-          to view the data.
-        </p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="p-6 bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
