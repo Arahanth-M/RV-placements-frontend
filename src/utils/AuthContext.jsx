@@ -60,6 +60,7 @@
 // };
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from './api';
+import { BASE_URL } from './constants';
 
 const AuthContext = createContext();
 
@@ -92,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = () => {
-    window.location.href = 'http://localhost:7779/auth/google';
+    window.location.href = BASE_URL + '/auth/google';
   };
 
   const logout = async () => {
@@ -119,3 +120,4 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
