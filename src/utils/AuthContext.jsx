@@ -349,7 +349,7 @@ export const AuthProvider = ({ children }) => {
     const hostname = window.location.hostname;
     const baseUrl = hostname === "localhost" 
       ? "http://localhost:7779"
-      : "http://lastminuteplacementprep.in";
+      : "https://lastminuteplacementprep.in";
     
     const authUrl = `${baseUrl}/api/auth/google`;
     

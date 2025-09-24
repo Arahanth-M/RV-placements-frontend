@@ -16,4 +16,4 @@
 
 export const BASE_URL = location.hostname === "localhost"
   ? "http://localhost:7779"
-  : "http://lastminuteplacementprep.in";
+  : "https://lastminuteplacementprep.in";
