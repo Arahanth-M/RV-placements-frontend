@@ -158,6 +158,10 @@ const Header = () => {
               >
                 Chatbot
               </Link>
+              <Link
+                to="/premium"
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+              >Premium</Link>
             </div>
           </div>
 
@@ -194,6 +198,7 @@ const Header = () => {
               </button>
             )}
           </div>
+          
         </div>
       </nav>
     </header>

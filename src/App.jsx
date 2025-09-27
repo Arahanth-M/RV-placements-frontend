@@ -12,6 +12,7 @@ import Contact from "./components/Contact";
 import Chatbot from "./components/Chatbot";
 import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Premium from "./components/Premium";
 
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
                 />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/chatbot" element={<Chatbot />} />
+                <Route path="/premium" element = {<Premium />}/>
               </Routes>
             </main>
 
