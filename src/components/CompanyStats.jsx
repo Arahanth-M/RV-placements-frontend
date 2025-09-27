@@ -183,11 +183,12 @@ function CompanyStats() {
     interviewExperience: [""],
     interviewQuestions: [""],
     onlineQuestions: [""],
+    mustDoTopics: [""], // ✅ new field
   });
 
   const companiesPerPage = 6;
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth(); // AuthContext
+  const { user } = useAuth(); // AuthContext
 
   // Fetch companies
   useEffect(() => {
@@ -259,6 +260,7 @@ function CompanyStats() {
         interviewExperience: [""],
         interviewQuestions: [""],
         onlineQuestions: [""],
+        mustDoTopics: [""],
       });
     } catch (err) {
       console.error("❌ Error submitting company:", err);
@@ -534,6 +536,39 @@ function CompanyStats() {
                 </button>
               </div>
 
+              {/* ✅ Dynamic Must Do Topics */}
+              <div>
+                <label className="font-medium">Must Do Topics</label>
+                {newCompany.mustDoTopics.map((topic, i) => (
+                  <div key={i} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={topic}
+                      onChange={(e) =>
+                        handleArrayInputChange("mustDoTopics", i, e.target.value)
+                      }
+                      className="border px-2 py-1 rounded-lg flex-1"
+                      required
+                    />
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => removeField("mustDoTopics", i)}
+                      >
+                        ❌
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addField("mustDoTopics")}
+                  className="text-green-600 font-medium"
+                >
+                  + Add Topic
+                </button>
+              </div>
+
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   type="button"
@@ -558,4 +593,3 @@ function CompanyStats() {
 }
 
 export default CompanyStats;
-
