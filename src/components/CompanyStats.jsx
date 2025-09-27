@@ -161,18 +161,16 @@
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import CompanyCard from "../components/CompanyCard";
 import { BASE_URL } from "../utils/constants";
 import { FaFilter, FaPlus } from "react-icons/fa";
-import { authAPI, companyAPI } from "../utils/api";
+import { useAuth } from "../utils/AuthContext";
+import { companyAPI } from "../utils/api";
 
 function CompanyStats() {
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
 
@@ -189,27 +187,7 @@ function CompanyStats() {
 
   const companiesPerPage = 6;
   const navigate = useNavigate();
-
-  // Fetch current user
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await authAPI.getCurrentUser();
-        if (res.data && res.data.user) {
-          setUser(res.data.user);
-          setIsLoggedIn(true);
-        } else {
-          setUser(null);
-          setIsLoggedIn(false);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching user:", err);
-        setUser(null);
-        setIsLoggedIn(false);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user, refreshUser } = useAuth(); // AuthContext
 
   // Fetch companies
   useEffect(() => {
@@ -266,7 +244,7 @@ function CompanyStats() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!isLoggedIn) {
+    if (!user) {
       alert("⚠️ You must be logged in to add a company.");
       return;
     }
@@ -284,8 +262,6 @@ function CompanyStats() {
       });
     } catch (err) {
       console.error("❌ Error submitting company:", err);
-      if (err.response && err.response.data)
-        console.log("Server response:", err.response.data);
       alert("Failed to submit company.");
     }
   };
@@ -352,8 +328,9 @@ function CompanyStats() {
         </div>
       )}
 
-      {/* Floating Buttons */}
+      {/* Floating Filter + Add Buttons */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
+        {/* + Button only if logged in */}
         {user && (
           <button
             onClick={() => setShowModal(true)}
@@ -362,6 +339,7 @@ function CompanyStats() {
             <FaPlus size={20} />
           </button>
         )}
+
         <button
           onClick={() => setShowFilter((prev) => !prev)}
           className="bg-indigo-500 text-white p-4 rounded-full shadow-lg hover:bg-indigo-600 transition duration-200"
@@ -424,7 +402,7 @@ function CompanyStats() {
       </div>
 
       {/* Modal */}
-      {showModal && user && (
+      {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
             <h2 className="text-xl font-semibold mb-4">Add New Company</h2>
@@ -466,11 +444,7 @@ function CompanyStats() {
                       type="text"
                       value={q}
                       onChange={(e) =>
-                        handleArrayInputChange(
-                          "interviewExperience",
-                          i,
-                          e.target.value
-                        )
+                        handleArrayInputChange("interviewExperience", i, e.target.value)
                       }
                       className="border px-2 py-1 rounded-lg flex-1"
                       required
