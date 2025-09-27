@@ -250,11 +250,8 @@ function CompanyStats() {
       return;
     }
     try {
-      await companyAPI.createCompany({ ...newCompany, status: "pending" ,
-      submittedBy: {
-        name: user.firstName,
-        email: user.emailId,
-      },
+      await companyAPI.createCompany({ ...newCompany, status: "pending" 
+      
     });
       alert("✅ Company submitted for review!");
       setShowModal(false);
