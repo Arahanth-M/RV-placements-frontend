@@ -6,12 +6,12 @@ function Home() {
       
       <div className="text-center px-6 py-20">
         <h1 className="text-6xl font-extrabold text-blue-950 mb-6 drop-shadow-lg">
-          Welcome to RVCE Placement Portal 🎓
+          Welcome to Last Minute Placement Prep App 🎓
         </h1>
         <p className="text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
           Your ultimate destination for placement preparation. Gain access to 
           company insights, interview experiences, curated resources, and 
-          guidance from seniors — everything you need to land your dream 
+          guidance from seniors : Everything you need to land your dream 
           job or internship with confidence.  
         </p>
       </div>
@@ -26,7 +26,6 @@ function Home() {
             "Students prepare well but don’t know the exact type of questions companies ask.",
             "Lack of clarity about what a company does and its work culture.",
             "Uncertainty about interview processes reduces confidence.",
-            "Not having access to seniors’ successful resumes.",
             "No clear idea about how many students were placed in each company previously.",
           ].map((point, idx) => (
             <div
@@ -50,10 +49,9 @@ function Home() {
               "Curated company-wise placement questions (OA + Interviews).",
               "Detailed insights into company profiles and offered roles.",
               "Step-by-step breakdown of previous interview processes.",
-              "Access to seniors’ resumes for guidance and improvement.",
-              "Placement statistics for each company.",
-              "Resources and handwritten notes on latest technologies like Gen AI, LLMs, Agentic AI, and more.",
-              "CSE fundamentals and relative study resources.",
+              "A chatbot to ask specific questions related to placement stats",
+              "Internship experiences of students who recently completed their internships in the cooperate world",
+              "Allow students to add in company details they are familiar with, which will be approved and hosted on the platform "
             ].map((feature, idx) => (
               <div
                 key={idx}
@@ -73,7 +71,7 @@ function Home() {
         </h2>
         <div className="grid md:grid-cols-2 gap-8">
           {[
-            "Chatbot integration for instant guidance and FAQs.",
+            
             "Live interaction videos with seniors sharing experiences.",
             "More curated notes & resources for cutting-edge tech.",
             "Continuous feature updates to support student success.",

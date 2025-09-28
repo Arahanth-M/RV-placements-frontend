@@ -1,5 +1,3 @@
-
-
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
@@ -29,15 +27,12 @@ function CompanyDetails() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="bg-white shadow-md rounded-lg p-6 border mb-6">
         <h1 className="text-4xl font-extrabold text-blue-900 mb-2">
           {company.name}
         </h1>
         <p className="text-lg text-gray-700">{company.type}</p>
       </div>
-
-      {/* Tabs */}
       <div className="flex gap-4 mb-6 flex-wrap">
         {["general", "oa", "interview", "mustdo"].map((tab) => (
           <button
@@ -58,8 +53,6 @@ function CompanyDetails() {
               : "Must Do Topics"}
           </button>
         ))}
-
-        {/* Video Tab appears only if backend sent a videoUrl */}
         {company.videoUrl && (
           <button
             onClick={() => setActiveTab("video")}
@@ -73,8 +66,6 @@ function CompanyDetails() {
           </button>
         )}
       </div>
-
-      {/* Tab Content */}
       {activeTab === "general" && <GeneralTab company={company} />}
       {activeTab === "oa" && <OATab company={company} />}
       {activeTab === "interview" && <InterviewTab company={company} />}
