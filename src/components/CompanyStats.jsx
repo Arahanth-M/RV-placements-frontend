@@ -20,14 +20,13 @@ function CompanyStats() {
     interviewExperience: [""],
     interviewQuestions: [""],
     onlineQuestions: [""],
-    mustDoTopics: [""], 
+    mustDoTopics: [""],
   });
 
   const companiesPerPage = 6;
   const navigate = useNavigate();
-  const { user } = useAuth(); 
+  const { user } = useAuth();
 
-  
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -79,16 +78,58 @@ function CompanyStats() {
     setNewCompany({ ...newCompany, [field]: updatedArray });
   };
 
+  // 🔒 Frontend validation
+  const validateCompany = (company) => {
+    const nameRegex = /^[a-zA-Z0-9\s]{2,50}$/;
+    if (!nameRegex.test(company.name)) {
+      return "Invalid company name. Use 2–50 letters/numbers only.";
+    }
+
+    
+
+    if (!Number.isInteger(Number(company.count)) || company.count < 0) {
+      return "Count must be a positive integer.";
+    }
+
+    const noScriptRegex = /<script.*?>.*?<\/script>/gi;
+
+    const checkArrayFields = (arr, fieldName) => {
+      for (let item of arr) {
+        if (!item.trim()) return `${fieldName} cannot be empty.`;
+        if (noScriptRegex.test(item))
+          return `Malicious script detected in ${fieldName}.`;
+      }
+      return null;
+    };
+
+    let error;
+    error = checkArrayFields(company.interviewExperience, "Interview Experience");
+    if (error) return error;
+    error = checkArrayFields(company.interviewQuestions, "Interview Questions");
+    if (error) return error;
+    error = checkArrayFields(company.onlineQuestions, "Online Questions");
+    if (error) return error;
+    error = checkArrayFields(company.mustDoTopics, "Must Do Topics");
+    if (error) return error;
+
+    return null; // ✅ all valid
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
       alert("⚠️ You must be logged in to add a company.");
       return;
     }
+
+    const errorMsg = validateCompany(newCompany);
+    if (errorMsg) {
+      alert(`❌ ${errorMsg}`);
+      return;
+    }
+
     try {
-      await companyAPI.createCompany({ ...newCompany, status: "pending" 
-      
-    });
+      await companyAPI.createCompany({ ...newCompany, status: "pending" });
       alert("✅ Company submitted for review!");
       setShowModal(false);
       setNewCompany({
@@ -123,7 +164,6 @@ function CompanyStats() {
         />
       </div>
 
-      
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {currentCompanies.length > 0 ? (
           currentCompanies.map((c) => (
@@ -270,132 +310,43 @@ function CompanyStats() {
                 required
               />
 
-              <div>
-                <label className="font-medium">Interview Experience</label>
-                {newCompany.interviewExperience.map((q, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={q}
-                      onChange={(e) =>
-                        handleArrayInputChange("interviewExperience", i, e.target.value)
-                      }
-                      className="border px-2 py-1 rounded-lg flex-1"
-                      required
-                    />
-                    {i > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeField("interviewExperience", i)}
-                      >
-                        ❌
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addField("interviewExperience")}
-                  className="text-green-600 font-medium"
-                >
-                  + Add Experience
-                </button>
-              </div>
-
-              <div>
-                <label className="font-medium">Interview Questions</label>
-                {newCompany.interviewQuestions.map((q, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={q}
-                      onChange={(e) =>
-                        handleArrayInputChange("interviewQuestions", i, e.target.value)
-                      }
-                      className="border px-2 py-1 rounded-lg flex-1"
-                      required
-                    />
-                    {i > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeField("interviewQuestions", i)}
-                      >
-                        ❌
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addField("interviewQuestions")}
-                  className="text-green-600 font-medium"
-                >
-                  + Add Question
-                </button>
-              </div>
-
-              <div>
-                <label className="font-medium">Online Assessment Questions</label>
-                {newCompany.onlineQuestions.map((q, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={q}
-                      onChange={(e) =>
-                        handleArrayInputChange("onlineQuestions", i, e.target.value)
-                      }
-                      className="border px-2 py-1 rounded-lg flex-1"
-                      required
-                    />
-                    {i > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeField("onlineQuestions", i)}
-                      >
-                        ❌
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addField("onlineQuestions")}
-                  className="text-green-600 font-medium"
-                >
-                  + Add Question
-                </button>
-              </div>
-              <div>
-                <label className="font-medium">Must Do Topics</label>
-                {newCompany.mustDoTopics.map((topic, i) => (
-                  <div key={i} className="flex gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={topic}
-                      onChange={(e) =>
-                        handleArrayInputChange("mustDoTopics", i, e.target.value)
-                      }
-                      className="border px-2 py-1 rounded-lg flex-1"
-                      required
-                    />
-                    {i > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => removeField("mustDoTopics", i)}
-                      >
-                        ❌
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addField("mustDoTopics")}
-                  className="text-green-600 font-medium"
-                >
-                  + Add Topic
-                </button>
-              </div>
+              {["interviewExperience", "interviewQuestions", "onlineQuestions", "mustDoTopics"].map((field) => (
+                <div key={field}>
+                  <label className="font-medium">
+                    {field
+                      .replace(/([A-Z])/g, " $1")
+                      .replace(/^./, (str) => str.toUpperCase())}
+                  </label>
+                  {newCompany[field].map((item, i) => (
+                    <div key={i} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={item}
+                        onChange={(e) =>
+                          handleArrayInputChange(field, i, e.target.value)
+                        }
+                        className="border px-2 py-1 rounded-lg flex-1"
+                        required
+                      />
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => removeField(field, i)}
+                        >
+                          ❌
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addField(field)}
+                    className="text-green-600 font-medium"
+                  >
+                    + Add {field.includes("Questions") ? "Question" : "Item"}
+                  </button>
+                </div>
+              ))}
 
               <div className="flex justify-end gap-3 mt-4">
                 <button
@@ -421,3 +372,4 @@ function CompanyStats() {
 }
 
 export default CompanyStats;
+

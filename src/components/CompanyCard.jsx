@@ -37,11 +37,12 @@ function CompanyCard({ company }) {
         <span className="text-gray-600">{company["count"] || "Not available"}</span>
       </div>
 
-      <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-100 to-indigo-50 
+      {/* <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-100 to-indigo-50 
                       rounded-lg px-3 py-2 w-fit">
         <span className="font-semibold text-indigo-600">Role:</span>
         <span className="text-gray-800">{company.roles[0]?.roleName}</span>
-      </div>
+      </div> */}
+      
     </div>
   );
 }
