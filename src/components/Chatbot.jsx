@@ -1,13 +1,230 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../utils/AuthContext";
+import Login from "./Login";
 
-function Chatbot() {
+import { API_ENDPOINTS, MESSAGES, CONFIG } from "../utils/constants";
+
+export default function Chatbot({ apiUrl = API_ENDPOINTS.CHAT }) {
+  const { user } = useAuth();
+  const [messages, setMessages] = useState([
+    {
+      id: "bot-welcome",
+      sender: "bot",
+      text: "Hello 👋, I'm your RV College placement assistant. Ask me about companies, roles, packages, or placement statistics!",
+      time: Date.now(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const sendMessage = async (text) => {
+    if (!text || !text.trim()) return;
+    const trimmed = text.trim();
+
+    const userMsg = { id: `u-${Date.now()}`, sender: "user", text: trimmed, time: Date.now() };
+    const placeholder = { id: `bot-loading-${Date.now()}`, sender: "bot", text: "", loading: true, time: Date.now() };
+
+    setMessages((prev) => [...prev, userMsg, placeholder]);
+    setInput("");
+    setIsSending(true);
+
+    try {
+      const resp = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: trimmed }),
+      });
+
+      if (!resp.ok) {
+        const errorText = await resp.text();
+        throw new Error(`Server returned ${resp.status}: ${errorText}`);
+      }
+      
+      const data = await resp.json();
+
+      // Handle response - adjust based on your backend response format
+      const botText = data?.answer || data?.response || "Sorry, I couldn't find an answer.";
+      const botMsg = {
+        id: `b-${Date.now()}`,
+        sender: "bot",
+        text: botText,
+        time: Date.now(),
+      };
+
+      setMessages((prev) => prev.map((m) => (m.id === placeholder.id ? botMsg : m)));
+    } catch (err) {
+      console.error("Chat error:", err);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholder.id 
+            ? { ...m, loading: false, text: MESSAGES.BACKEND_PORT_ERROR(CONFIG.BACKEND_PORT) } 
+            : m
+        )
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
-    <div className="p-6 text-center bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
+    <div className="p-6 bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen flex flex-col">
+      <div className="max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col" style={{ height: "85vh" }}>
+        <header className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">RV Placements Assistant</h1>
+              <p className="text-sm opacity-90 mt-1">Ask about companies, packages, roles, departments, or placement trends</p>
+            </div>
+            <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium">Online</span>
+            </div>
+          </div>
+        </header>
 
-      <h1 className="text-3xl font-bold mb-4">Chatbot Feature</h1>
-      <p className="text-gray-700">⚡ Chatbot integration coming soon!</p>
+        <main ref={containerRef} className="flex-1 p-6 overflow-auto bg-gradient-to-b from-indigo-50/30 to-white">
+          <div className="space-y-4">
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => (
+                <motion.div 
+                  key={msg.id} 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+                  animate={{ opacity: 1, y: 0, scale: 1 }} 
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {msg.sender === "user" ? (
+                    <div className="flex justify-end">
+                      <div className="max-w-[75%] bg-gradient-to-br from-indigo-600 to-indigo-700 text-white py-3 px-4 rounded-2xl rounded-br-md shadow-md">
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</div>
+                        <div className="text-[10px] opacity-70 mt-1.5 text-right">
+                          {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] bg-white border border-indigo-100 py-3 px-4 rounded-2xl rounded-bl-md shadow-sm">
+                        <div className="text-sm leading-relaxed">
+                          {msg.loading ? (
+                            <div className="flex items-center gap-2 text-indigo-600">
+                              <div className="flex gap-1">
+                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                              </div>
+                              <span className="text-xs italic">Searching placement records...</span>
+                            </div>
+                          ) : (
+                            <div className="prose prose-sm max-w-none">
+                              <ReactMarkdown
+                                components={{
+                                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                  strong: ({ children }) => <strong className="font-semibold text-indigo-700">{children}</strong>,
+                                  ul: ({ children }) => <ul className="list-disc list-inside my-2 space-y-1">{children}</ul>,
+                                  ol: ({ children }) => <ol className="list-decimal list-inside my-2 space-y-1">{children}</ol>,
+                                }}
+                              >
+                                {msg.text}
+                              </ReactMarkdown>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-[10px] opacity-60 mt-1.5 text-left">
+                          {new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </main>
+
+        <div className="px-4 py-2 bg-indigo-50/50 border-t border-indigo-100">
+          <div className="flex flex-wrap gap-2 mb-2">
+            <button
+              onClick={() => sendMessage("What companies hire for software roles?")}
+              className="text-xs px-3 py-1.5 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition-colors"
+              disabled={isSending}
+            >
+              💼 Software companies
+            </button>
+            <button
+              onClick={() => sendMessage("What is the average package?")}
+              className="text-xs px-3 py-1.5 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition-colors"
+              disabled={isSending}
+            >
+              💰 Average package
+            </button>
+            <button
+              onClick={() => sendMessage("Which department has highest placements?")}
+              className="text-xs px-3 py-1.5 bg-white border border-indigo-200 rounded-full hover:bg-indigo-50 transition-colors"
+              disabled={isSending}
+            >
+              📊 Top departments
+            </button>
+          </div>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendMessage(input);
+          }}
+          className="px-4 py-4 bg-white border-t border-indigo-100 flex items-center gap-3"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(input);
+              }
+            }}
+            placeholder='Ask about placements... e.g. "Amazon placement details" or "CSE average package"'
+            className="flex-1 rounded-xl border-2 border-indigo-100 px-4 py-3 focus:outline-none focus:border-indigo-400 transition-colors"
+            disabled={isSending}
+          />
+          <button 
+            type="submit" 
+            disabled={isSending || !input.trim()} 
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-medium transition-all disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+          >
+            {isSending ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                Send
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </span>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
-
-export default Chatbot;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
-import { BASE_URL } from "../utils/constants";
+import { BASE_URL, MESSAGES } from "../utils/constants";
 import { FaFilter, FaPlus } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI } from "../utils/api";
@@ -118,7 +118,7 @@ function CompanyStats() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      alert("⚠️ You must be logged in to add a company.");
+      alert(MESSAGES.AUTH_ERRORS.NOT_LOGGED_IN);
       return;
     }
 
@@ -143,7 +143,7 @@ function CompanyStats() {
       });
     } catch (err) {
       console.error("❌ Error submitting company:", err);
-      alert("Failed to submit company.");
+      alert(MESSAGES.SUBMISSION_ERROR);
     }
   };
 

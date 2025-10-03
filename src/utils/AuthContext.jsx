@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from './api';
+import { CONFIG } from './constants';
 
 const AuthContext = createContext();
 
@@ -36,15 +37,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = () => {
-    // ✅ Simple and consistent
+    // ✅ Simple and consistent - force localhost for development
     const hostname = window.location.hostname;
-    const baseUrl = hostname === "localhost" 
-      ? "http://localhost:7779"
-      : "https://lastminuteplacementprep.in";
+    const baseUrl = (hostname === "localhost" || hostname === "127.0.0.1") 
+      ? `http://localhost:${CONFIG.BACKEND_PORT}`
+      : CONFIG.PRODUCTION_URL;
     
     const authUrl = `${baseUrl}/api/auth/google`;
     
     console.log('🚀 Redirecting to:', authUrl);
+    console.log('🏠 Hostname detected:', hostname);
     window.location.href = authUrl;
   };
 
