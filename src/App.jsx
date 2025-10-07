@@ -13,6 +13,10 @@ import Chatbot from "./components/Chatbot";
 import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Premium from "./components/Premium";
+import PrivacyPolicy from "./components/PrivacyPolicy";
+import TermsConditions from "./components/TermsConditions";
+import ShippingPolicy from "./components/ShippingPolicy";
+import CancellationRefund from "./components/CancellationRefund";
 
 
 function App() {
@@ -61,6 +65,10 @@ function App() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/chatbot" element={<Chatbot />} />
                 <Route path="/premium" element = {<Premium />}/>
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsConditions />} />
+                <Route path="/shipping" element={<ShippingPolicy />} />
+                <Route path="/cancellation" element={<CancellationRefund />} />
               </Routes>
             </main>
 
