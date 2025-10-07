@@ -3,10 +3,23 @@ export const LOCALHOST_HOSTNAME = "localhost";
 export const LOCALHOST_PORT = 7779;
 export const PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
 
-// Base URLs
-export const BASE_URL = location.hostname === LOCALHOST_HOSTNAME
-  ? `http://${LOCALHOST_HOSTNAME}:${LOCALHOST_PORT}`
-  : `https://${PRODUCTION_DOMAIN}`;
+// Base URLs - More robust environment detection
+export const BASE_URL = (() => {
+  const hostname = window.location.hostname;
+  console.log('🌐 Detected hostname:', hostname);
+  
+  // Check for localhost or development environment
+  if (hostname === LOCALHOST_HOSTNAME || hostname === '127.0.0.1' || hostname.includes('localhost')) {
+    const url = `http://${LOCALHOST_HOSTNAME}:${LOCALHOST_PORT}`;
+    console.log('🔧 Using development URL:', url);
+    return url;
+  }
+  
+  // Production environment
+  const url = `https://${PRODUCTION_DOMAIN}`;
+  console.log('🚀 Using production URL:', url);
+  return url;
+})();
 
 // API Endpoints
 export const API_ENDPOINTS = {

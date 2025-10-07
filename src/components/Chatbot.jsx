@@ -11,6 +11,10 @@ import { API_ENDPOINTS, MESSAGES, CONFIG } from "../utils/constants";
 export default function Chatbot({ apiUrl = API_ENDPOINTS.CHAT }) {
   const { user } = useAuth();
   const { hasChatbotAccess, isPremium } = usePremium();
+  
+  // Debug: Log the API URL being used
+  console.log('🤖 Chatbot API URL:', apiUrl);
+  console.log('🌐 Current hostname:', window.location.hostname);
   const [messages, setMessages] = useState([
     {
       id: "bot-welcome",
@@ -41,11 +45,17 @@ export default function Chatbot({ apiUrl = API_ENDPOINTS.CHAT }) {
     setIsSending(true);
 
     try {
+      console.log('📤 Sending request to:', apiUrl);
+      console.log('📝 Question:', trimmed);
+      
       const resp = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: trimmed }),
       });
+      
+      console.log('📥 Response status:', resp.status);
+      console.log('📥 Response ok:', resp.ok);
 
       if (!resp.ok) {
         const errorText = await resp.text();
@@ -66,10 +76,20 @@ export default function Chatbot({ apiUrl = API_ENDPOINTS.CHAT }) {
       setMessages((prev) => prev.map((m) => (m.id === placeholder.id ? botMsg : m)));
     } catch (err) {
       console.error("Chat error:", err);
+      console.error("Error details:", {
+        message: err.message,
+        apiUrl: apiUrl,
+        hostname: window.location.hostname
+      });
+      
       setMessages((prev) =>
         prev.map((m) =>
           m.id === placeholder.id 
-            ? { ...m, loading: false, text: MESSAGES.BACKEND_PORT_ERROR(CONFIG.BACKEND_PORT) } 
+            ? { 
+                ...m, 
+                loading: false, 
+                text: `Sorry, I'm having trouble connecting to the server. Please check your internet connection and try again. Error: ${err.message}` 
+              } 
             : m
         )
       );
