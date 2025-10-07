@@ -3,6 +3,7 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import appStore from "./utils/appStore"; 
 import { AuthProvider } from "./utils/AuthContext";
+import { PremiumProvider } from "./utils/PremiumContext";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./components/Home";
@@ -39,41 +40,43 @@ function App() {
     <Provider store={appStore}>
       <BrowserRouter basename="/">
         <AuthProvider>
-          <div className="flex flex-col min-h-screen">
-            <Header />
+          <PremiumProvider>
+            <div className="flex flex-col min-h-screen">
+              <Header />
 
-            <main className="flex-grow" style={{ paddingTop: headerHeight }}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/companystats" element={<CompanyStats />} />
-                <Route 
-                  path="/companies/:id" 
-                  element={
-                    <ProtectedRoute>
-                      <CompanyDetails />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/internshipExperience" 
-                  element={
-                    <ProtectedRoute>
-                      <InternshipExperience />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/chatbot" element={<Chatbot />} />
-                <Route path="/premium" element = {<Premium />}/>
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsConditions />} />
-                <Route path="/shipping" element={<ShippingPolicy />} />
-                <Route path="/cancellation" element={<CancellationRefund />} />
-              </Routes>
-            </main>
+              <main className="flex-grow" style={{ paddingTop: headerHeight }}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/companystats" element={<CompanyStats />} />
+                  <Route 
+                    path="/companies/:id" 
+                    element={
+                      <ProtectedRoute>
+                        <CompanyDetails />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/internshipExperience" 
+                    element={
+                      <ProtectedRoute>
+                        <InternshipExperience />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/chatbot" element={<Chatbot />} />
+                  <Route path="/premium" element = {<Premium />}/>
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsConditions />} />
+                  <Route path="/shipping" element={<ShippingPolicy />} />
+                  <Route path="/cancellation" element={<CancellationRefund />} />
+                </Routes>
+              </main>
 
-            <Footer />
-          </div>
+              <Footer />
+            </div>
+          </PremiumProvider>
         </AuthProvider>
       </BrowserRouter>
     </Provider>

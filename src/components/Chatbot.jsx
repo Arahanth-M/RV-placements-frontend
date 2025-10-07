@@ -2,12 +2,15 @@ import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../utils/AuthContext";
+import { usePremium } from "../utils/PremiumContext";
 import Login from "./Login";
+import { Link } from "react-router-dom";
 
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../utils/constants";
 
 export default function Chatbot({ apiUrl = API_ENDPOINTS.CHAT }) {
   const { user } = useAuth();
+  const { hasChatbotAccess, isPremium, membershipType } = usePremium();
   const [messages, setMessages] = useState([
     {
       id: "bot-welcome",
@@ -77,6 +80,92 @@ export default function Chatbot({ apiUrl = API_ENDPOINTS.CHAT }) {
 
   if (!user) {
     return <Login />;
+  }
+
+  // Check if user has chatbot access (Gold membership required)
+  if (!hasChatbotAccess()) {
+    return (
+      <div className="p-6 bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen flex flex-col">
+        <div className="max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col" style={{ height: "85vh" }}>
+          <header className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">RV Placements Assistant</h1>
+                <p className="text-sm opacity-90 mt-1">AI-powered placement guidance and insights</p>
+              </div>
+              <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                <span className="text-xs font-medium">Gold Required</span>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 p-6 overflow-auto bg-gradient-to-b from-indigo-50/30 to-white flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <div className="mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-2">Gold Membership Required</h3>
+                <p className="text-gray-600 mb-4">
+                  The AI Chatbot is exclusively available for Gold members. Get instant answers about companies, packages, and placement trends.
+                </p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-lg p-6 mb-6">
+                <h4 className="font-semibold text-yellow-900 mb-3">Gold Membership Benefits</h4>
+                <div className="text-sm text-yellow-800 space-y-2 text-left">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Access to all company videos</span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>AI-powered placement assistant</span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Real-time placement insights</span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 mr-2 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Company-specific guidance</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Link 
+                  to="/premium" 
+                  className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-medium rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all shadow-lg hover:shadow-xl"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                  Upgrade to Gold - ₹700
+                </Link>
+                
+                {isPremium && membershipType === 'silver' && (
+                  <p className="text-sm text-gray-500">
+                    You currently have Silver membership. Upgrade to Gold for chatbot access.
+                  </p>
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   return (
