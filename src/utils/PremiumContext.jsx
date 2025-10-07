@@ -19,14 +19,19 @@ export const PremiumProvider = ({ children }) => {
 
   const checkPremiumStatus = async () => {
     try {
-      const res = await axios.get(BASE_URL + "/premium/verify", {
+      console.log('Checking premium status...');
+      const res = await axios.get(BASE_URL + "/api/payment/verify", {
         withCredentials: true,
       });
       
+      console.log('Premium status response:', res.data);
+      
       if (res.data.isPremium) {
+        console.log('User is premium, setting status...');
         setIsPremium(true);
-        setMembershipType(res.data.membershipType || 'silver'); // Default to silver if not specified
+        setMembershipType("premium");
       } else {
+        console.log('User is not premium');
         setIsPremium(false);
         setMembershipType(null);
       }
@@ -40,16 +45,23 @@ export const PremiumProvider = ({ children }) => {
   };
 
   const hasVideoAccess = () => {
-    return isPremium && (membershipType === 'silver' || membershipType === 'gold');
+    return isPremium;
   };
 
   const hasChatbotAccess = () => {
-    return isPremium && membershipType === 'gold';
+    return isPremium;
   };
 
-  const refreshPremiumStatus = () => {
+  const refreshPremiumStatus = async () => {
     setLoading(true);
-    checkPremiumStatus();
+    try {
+      await checkPremiumStatus();
+      console.log('Premium status refreshed:', { isPremium, membershipType });
+    } catch (error) {
+      console.error('Error refreshing premium status:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

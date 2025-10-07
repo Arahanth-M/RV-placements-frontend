@@ -6,7 +6,7 @@ import { usePremium } from "../../utils/PremiumContext";
 import { Link } from "react-router-dom";
 
 function VideoTab({ videoUrl }) {
-  const { hasVideoAccess, isPremium, membershipType } = usePremium();
+  const { hasVideoAccess, isPremium } = usePremium();
 
   if (!videoUrl) {
     return (
@@ -33,19 +33,19 @@ function VideoTab({ videoUrl }) {
             </p>
           </div>
           
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-blue-900 mb-2">Get Premium Access</h4>
-            <div className="text-sm text-blue-800 space-y-2">
-              <div className="flex items-center">
-                <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                <span>Silver Plan: Access to all company videos</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>
-                <span>Gold Plan: Videos + AI Chatbot access</span>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-blue-900 mb-2">Get Premium Access</h4>
+              <div className="text-sm text-blue-800 space-y-2">
+                <div className="flex items-center">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                  <span>Premium Plan: Access to all company videos + AI Chatbot</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                  <span>Complete placement preparation suite for ₹300</span>
+                </div>
               </div>
             </div>
-          </div>
 
           <Link 
             to="/premium" 
@@ -71,7 +71,7 @@ function VideoTab({ videoUrl }) {
           <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
-          {membershipType === 'gold' ? 'Gold Member' : 'Silver Member'}
+          Premium Member
         </div>
       </div>
       <div className="flex justify-center">
