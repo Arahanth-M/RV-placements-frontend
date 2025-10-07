@@ -73,7 +73,7 @@ function Footer() {
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Contact</h3>
             <div className="space-y-2 text-sm text-gray-300">
-              <p>Email: arahanthm.cs22@rvce.edu.in</p>
+              <p>Email: arahanthmahaveer76@gmail.com</p>
               
              
             </div>
