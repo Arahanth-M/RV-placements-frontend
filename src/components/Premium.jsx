@@ -241,7 +241,7 @@ const Premium = () => {
               </svg>
             </div>
             <h3 className="text-3xl font-bold text-gray-900 mb-2">Premium Plan</h3>
-            <div className="text-5xl font-bold text-blue-600 mb-2">₹300</div>
+            <div className="text-5xl font-bold text-blue-600 mb-2">₹3</div>
             <p className="text-gray-500">Complete placement preparation suite</p>
           </div>
 
@@ -287,7 +287,7 @@ const Premium = () => {
             disabled={isProcessing}
             className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isProcessing ? 'Processing...' : 'Get Premium Access - ₹300'}
+            {isProcessing ? 'Processing...' : 'Get Premium Access - ₹3'}
           </button>
 
           <div className="text-center mt-6">
