@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { BASE_URL } from './constants';
+import { useAuth } from './AuthContext';
 
 const PremiumContext = createContext();
 
@@ -13,13 +14,23 @@ export const usePremium = () => {
 };
 
 export const PremiumProvider = ({ children }) => {
+  const { user, loading: authLoading } = useAuth();
   const [isPremium, setIsPremium] = useState(false);
   const [membershipType, setMembershipType] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const checkPremiumStatus = async () => {
+    // Only check premium status if user is logged in
+    if (!user) {
+      console.log('User not logged in, skipping premium status check');
+      setIsPremium(false);
+      setMembershipType(null);
+      setLoading(false);
+      return;
+    }
+
     try {
-      console.log('Checking premium status...');
+      console.log('Checking premium status for logged in user...');
       const res = await axios.get(BASE_URL + "/api/payment/verify", {
         withCredentials: true,
       });
@@ -53,6 +64,12 @@ export const PremiumProvider = ({ children }) => {
   };
 
   const refreshPremiumStatus = async () => {
+    // Only refresh if user is logged in
+    if (!user) {
+      console.log('User not logged in, cannot refresh premium status');
+      return;
+    }
+
     setLoading(true);
     try {
       // First try the force refresh endpoint
@@ -87,8 +104,11 @@ export const PremiumProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    checkPremiumStatus();
-  }, []);
+    // Only check premium status when auth loading is complete
+    if (!authLoading) {
+      checkPremiumStatus();
+    }
+  }, [user, authLoading]);
 
   const value = {
     isPremium,

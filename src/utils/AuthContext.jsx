@@ -40,7 +40,16 @@ export const AuthProvider = ({ children }) => {
     // ✅ Use consistent BASE_URL for all API calls
     const authUrl = `${BASE_URL}/api/auth/google`;
     
-    console.log('🚀 Redirecting to:', authUrl);
+    console.log('🚀 Redirecting to login:', authUrl);
+    console.log('🏠 Hostname detected:', window.location.hostname);
+    window.location.href = authUrl;
+  };
+
+  const signup = () => {
+    // ✅ Use signup endpoint that forces account selection
+    const authUrl = `${BASE_URL}/api/auth/google/signup`;
+    
+    console.log('🚀 Redirecting to signup:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);
     window.location.href = authUrl;
   };
@@ -79,6 +88,7 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     login,
+    signup,
     logout,
     checkUser,
     setUser,

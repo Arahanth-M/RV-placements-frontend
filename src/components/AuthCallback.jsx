@@ -11,24 +11,35 @@ const AuthCallback = () => {
     const handleCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       
-      if (urlParams.get('login') === 'success') {
+      if (urlParams.get('login') === 'success' || urlParams.get('signup') === 'success') {
         try {
           await new Promise(resolve => setTimeout(resolve, 500));
           const userData = await refreshUser();
           
           if (userData) {
-            console.log('Login successful, user data:', userData);
+            const isSignup = urlParams.get('signup') === 'success';
+            console.log(`${isSignup ? 'Signup' : 'Login'} successful, user data:`, userData);
+            
+            // Show success message
+            if (isSignup) {
+              alert('Welcome! Your account has been created successfully.');
+            }
+            
             navigate('/', { replace: true });
           } else {
-            console.error('No user data received after login');
+            console.error('No user data received after authentication');
             navigate('/login', { replace: true });
           }
         } catch (err) {
-          console.error("Failed to fetch user after login", err);
+          console.error("Failed to fetch user after authentication", err);
           navigate('/login', { replace: true });
         }
+      } else if (urlParams.get('login') === 'failed') {
+        console.log('Authentication failed');
+        alert('Authentication failed. Please try again.');
+        navigate('/login', { replace: true });
       } else {
-        console.log('Login was not successful or callback invalid');
+        console.log('Authentication callback invalid');
         navigate('/login', { replace: true });
       }
       
