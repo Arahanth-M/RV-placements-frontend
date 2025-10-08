@@ -55,6 +55,28 @@ export const PremiumProvider = ({ children }) => {
   const refreshPremiumStatus = async () => {
     setLoading(true);
     try {
+      // First try the force refresh endpoint
+      try {
+        const refreshResponse = await axios.post(BASE_URL + "/api/payment/refresh-status", {}, {
+          withCredentials: true,
+        });
+        
+        console.log('Force refresh response:', refreshResponse.data);
+        
+        if (refreshResponse.data.success) {
+          setIsPremium(refreshResponse.data.isPremium);
+          setMembershipType(refreshResponse.data.membershipType);
+          console.log('Premium status force refreshed:', { 
+            isPremium: refreshResponse.data.isPremium, 
+            membershipType: refreshResponse.data.membershipType 
+          });
+          return;
+        }
+      } catch (refreshError) {
+        console.log('Force refresh failed, falling back to regular check:', refreshError);
+      }
+      
+      // Fallback to regular check
       await checkPremiumStatus();
       console.log('Premium status refreshed:', { isPremium, membershipType });
     } catch (error) {

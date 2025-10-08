@@ -38,7 +38,7 @@ const Premium = () => {
             console.log('Payment successful, verifying...', response);
             
             // Call the manual verification endpoint
-            const verifyResponse = await axios.post(BASE_URL + "/payment/verify", {
+            const verifyResponse = await axios.post(BASE_URL + "/api/payment/payment/verify", {
               payment_id: response.razorpay_payment_id,
               order_id: response.razorpay_order_id
             }, {
