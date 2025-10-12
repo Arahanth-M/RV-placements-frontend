@@ -47,7 +47,6 @@ const Header = () => {
               <Link to="/companystats" className="nav-link">Company Stats</Link>
               {user && <Link to="/internshipExperience" className="nav-link">Experiences</Link>}
               <Link to="/contact" className="nav-link">Contact</Link>
-              <Link to="/chatbot" className="nav-link">Chatbot</Link>
               <Link to="/premium" className="nav-link">
                 {user ? 'Premium' : 'Get Premium'}
               </Link>
@@ -134,7 +133,6 @@ const Header = () => {
           <Link to="/companystats" className="block nav-link">Company Stats</Link>
           {user && <Link to="/internshipExperience" className="block nav-link">Experiences</Link>}
           <Link to="/contact" className="block nav-link">Contact</Link>
-          <Link to="/chatbot" className="block nav-link">Chatbot</Link>
           <Link to="/premium" className="block nav-link">
             {user ? 'Premium' : 'Get Premium'}
           </Link>

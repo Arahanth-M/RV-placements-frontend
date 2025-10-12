@@ -59,9 +59,6 @@ export const PremiumProvider = ({ children }) => {
     return isPremium;
   };
 
-  const hasChatbotAccess = () => {
-    return isPremium;
-  };
 
   const refreshPremiumStatus = async () => {
     // Only refresh if user is logged in
@@ -115,7 +112,6 @@ export const PremiumProvider = ({ children }) => {
     membershipType,
     loading,
     hasVideoAccess,
-    hasChatbotAccess,
     refreshPremiumStatus,
   };
 

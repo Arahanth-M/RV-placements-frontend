@@ -206,7 +206,14 @@ function CompanyStats() {
         </div>
       )}
 
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-4 items-end">
+      <div className="fixed bottom-20 right-6 z-50 flex flex-col gap-4 items-end">
+        <button
+          onClick={() => setShowFilter((prev) => !prev)}
+          className="bg-indigo-500 text-white p-4 rounded-full shadow-lg hover:bg-indigo-600 transition duration-200"
+        >
+          <FaFilter size={20} />
+        </button>
+
         {user && (
           <button
             onClick={() => setShowModal(true)}
@@ -216,15 +223,8 @@ function CompanyStats() {
           </button>
         )}
 
-        <button
-          onClick={() => setShowFilter((prev) => !prev)}
-          className="bg-indigo-500 text-white p-4 rounded-full shadow-lg hover:bg-indigo-600 transition duration-200"
-        >
-          <FaFilter size={20} />
-        </button>
-
         {showFilter && (
-          <div className="mt-2 bg-white border border-gray-300 rounded-lg shadow-lg py-2 w-48 flex flex-col">
+          <div className="absolute bottom-full mb-2 bg-white border border-gray-300 rounded-lg shadow-lg py-2 w-48 flex flex-col">
             <button
               onClick={() => {
                 setCategory("all");

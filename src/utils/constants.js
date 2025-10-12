@@ -24,7 +24,6 @@ export const BASE_URL = (() => {
 // API Endpoints
 export const API_ENDPOINTS = {
   SUBMISSIONS: `${BASE_URL}/api/submissions`,
-  CHAT: `${BASE_URL}/api/chat`,
   AUTH_CURRENT_USER: `${BASE_URL}/api/auth/current_user`,
   AUTH_LOGOUT: `${BASE_URL}/api/auth/logout`,
   COMPANIES: `${BASE_URL}/api/companies`,

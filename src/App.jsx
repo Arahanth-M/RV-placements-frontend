@@ -10,7 +10,6 @@ import Home from "./components/Home";
 import CompanyStats from "./components/CompanyStats";
 import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
-import Chatbot from "./components/Chatbot";
 import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Premium from "./components/Premium";
@@ -18,6 +17,7 @@ import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import ShippingPolicy from "./components/ShippingPolicy";
 import CancellationRefund from "./components/CancellationRefund";
+import GlobalChatbot from "./components/GlobalChatbot";
 
 
 function App() {
@@ -65,7 +65,6 @@ function App() {
                     } 
                   />
                   <Route path="/contact" element={<Contact />} />
-                  <Route path="/chatbot" element={<Chatbot />} />
                   <Route path="/premium" element = {<Premium />}/>
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsConditions />} />
@@ -75,6 +74,7 @@ function App() {
               </main>
 
               <Footer />
+              <GlobalChatbot />
             </div>
           </PremiumProvider>
         </AuthProvider>
