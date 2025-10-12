@@ -15,8 +15,8 @@ export const BASE_URL = (() => {
     return url;
   }
   
-  // Production environment
-  const url = `https://${PRODUCTION_DOMAIN}`;
+  // Production environment - use the actual hostname to handle www subdomain
+  const url = `https://${hostname}`;
   console.log('🚀 Using production URL:', url);
   return url;
 })();
