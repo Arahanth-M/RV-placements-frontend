@@ -1,20 +1,47 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../utils/AuthContext';
 
 const GlobalChatbot = () => {
   const { user } = useAuth();
+  const scriptRef = useRef(null);
+
+  const cleanupChatbot = () => {
+    // Close chatbot if it's open
+    if (window.voiceflow && window.voiceflow.chat) {
+      try {
+        window.voiceflow.chat.close();
+      } catch (error) {
+        console.log('Chatbot already closed or not initialized');
+      }
+    }
+
+    // Remove Voiceflow widget from DOM
+    const voiceflowWidget = document.querySelector('[data-voiceflow]');
+    if (voiceflowWidget) {
+      voiceflowWidget.remove();
+    }
+
+    // Remove any Voiceflow-related elements
+    const voiceflowElements = document.querySelectorAll('[id*="voiceflow"], [class*="voiceflow"]');
+    voiceflowElements.forEach(element => element.remove());
+
+    // Clean up global Voiceflow object
+    if (window.voiceflow) {
+      delete window.voiceflow;
+    }
+
+    // Remove script if it exists
+    if (scriptRef.current && document.head.contains(scriptRef.current)) {
+      document.head.removeChild(scriptRef.current);
+      scriptRef.current = null;
+    }
+  };
 
   useEffect(() => {
     // Only load chatbot for authenticated users
     if (!user) {
-      // Hide chatbot if user logs out
-      if (window.voiceflow && window.voiceflow.chat) {
-        try {
-          window.voiceflow.chat.close();
-        } catch (error) {
-          console.log('Chatbot already closed or not initialized');
-        }
-      }
+      // Clean up chatbot completely when user logs out
+      cleanupChatbot();
       return;
     }
 
@@ -26,6 +53,7 @@ const GlobalChatbot = () => {
     // Load Voiceflow script using the exact code provided
     const script = document.createElement('script');
     script.type = 'text/javascript';
+    scriptRef.current = script;
     
     script.onload = function() {
       window.voiceflow.chat.load({
@@ -49,10 +77,8 @@ const GlobalChatbot = () => {
     }
 
     return () => {
-      // Cleanup script on unmount
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
+      // Cleanup on unmount
+      cleanupChatbot();
     };
   }, [user]);
 

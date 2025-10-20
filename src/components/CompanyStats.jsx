@@ -279,9 +279,12 @@ function CompanyStats() {
 
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-            <h2 className="text-xl font-semibold mb-4">Add New Company</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="p-6 pb-0">
+              <h2 className="text-xl font-semibold mb-4">Add New Company</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6">
+              <form id="company-form" onSubmit={handleSubmit} className="space-y-4">
               <input
                 type="text"
                 name="name"
@@ -319,19 +322,32 @@ function CompanyStats() {
                   </label>
                   {newCompany[field].map((item, i) => (
                     <div key={i} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={item}
-                        onChange={(e) =>
-                          handleArrayInputChange(field, i, e.target.value)
-                        }
-                        className="border px-2 py-1 rounded-lg flex-1"
-                        required
-                      />
+                      {(field === "interviewExperience" || field === "interviewQuestions" || field === "onlineQuestions") ? (
+                        <textarea
+                          value={item}
+                          onChange={(e) =>
+                            handleArrayInputChange(field, i, e.target.value)
+                          }
+                          className="border px-2 py-1 rounded-lg flex-1 resize-vertical min-h-[80px]"
+                          placeholder={`Enter ${field.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).toLowerCase()}...`}
+                          required
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={item}
+                          onChange={(e) =>
+                            handleArrayInputChange(field, i, e.target.value)
+                          }
+                          className="border px-2 py-1 rounded-lg flex-1"
+                          required
+                        />
+                      )}
                       {i > 0 && (
                         <button
                           type="button"
                           onClick={() => removeField(field, i)}
+                          className="text-red-500 hover:text-red-700"
                         >
                           ❌
                         </button>
@@ -341,29 +357,33 @@ function CompanyStats() {
                   <button
                     type="button"
                     onClick={() => addField(field)}
-                    className="text-green-600 font-medium"
+                    className="text-green-600 font-medium hover:text-green-700"
                   >
                     + Add {field.includes("Questions") ? "Question" : "Item"}
                   </button>
                 </div>
               ))}
 
-              <div className="flex justify-end gap-3 mt-4">
+              </form>
+            </div>
+            <div className="p-6 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 rounded-lg"
+                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg"
+                  form="company-form"
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
                 >
                   Submit
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
