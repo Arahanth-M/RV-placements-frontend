@@ -7,6 +7,7 @@ import { PremiumProvider } from "./utils/PremiumContext";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./components/Home";
+import AuthCallback from "./components/AuthCallback";
 import CompanyStats from "./components/CompanyStats";
 import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
@@ -47,6 +48,7 @@ function App() {
               <main className="flex-grow" style={{ paddingTop: headerHeight }}>
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/companystats" element={<CompanyStats />} />
                   <Route 
                     path="/companies/:id" 

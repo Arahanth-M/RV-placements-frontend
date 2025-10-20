@@ -35,8 +35,13 @@ const AuthCallback = () => {
           navigate('/login', { replace: true });
         }
       } else if (urlParams.get('login') === 'failed') {
-        console.log('Authentication failed');
-        alert('Authentication failed. Please try again.');
+        const reason = urlParams.get('reason');
+        if (reason === 'domain') {
+          alert('Please login using your official college email (rvce.edu.in).');
+        } else {
+          console.log('Authentication failed');
+          alert('Authentication failed. Please try again.');
+        }
         navigate('/login', { replace: true });
       } else {
         console.log('Authentication callback invalid');
