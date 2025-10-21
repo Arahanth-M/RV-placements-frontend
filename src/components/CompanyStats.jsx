@@ -181,7 +181,7 @@ function CompanyStats() {
       </div>
 
       {filteredCompanies.length > companiesPerPage && (
-        <div className="flex items-center justify-center gap-3 mt-6">
+        <div className="flex items-center justify-center gap-2 mt-6 flex-wrap">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
@@ -190,9 +190,43 @@ function CompanyStats() {
             Prev
           </button>
 
-          <span className="text-gray-700 font-medium">
-            Page {currentPage} of {totalPages}
-          </span>
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+              // Show first page, last page, current page, and pages around current page
+              const shouldShow = 
+                pageNum === 1 || 
+                pageNum === totalPages || 
+                Math.abs(pageNum - currentPage) <= 1 ||
+                (currentPage <= 3 && pageNum <= 4) ||
+                (currentPage >= totalPages - 2 && pageNum >= totalPages - 3);
+
+              if (!shouldShow) {
+                // Show ellipsis for gaps
+                if (pageNum === 2 && currentPage > 4) {
+                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-gray-500">...</span>;
+                }
+                if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
+                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-gray-500">...</span>;
+                }
+                return null;
+              }
+
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-2 rounded-lg transition duration-200 ${
+                    pageNum === currentPage
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+          </div>
 
           <button
             onClick={() =>
