@@ -8,7 +8,7 @@ function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div>
-            <h3 className="text-lg font-semibold text-white mb-4">CompanyTracker</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">lastminuteplacementprep</h3>
             <p className="text-sm text-gray-300">
               Your ultimate placement preparation platform with company insights, 
               interview experiences, and premium resources.
@@ -83,7 +83,7 @@ function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-blue-800 mt-8 pt-6 text-center">
           <p className="text-sm text-gray-300">
-            © {new Date().getFullYear()} CompanyTracker. All rights reserved.
+            © {new Date().getFullYear()} lastminuteplacementprep.in All rights reserved.
           </p>
         </div>
       </div>

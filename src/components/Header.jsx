@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
+import logo from "../assets/logo.png";
 
 const Header = () => {
   const { user, login, signup, logout, loading } = useAuth();
@@ -35,8 +36,12 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link to="/" className="text-2xl font-bold text-blue-800">
-              CompanyTracker
+            <Link to="/" className="flex items-center">
+              <img 
+                src={logo} 
+                alt="CompanyTracker Logo" 
+                className="max-h-14 max-w-32 w-auto h-auto object-contain hover:opacity-80 transition-opacity duration-200"  
+              />
             </Link>
           </div>
 
@@ -87,9 +92,9 @@ const Header = () => {
                 </div>
                 
                 {showAccountMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
                     <div className="py-1">
-                      <div className="px-4 py-2 text-sm text-gray-500 border-b">
+                      <div className="px-4 py-2 text-sm text-gray-500 border-b break-words">
                         {user.email}
                       </div>
                       <button
