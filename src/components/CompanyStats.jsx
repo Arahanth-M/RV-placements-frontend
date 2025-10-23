@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import { BASE_URL, MESSAGES } from "../utils/constants";
-import { FaFilter, FaPlus } from "react-icons/fa";
+import { FaFilter, FaPlus, FaTimes, FaBuilding, FaBriefcase, FaUsers, FaEdit, FaTrash } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI } from "../utils/api";
 
@@ -312,109 +312,176 @@ function CompanyStats() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] flex flex-col">
-            <div className="p-6 pb-0">
-              <h2 className="text-xl font-semibold mb-4">Add New Company</h2>
-            </div>
-            <div className="flex-1 overflow-y-auto px-6">
-              <form id="company-form" onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Company Name"
-                value={newCompany.name}
-                onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded-lg"
-                required
-              />
-              <input
-                type="text"
-                name="type"
-                placeholder="Type (e.g. FTE, Internship + FTE)"
-                value={newCompany.type}
-                onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded-lg"
-                required
-              />
-              <input
-                type="number"
-                name="count"
-                placeholder="Total Selected Candidates"
-                value={newCompany.count}
-                onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded-lg"
-                required
-              />
-
-              {["interviewExperience", "interviewQuestions", "onlineQuestions", "mustDoTopics"].map((field) => (
-                <div key={field}>
-                  <label className="font-medium">
-                    {field
-                      .replace(/([A-Z])/g, " $1")
-                      .replace(/^./, (str) => str.toUpperCase())}
-                  </label>
-                  {newCompany[field].map((item, i) => (
-                    <div key={i} className="flex gap-2 mb-2">
-                      {(field === "interviewExperience" || field === "interviewQuestions" || field === "onlineQuestions") ? (
-                        <textarea
-                          value={item}
-                          onChange={(e) =>
-                            handleArrayInputChange(field, i, e.target.value)
-                          }
-                          className="border px-2 py-1 rounded-lg flex-1 resize-vertical min-h-[80px]"
-                          placeholder={`Enter ${field.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase()).toLowerCase()}...`}
-                          required
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          value={item}
-                          onChange={(e) =>
-                            handleArrayInputChange(field, i, e.target.value)
-                          }
-                          className="border px-2 py-1 rounded-lg flex-1"
-                          required
-                        />
-                      )}
-                      {i > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => removeField(field, i)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ❌
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addField(field)}
-                    className="text-green-600 font-medium hover:text-green-700"
-                  >
-                    + Add {field.includes("Questions") ? "Question" : "Item"}
-                  </button>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6 rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-white bg-opacity-20 p-2 rounded-lg">
+                    <FaBuilding className="text-xl" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold">Add New Company</h2>
+                    <p className="text-indigo-100 text-sm">Share your placement experience</p>
+                  </div>
                 </div>
-              ))}
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-lg transition duration-200"
+                >
+                  <FaTimes className="text-xl" />
+                </button>
+              </div>
+            </div>
 
+            {/* Form Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <form id="company-form" onSubmit={handleSubmit} className="space-y-6">
+                {/* Basic Information Section */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <FaBuilding className="mr-2 text-indigo-600" />
+                    Basic Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Company Name *
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        placeholder="e.g., Google, Microsoft, Amazon"
+                        value={newCompany.name}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Job Type *
+                      </label>
+                      <input
+                        type="text"
+                        name="type"
+                        placeholder="e.g., FTE, Internship + FTE, Only Internship"
+                        value={newCompany.type}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Total Selected Candidates *
+                      </label>
+                      <input
+                        type="number"
+                        name="count"
+                        placeholder="e.g., 25, 50, 100"
+                        value={newCompany.count}
+                        onChange={handleInputChange}
+                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Experience & Questions Section */}
+                <div className="bg-gray-50 rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <FaEdit className="mr-2 text-indigo-600" />
+                    Experience & Questions
+                  </h3>
+                  <div className="space-y-6">
+                    {["interviewExperience", "interviewQuestions", "onlineQuestions", "mustDoTopics"].map((field) => (
+                      <div key={field} className="bg-white rounded-lg p-4 border border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          {field === "interviewExperience" && "Interview Experience"}
+                          {field === "interviewQuestions" && "Interview Questions"}
+                          {field === "onlineQuestions" && "Online Assessment Questions"}
+                          {field === "mustDoTopics" && "Must Do Topics"}
+                        </label>
+                        
+                        <div className="space-y-3">
+                          {newCompany[field].map((item, i) => (
+                            <div key={i} className="flex gap-3 items-start">
+                              <div className="flex-1">
+                                {(field === "interviewExperience" || field === "interviewQuestions" || field === "onlineQuestions") ? (
+                                  <textarea
+                                    value={item}
+                                    onChange={(e) =>
+                                      handleArrayInputChange(field, i, e.target.value)
+                                    }
+                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-vertical min-h-[100px] transition duration-200"
+                                    placeholder={`Enter ${field === "interviewExperience" ? "your interview experience" : field === "interviewQuestions" ? "interview questions asked" : field === "onlineQuestions" ? "online assessment questions" : "topics to focus on"}...`}
+                                    required
+                                  />
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={item}
+                                    onChange={(e) =>
+                                      handleArrayInputChange(field, i, e.target.value)
+                                    }
+                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                                    placeholder="Enter topic..."
+                                    required
+                                  />
+                                )}
+                              </div>
+                              {i > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeField(field, i)}
+                                  className="mt-3 p-2 text-red-500 hover:bg-red-50 rounded-lg transition duration-200"
+                                  title="Remove this item"
+                                >
+                                  <FaTrash className="text-sm" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          
+                          <button
+                            type="button"
+                            onClick={() => addField(field)}
+                            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-dashed border-indigo-300 text-indigo-600 hover:from-indigo-100 hover:to-blue-100 hover:border-indigo-400 font-medium py-3 px-4 rounded-lg transition-all duration-200 group"
+                          >
+                            <div className="bg-indigo-100 group-hover:bg-indigo-200 p-1 rounded-full transition duration-200">
+                              <FaPlus className="text-sm" />
+                            </div>
+                            <span>Add {field.includes("Questions") ? "Question" : "Item"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </form>
             </div>
-            <div className="p-6 pt-4 border-t border-gray-200">
-              <div className="flex justify-end gap-3">
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200">
+              <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400 transition duration-200"
+                  className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-400 transition duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   form="company-form"
-                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-blue-700 transition duration-200 shadow-lg"
                 >
-                  Submit
+                  Submit for Review
                 </button>
               </div>
             </div>

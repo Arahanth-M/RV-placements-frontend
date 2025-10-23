@@ -149,13 +149,16 @@ function InterviewTab({ company }) {
         <h2 className="text-2xl font-bold mb-4 text-blue-800 flex justify-between items-center">
           Interview Questions
           <button
-            className="text-white bg-green-600 rounded-full w-6 h-6 flex items-center justify-center"
+            className="flex items-center space-x-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
             onClick={() => {
               setModalType("interviewQ");
               setShowModal(true);
             }}
           >
-            +
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Add Question</span>
           </button>
         </h2>
 
@@ -196,13 +199,16 @@ function InterviewTab({ company }) {
         <h2 className="text-2xl font-bold mb-4 text-blue-800 flex justify-between items-center">
           Interview Process
           <button
-            className="text-white bg-blue-600 rounded-full w-6 h-6 flex items-center justify-center"
+            className="flex items-center space-x-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
             onClick={() => {
               setModalType("process");
               setShowModal(true);
             }}
           >
-            +
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Add Process</span>
           </button>
         </h2>
 
