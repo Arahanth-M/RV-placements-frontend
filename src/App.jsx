@@ -14,6 +14,9 @@ import Contact from "./components/Contact";
 import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Premium from "./components/Premium";
+import Resources from "./components/Resources";
+import Leetcode from "./components/Leetcode";
+import Feedback from "./components/Feedback";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import ShippingPolicy from "./components/ShippingPolicy";
@@ -67,7 +70,24 @@ function App() {
                     } 
                   />
                   <Route path="/contact" element={<Contact />} />
-                  <Route path="/premium" element = {<Premium />}/>
+                  <Route path="/premium" element={<Premium />} />
+                  <Route path="/resources" element={<Resources />} />
+                  <Route 
+                    path="/leetcode" 
+                    element={
+                      <ProtectedRoute>
+                        <Leetcode />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/feedback" 
+                    element={
+                      <ProtectedRoute>
+                        <Feedback />
+                      </ProtectedRoute>
+                    } 
+                  />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsConditions />} />
                   <Route path="/shipping" element={<ShippingPolicy />} />

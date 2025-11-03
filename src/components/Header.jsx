@@ -9,7 +9,9 @@ const Header = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showStudentsCornerMenu, setShowStudentsCornerMenu] = useState(false);
   const accountMenuRef = useRef(null);
+  const studentsCornerMenuRef = useRef(null);
 
   const handleLogout = async () => {
     await logout();
@@ -21,6 +23,9 @@ const Header = () => {
     const handleClickOutside = (event) => {
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
         setShowAccountMenu(false);
+      }
+      if (studentsCornerMenuRef.current && !studentsCornerMenuRef.current.contains(event.target)) {
+        setShowStudentsCornerMenu(false);
       }
     };
 
@@ -49,7 +54,52 @@ const Header = () => {
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
               <Link to="/" className="nav-link">Home</Link>
-              <Link to="/companystats" className="nav-link">Company Stats</Link>
+              <div className="relative" ref={studentsCornerMenuRef}>
+                <button
+                  onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
+                  className="nav-link flex items-center"
+                >
+                  Students Corner
+                  <svg className="w-4 h-4 ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showStudentsCornerMenu && (
+                  <div className="absolute left-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <Link
+                        to="/companystats"
+                        onClick={() => setShowStudentsCornerMenu(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Company Stats
+                      </Link>
+                      <Link
+                        to="/resources"
+                        onClick={() => setShowStudentsCornerMenu(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Resources
+                      </Link>
+                      <Link
+                        to="/leetcode"
+                        onClick={() => setShowStudentsCornerMenu(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Leetcode
+                      </Link>
+                      <Link
+                        to="/feedback"
+                        onClick={() => setShowStudentsCornerMenu(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Feedback
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
               {user && <Link to="/internshipExperience" className="nav-link">Experiences</Link>}
               <Link to="/contact" className="nav-link">Contact</Link>
               <Link to="/premium" className="nav-link">
@@ -135,7 +185,25 @@ const Header = () => {
       {isOpen && (
         <div className="md:hidden bg-white shadow-lg px-4 pb-4 space-y-2">
           <Link to="/" className="block nav-link">Home</Link>
-          <Link to="/companystats" className="block nav-link">Company Stats</Link>
+          <div className="space-y-1">
+            <button
+              onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
+              className="w-full text-left nav-link flex items-center justify-between"
+            >
+              Students Corner
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showStudentsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+              </svg>
+            </button>
+            {showStudentsCornerMenu && (
+              <div className="pl-4 space-y-1">
+                <Link to="/companystats" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Company Stats</Link>
+                <Link to="/resources" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Resources</Link>
+                <Link to="/leetcode" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Leetcode</Link>
+                <Link to="/feedback" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Feedback</Link>
+              </div>
+            )}
+          </div>
           {user && <Link to="/internshipExperience" className="block nav-link">Experiences</Link>}
           <Link to="/contact" className="block nav-link">Contact</Link>
           <Link to="/premium" className="block nav-link">

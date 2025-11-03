@@ -20,4 +20,10 @@ export const companyAPI = {
 export const experienceAPI = {
   getExperiences: () => API.get('/api/experiences'),
 };
+
+export const leetcodeAPI = {
+  getAllQuestions: (params) => API.get('/api/leetcode', { params }),
+  getQuestion: (id) => API.get(`/api/leetcode/${id}`),
+};
+
 export default API;
