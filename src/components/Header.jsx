@@ -96,11 +96,17 @@ const Header = () => {
                       >
                         Feedback
                       </Link>
+                      <Link
+                        to="/internshipExperience"
+                        onClick={() => setShowStudentsCornerMenu(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Experiences
+                      </Link>
                     </div>
                   </div>
                 )}
               </div>
-              {user && <Link to="/internshipExperience" className="nav-link">Experiences</Link>}
               <Link to="/contact" className="nav-link">Contact</Link>
               <Link to="/premium" className="nav-link">
                 {user ? 'Premium' : 'Get Premium'}
@@ -201,10 +207,10 @@ const Header = () => {
                 <Link to="/resources" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Resources</Link>
                 <Link to="/leetcode" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Leetcode</Link>
                 <Link to="/feedback" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Feedback</Link>
+                <Link to="/internshipExperience" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Experiences</Link>
               </div>
             )}
           </div>
-          {user && <Link to="/internshipExperience" className="block nav-link">Experiences</Link>}
           <Link to="/contact" className="block nav-link">Contact</Link>
           <Link to="/premium" className="block nav-link">
             {user ? 'Premium' : 'Get Premium'}

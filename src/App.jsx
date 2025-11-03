@@ -71,7 +71,14 @@ function App() {
                   />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/premium" element={<Premium />} />
-                  <Route path="/resources" element={<Resources />} />
+                  <Route 
+                    path="/resources" 
+                    element={
+                      <ProtectedRoute>
+                        <Resources />
+                      </ProtectedRoute>
+                    } 
+                  />
                   <Route 
                     path="/leetcode" 
                     element={
