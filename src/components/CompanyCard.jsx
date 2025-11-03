@@ -15,6 +15,14 @@ function CompanyCard({ company }) {
     return words[0].substring(0, 2).toUpperCase();
   };
 
+  // Default logo image (SVG with company initials)
+  const getDefaultLogo = () => {
+    const initials = getCompanyInitials();
+    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%236366F1'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'%3E${encodeURIComponent(initials)}%3C/text%3E%3C/svg%3E`;
+  };
+  
+  const defaultLogo = getDefaultLogo();
+
   return (
     <div
       onClick={() => navigate(`/companies/${company._id}`)}
@@ -34,10 +42,26 @@ function CompanyCard({ company }) {
       {/* Company Logo/Header Section */}
       <div className="flex items-center mb-4">
         <div 
-          className="w-12 h-12 rounded-lg shadow-sm border border-gray-200 mr-3 bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-lg flex items-center justify-center"
-          data-testid="company-initials"
+          className="w-12 h-12 rounded-lg shadow-sm border border-gray-200 mr-3 bg-white flex items-center justify-center overflow-hidden"
+          data-testid="company-logo"
         >
-          {getCompanyInitials()}
+          {company.logo && company.logo.trim() !== '' ? (
+            <img
+              src={company.logo}
+              alt={company.name || "Company logo"}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback to default logo if image fails to load
+                e.target.src = defaultLogo;
+              }}
+            />
+          ) : (
+            <img
+              src={defaultLogo}
+              alt={company.name || "Company logo"}
+              className="w-full h-full object-cover"
+            />
+          )}
         </div>
         <div className="flex-1">
           <h2 className="text-xl font-extrabold text-gray-800 tracking-tight">
