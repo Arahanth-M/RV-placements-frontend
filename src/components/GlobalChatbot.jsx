@@ -57,7 +57,7 @@ const GlobalChatbot = () => {
     
     script.onload = function() {
       window.voiceflow.chat.load({
-        verify: { projectID: '68ebb4863370adf431e18e5b' },
+        verify: { projectID: '690f139d0e40171b6a2e06cc' },
         url: 'https://general-runtime.voiceflow.com',
         versionID: 'production',
         voice: {
