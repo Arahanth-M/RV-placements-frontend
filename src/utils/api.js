@@ -26,4 +26,11 @@ export const leetcodeAPI = {
   getQuestion: (id) => API.get(`/api/leetcode/${id}`),
 };
 
+export const adminAPI = {
+  getStats: () => API.get('/api/admin/stats'),
+  getSubmissions: () => API.get('/api/admin/submissions'),
+  getUserCount: () => API.get('/api/admin/stats/users'),
+  approveSubmission: (id) => API.post(`/api/admin/submissions/${id}/approve`),
+};
+
 export default API;

@@ -18,6 +18,7 @@ const AuthCallback = () => {
           
           if (userData) {
             const isSignup = urlParams.get('signup') === 'success';
+            const isAdmin = urlParams.get('admin') === 'true';
             console.log(`${isSignup ? 'Signup' : 'Login'} successful, user data:`, userData);
             
             // Show success message
@@ -25,7 +26,12 @@ const AuthCallback = () => {
               alert('Welcome! Your account has been created successfully.');
             }
             
-            navigate('/', { replace: true });
+            // Redirect admin to admin dashboard
+            if (isAdmin) {
+              navigate('/admin/dashboard', { replace: true });
+            } else {
+              navigate('/', { replace: true });
+            }
           } else {
             console.error('No user data received after authentication');
             navigate('/login', { replace: true });
@@ -38,11 +44,13 @@ const AuthCallback = () => {
         const reason = urlParams.get('reason');
         if (reason === 'domain') {
           alert('Please login using your official college email (rvce.edu.in).');
+        } else if (reason === 'not_admin') {
+          alert('Access denied. Only admin can access this area.');
         } else {
           console.log('Authentication failed');
           alert('Authentication failed. Please try again.');
         }
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
       } else {
         console.log('Authentication callback invalid');
         navigate('/login', { replace: true });

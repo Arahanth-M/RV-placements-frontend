@@ -36,9 +36,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = () => {
+  const login = (isAdmin = false) => {
     // ✅ Use consistent BASE_URL for all API calls
-    const authUrl = `${BASE_URL}/api/auth/google`;
+    const authUrl = isAdmin 
+      ? `${BASE_URL}/api/auth/google/admin`
+      : `${BASE_URL}/api/auth/google`;
     
     console.log('🚀 Redirecting to login:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);

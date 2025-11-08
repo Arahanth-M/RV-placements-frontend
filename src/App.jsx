@@ -13,10 +13,12 @@ import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
 import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import Premium from "./components/Premium";
 import Resources from "./components/Resources";
 import Leetcode from "./components/Leetcode";
 import Feedback from "./components/Feedback";
+import AdminDashboard from "./components/AdminDashboard";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import ShippingPolicy from "./components/ShippingPolicy";
@@ -93,6 +95,14 @@ function App() {
                       <ProtectedRoute>
                         <Feedback />
                       </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/admin/dashboard" 
+                    element={
+                      <ProtectedAdminRoute>
+                        <AdminDashboard />
+                      </ProtectedAdminRoute>
                     } 
                   />
                   <Route path="/privacy" element={<PrivacyPolicy />} />

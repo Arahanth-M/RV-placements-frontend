@@ -10,8 +10,10 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showStudentsCornerMenu, setShowStudentsCornerMenu] = useState(false);
+  const [showLoginMenu, setShowLoginMenu] = useState(false);
   const accountMenuRef = useRef(null);
   const studentsCornerMenuRef = useRef(null);
+  const loginMenuRef = useRef(null);
 
   const handleLogout = async () => {
     await logout();
@@ -26,6 +28,9 @@ const Header = () => {
       }
       if (studentsCornerMenuRef.current && !studentsCornerMenuRef.current.contains(event.target)) {
         setShowStudentsCornerMenu(false);
+      }
+      if (loginMenuRef.current && !loginMenuRef.current.contains(event.target)) {
+        setShowLoginMenu(false);
       }
     };
 
@@ -176,12 +181,42 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <button
-                onClick={login}
-                className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
-              >
-                Login
-              </button>
+              <div className="relative" ref={loginMenuRef}>
+                <button
+                  onClick={() => setShowLoginMenu(!showLoginMenu)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 flex items-center"
+                >
+                  Login
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showLoginMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setShowLoginMenu(false);
+                          login(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Login as Student
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowLoginMenu(false);
+                          login(true);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Login as Admin
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -254,12 +289,26 @@ const Header = () => {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={login}
-                className="w-full bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
-              >
-                Login
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    login(false);
+                  }}
+                  className="w-full bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
+                >
+                  Login as Student
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    login(true);
+                  }}
+                  className="w-full bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-600"
+                >
+                  Login as Admin
+                </button>
+              </div>
             )}
           </div>
         </div>
