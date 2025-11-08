@@ -4,6 +4,7 @@ import { useAuth } from '../utils/AuthContext';
 const GlobalChatbot = () => {
   const { user } = useAuth();
   const scriptRef = useRef(null);
+  const previousUserIdRef = useRef(null);
 
   const cleanupChatbot = () => {
     // Close chatbot if it's open
@@ -13,6 +14,30 @@ const GlobalChatbot = () => {
       } catch (error) {
         console.log('Chatbot already closed or not initialized');
       }
+    }
+
+    // Clear chat history from localStorage
+    try {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.includes('voiceflow') || key.includes('vf-')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (error) {
+      console.log('Error clearing localStorage:', error);
+    }
+
+    // Clear sessionStorage
+    try {
+      const keys = Object.keys(sessionStorage);
+      keys.forEach(key => {
+        if (key.includes('voiceflow') || key.includes('vf-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    } catch (error) {
+      console.log('Error clearing sessionStorage:', error);
     }
 
     // Remove Voiceflow widget from DOM
@@ -42,11 +67,31 @@ const GlobalChatbot = () => {
     if (!user) {
       // Clean up chatbot completely when user logs out
       cleanupChatbot();
+      previousUserIdRef.current = null;
       return;
     }
 
-    // Check if script is already loaded
-    if (window.voiceflow) {
+    // Check if user has changed - if so, clear chat history and reload
+    const currentUserId = user._id || user.email || user.userId;
+    if (previousUserIdRef.current && previousUserIdRef.current !== currentUserId) {
+      console.log('User changed, clearing chat history and reloading chatbot...');
+      cleanupChatbot();
+      // Reset the script reference so it can be reloaded
+      scriptRef.current = null;
+      // Clear the window.voiceflow to force reload
+      if (window.voiceflow) {
+        delete window.voiceflow;
+      }
+      // Update user ID reference
+      previousUserIdRef.current = currentUserId;
+      // Continue to load chatbot for new user (don't return)
+    } else if (!previousUserIdRef.current) {
+      // Set current user ID for first load
+      previousUserIdRef.current = currentUserId;
+    }
+
+    // Check if script is already loaded for current user
+    if (window.voiceflow && previousUserIdRef.current === currentUserId) {
       return;
     }
 
@@ -56,12 +101,30 @@ const GlobalChatbot = () => {
     scriptRef.current = script;
     
     script.onload = function() {
+      // Clear any existing chat history before loading
+      try {
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.includes('voiceflow') || key.includes('vf-')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (error) {
+        console.log('Error clearing localStorage before load:', error);
+      }
+
+      // Load chatbot with user-specific session
       window.voiceflow.chat.load({
         verify: { projectID: '690f139d0e40171b6a2e06cc' },
         url: 'https://general-runtime.voiceflow.com',
         versionID: 'production',
         voice: {
           url: "https://runtime-api.voiceflow.com"
+        },
+        // Add user-specific session identifier to isolate conversations
+        // This ensures each user gets their own isolated chat session
+        session: {
+          userID: user._id || user.email || user.userId || `user-${Date.now()}`,
         }
       });
     };
@@ -77,7 +140,7 @@ const GlobalChatbot = () => {
     }
 
     return () => {
-      // Cleanup on unmount
+      // Cleanup on unmount or user change
       cleanupChatbot();
     };
   }, [user]);
