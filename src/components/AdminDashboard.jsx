@@ -76,7 +76,25 @@ const AdminDashboard = () => {
       alert('Submission approved successfully!');
     } catch (err) {
       console.error('Error approving submission:', err);
-      alert(err.response?.data?.error || 'Failed to approve submission. Please try again.');
+      console.error('Error response:', err.response?.data);
+      
+      // Show detailed error message
+      let errorMessage = 'Failed to approve submission. Please try again.';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.details) {
+          // If it's a validation error with details
+          const details = typeof errorData.details === 'object' 
+            ? Object.entries(errorData.details).map(([key, value]) => `${key}: ${value}`).join('\n')
+            : errorData.details;
+          errorMessage = `Validation Error:\n${details}`;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      }
+      alert(errorMessage);
     } finally {
       setApprovingIds(prev => {
         const newSet = new Set(prev);
