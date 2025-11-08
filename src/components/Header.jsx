@@ -10,14 +10,24 @@ const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showStudentsCornerMenu, setShowStudentsCornerMenu] = useState(false);
+  const [showAdminsCornerMenu, setShowAdminsCornerMenu] = useState(false);
   const [showLoginMenu, setShowLoginMenu] = useState(false);
   const accountMenuRef = useRef(null);
   const studentsCornerMenuRef = useRef(null);
+  const adminsCornerMenuRef = useRef(null);
   const loginMenuRef = useRef(null);
+  
+  const ADMIN_EMAIL = "arahanthm.cs22@rvce.edu.in";
+  const isAdmin = user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   const handleLogout = async () => {
     await logout();
     navigate("/");
+  };
+
+  const handleAdminsCornerClick = () => {
+    // Always show dropdown, similar to Students Corner
+    setShowAdminsCornerMenu(!showAdminsCornerMenu);
   };
 
   // Close account menu when clicking outside
@@ -31,6 +41,9 @@ const Header = () => {
       }
       if (loginMenuRef.current && !loginMenuRef.current.contains(event.target)) {
         setShowLoginMenu(false);
+      }
+      if (adminsCornerMenuRef.current && !adminsCornerMenuRef.current.contains(event.target)) {
+        setShowAdminsCornerMenu(false);
       }
     };
 
@@ -107,6 +120,31 @@ const Header = () => {
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         Experiences
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="relative" ref={adminsCornerMenuRef}>
+                <button
+                  onClick={handleAdminsCornerClick}
+                  className="nav-link flex items-center"
+                >
+                  Admins Corner
+                  <svg className="w-4 h-4 ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showAdminsCornerMenu && (
+                  <div className="absolute left-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="py-1">
+                      <Link
+                        to="/admin/dashboard"
+                        onClick={() => setShowAdminsCornerMenu(false)}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Dashboard
                       </Link>
                     </div>
                   </div>
@@ -243,6 +281,22 @@ const Header = () => {
                 <Link to="/leetcode" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Leetcode</Link>
                 <Link to="/feedback" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Feedback</Link>
                 <Link to="/internshipExperience" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Experiences</Link>
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            <button
+              onClick={() => setShowAdminsCornerMenu(!showAdminsCornerMenu)}
+              className="w-full text-left nav-link flex items-center justify-between"
+            >
+              Admins Corner
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAdminsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+              </svg>
+            </button>
+            {showAdminsCornerMenu && (
+              <div className="pl-4 space-y-1">
+                <Link to="/admin/dashboard" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Dashboard</Link>
               </div>
             )}
           </div>

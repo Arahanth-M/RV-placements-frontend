@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import { useAuth } from '../utils/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 const Login = () => {
   const { login, signup } = useAuth();
   const [showOptions, setShowOptions] = useState(false);
+  const location = useLocation();
+  const isAdminRoute = location.pathname.includes('/admin');
+  
+  const handleLogin = () => {
+    login(isAdminRoute); // Use admin login if on admin route
+  };
+  
+  const handleSignup = () => {
+    // Signup always uses regular flow, but we can add admin signup later if needed
+    signup();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -22,8 +34,15 @@ const Login = () => {
 
         {!showOptions ? (
           <div className="space-y-4">
+            {isAdminRoute && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Admin Login Required:</strong> Only admin credentials are allowed for this section.
+                </p>
+              </div>
+            )}
             <button
-              onClick={login}
+              onClick={handleLogin}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -32,7 +51,7 @@ const Login = () => {
                 <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign in with Google
+              {isAdminRoute ? 'Sign in as Admin' : 'Sign in with Google'}
             </button>
             
             <div className="relative">
@@ -56,8 +75,15 @@ const Login = () => {
           </div>
         ) : (
           <div className="space-y-4">
+            {isAdminRoute && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Admin Login Required:</strong> Only admin credentials are allowed for this section.
+                </p>
+              </div>
+            )}
             <button
-              onClick={signup}
+              onClick={handleSignup}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -70,7 +96,7 @@ const Login = () => {
             </button>
 
             <button
-              onClick={login}
+              onClick={handleLogin}
               className="group relative w-full flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -79,7 +105,7 @@ const Login = () => {
                 <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign in with Google (Quick Login)
+              {isAdminRoute ? 'Sign in as Admin (Quick Login)' : 'Sign in with Google (Quick Login)'}
             </button>
 
             <button
