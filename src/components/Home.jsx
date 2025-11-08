@@ -1,5 +1,5 @@
 import React from "react";
-import heroImage from "../assets/home.png";
+import heroImage from "../assets/home5.png";
 
 function Home() {
   return (
@@ -20,12 +20,12 @@ function Home() {
             // backgroundImage: `url('/images/hero-image.jpg')`,
           }}
         />
-        {/* White overlay - reduced opacity to make image visible */}
-        <div className="absolute inset-0 bg-white/30"></div>
-        
-        {/* Hero Content */}
-        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6 drop-shadow-lg animate-fade-in">
+      </div>
+
+      {/* Welcome Message Section - Below the Image */}
+      <div className="w-full bg-white py-16 px-6">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6">
             Welcome to RVCE Placement Dashboard
           </h1>
           <p className="text-xl md:text-2xl text-gray-700 max-w-4xl mx-auto leading-relaxed">

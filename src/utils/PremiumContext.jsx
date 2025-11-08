@@ -19,6 +19,7 @@ export const PremiumProvider = ({ children }) => {
   const [membershipType, setMembershipType] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
   const checkPremiumStatus = async () => {
     // Only check premium status if user is logged in
     if (!user) {
@@ -29,30 +30,36 @@ export const PremiumProvider = ({ children }) => {
       return;
     }
 
-    try {
-      console.log('Checking premium status for logged in user...');
-      const res = await axios.get(BASE_URL + "/api/payment/verify", {
-        withCredentials: true,
-      });
+    // PAYMENT GATEWAY API CALLS COMMENTED OUT
+    // try {
+    //   console.log('Checking premium status for logged in user...');
+    //   const res = await axios.get(BASE_URL + "/api/payment/verify", {
+    //     withCredentials: true,
+    //   });
       
-      console.log('Premium status response:', res.data);
+    //   console.log('Premium status response:', res.data);
       
-      if (res.data.isPremium) {
-        console.log('User is premium, setting status...');
-        setIsPremium(true);
-        setMembershipType("premium");
-      } else {
-        console.log('User is not premium');
-        setIsPremium(false);
-        setMembershipType(null);
-      }
-    } catch (error) {
-      console.error('Error checking premium status:', error);
-      setIsPremium(false);
-      setMembershipType(null);
-    } finally {
-      setLoading(false);
-    }
+    //   if (res.data.isPremium) {
+    //     console.log('User is premium, setting status...');
+    //     setIsPremium(true);
+    //     setMembershipType("premium");
+    //   } else {
+    //     console.log('User is not premium');
+    //     setIsPremium(false);
+    //     setMembershipType(null);
+    //   }
+    // } catch (error) {
+    //   console.error('Error checking premium status:', error);
+    //   setIsPremium(false);
+    //   setMembershipType(null);
+    // } finally {
+    //   setLoading(false);
+    // }
+    
+    // Default: no premium status (payment gateway disabled)
+    setIsPremium(false);
+    setMembershipType(null);
+    setLoading(false);
   };
 
   const hasVideoAccess = () => {
@@ -60,6 +67,7 @@ export const PremiumProvider = ({ children }) => {
   };
 
 
+  // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
   const refreshPremiumStatus = async () => {
     // Only refresh if user is logged in
     if (!user) {
@@ -69,26 +77,27 @@ export const PremiumProvider = ({ children }) => {
 
     setLoading(true);
     try {
-      // First try the force refresh endpoint
-      try {
-        const refreshResponse = await axios.post(BASE_URL + "/api/payment/refresh-status", {}, {
-          withCredentials: true,
-        });
+      // PAYMENT GATEWAY API CALLS COMMENTED OUT
+      // // First try the force refresh endpoint
+      // try {
+      //   const refreshResponse = await axios.post(BASE_URL + "/api/payment/refresh-status", {}, {
+      //     withCredentials: true,
+      //   });
         
-        console.log('Force refresh response:', refreshResponse.data);
+      //   console.log('Force refresh response:', refreshResponse.data);
         
-        if (refreshResponse.data.success) {
-          setIsPremium(refreshResponse.data.isPremium);
-          setMembershipType(refreshResponse.data.membershipType);
-          console.log('Premium status force refreshed:', { 
-            isPremium: refreshResponse.data.isPremium, 
-            membershipType: refreshResponse.data.membershipType 
-          });
-          return;
-        }
-      } catch (refreshError) {
-        console.log('Force refresh failed, falling back to regular check:', refreshError);
-      }
+      //   if (refreshResponse.data.success) {
+      //     setIsPremium(refreshResponse.data.isPremium);
+      //     setMembershipType(refreshResponse.data.membershipType);
+      //     console.log('Premium status force refreshed:', { 
+      //       isPremium: refreshResponse.data.isPremium, 
+      //       membershipType: refreshResponse.data.membershipType 
+      //     });
+      //     return;
+      //   }
+      // } catch (refreshError) {
+      //   console.log('Force refresh failed, falling back to regular check:', refreshError);
+      // }
       
       // Fallback to regular check
       await checkPremiumStatus();

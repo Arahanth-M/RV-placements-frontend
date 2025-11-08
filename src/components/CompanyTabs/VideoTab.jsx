@@ -94,7 +94,8 @@ function VideoTab({ videoUrl }) {
               </div>
             </div>
 
-          <Link 
+          {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
+          {/* <Link 
             to="/premium" 
             className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
@@ -102,7 +103,8 @@ function VideoTab({ videoUrl }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
             </svg>
             Upgrade to Premium
-          </Link>
+          </Link> */}
+          <p className="text-gray-600">Premium access is currently unavailable.</p>
         </div>
       </div>
     );

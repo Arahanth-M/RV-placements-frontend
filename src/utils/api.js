@@ -31,6 +31,7 @@ export const adminAPI = {
   getSubmissions: () => API.get('/api/admin/submissions'),
   getUserCount: () => API.get('/api/admin/stats/users'),
   approveSubmission: (id) => API.post(`/api/admin/submissions/${id}/approve`),
+  rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
 };
 
 export default API;

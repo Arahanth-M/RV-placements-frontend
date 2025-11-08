@@ -12,6 +12,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [approvingIds, setApprovingIds] = useState(new Set());
+  const [rejectingIds, setRejectingIds] = useState(new Set());
 
   useEffect(() => {
     fetchDashboardData();
@@ -97,6 +98,48 @@ const AdminDashboard = () => {
       alert(errorMessage);
     } finally {
       setApprovingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(submissionId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleReject = async (submissionId) => {
+    if (!window.confirm('Are you sure you want to reject this submission? This will permanently delete it from the database.')) {
+      return;
+    }
+
+    try {
+      setRejectingIds(prev => new Set(prev).add(submissionId));
+      
+      await adminAPI.rejectSubmission(submissionId);
+      
+      // Remove the rejected submission from the list
+      setSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
+      
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+      
+      alert('Submission rejected and deleted successfully!');
+    } catch (err) {
+      console.error('Error rejecting submission:', err);
+      console.error('Error response:', err.response?.data);
+      
+      // Show detailed error message
+      let errorMessage = 'Failed to reject submission. Please try again.';
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      }
+      alert(errorMessage);
+    } finally {
+      setRejectingIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(submissionId);
         return newSet;
@@ -263,17 +306,30 @@ const AdminDashboard = () => {
                               {formatDate(submission.submittedAt)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <button
-                                onClick={() => handleApprove(submission._id)}
-                                disabled={approvingIds.has(submission._id)}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                                  approvingIds.has(submission._id)
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-green-600 text-white hover:bg-green-700'
-                                }`}
-                              >
-                                {approvingIds.has(submission._id) ? 'Approving...' : 'Approve'}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleApprove(submission._id)}
+                                  disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
+                                  className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                                    approvingIds.has(submission._id) || rejectingIds.has(submission._id)
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-green-600 text-white hover:bg-green-700'
+                                  }`}
+                                >
+                                  {approvingIds.has(submission._id) ? 'Approving...' : 'Approve'}
+                                </button>
+                                <button
+                                  onClick={() => handleReject(submission._id)}
+                                  disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
+                                  className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                                    approvingIds.has(submission._id) || rejectingIds.has(submission._id)
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-red-600 text-white hover:bg-red-700'
+                                  }`}
+                                >
+                                  {rejectingIds.has(submission._id) ? 'Rejecting...' : 'Reject'}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );

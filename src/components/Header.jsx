@@ -1,8 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaBars, FaTimes } from "react-icons/fa";
-import logo from "../assets/logo.png";
+import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt } from "react-icons/fa";
+import logo from "../assets/logo2.png";
 
 const Header = () => {
   const { user, login, signup, logout, loading } = useAuth();
@@ -54,7 +54,7 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="bg-white shadow-lg fixed top-0 left-0 right-0 z-50">
+    <header className="shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#6B9ADB' }}>
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -71,14 +71,18 @@ const Header = () => {
           {/* Desktop Menu */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
-              <Link to="/" className="nav-link">Home</Link>
+              <Link to="/" className="nav-link flex items-center text-gray-300 hover:text-white">
+                <FaHome className="w-4 h-4 mr-1.5" />
+                Home
+              </Link>
               <div className="relative" ref={studentsCornerMenuRef}>
                 <button
                   onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
-                  className="nav-link flex items-center"
+                  className="nav-link flex items-center text-gray-300 hover:text-white"
                 >
+                  <FaGraduationCap className="w-4 h-4 mr-1.5" />
                   Students Corner
-                  <svg className="w-4 h-4 ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 ml-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -89,36 +93,41 @@ const Header = () => {
                       <Link
                         to="/companystats"
                         onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
+                        <FaChartBar className="w-4 h-4 mr-2" />
                         Company Stats
                       </Link>
                       <Link
                         to="/resources"
                         onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
+                        <FaBook className="w-4 h-4 mr-2" />
                         Resources
                       </Link>
                       <Link
                         to="/leetcode"
                         onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
+                        <FaCode className="w-4 h-4 mr-2" />
                         Leetcode
                       </Link>
                       <Link
                         to="/feedback"
                         onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
+                        <FaComments className="w-4 h-4 mr-2" />
                         Feedback
                       </Link>
                       <Link
                         to="/internshipExperience"
                         onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
+                        <FaBriefcase className="w-4 h-4 mr-2" />
                         Experiences
                       </Link>
                     </div>
@@ -128,10 +137,11 @@ const Header = () => {
               <div className="relative" ref={adminsCornerMenuRef}>
                 <button
                   onClick={handleAdminsCornerClick}
-                  className="nav-link flex items-center"
+                  className="nav-link flex items-center text-gray-300 hover:text-white"
                 >
+                  <FaUserShield className="w-4 h-4 mr-1.5" />
                   Admins Corner
-                  <svg className="w-4 h-4 ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 ml-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -142,18 +152,23 @@ const Header = () => {
                       <Link
                         to="/admin/dashboard"
                         onClick={() => setShowAdminsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                       >
+                        <FaTachometerAlt className="w-4 h-4 mr-2" />
                         Dashboard
                       </Link>
                     </div>
                   </div>
                 )}
               </div>
-              <Link to="/contact" className="nav-link">Contact</Link>
-              <Link to="/premium" className="nav-link">
-                {user ? 'Premium' : 'Get Premium'}
+              <Link to="/contact" className="nav-link flex items-center text-gray-300 hover:text-white">
+                <FaEnvelope className="w-4 h-4 mr-1.5" />
+                Contact
               </Link>
+              {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
+              {/* <Link to="/premium" className="nav-link">
+                {user ? 'Premium' : 'Get Premium'}
+              </Link> */}
             </div>
           </div>
 
@@ -161,7 +176,7 @@ const Header = () => {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-700 focus:outline-none"
+              className="text-gray-300 hover:text-white focus:outline-none"
             >
               {isOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
             </button>
@@ -170,11 +185,14 @@ const Header = () => {
           {/* User Profile/Login */}
           <div className="hidden md:flex items-center">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-gray-300">Loading...</div>
             ) : user ? (
               <div className="flex items-center space-x-4 relative" ref={accountMenuRef}>
                 <div 
-                  className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded-md"
+                  className="flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-md hover:opacity-80"
+                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
                   onClick={() => setShowAccountMenu(!showAccountMenu)}
                 >
                   {user.picture && (
@@ -184,8 +202,8 @@ const Header = () => {
                       className="w-8 h-8 rounded-full"
                     />
                   )}
-                  <span className="text-sm text-gray-700">{user.username}</span>
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="text-sm text-gray-300">{user.username}</span>
+                  <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -222,7 +240,7 @@ const Header = () => {
               <div className="relative" ref={loginMenuRef}>
                 <button
                   onClick={() => setShowLoginMenu(!showLoginMenu)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 flex items-center"
+                  className="bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 flex items-center"
                 >
                   Login
                   <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,52 +280,83 @@ const Header = () => {
 
       {/* Mobile Dropdown Menu */}
       {isOpen && (
-        <div className="md:hidden bg-white shadow-lg px-4 pb-4 space-y-2">
-          <Link to="/" className="block nav-link">Home</Link>
+        <div className="md:hidden shadow-lg px-4 pb-4 space-y-2" style={{ backgroundColor: '#6B9ADB' }}>
+          <Link to="/" className="block nav-link flex items-center text-gray-300 hover:text-white">
+            <FaHome className="w-4 h-4 mr-2" />
+            Home
+          </Link>
           <div className="space-y-1">
             <button
               onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
-              className="w-full text-left nav-link flex items-center justify-between"
+              className="w-full text-left nav-link flex items-center justify-between text-gray-300 hover:text-white"
             >
-              Students Corner
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center">
+                <FaGraduationCap className="w-4 h-4 mr-2" />
+                Students Corner
+              </div>
+              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showStudentsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
               </svg>
             </button>
             {showStudentsCornerMenu && (
               <div className="pl-4 space-y-1">
-                <Link to="/companystats" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Company Stats</Link>
-                <Link to="/resources" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Resources</Link>
-                <Link to="/leetcode" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Leetcode</Link>
-                <Link to="/feedback" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Feedback</Link>
-                <Link to="/internshipExperience" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Experiences</Link>
+                <Link to="/companystats" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                  <FaChartBar className="w-4 h-4 mr-2" />
+                  Company Stats
+                </Link>
+                <Link to="/resources" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                  <FaBook className="w-4 h-4 mr-2" />
+                  Resources
+                </Link>
+                <Link to="/leetcode" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                  <FaCode className="w-4 h-4 mr-2" />
+                  Leetcode
+                </Link>
+                <Link to="/feedback" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                  <FaComments className="w-4 h-4 mr-2" />
+                  Feedback
+                </Link>
+                <Link to="/internshipExperience" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                  <FaBriefcase className="w-4 h-4 mr-2" />
+                  Experiences
+                </Link>
               </div>
             )}
           </div>
           <div className="space-y-1">
             <button
               onClick={() => setShowAdminsCornerMenu(!showAdminsCornerMenu)}
-              className="w-full text-left nav-link flex items-center justify-between"
+              className="w-full text-left nav-link flex items-center justify-between text-gray-300 hover:text-white"
             >
-              Admins Corner
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center">
+                <FaUserShield className="w-4 h-4 mr-2" />
+                Admins Corner
+              </div>
+              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAdminsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
               </svg>
             </button>
             {showAdminsCornerMenu && (
               <div className="pl-4 space-y-1">
-                <Link to="/admin/dashboard" onClick={() => setIsOpen(false)} className="block nav-link text-sm">Dashboard</Link>
+                <Link to="/admin/dashboard" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                  <FaTachometerAlt className="w-4 h-4 mr-2" />
+                  Dashboard
+                </Link>
               </div>
             )}
           </div>
-          <Link to="/contact" className="block nav-link">Contact</Link>
-          <Link to="/premium" className="block nav-link">
-            {user ? 'Premium' : 'Get Premium'}
+          <Link to="/contact" className="block nav-link flex items-center text-gray-300 hover:text-white">
+            <FaEnvelope className="w-4 h-4 mr-2" />
+            Contact
           </Link>
+          {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
+          {/* <Link to="/premium" className="block nav-link">
+            {user ? 'Premium' : 'Get Premium'}
+          </Link> */}
 
           <div className="mt-4">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-gray-300">Loading...</div>
             ) : user ? (
               <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
@@ -319,8 +368,8 @@ const Header = () => {
                     />
                   )}
                   <div className="flex flex-col">
-                    <span className="text-sm text-gray-700">{user.username}</span>
-                    <span className="text-xs text-gray-500">{user.email}</span>
+                    <span className="text-sm text-gray-300">{user.username}</span>
+                    <span className="text-xs text-gray-400">{user.email}</span>
                   </div>
                 </div>
                 <button

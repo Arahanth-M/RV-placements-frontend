@@ -47,93 +47,98 @@ const Premium = () => {
     );
   }
 
+  // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
+  // const handleBuyClick = async () => {
+  //   setIsProcessing(true);
+  //   try {
+  //     const order = await axios.post(BASE_URL + "/api/payment/create", {}, {
+  //       withCredentials: true
+  //     });
+
+  //     const { amount, keyId, currency, notes, orderId } = order.data;
+
+  // const options = {
+  //   key: keyId, 
+  //   amount,
+  //   currency,
+  //       name: 'CompanyTracker',
+  //       description: 'Premium Membership - Ultimate placement prep',
+  //   order_id: orderId, 
+  //   prefill: {
+  //         name: notes.firstName + ' ' + notes.lastName,
+  //     email: notes.emailId,
+  //     contact: '9999999999'
+  //   },
+  //   theme: {
+  //         color: '#3B82F6'
+  //       },
+  //       handler: async function (response) {
+  //         // Payment successful, verify payment and refresh premium status
+  //         try {
+  //           console.log('Payment successful, verifying...', response);
+            
+  //           // Call the manual verification endpoint
+  //           const verifyResponse = await axios.post(BASE_URL + "/api/payment/payment/verify", {
+  //             payment_id: response.razorpay_payment_id,
+  //             order_id: response.razorpay_order_id
+  //           }, {
+  //             withCredentials: true
+  //           });
+
+  //           console.log('Payment verification response:', verifyResponse.data);
+
+  //           // Refresh premium status multiple times to ensure it's updated
+  //           await refreshPremiumStatus();
+            
+  //           // Wait a bit and refresh again to ensure the backend has processed
+  //           setTimeout(async () => {
+  //             await refreshPremiumStatus();
+  //           }, 1000);
+            
+  //           // Set success state
+  //           setPaymentSuccess(true);
+  //           setIsProcessing(false);
+            
+  //           // Show success message
+  //           alert('Payment successful! Welcome to premium membership. You now have access to all videos and the AI chatbot.');
+            
+  //           // Force a hard refresh to ensure all components get the updated status
+  //           setTimeout(() => {
+  //             window.location.href = window.location.href;
+  //           }, 2000);
+  //         } catch (error) {
+  //           console.error('Payment verification error:', error);
+  //           // Even if verification fails, try to refresh status multiple times
+  //           try {
+  //             await refreshPremiumStatus();
+  //             setTimeout(async () => {
+  //               await refreshPremiumStatus();
+  //             }, 1000);
+  //           } catch (refreshError) {
+  //             console.error('Status refresh error:', refreshError);
+  //           }
+  //           alert('Payment successful! Please refresh the page to see your premium features.');
+  //           setIsProcessing(false);
+  //         }
+  //       },
+  //       modal: {
+  //         ondismiss: function() {
+  //           setIsProcessing(false);
+  //         }
+  //       }
+  //     };
+
+  //     const rzp = new window.Razorpay(options);
+  //     rzp.open();
+  //   } catch (error) {
+  //     console.error('Payment error:', error);
+  //     alert('Payment failed. Please try again.');
+  //     setIsProcessing(false);
+  //   }
+  // };
+  
   const handleBuyClick = async () => {
-    setIsProcessing(true);
-    try {
-      const order = await axios.post(BASE_URL + "/api/payment/create", {}, {
-        withCredentials: true
-      });
-
-      const { amount, keyId, currency, notes, orderId } = order.data;
-
-  const options = {
-    key: keyId, 
-    amount,
-    currency,
-        name: 'CompanyTracker',
-        description: 'Premium Membership - Ultimate placement prep',
-    order_id: orderId, 
-    prefill: {
-          name: notes.firstName + ' ' + notes.lastName,
-      email: notes.emailId,
-      contact: '9999999999'
-    },
-    theme: {
-          color: '#3B82F6'
-        },
-        handler: async function (response) {
-          // Payment successful, verify payment and refresh premium status
-          try {
-            console.log('Payment successful, verifying...', response);
-            
-            // Call the manual verification endpoint
-            const verifyResponse = await axios.post(BASE_URL + "/api/payment/payment/verify", {
-              payment_id: response.razorpay_payment_id,
-              order_id: response.razorpay_order_id
-            }, {
-              withCredentials: true
-            });
-
-            console.log('Payment verification response:', verifyResponse.data);
-
-            // Refresh premium status multiple times to ensure it's updated
-            await refreshPremiumStatus();
-            
-            // Wait a bit and refresh again to ensure the backend has processed
-            setTimeout(async () => {
-              await refreshPremiumStatus();
-            }, 1000);
-            
-            // Set success state
-            setPaymentSuccess(true);
-            setIsProcessing(false);
-            
-            // Show success message
-            alert('Payment successful! Welcome to premium membership. You now have access to all videos and the AI chatbot.');
-            
-            // Force a hard refresh to ensure all components get the updated status
-            setTimeout(() => {
-              window.location.href = window.location.href;
-            }, 2000);
-          } catch (error) {
-            console.error('Payment verification error:', error);
-            // Even if verification fails, try to refresh status multiple times
-            try {
-              await refreshPremiumStatus();
-              setTimeout(async () => {
-                await refreshPremiumStatus();
-              }, 1000);
-            } catch (refreshError) {
-              console.error('Status refresh error:', refreshError);
-            }
-            alert('Payment successful! Please refresh the page to see your premium features.');
-            setIsProcessing(false);
-          }
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('Payment failed. Please try again.');
-      setIsProcessing(false);
-    }
+    alert('Payment gateway is currently disabled.');
   };
 
   // Show payment success message
@@ -329,11 +334,12 @@ const Premium = () => {
             {isProcessing ? 'Processing...' : 'Get Premium Access - ₹3'}
           </button>
 
-          <div className="text-center mt-6">
+          {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
+          {/* <div className="text-center mt-6">
             <p className="text-gray-500 text-sm">
               Secure payment powered by Razorpay • No refunds provided as per our policy
             </p>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

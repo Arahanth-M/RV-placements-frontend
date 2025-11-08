@@ -14,7 +14,8 @@ import Contact from "./components/Contact";
 import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
-import Premium from "./components/Premium";
+// PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
+// import Premium from "./components/Premium";
 import Resources from "./components/Resources";
 import Leetcode from "./components/Leetcode";
 import Feedback from "./components/Feedback";
@@ -72,7 +73,8 @@ function App() {
                     } 
                   />
                   <Route path="/contact" element={<Contact />} />
-                  <Route path="/premium" element={<Premium />} />
+                  {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
+                  {/* <Route path="/premium" element={<Premium />} /> */}
                   <Route 
                     path="/resources" 
                     element={
