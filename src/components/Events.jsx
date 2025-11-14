@@ -74,55 +74,57 @@ const Events = () => {
               </div>
             ) : (
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Event Title
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Date to Register
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Link
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {sortedEvents.map((event) => {
-                        return (
-                          <tr 
-                            key={event._id} 
-                            className="hover:bg-gray-50"
-                          >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {event.title}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center text-sm text-gray-600">
-                                <FaCalendarAlt className="w-4 h-4 mr-2 text-indigo-600" />
-                                <span>{formatDate(event.lastDateToRegister)}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <a
-                                href={event.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
-                              >
-                                <FaExternalLinkAlt className="w-4 h-4 mr-2" />
-                                Register
-                              </a>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Event Title
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Last Date
+                          </th>
+                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Link
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {sortedEvents.map((event) => {
+                          return (
+                            <tr 
+                              key={event._id} 
+                              className="hover:bg-gray-50"
+                            >
+                              <td className="px-3 sm:px-6 py-3 sm:py-4">
+                                <div className="text-xs sm:text-sm font-medium text-gray-900">
+                                  {event.title}
+                                </div>
+                              </td>
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                                <div className="flex items-center text-xs sm:text-sm text-gray-600">
+                                  <FaCalendarAlt className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 text-indigo-600 flex-shrink-0" />
+                                  <span className="truncate">{formatDate(event.lastDateToRegister)}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                                <a
+                                  href={event.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-xs sm:text-sm"
+                                >
+                                  <FaExternalLinkAlt className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                                  Register
+                                </a>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}

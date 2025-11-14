@@ -18,43 +18,50 @@ function Home() {
 
   return (
     <div className="bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
-      {/* Full-width Hero Image Slideshow Section */}
-      <div className="relative w-full flex items-center justify-center bg-gray-100" style={{ minHeight: '300px', maxHeight: '70vh' }}>
-        {images.map((image, index) => (
-          <img
-            key={index}
-            src={image}
-            alt={`Slide ${index + 1}`}
-            className={`absolute transition-opacity duration-1000 ${
-              index === currentIndex ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{
-              maxWidth: '100%',
-              maxHeight: '70vh',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'contain',
-              imageRendering: 'auto',
-              WebkitBackfaceVisibility: 'hidden',
-              backfaceVisibility: 'hidden',
-              transform: 'translateZ(0)',
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Welcome Message Section - Below the Image */}
+      {/* Hero Section - Title on Left, Images on Right */}
       <div className="w-full bg-white py-8 sm:py-12 md:py-16 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-extrabold text-gray-900 mb-4 sm:mb-6">
-            Welcome to RVCE Placement Dashboard
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 max-w-4xl mx-auto leading-relaxed px-2">
-            Your ultimate destination for placement preparation. Gain access to 
-            company insights, interview experiences, curated resources, and 
-            guidance from seniors: Everything you need to land your dream 
-            job or internship with confidence.
-          </p>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
+            {/* Left Side - Title and Description */}
+            <div className="flex-1 text-center lg:text-left">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-gray-900 mb-4 sm:mb-6">
+                Welcome to RVCE Placement Dashboard
+              </h1>
+              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 leading-relaxed">
+                Your ultimate destination for placement preparation. Gain access to 
+                company insights, interview experiences, curated resources, and 
+                guidance from seniors: Everything you need to land your dream 
+                job or internship with confidence.
+              </p>
+            </div>
+
+            {/* Right Side - Image Slideshow */}
+            <div className="flex-1 w-full lg:w-auto">
+              <div className="relative w-full flex items-center justify-center bg-gray-100 rounded-xl overflow-hidden" style={{ minHeight: '300px', maxHeight: '70vh' }}>
+                {images.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`Slide ${index + 1}`}
+                    className={`absolute transition-opacity duration-1000 ${
+                      index === currentIndex ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '70vh',
+                      width: 'auto',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      imageRendering: 'auto',
+                      WebkitBackfaceVisibility: 'hidden',
+                      backfaceVisibility: 'hidden',
+                      transform: 'translateZ(0)',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
