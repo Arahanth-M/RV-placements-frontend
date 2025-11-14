@@ -26,19 +26,19 @@ function CompanyDetails() {
   if (!company) return <p className="p-6 text-gray-600">Loading...</p>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="bg-white shadow-md rounded-lg p-6 border mb-6">
-        <h1 className="text-4xl font-extrabold text-blue-900 mb-2">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 mb-2">
           {company.name}
         </h1>
-        <p className="text-lg text-gray-700">{company.type}</p>
+        <p className="text-base sm:text-lg text-gray-700">{company.type}</p>
       </div>
-      <div className="flex gap-4 mb-6 flex-wrap">
+      <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
         {["general", "oa", "interview", "mustdo"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === tab
                 ? "bg-blue-600 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -56,7 +56,7 @@ function CompanyDetails() {
         {company.videoUrl && (
           <button
             onClick={() => setActiveTab("video")}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "video"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"

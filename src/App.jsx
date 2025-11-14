@@ -20,10 +20,12 @@ import Resources from "./components/Resources";
 import Leetcode from "./components/Leetcode";
 import Feedback from "./components/Feedback";
 import AdminDashboard from "./components/AdminDashboard";
+import Events from "./components/Events";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import ShippingPolicy from "./components/ShippingPolicy";
 import CancellationRefund from "./components/CancellationRefund";
+import Developers from "./components/Developers";
 import GlobalChatbot from "./components/GlobalChatbot";
 
 
@@ -100,6 +102,14 @@ function App() {
                     } 
                   />
                   <Route 
+                    path="/events" 
+                    element={
+                      <ProtectedRoute>
+                        <Events />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
                     path="/admin/dashboard" 
                     element={
                       <ProtectedAdminRoute>
@@ -111,6 +121,7 @@ function App() {
                   <Route path="/terms" element={<TermsConditions />} />
                   <Route path="/shipping" element={<ShippingPolicy />} />
                   <Route path="/cancellation" element={<CancellationRefund />} />
+                  <Route path="/developers" element={<Developers />} />
                 </Routes>
               </main>
 

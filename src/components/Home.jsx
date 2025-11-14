@@ -1,34 +1,55 @@
-import React from "react";
-import heroImage from "../assets/home5.png";
+import React, { useState, useEffect } from "react";
 
 function Home() {
+  // External image URLs
+  const images = [
+    "https://rvce.edu.in/wp-content/uploads/2025/11/plane.png",
+    "https://rvce.edu.in/wp-content/uploads/2025/10/IMG_0701-copy.png",
+  ];
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
+    }, 5000); // 5 seconds delay
+
+    return () => clearInterval(interval);
+  }, [images.length]);
+
   return (
     <div className="bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
-      {/* Full-width Hero Image Section */}
-      <div className="relative w-full h-[70vh] min-h-[500px] overflow-hidden">
-        {/* Background Image */}
-        <div 
-          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-          style={{
-            // Option 1: Use local image (uncomment the import above first)
-            backgroundImage: `url(${heroImage})`,
-            
-            // Option 2: Use external URL (current - replace with your image URL)
-           // backgroundImage: `url('https://images.unsplash.com/photo-1509062522246-3755977927d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2128&q=80')`,
-            
-            // Option 3: Use public folder image (if image is in /public folder)
-            // backgroundImage: `url('/images/hero-image.jpg')`,
-          }}
-        />
+      {/* Full-width Hero Image Slideshow Section */}
+      <div className="relative w-full flex items-center justify-center bg-gray-100" style={{ minHeight: '300px', maxHeight: '70vh' }}>
+        {images.map((image, index) => (
+          <img
+            key={index}
+            src={image}
+            alt={`Slide ${index + 1}`}
+            className={`absolute transition-opacity duration-1000 ${
+              index === currentIndex ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '70vh',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+              imageRendering: 'auto',
+              WebkitBackfaceVisibility: 'hidden',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
+            }}
+          />
+        ))}
       </div>
 
       {/* Welcome Message Section - Below the Image */}
-      <div className="w-full bg-white py-16 px-6">
+      <div className="w-full bg-white py-8 sm:py-12 md:py-16 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-extrabold text-gray-900 mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-extrabold text-gray-900 mb-4 sm:mb-6">
             Welcome to RVCE Placement Dashboard
           </h1>
-          <p className="text-xl md:text-2xl text-gray-700 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 max-w-4xl mx-auto leading-relaxed px-2">
             Your ultimate destination for placement preparation. Gain access to 
             company insights, interview experiences, curated resources, and 
             guidance from seniors: Everything you need to land your dream 
@@ -38,14 +59,14 @@ function Home() {
       </div>
 
       {/* Challenges Section */}
-      <div className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-blue-900 mb-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-4 px-2">
             Challenges Students Face During Placements
           </h2>
           <div className="w-24 h-1 bg-indigo-600 mx-auto"></div>
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {[
             {
               icon: "❓",
@@ -66,25 +87,25 @@ function Home() {
           ].map((point, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
+              className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
             >
-              <div className="text-4xl mb-4">{point.icon}</div>
-              <p className="text-lg text-gray-700 leading-relaxed">{point.text}</p>
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">{point.icon}</div>
+              <p className="text-base sm:text-lg text-gray-700 leading-relaxed">{point.text}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* What We Provide Section */}
-      <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-indigo-100 py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-blue-900 mb-4">
+      <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-indigo-100 py-12 sm:py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-8 sm:mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-4 px-2">
               What We Provide
             </h2>
             <div className="w-24 h-1 bg-indigo-600 mx-auto"></div>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
               {
                 icon: "📝",
@@ -119,11 +140,11 @@ function Home() {
             ].map((feature, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
+                className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
               >
-                <div className="text-5xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-bold text-blue-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-700 leading-relaxed">{feature.text}</p>
+                <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{feature.icon}</div>
+                <h3 className="text-lg sm:text-xl font-bold text-blue-900 mb-2 sm:mb-3">{feature.title}</h3>
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{feature.text}</p>
               </div>
             ))}
           </div>
@@ -131,14 +152,14 @@ function Home() {
       </div>
 
       {/* Future Vision Section */}
-      <div className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-blue-900 mb-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-4 px-2">
             Our Future Vision 🚀
           </h2>
           <div className="w-24 h-1 bg-indigo-600 mx-auto"></div>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[
             {
               icon: "🎥",
@@ -158,11 +179,11 @@ function Home() {
           ].map((plan, idx) => (
             <div
               key={idx}
-              className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-indigo-100"
+              className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-indigo-100"
             >
-              <div className="text-5xl mb-4">{plan.icon}</div>
-              <h3 className="text-xl font-bold text-blue-900 mb-3">{plan.title}</h3>
-              <p className="text-gray-700 leading-relaxed">{plan.text}</p>
+              <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{plan.icon}</div>
+              <h3 className="text-lg sm:text-xl font-bold text-blue-900 mb-2 sm:mb-3">{plan.title}</h3>
+              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{plan.text}</p>
             </div>
           ))}
         </div>

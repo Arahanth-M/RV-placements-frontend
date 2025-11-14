@@ -121,6 +121,26 @@ import React, { useState } from "react";
 function GeneralTab({ company = {} }) {
   const [aboutOpen, setAboutOpen] = useState(false);
 
+  // Format CTC value - handles both string and number types
+  const formatCTCValue = (value) => {
+    if (value === null || value === undefined) {
+      return 'N/A';
+    }
+    
+    // If it's already a string, return it as is
+    if (typeof value === 'string') {
+      return value;
+    }
+    
+    // If it's a number, format it with commas
+    if (typeof value === 'number') {
+      return value.toLocaleString('en-IN');
+    }
+    
+    // For any other type, convert to string
+    return String(value);
+  };
+
   // --- UPDATED FORMATTER ---
   const formatAboutCompany = (text) => {
     if (!text) return null;
@@ -225,7 +245,7 @@ function GeneralTab({ company = {} }) {
                       <span className="capitalize font-medium break-words">
                         {key}
                       </span>
-                      <span className="text-gray-700 break-words">{value}</span>
+                      <span className="text-gray-700 break-words">{formatCTCValue(value)}</span>
                     </div>
                   ))}
                 </div>

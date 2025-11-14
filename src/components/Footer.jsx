@@ -35,6 +35,11 @@ function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/developers" className="text-sm text-gray-300 hover:text-white transition-colors">
+                  Our Developers
+                </Link>
+              </li>
+              <li>
                 <Link to="/premium" className="text-sm text-gray-300 hover:text-white transition-colors">
                   Premium
                 </Link>
@@ -73,9 +78,9 @@ function Footer() {
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Contact</h3>
             <div className="space-y-2 text-sm text-gray-300">
-              <p>Email: arahanthmahaveer76@gmail.com</p>
-              
-             
+              <p>
+                Email: <a href="mailto:placement@rvce.edu.in" className="hover:text-white transition-colors">placement@rvce.edu.in</a>
+              </p>
             </div>
           </div>
         </div>

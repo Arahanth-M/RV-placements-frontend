@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt } from "react-icons/fa";
+import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt } from "react-icons/fa";
 import logo from "../assets/logo2.png";
 
 const Header = () => {
@@ -54,7 +54,7 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#6B9ADB' }}>
+    <header className="shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#6C9FCC' }}>
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -74,6 +74,10 @@ const Header = () => {
               <Link to="/" className="nav-link flex items-center text-gray-300 hover:text-white">
                 <FaHome className="w-4 h-4 mr-1.5" />
                 Home
+              </Link>
+              <Link to="/events" className="nav-link flex items-center text-gray-300 hover:text-white">
+                <FaCalendarAlt className="w-4 h-4 mr-1.5" />
+                Events
               </Link>
               <div className="relative" ref={studentsCornerMenuRef}>
                 <button
@@ -280,10 +284,14 @@ const Header = () => {
 
       {/* Mobile Dropdown Menu */}
       {isOpen && (
-        <div className="md:hidden shadow-lg px-4 pb-4 space-y-2" style={{ backgroundColor: '#6B9ADB' }}>
+        <div className="md:hidden shadow-lg px-4 pb-4 space-y-2" style={{ backgroundColor: '#6C9FCC' }}>
           <Link to="/" className="block nav-link flex items-center text-gray-300 hover:text-white">
             <FaHome className="w-4 h-4 mr-2" />
             Home
+          </Link>
+          <Link to="/events" className="block nav-link flex items-center text-gray-300 hover:text-white">
+            <FaCalendarAlt className="w-4 h-4 mr-2" />
+            Events
           </Link>
           <div className="space-y-1">
             <button

@@ -34,4 +34,12 @@ export const adminAPI = {
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
 };
 
+export const eventAPI = {
+  getAllEvents: () => API.get('/api/events'),
+  getEvent: (id) => API.get(`/api/events/${id}`),
+  createEvent: (data) => API.post('/api/events', data),
+  updateEvent: (id, data) => API.put(`/api/events/${id}`, data),
+  deleteEvent: (id) => API.delete(`/api/events/${id}`),
+};
+
 export default API;
