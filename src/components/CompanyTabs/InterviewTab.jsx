@@ -93,7 +93,6 @@ function InterviewTab({ company }) {
   const [modalType, setModalType] = useState("");
   const [content, setContent] = useState("");
   const [openIndexQ, setOpenIndexQ] = useState(null);
-  const [openIndexP, setOpenIndexP] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -213,32 +212,22 @@ function InterviewTab({ company }) {
         </h2>
 
         {interviewProcess.length > 0 ? (
-          <div className="space-y-4">
-            {interviewProcess.map((round, index) => (
-              <div
-                key={index}
-                className="border rounded-lg shadow-sm bg-gray-50 min-w-0 overflow-hidden"
-              >
-                <button
-                  onClick={() =>
-                    setOpenIndexP(openIndexP === index ? null : index)
-                  }
-                  className="w-full text-left px-4 py-3 font-semibold text-gray-800 flex justify-between items-center min-w-0"
-                >
-                  <span className="truncate">
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="space-y-4 text-gray-700 leading-relaxed">
+              {interviewProcess.map((round, index) => (
+                <div key={index} className="break-words">
+                  <p className="font-semibold text-blue-900 mb-2 text-base sm:text-lg">
                     {round.split(":")[0]}:
-                  </span>
-                  <span className="text-lg">
-                    {openIndexP === index ? "−" : "+"}
-                  </span>
-                </button>
-                {openIndexP === index && (
-                  <div className="px-4 pb-4 text-gray-700 leading-relaxed break-words whitespace-pre-wrap">
+                  </p>
+                  <p className="whitespace-pre-wrap break-words text-sm sm:text-base mb-4 last:mb-0">
                     {round.substring(round.indexOf(":") + 1).trim()}
-                  </div>
-                )}
-              </div>
-            ))}
+                  </p>
+                  {index < interviewProcess.length - 1 && (
+                    <hr className="border-gray-300 my-4" />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <p>No interview process info yet.</p>
