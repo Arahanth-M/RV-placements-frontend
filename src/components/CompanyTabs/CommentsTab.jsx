@@ -11,6 +11,9 @@ function CommentsTab({ company }) {
   const [newComment, setNewComment] = useState("");
   const [error, setError] = useState(null);
 
+  const ADMIN_EMAIL = "arahanthm.cs22@rvce.edu.in";
+  const isAdmin = user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
   useEffect(() => {
     fetchComments();
   }, [company?._id]);
@@ -187,6 +190,7 @@ function CommentsTab({ company }) {
         ) : (
           comments.map((comment) => {
             const isOwner = user && comment.user?._id === user._id;
+            const canDelete = isOwner || isAdmin;
             
             return (
               <div
@@ -215,11 +219,11 @@ function CommentsTab({ company }) {
                       </p>
                     </div>
                   </div>
-                  {isOwner && (
+                  {canDelete && (
                     <button
                       onClick={() => handleDelete(comment._id)}
                       className="text-red-500 hover:text-red-700 p-1 sm:p-2 hover:bg-red-50 rounded transition duration-200"
-                      title="Delete comment"
+                      title={isAdmin && !isOwner ? "Delete comment (Admin)" : "Delete comment"}
                     >
                       <FaTrash className="text-sm sm:text-base" />
                     </button>
