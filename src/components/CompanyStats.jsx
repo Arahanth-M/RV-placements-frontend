@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
+import YearStatsTable from "../components/YearStatsTable";
 import { BASE_URL, MESSAGES } from "../utils/constants";
-import { FaFilter, FaPlus, FaTimes, FaBuilding, FaBriefcase, FaUsers, FaEdit, FaTrash } from "react-icons/fa";
+import { FaFilter, FaPlus, FaTimes, FaBuilding, FaBriefcase, FaUsers, FaEdit, FaTrash, FaCalendarAlt, FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
-import { companyAPI } from "../utils/api";
+import { companyAPI, yearStatsAPI } from "../utils/api";
 
 function CompanyStats() {
+  // Year selection state
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [yearStatsData, setYearStatsData] = useState([]);
+  const [loadingYearStats, setLoadingYearStats] = useState(false);
+
+  // Company cards state (for 2026)
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -27,19 +34,66 @@ function CompanyStats() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Fetch companies only when 2026 is selected
   useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const res = await companyAPI.getAllCompanies();
-        setCompanies(res.data);
-      } catch (err) {
-        console.error("❌ Error fetching companies:", err);
+    if (selectedYear === 2026) {
+      // Set localStorage flag for chatbot visibility
+      localStorage.setItem('companystats_selectedYear', '2026');
+      
+      const fetchCompanies = async () => {
+        try {
+          const res = await companyAPI.getAllCompanies();
+          setCompanies(res.data);
+        } catch (err) {
+          console.error("❌ Error fetching companies:", err);
+        }
+      };
+      fetchCompanies();
+    } else {
+      // Clear the flag when not on 2026
+      localStorage.setItem('companystats_selectedYear', selectedYear ? String(selectedYear) : '');
+    }
+
+    // Cleanup: clear localStorage when component unmounts
+    return () => {
+      if (selectedYear !== 2026) {
+        localStorage.removeItem('companystats_selectedYear');
       }
     };
-    fetchCompanies();
-  }, []);
+  }, [selectedYear]);
 
-  // Filter companies
+  // Fetch year stats when 2024 or 2025 is selected
+  useEffect(() => {
+    if (selectedYear === 2024 || selectedYear === 2025) {
+      // Check if user is logged in before fetching
+      if (!user) {
+        alert("You must be logged in to view 2024 and 2025 statistics.");
+        setSelectedYear(null);
+        return;
+      }
+
+      const fetchYearStats = async () => {
+        setLoadingYearStats(true);
+        try {
+          const res = await yearStatsAPI.getYearStats(selectedYear);
+          setYearStatsData(res.data || []);
+        } catch (err) {
+          console.error(`❌ Error fetching ${selectedYear} stats:`, err);
+          if (err.response?.status === 401) {
+            alert("You must be logged in to view this year's statistics.");
+            setSelectedYear(null);
+          } else {
+            setYearStatsData([]);
+          }
+        } finally {
+          setLoadingYearStats(false);
+        }
+      };
+      fetchYearStats();
+    }
+  }, [selectedYear, user]);
+
+  // Filter companies (only for 2026)
   const filteredCompanies = companies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
@@ -84,8 +138,6 @@ function CompanyStats() {
     if (!nameRegex.test(company.name)) {
       return "Invalid company name. Use 2–50 letters/numbers only.";
     }
-
-    
 
     if (!Number.isInteger(Number(company.count)) || company.count < 0) {
       return "Count must be a positive integer.";
@@ -141,27 +193,134 @@ function CompanyStats() {
         onlineQuestions: [""],
         mustDoTopics: [""],
       });
+      // Refresh companies list
+      const res = await companyAPI.getAllCompanies();
+      setCompanies(res.data);
     } catch (err) {
       console.error("❌ Error submitting company:", err);
       alert(MESSAGES.SUBMISSION_ERROR);
     }
   };
 
+  // Year selection view
+  if (selectedYear === null) {
+    return (
+      <div className="p-4 sm:p-6 bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
+        <div className="max-w-6xl mx-auto">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-6 sm:mb-8 text-center">
+            Company Statistics
+          </h1>
+          <p className="text-center text-gray-600 mb-8 sm:mb-12 text-sm sm:text-base md:text-lg">
+            Select a year to view placement statistics
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {[2024, 2025, 2026].map((year) => {
+              const requiresAuth = year === 2024 || year === 2025;
+              const isDisabled = requiresAuth && !user;
+              
+              return (
+                <button
+                  key={year}
+                  onClick={() => {
+                    if (requiresAuth && !user) {
+                      alert("You must be logged in to view 2024 and 2025 statistics.");
+                      return;
+                    }
+                    setSelectedYear(year);
+                  }}
+                  disabled={isDisabled}
+                  className={`bg-white rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 ${
+                    isDisabled
+                      ? "opacity-50 cursor-not-allowed border-gray-300"
+                      : "hover:shadow-2xl hover:scale-105 border-transparent hover:border-indigo-400"
+                  }`}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className={`rounded-full p-4 sm:p-5 mb-4 ${
+                      isDisabled ? "bg-gray-100" : "bg-indigo-100"
+                    }`}>
+                      <FaCalendarAlt className={`text-3xl sm:text-4xl ${
+                        isDisabled ? "text-gray-400" : "text-indigo-600"
+                      }`} />
+                    </div>
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                      {year} Stats
+                    </h2>
+                    <p className="text-gray-600 text-sm sm:text-base">
+                      {year === 2026 ? "View Company Cards" : "View Statistics Table"}
+                    </p>
+                    {isDisabled && (
+                      <p className="text-red-500 text-xs mt-2 font-medium">
+                        Login Required
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Year stats table view (2024 or 2025)
+  if (selectedYear === 2024 || selectedYear === 2025) {
+    return (
+      <div className="p-4 sm:p-6 bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
+        <div className="max-w-7xl mx-auto">
+          {loadingYearStats ? (
+            <div className="bg-white rounded-xl shadow-lg p-8 sm:p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading {selectedYear} statistics...</p>
+            </div>
+          ) : (
+            <YearStatsTable
+              year={selectedYear}
+              data={yearStatsData}
+              onBack={() => {
+                setSelectedYear(null);
+                setYearStatsData([]);
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Company cards view (2026)
   return (
     <div className="p-4 sm:p-6 bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen relative">
-      <div className="mb-4 sm:mb-6 flex justify-center">
-        <input
-          type="text"
-          placeholder="Search companies..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+      <div className="mb-4 sm:mb-6">
+        <button
+          onClick={() => {
+            setSelectedYear(null);
+            setCompanies([]);
+            setSearch("");
+            setCategory("all");
             setCurrentPage(1);
           }}
-          className="w-full sm:w-1/2 lg:w-1/3 px-4 py-2 sm:py-3 border border-gray-300 
-                     rounded-xl shadow-sm focus:outline-none focus:ring-2 
-                     focus:ring-indigo-400 transition duration-200 text-sm sm:text-base"
-        />
+          className="mb-4 flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm sm:text-base"
+        >
+          <FaArrowLeft className="mr-2" />
+          Back to Year Selection
+        </button>
+        <div className="flex justify-center">
+          <input
+            type="text"
+            placeholder="Search companies..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full sm:w-1/2 lg:w-1/3 px-4 py-2 sm:py-3 border border-gray-300 
+                       rounded-xl shadow-sm focus:outline-none focus:ring-2 
+                       focus:ring-indigo-400 transition duration-200 text-sm sm:text-base"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -496,4 +655,3 @@ function CompanyStats() {
 }
 
 export default CompanyStats;
-

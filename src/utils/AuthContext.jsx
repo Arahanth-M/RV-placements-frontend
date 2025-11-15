@@ -2,14 +2,30 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from './api';
 import { CONFIG, BASE_URL } from './constants';
 
-const AuthContext = createContext();
+// Use a symbol to check if we're inside a provider
+const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
+
+const AuthContext = createContext({
+  user: null,
+  loading: true,
+  login: () => {},
+  signup: () => {},
+  logout: async () => {},
+  checkUser: async () => {},
+  setUser: () => {},
+  refreshUser: async () => null,
+  _isProvider: false, // Sentinel to check if inside provider
+});
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  // Check if we're inside a provider by checking the sentinel value
+  if (!context || context._isProvider !== true) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  // Remove the sentinel from the returned value
+  const { _isProvider, ...authContext } = context;
+  return authContext;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -95,6 +111,7 @@ export const AuthProvider = ({ children }) => {
     checkUser,
     setUser,
     refreshUser,
+    _isProvider: true, // Mark that this is from a provider
   };
 
   return (

@@ -1,10 +1,16 @@
 import React, { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 
 const GlobalChatbot = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const scriptRef = useRef(null);
   const previousUserIdRef = useRef(null);
+
+  // Check if we're on the 2026 stats page
+  // CompanyStats component will set localStorage when selectedYear === 2026
+  const [shouldShowChatbot, setShouldShowChatbot] = React.useState(false);
 
   const cleanupChatbot = () => {
     // Close chatbot if it's open
@@ -63,9 +69,43 @@ const GlobalChatbot = () => {
   };
 
   useEffect(() => {
-    // Only load chatbot for authenticated users
-    if (!user) {
-      // Clean up chatbot completely when user logs out
+    // Check localStorage for selected year
+    const checkSelectedYear = () => {
+      const selectedYear = localStorage.getItem('companystats_selectedYear');
+      const isOnCompanystatsPage = location.pathname === '/companystats';
+      const shouldShow = isOnCompanystatsPage && selectedYear === '2026';
+      setShouldShowChatbot(shouldShow);
+      
+      // If we're not on the right page or year, cleanup chatbot
+      if (!shouldShow) {
+        cleanupChatbot();
+      }
+    };
+
+    checkSelectedYear();
+    
+    // Listen for storage changes (when CompanyStats updates the selected year)
+    const handleStorageChange = () => {
+      checkSelectedYear();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically in case of same-tab updates (localStorage events don't fire in same tab)
+    const interval = setInterval(checkSelectedYear, 500);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+      // Cleanup when navigating away
+      cleanupChatbot();
+    };
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // Only load chatbot for authenticated users and only on 2026 stats page
+    if (!user || !shouldShowChatbot) {
+      // Clean up chatbot completely when user logs out or not on correct page
       cleanupChatbot();
       previousUserIdRef.current = null;
       return;
@@ -143,7 +183,7 @@ const GlobalChatbot = () => {
       // Cleanup on unmount or user change
       cleanupChatbot();
     };
-  }, [user]);
+  }, [user, shouldShowChatbot]);
 
   // This component doesn't render anything - Voiceflow handles the UI
   return null;

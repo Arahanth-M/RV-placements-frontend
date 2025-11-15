@@ -15,6 +15,7 @@ export const companyAPI = {
   getAllCompanies: () => API.get('/api/companies'),
   getCompany: (id) => API.get(`/api/companies/${id}`),
   createCompany: (data) => API.post('/api/companies', data),
+  getCompanyNews: (companyName) => API.post('/api/companies/news', { companyName }),
 };
 
 export const experienceAPI = {
@@ -40,6 +41,10 @@ export const eventAPI = {
   createEvent: (data) => API.post('/api/events', data),
   updateEvent: (id, data) => API.put(`/api/events/${id}`, data),
   deleteEvent: (id) => API.delete(`/api/events/${id}`),
+};
+
+export const yearStatsAPI = {
+  getYearStats: (year) => API.get(`/api/year-stats/${year}`),
 };
 
 export default API;
