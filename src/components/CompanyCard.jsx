@@ -86,11 +86,6 @@ function CompanyCard({ company }) {
         <span className="text-gray-600">{company.eligibility}</span>
       </div>
 
-      <div className="mb-3">
-        <span className="font-semibold text-gray-700">Count: </span>
-        <span className="text-gray-600">{company["count"] || "Not available"}</span>
-      </div>
-
       {/* <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-100 to-indigo-50 
                       rounded-lg px-3 py-2 w-fit">
         <span className="font-semibold text-indigo-600">Role:</span>
