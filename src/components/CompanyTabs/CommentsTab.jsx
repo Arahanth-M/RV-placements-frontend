@@ -1,0 +1,241 @@
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../../utils/AuthContext";
+import { commentAPI } from "../../utils/api";
+import { FaUser, FaTrash, FaPaperPlane, FaSpinner } from "react-icons/fa";
+
+function CommentsTab({ company }) {
+  const { user } = useAuth();
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchComments();
+  }, [company?._id]);
+
+  const fetchComments = async () => {
+    if (!company?._id) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await commentAPI.getComments(company._id);
+      setComments(response.data || []);
+    } catch (err) {
+      console.error("❌ Error fetching comments:", err);
+      setError("Failed to load comments. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!user) {
+      alert("Please log in to post a comment.");
+      return;
+    }
+
+    if (!newComment.trim()) {
+      alert("Please enter a comment.");
+      return;
+    }
+
+    if (newComment.trim().length > 2000) {
+      alert("Comment cannot exceed 2000 characters.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await commentAPI.createComment(company._id, newComment.trim());
+      setComments([response.data, ...comments]);
+      setNewComment("");
+    } catch (err) {
+      console.error("❌ Error creating comment:", err);
+      setError(
+        err.response?.data?.error || 
+        "Failed to post comment. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (commentId) => {
+    if (!window.confirm("Are you sure you want to delete this comment?")) {
+      return;
+    }
+
+    try {
+      await commentAPI.deleteComment(commentId);
+      setComments(comments.filter(comment => comment._id !== commentId));
+    } catch (err) {
+      console.error("❌ Error deleting comment:", err);
+      alert(
+        err.response?.data?.error || 
+        "Failed to delete comment. Please try again."
+      );
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) {
+      return "just now";
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    } else if (diffInSeconds < 604800) {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} day${days > 1 ? "s" : ""} ago`;
+    } else {
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white shadow-md rounded-lg p-6 sm:p-8 border">
+        <div className="flex items-center justify-center py-12">
+          <FaSpinner className="animate-spin text-4xl text-indigo-600" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border">
+      <h2 className="text-2xl font-bold mb-4 sm:mb-6 text-blue-800">
+        Comments & Discussions
+      </h2>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4">
+          <p className="text-red-600 text-sm sm:text-base">{error}</p>
+        </div>
+      )}
+
+      {/* Comment Form */}
+      {user ? (
+        <form onSubmit={handleSubmit} className="mb-6 sm:mb-8">
+          <div className="mb-3 sm:mb-4">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Share your thoughts about this company - work culture, experience, questions, or clarifications..."
+              className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-vertical min-h-[100px] text-sm sm:text-base"
+              maxLength={2000}
+              disabled={submitting}
+            />
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-xs sm:text-sm text-gray-500">
+                {newComment.length}/2000 characters
+              </p>
+              <button
+                type="submit"
+                disabled={submitting || !newComment.trim()}
+                className="px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-200 flex items-center gap-2 text-sm sm:text-base"
+              >
+                {submitting ? (
+                  <>
+                    <FaSpinner className="animate-spin" />
+                    Posting...
+                  </>
+                ) : (
+                  <>
+                    <FaPaperPlane />
+                    Post Comment
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
+      ) : (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 sm:mb-8">
+          <p className="text-blue-800 text-sm sm:text-base">
+            Please <a href="/auth/callback" className="underline font-semibold">log in</a> to post a comment.
+          </p>
+        </div>
+      )}
+
+      {/* Comments List */}
+      <div className="space-y-4">
+        {comments.length === 0 ? (
+          <div className="text-center py-8 sm:py-12">
+            <FaUser className="mx-auto text-gray-400 text-4xl sm:text-5xl mb-3 sm:mb-4" />
+            <p className="text-gray-600 text-sm sm:text-base">
+              No comments yet. Be the first to share your thoughts!
+            </p>
+          </div>
+        ) : (
+          comments.map((comment) => {
+            const isOwner = user && comment.user?._id === user._id;
+            
+            return (
+              <div
+                key={comment._id}
+                className="border border-gray-200 rounded-lg p-4 sm:p-5 bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2 sm:mb-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
+                      {comment.user?.picture ? (
+                        <img
+                          src={comment.user.picture}
+                          alt={comment.username}
+                          className="w-full h-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <FaUser />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                        {comment.username || comment.user?.username || "Anonymous"}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-500">
+                        {formatDate(comment.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  {isOwner && (
+                    <button
+                      onClick={() => handleDelete(comment._id)}
+                      className="text-red-500 hover:text-red-700 p-1 sm:p-2 hover:bg-red-50 rounded transition duration-200"
+                      title="Delete comment"
+                    >
+                      <FaTrash className="text-sm sm:text-base" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
+                  {comment.comment}
+                </p>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default CommentsTab;
+

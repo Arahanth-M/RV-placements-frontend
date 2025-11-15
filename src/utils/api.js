@@ -47,4 +47,10 @@ export const yearStatsAPI = {
   getYearStats: (year) => API.get(`/api/year-stats/${year}`),
 };
 
+export const commentAPI = {
+  getComments: (companyId) => API.get(`/api/companies/${companyId}/comments`),
+  createComment: (companyId, comment) => API.post(`/api/companies/${companyId}/comments`, { comment }),
+  deleteComment: (commentId) => API.delete(`/api/comments/${commentId}`),
+};
+
 export default API;

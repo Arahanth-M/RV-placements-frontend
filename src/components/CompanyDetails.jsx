@@ -8,6 +8,7 @@ import OATab from "./CompanyTabs/OATab";
 import InterviewTab from "./CompanyTabs/InterviewTab";
 import MustDoTab from "./CompanyTabs/MustDoTab";
 import VideoTab from "./CompanyTabs/VideoTab";
+import CommentsTab from "./CompanyTabs/CommentsTab";
 
 function CompanyDetails() {
   const { id } = useParams();
@@ -34,7 +35,7 @@ function CompanyDetails() {
         <p className="text-base sm:text-lg text-gray-700">{company.type}</p>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "interview", "mustdo"].map((tab) => (
+        {["general", "oa", "interview", "mustdo", "comments"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -50,7 +51,9 @@ function CompanyDetails() {
               ? "OA Questions"
               : tab === "interview"
               ? "Interview Experience"
-              : "Must Do Topics"}
+              : tab === "mustdo"
+              ? "Must Do Topics"
+              : "Comments"}
           </button>
         ))}
         {company.videoUrl && (
@@ -71,6 +74,7 @@ function CompanyDetails() {
       {activeTab === "interview" && <InterviewTab company={company} />}
       {activeTab === "mustdo" && <MustDoTab company={company} />}
       {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
+      {activeTab === "comments" && <CommentsTab company={company} />}
     </div>
   );
 }
