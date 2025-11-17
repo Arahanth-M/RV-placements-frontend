@@ -317,17 +317,34 @@ function OATab({ company }) {
     }));
   };
 
-  // Parse questions safely
+  // Normalize questions & solutions
   const parsedQuestions =
     company.onlineQuestions?.map((qa) => {
+      if (!qa) return "";
+      if (typeof qa === "string") return qa;
+      if (typeof qa === "object" && qa.question) return qa.question;
       try {
-        return JSON.parse(qa);
+        const parsed = JSON.parse(qa);
+        if (typeof parsed === "string") return parsed;
+        if (parsed && typeof parsed === "object" && parsed.question) {
+          return parsed.question;
+        }
+        return String(qa);
       } catch {
-        return qa;
+        return String(qa);
       }
     }) || [];
 
-  const solutions = company.onlineQuestions_solution || [];
+  const solutions =
+    company.onlineQuestions_solution?.map((sol) => {
+      if (!sol) return "";
+      if (typeof sol === "string") return sol;
+      try {
+        return JSON.parse(sol);
+      } catch {
+        return String(sol);
+      }
+    }) || [];
 
   return (
     <div className="space-y-6 px-4 sm:px-6 lg:px-0 max-w-screen-xl mx-auto">
@@ -365,10 +382,10 @@ function OATab({ company }) {
 
                 {openQuestionIndex === index && (
                   <div className="px-4 pb-4 text-gray-700 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
-                    <p>{q}</p>
+                    <p>{q || `Question ${index + 1}`}</p>
 
                     {/* Solution Accordion */}
-                    {solutions[index] && (
+                    {solutions[index] && solutions[index].trim().length > 0 ? (
                       <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
                         <button
                           onClick={() => toggleSolutionAccordion(index)}
@@ -387,6 +404,10 @@ function OATab({ company }) {
                           </div>
                         )}
                       </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        No solution submitted yet.
+                      </p>
                     )}
                   </div>
                 )}
