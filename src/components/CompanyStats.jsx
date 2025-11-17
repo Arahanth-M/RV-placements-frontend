@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import YearStatsTable from "../components/YearStatsTable";
 import { BASE_URL, MESSAGES } from "../utils/constants";
@@ -32,7 +32,22 @@ function CompanyStats() {
 
   const companiesPerPage = 6;
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  // Check for navigation state or sessionStorage to restore selectedYear
+  useEffect(() => {
+    // Check if state was passed from navigation
+    if (location.state?.selectedYear) {
+      setSelectedYear(location.state.selectedYear);
+    } else if (sessionStorage.getItem('companystats_selectedYear')) {
+      // Check sessionStorage for selectedYear
+      const storedYear = parseInt(sessionStorage.getItem('companystats_selectedYear'));
+      if (storedYear) {
+        setSelectedYear(storedYear);
+      }
+    }
+  }, [location.state]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {

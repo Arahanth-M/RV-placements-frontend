@@ -15,7 +15,7 @@ export const companyAPI = {
   getAllCompanies: () => API.get('/api/companies'),
   getCompany: (id) => API.get(`/api/companies/${id}`),
   createCompany: (data) => API.post('/api/companies', data),
-  getCompanyNews: (companyName) => API.post('/api/companies/news', { companyName }),
+  sendKnowMore: (companyName) => API.post('/api/companies/know-more', { companyName }),
 };
 
 export const experienceAPI = {
@@ -48,7 +48,8 @@ export const yearStatsAPI = {
 };
 
 export const commentAPI = {
-  getComments: (companyId) => API.get(`/api/companies/${companyId}/comments`),
+  getComments: (companyId, page = 1, limit = 20) => 
+    API.get(`/api/companies/${companyId}/comments`, { params: { page, limit } }),
   createComment: (companyId, comment) => API.post(`/api/companies/${companyId}/comments`, { comment }),
   deleteComment: (commentId) => API.delete(`/api/comments/${commentId}`),
 };

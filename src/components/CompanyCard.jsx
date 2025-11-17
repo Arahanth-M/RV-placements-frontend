@@ -23,15 +23,21 @@ function CompanyCard({ company }) {
   
   const defaultLogo = getDefaultLogo();
 
+  const handleCardClick = () => {
+    // Store that we're navigating from company cards view
+    sessionStorage.setItem('fromCompanyCards', 'true');
+    navigate(`/companies/${company._id}`);
+  };
+
   return (
     <div
-      onClick={() => navigate(`/companies/${company._id}`)}
+      onClick={handleCardClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          navigate(`/companies/${company._id}`);
+          handleCardClick();
         }
       }}
       className="bg-white border border-gray-200 rounded-2xl shadow-md p-6 cursor-pointer 

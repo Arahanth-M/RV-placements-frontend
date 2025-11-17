@@ -7,30 +7,75 @@ function CommentsTab({ company }) {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalComments: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
 
   const ADMIN_EMAIL = "arahanthm.cs22@rvce.edu.in";
   const isAdmin = user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const COMMENTS_PER_PAGE = 20;
 
   useEffect(() => {
-    fetchComments();
+    // Reset comments and pagination when company changes
+    setComments([]);
+    setPagination({
+      currentPage: 1,
+      totalPages: 1,
+      totalComments: 0,
+      hasNextPage: false,
+      hasPrevPage: false,
+    });
+    fetchComments(1, true);
   }, [company?._id]);
 
-  const fetchComments = async () => {
+  const fetchComments = async (page = 1, reset = false) => {
     if (!company?._id) return;
     
-    setLoading(true);
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
+    
     try {
-      const response = await commentAPI.getComments(company._id);
-      setComments(response.data || []);
+      const response = await commentAPI.getComments(company._id, page, COMMENTS_PER_PAGE);
+      const { comments: newComments, pagination: paginationData } = response.data;
+      
+      if (reset) {
+        setComments(newComments || []);
+      } else {
+        // Append new comments to existing ones
+        setComments(prev => [...prev, ...(newComments || [])]);
+      }
+      
+      setPagination(paginationData || {
+        currentPage: page,
+        totalPages: 1,
+        totalComments: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      });
     } catch (err) {
       console.error("❌ Error fetching comments:", err);
       setError("Failed to load comments. Please try again.");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMoreComments = () => {
+    if (pagination.hasNextPage && !loadingMore) {
+      fetchComments(pagination.currentPage + 1, false);
     }
   };
 
@@ -57,7 +102,12 @@ function CommentsTab({ company }) {
 
     try {
       const response = await commentAPI.createComment(company._id, newComment.trim());
+      // Add new comment to the beginning and update total count
       setComments([response.data, ...comments]);
+      setPagination(prev => ({
+        ...prev,
+        totalComments: prev.totalComments + 1,
+      }));
       setNewComment("");
     } catch (err) {
       console.error("❌ Error creating comment:", err);
@@ -78,6 +128,11 @@ function CommentsTab({ company }) {
     try {
       await commentAPI.deleteComment(commentId);
       setComments(comments.filter(comment => comment._id !== commentId));
+      // Update total count
+      setPagination(prev => ({
+        ...prev,
+        totalComments: Math.max(0, prev.totalComments - 1),
+      }));
     } catch (err) {
       console.error("❌ Error deleting comment:", err);
       alert(
@@ -180,7 +235,7 @@ function CommentsTab({ company }) {
 
       {/* Comments List */}
       <div className="space-y-4">
-        {comments.length === 0 ? (
+        {comments.length === 0 && !loading ? (
           <div className="text-center py-8 sm:py-12">
             <FaUser className="mx-auto text-gray-400 text-4xl sm:text-5xl mb-3 sm:mb-4" />
             <p className="text-gray-600 text-sm sm:text-base">
@@ -188,53 +243,80 @@ function CommentsTab({ company }) {
             </p>
           </div>
         ) : (
-          comments.map((comment) => {
-            const isOwner = user && comment.user?._id === user._id;
-            const canDelete = isOwner || isAdmin;
-            
-            return (
-              <div
-                key={comment._id}
-                className="border border-gray-200 rounded-lg p-4 sm:p-5 bg-gray-50 hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-2 sm:mb-3">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
-                      {comment.user?.picture ? (
-                        <img
-                          src={comment.user.picture}
-                          alt={comment.username}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <FaUser />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm sm:text-base">
-                        {comment.username || comment.user?.username || "Anonymous"}
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        {formatDate(comment.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDelete(comment._id)}
-                      className="text-red-500 hover:text-red-700 p-1 sm:p-2 hover:bg-red-50 rounded transition duration-200"
-                      title={isAdmin && !isOwner ? "Delete comment (Admin)" : "Delete comment"}
-                    >
-                      <FaTrash className="text-sm sm:text-base" />
-                    </button>
-                  )}
-                </div>
-                <p className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
-                  {comment.comment}
-                </p>
+          <>
+            {pagination.totalComments > 0 && (
+              <div className="text-sm text-gray-600 mb-4">
+                Showing {comments.length} of {pagination.totalComments} comment{pagination.totalComments !== 1 ? 's' : ''}
               </div>
-            );
-          })
+            )}
+            {comments.map((comment) => {
+              const isOwner = user && comment.user?._id === user._id;
+              const canDelete = isOwner || isAdmin;
+              
+              return (
+                <div
+                  key={comment._id}
+                  className="border border-gray-200 rounded-lg p-4 sm:p-5 bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2 sm:mb-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
+                        {comment.user?.picture ? (
+                          <img
+                            src={comment.user.picture}
+                            alt={comment.username}
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <FaUser />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base">
+                          {comment.username || comment.user?.username || "Anonymous"}
+                        </p>
+                        <p className="text-xs sm:text-sm text-gray-500">
+                          {formatDate(comment.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(comment._id)}
+                        className="text-red-500 hover:text-red-700 p-1 sm:p-2 hover:bg-red-50 rounded transition duration-200"
+                        title={isAdmin && !isOwner ? "Delete comment (Admin)" : "Delete comment"}
+                      >
+                        <FaTrash className="text-sm sm:text-base" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
+                    {comment.comment}
+                  </p>
+                </div>
+              );
+            })}
+            
+            {/* Load More Button */}
+            {pagination.hasNextPage && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={loadMoreComments}
+                  disabled={loadingMore}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-200 flex items-center gap-2"
+                >
+                  {loadingMore ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More Comments"
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
