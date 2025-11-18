@@ -10,6 +10,7 @@ import InterviewTab from "./CompanyTabs/InterviewTab";
 import MustDoTab from "./CompanyTabs/MustDoTab";
 import VideoTab from "./CompanyTabs/VideoTab";
 import CommentsTab from "./CompanyTabs/CommentsTab";
+import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 
 function CompanyDetails() {
   const { id } = useParams();
@@ -55,6 +56,15 @@ function CompanyDetails() {
   };
 
   if (!company) return <p className="p-6 text-gray-600">Loading...</p>;
+
+  // Check if company has interview_questions
+  const hasInterviewQuestions = company.interview_questions && 
+    Array.isArray(company.interview_questions) && 
+    company.interview_questions.length > 0 &&
+    company.interview_questions.some(item => {
+      if (typeof item === "string") return item.trim().length > 0;
+      return item && (item.question || (typeof item === "object" && Object.keys(item).length > 0));
+    });
 
   const handleBack = () => {
     // Check if we came from company cards view
@@ -152,6 +162,18 @@ function CompanyDetails() {
             Video
           </button>
         )}
+        {hasInterviewQuestions && (
+          <button
+            onClick={() => setActiveTab("offcampus")}
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
+              activeTab === "offcampus"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            }`}
+          >
+            Off-Campus Questions
+          </button>
+        )}
       </div>
       {activeTab === "general" && <GeneralTab company={company} />}
       {activeTab === "oa" && <OATab company={company} />}
@@ -159,6 +181,7 @@ function CompanyDetails() {
       {activeTab === "mustdo" && <MustDoTab company={company} />}
       {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
       {activeTab === "comments" && <CommentsTab company={company} />}
+      {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
 
       {/* Know More Modal */}
       {showKnowMoreModal && (
