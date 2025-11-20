@@ -183,7 +183,7 @@ function Home() {
         <div className="bg-white py-8 sm:py-12 border-t border-b border-gray-200 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <h3 className="text-center text-xl sm:text-2xl font-bold text-gray-800 mb-6 sm:mb-8">
-              Our Partner Companies
+              Our Recruiters
             </h3>
             <div className="relative w-full overflow-hidden">
               <div className="flex animate-marquee whitespace-nowrap" style={{ width: 'max-content' }}>

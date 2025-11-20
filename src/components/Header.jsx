@@ -33,6 +33,16 @@ const Header = () => {
   // Close account menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Don't close if mobile menu is open (mobile menu handles its own state)
+      if (isOpen) {
+        return;
+      }
+      
+      // Don't close if clicking on a link (let navigation happen first)
+      if (event.target.closest('a')) {
+        return;
+      }
+      
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
         setShowAccountMenu(false);
       }
@@ -47,11 +57,14 @@ const Header = () => {
       }
     };
 
+    // Use both mousedown and touchstart for better mobile support
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, []);
+  }, [isOpen]);
 
   return (
     <header className="shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#6C9FCC' }}>
@@ -307,24 +320,64 @@ const Header = () => {
               </svg>
             </button>
             {showStudentsCornerMenu && (
-              <div className="pl-4 space-y-1">
-                <Link to="/companystats" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+              <div className="pl-4 space-y-1" onClick={(e) => e.stopPropagation()}>
+                <Link 
+                  to="/companystats" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowStudentsCornerMenu(false);
+                    setIsOpen(false);
+                  }} 
+                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
+                >
                   <FaChartBar className="w-4 h-4 mr-2" />
                   Company Stats
                 </Link>
-                <Link to="/resources" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                <Link 
+                  to="/resources" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowStudentsCornerMenu(false);
+                    setIsOpen(false);
+                  }} 
+                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
+                >
                   <FaBook className="w-4 h-4 mr-2" />
                   Resources
                 </Link>
-                <Link to="/leetcode" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                <Link 
+                  to="/leetcode" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowStudentsCornerMenu(false);
+                    setIsOpen(false);
+                  }} 
+                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
+                >
                   <FaCode className="w-4 h-4 mr-2" />
                   Leetcode
                 </Link>
-                <Link to="/feedback" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                <Link 
+                  to="/feedback" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowStudentsCornerMenu(false);
+                    setIsOpen(false);
+                  }} 
+                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
+                >
                   <FaComments className="w-4 h-4 mr-2" />
                   Feedback
                 </Link>
-                <Link to="/internshipExperience" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+                <Link 
+                  to="/internshipExperience" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowStudentsCornerMenu(false);
+                    setIsOpen(false);
+                  }} 
+                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
+                >
                   <FaBriefcase className="w-4 h-4 mr-2" />
                   Experiences
                 </Link>
@@ -345,8 +398,16 @@ const Header = () => {
               </svg>
             </button>
             {showAdminsCornerMenu && (
-              <div className="pl-4 space-y-1">
-                <Link to="/admin/dashboard" onClick={() => setIsOpen(false)} className="block nav-link text-sm flex items-center text-gray-300 hover:text-white">
+              <div className="pl-4 space-y-1" onClick={(e) => e.stopPropagation()}>
+                <Link 
+                  to="/admin/dashboard" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAdminsCornerMenu(false);
+                    setIsOpen(false);
+                  }} 
+                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
+                >
                   <FaTachometerAlt className="w-4 h-4 mr-2" />
                   Dashboard
                 </Link>
