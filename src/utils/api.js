@@ -29,7 +29,7 @@ export const leetcodeAPI = {
 
 export const adminAPI = {
   getStats: () => API.get('/api/admin/stats'),
-  getSubmissions: () => API.get('/api/admin/submissions'),
+  getSubmissions: (config) => API.get('/api/admin/submissions', config),
   getUserCount: () => API.get('/api/admin/stats/users'),
   approveSubmission: (id) => API.post(`/api/admin/submissions/${id}/approve`),
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),

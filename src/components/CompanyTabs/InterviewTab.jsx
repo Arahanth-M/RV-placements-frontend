@@ -130,15 +130,13 @@ function InterviewTab({ company }) {
     ? [company.interviewQuestions]
     : [];
 
-  // Normalize interview process
+  // Normalize interview process - now it's always an array
   let interviewProcess = [];
-  if (typeof company.interviewProcess === "string") {
-    interviewProcess = company.interviewProcess
-      .split(/(?=Round\s+\d+:)/)
-      .map((round) => round.trim())
-      .filter((round) => round.length > 0);
-  } else if (Array.isArray(company.interviewProcess)) {
-    interviewProcess = company.interviewProcess;
+  if (Array.isArray(company.interviewProcess)) {
+    interviewProcess = company.interviewProcess.filter(p => p && p.trim().length > 0);
+  } else if (typeof company.interviewProcess === "string" && company.interviewProcess.trim().length > 0) {
+    // Legacy support: convert string to array
+    interviewProcess = [company.interviewProcess.trim()];
   }
 
   return (
@@ -214,17 +212,16 @@ function InterviewTab({ company }) {
         {interviewProcess.length > 0 ? (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="space-y-4 text-gray-700 leading-relaxed">
-              {interviewProcess.map((round, index) => (
-                <div key={index} className="break-words">
-                  <p className="font-semibold text-blue-900 mb-2 text-base sm:text-lg">
-                    {round.split(":")[0]}:
-                  </p>
-                  <p className="whitespace-pre-wrap break-words text-sm sm:text-base mb-4 last:mb-0">
-                    {round.substring(round.indexOf(":") + 1).trim()}
-                  </p>
-                  {index < interviewProcess.length - 1 && (
-                    <hr className="border-gray-300 my-4" />
-                  )}
+              {interviewProcess.map((process, index) => (
+                <div key={index} className="break-words border-l-4 border-blue-900 pl-4 py-2 bg-white rounded-r shadow-sm">
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="flex-shrink-0 w-6 h-6 bg-blue-900 text-white rounded-full flex items-center justify-center font-semibold text-xs">
+                      {index + 1}
+                    </span>
+                    <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-gray-800 flex-1">
+                      {process}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -261,7 +258,7 @@ function InterviewTab({ company }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-blue-600 text-white rounded"
+                  className="px-3 py-1 bg-blue-900 text-white rounded hover:bg-blue-800 transition-colors"
                 >
                   Submit
                 </button>

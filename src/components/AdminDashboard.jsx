@@ -6,10 +6,14 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalSubmissions: 0,
+    pendingSubmissions: 0,
+    approvedSubmissions: 0,
     totalCompanies: 0,
     pendingCompanies: 0,
   });
   const [submissions, setSubmissions] = useState([]);
+  const [approvedSubmissions, setApprovedSubmissions] = useState([]);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,14 +37,16 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
 
-      const [statsResponse, submissionsResponse, eventsResponse] = await Promise.all([
+      const [statsResponse, pendingSubmissionsResponse, approvedSubmissionsResponse, eventsResponse] = await Promise.all([
         adminAPI.getStats(),
-        adminAPI.getSubmissions(),
+        adminAPI.getSubmissions({ params: { status: 'pending' } }),
+        adminAPI.getSubmissions({ params: { status: 'approved' } }),
         eventAPI.getAllEvents().catch(() => ({ data: [] })), // Handle errors gracefully
       ]);
 
       setStats(statsResponse.data);
-      setSubmissions(submissionsResponse.data || []);
+      setSubmissions(pendingSubmissionsResponse.data || []);
+      setApprovedSubmissions(approvedSubmissionsResponse.data || []);
       setEvents(eventsResponse.data || []);
     } catch (err) {
       console.error('Error fetching admin data:', err);
@@ -77,10 +83,16 @@ const AdminDashboard = () => {
     try {
       setApprovingIds(prev => new Set(prev).add(submissionId));
       
-      await adminAPI.approveSubmission(submissionId);
+      const response = await adminAPI.approveSubmission(submissionId);
       
-      // Remove the approved submission from the list
-      setSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
+      // Move the approved submission from pending to approved list
+      const approvedSubmission = submissions.find(sub => sub._id === submissionId);
+      if (approvedSubmission) {
+        approvedSubmission.status = 'approved';
+        approvedSubmission.approvedAt = new Date();
+        setApprovedSubmissions(prev => [approvedSubmission, ...prev]);
+        setSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
+      }
       
       // Refresh stats
       const statsResponse = await adminAPI.getStats();
@@ -279,12 +291,26 @@ const AdminDashboard = () => {
               <div className="bg-white rounded-xl shadow-lg p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Submissions</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalSubmissions}</p>
+                    <p className="text-sm font-medium text-gray-600">Pending Submissions</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.pendingSubmissions || 0}</p>
+                  </div>
+                  <div className="bg-yellow-100 rounded-full p-3">
+                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Approved Submissions</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.approvedSubmissions || 0}</p>
                   </div>
                   <div className="bg-green-100 rounded-full p-3">
                     <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
@@ -322,110 +348,225 @@ const AdminDashboard = () => {
             {/* Submissions Table */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900">Submissions</h2>
-                <p className="text-sm text-gray-600 mt-1">All user submissions across the platform</p>
-              </div>
-
-              {submissions.length === 0 ? (
-                <div className="p-8 sm:p-12 text-center">
-                  <p className="text-gray-600 text-sm sm:text-base">No submissions found.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto -mx-4 sm:mx-0">
-                  <div className="inline-block min-w-full align-middle">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Submitted By
-                          </th>
-                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Company
-                          </th>
-                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Type
-                          </th>
-                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                            Content
-                          </th>
-                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                            Submitted At
-                          </th>
-                          <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {submissions.map((submission) => {
-                          const content = parseContent(submission.content);
-                          return (
-                            <tr key={submission._id} className="hover:bg-gray-50">
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                <div>
-                                  <p className="text-xs sm:text-sm font-medium text-gray-900">{submission.submittedBy.name}</p>
-                                  <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                <p className="text-xs sm:text-sm text-gray-900">
-                                  {submission.companyId?.name || 'N/A'}
-                                </p>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
-                                  {submission.type}
-                                </span>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                                <div className="text-xs sm:text-sm text-gray-900 max-w-md">
-                                  {content.question && (
-                                    <p className="font-medium mb-1 truncate">Q: {content.question}</p>
-                                  )}
-                                  {content.solution && (
-                                    <p className="text-gray-600 truncate">A: {content.solution}</p>
-                                  )}
-                                  {!content.question && !content.solution && (
-                                    <p className="text-gray-500 truncate">{submission.content}</p>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
-                                {formatDate(submission.submittedAt)}
-                              </td>
-                              <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center gap-1 sm:gap-2 flex-col sm:flex-row">
-                                  <button
-                                    onClick={() => handleApprove(submission._id)}
-                                    disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
-                                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
-                                      approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                        : 'bg-green-600 text-white hover:bg-green-700'
-                                    }`}
-                                  >
-                                    {approvingIds.has(submission._id) ? 'Approving...' : 'Approve'}
-                                  </button>
-                                  <button
-                                    onClick={() => handleReject(submission._id)}
-                                    disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
-                                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
-                                      approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                        : 'bg-red-600 text-white hover:bg-red-700'
-                                    }`}
-                                  >
-                                    {rejectingIds.has(submission._id) ? 'Rejecting...' : 'Reject'}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Submissions</h2>
+                    <p className="text-sm text-gray-600 mt-1">Manage user submissions across the platform</p>
+                  </div>
+                  <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
+                    <button
+                      onClick={() => setActiveTab('pending')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        activeTab === 'pending'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Pending ({stats.pendingSubmissions || 0})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('approved')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        activeTab === 'approved'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Approved ({stats.approvedSubmissions || 0})
+                    </button>
                   </div>
                 </div>
+              </div>
+
+              {activeTab === 'pending' ? (
+                submissions.length === 0 ? (
+                  <div className="p-8 sm:p-12 text-center">
+                    <p className="text-gray-600 text-sm sm:text-base">No pending submissions found.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Submitted By
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Company
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                              Content
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                              Submitted At
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Action
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {submissions.map((submission) => {
+                            const content = parseContent(submission.content);
+                            return (
+                              <tr key={submission._id} className="hover:bg-gray-50">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-medium text-gray-900">{submission.submittedBy.name}</p>
+                                    <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <p className="text-xs sm:text-sm text-gray-900">
+                                    {submission.companyId?.name || 'N/A'}
+                                  </p>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                                    {submission.type}
+                                  </span>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
+                                  <div className="text-xs sm:text-sm text-gray-900 max-w-md">
+                                    {content.question && (
+                                      <p className="font-medium mb-1 truncate">Q: {content.question}</p>
+                                    )}
+                                    {content.solution && (
+                                      <p className="text-gray-600 truncate">A: {content.solution}</p>
+                                    )}
+                                    {!content.question && !content.solution && (
+                                      <p className="text-gray-500 truncate">{submission.content}</p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                                  {formatDate(submission.submittedAt)}
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-1 sm:gap-2 flex-col sm:flex-row">
+                                    <button
+                                      onClick={() => handleApprove(submission._id)}
+                                      disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
+                                      className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
+                                        approvingIds.has(submission._id) || rejectingIds.has(submission._id)
+                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                          : 'bg-green-600 text-white hover:bg-green-700'
+                                      }`}
+                                    >
+                                      {approvingIds.has(submission._id) ? 'Approving...' : 'Approve'}
+                                    </button>
+                                    <button
+                                      onClick={() => handleReject(submission._id)}
+                                      disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
+                                      className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
+                                        approvingIds.has(submission._id) || rejectingIds.has(submission._id)
+                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                          : 'bg-red-600 text-white hover:bg-red-700'
+                                      }`}
+                                    >
+                                      {rejectingIds.has(submission._id) ? 'Rejecting...' : 'Reject'}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              ) : (
+                approvedSubmissions.length === 0 ? (
+                  <div className="p-8 sm:p-12 text-center">
+                    <p className="text-gray-600 text-sm sm:text-base">No approved submissions found.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Submitted By
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Company
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Type
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                              Content
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                              Submitted At
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                              Approved At
+                            </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {approvedSubmissions.map((submission) => {
+                            const content = parseContent(submission.content);
+                            return (
+                              <tr key={submission._id} className="hover:bg-gray-50">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-medium text-gray-900">{submission.submittedBy.name}</p>
+                                    <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <p className="text-xs sm:text-sm text-gray-900">
+                                    {submission.companyId?.name || 'N/A'}
+                                  </p>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                                    {submission.type}
+                                  </span>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
+                                  <div className="text-xs sm:text-sm text-gray-900 max-w-md">
+                                    {content.question && (
+                                      <p className="font-medium mb-1 truncate">Q: {content.question}</p>
+                                    )}
+                                    {content.solution && (
+                                      <p className="text-gray-600 truncate">A: {content.solution}</p>
+                                    )}
+                                    {!content.question && !content.solution && (
+                                      <p className="text-gray-500 truncate">{submission.content}</p>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                                  {formatDate(submission.submittedAt)}
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                                  {submission.approvedAt ? formatDate(submission.approvedAt) : 'N/A'}
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Approved
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
               )}
             </div>
 
