@@ -3,17 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Login from './Login';
 
-const ADMIN_EMAIL = "arahanthm.cs22@rvce.edu.in";
-
 const ProtectedAdminRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user && user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    if (!loading && user && !isAdmin) {
       navigate('/', { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, isAdmin, loading, navigate]);
 
   if (loading) {
     return (
@@ -27,7 +25,7 @@ const ProtectedAdminRoute = ({ children }) => {
     return <Login />;
   }
 
-  if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+  if (!isAdmin) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">

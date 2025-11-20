@@ -4,7 +4,7 @@ import { commentAPI } from "../../utils/api";
 import { FaUser, FaTrash, FaPaperPlane, FaSpinner } from "react-icons/fa";
 
 function CommentsTab({ company }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -19,8 +19,6 @@ function CommentsTab({ company }) {
     hasPrevPage: false,
   });
 
-  const ADMIN_EMAIL = "arahanthm.cs22@rvce.edu.in";
-  const isAdmin = user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   const COMMENTS_PER_PAGE = 20;
 
   useEffect(() => {

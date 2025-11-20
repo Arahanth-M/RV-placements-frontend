@@ -247,7 +247,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
@@ -258,7 +258,7 @@ const AdminDashboard = () => {
         {/* Loading State */}
         {loading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
             <p className="mt-4 text-gray-600">Loading dashboard...</p>
           </div>
         )}
@@ -358,7 +358,7 @@ const AdminDashboard = () => {
                       onClick={() => setActiveTab('pending')}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                         activeTab === 'pending'
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-blue-900 text-white'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
@@ -368,7 +368,7 @@ const AdminDashboard = () => {
                       onClick={() => setActiveTab('approved')}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                         activeTab === 'approved'
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-blue-900 text-white'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
@@ -587,7 +587,7 @@ const AdminDashboard = () => {
                       lastDateToRegister: '',
                     });
                   }}
-                  className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+                  className="bg-blue-900 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-800 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
                 >
                   <FaPlus className="w-4 h-4" />
                   {showEventForm ? 'Cancel' : 'Post an Event'}
@@ -607,7 +607,7 @@ const AdminDashboard = () => {
                         required
                         value={eventForm.title}
                         onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 text-sm sm:text-base"
                         placeholder="Event title"
                       />
                     </div>
@@ -620,7 +620,7 @@ const AdminDashboard = () => {
                         required
                         value={eventForm.url}
                         onChange={(e) => setEventForm({ ...eventForm, url: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 text-sm sm:text-base"
                         placeholder="https://example.com/register"
                       />
                     </div>
@@ -633,7 +633,7 @@ const AdminDashboard = () => {
                         required
                         value={eventForm.lastDateToRegister}
                         onChange={(e) => setEventForm({ ...eventForm, lastDateToRegister: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 text-sm sm:text-base"
                       />
                     </div>
                     <div className="flex flex-col sm:flex-row justify-end gap-2">
@@ -654,7 +654,7 @@ const AdminDashboard = () => {
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm sm:text-base"
+                        className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 text-sm sm:text-base"
                       >
                         {editingEvent ? 'Update Event' : 'Create Event'}
                       </button>
@@ -710,7 +710,7 @@ const AdminDashboard = () => {
                                   href={event.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-xs sm:text-sm"
+                                  className="text-blue-900 hover:text-blue-800 flex items-center gap-1 text-xs sm:text-sm"
                                 >
                                   <FaExternalLinkAlt className="w-3 h-3" />
                                   View Link
@@ -720,7 +720,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-center gap-1 sm:gap-2 flex-col sm:flex-row">
                                   <button
                                     onClick={() => handleEditEvent(event)}
-                                    className="px-2 sm:px-3 py-1 bg-blue-600 text-white rounded-md text-xs sm:text-sm hover:bg-blue-700 flex items-center gap-1 w-full sm:w-auto justify-center"
+                                    className="px-2 sm:px-3 py-1 bg-blue-900 text-white rounded-md text-xs sm:text-sm hover:bg-blue-800 flex items-center gap-1 w-full sm:w-auto justify-center"
                                   >
                                     <FaEdit className="w-3 h-3" />
                                     Edit

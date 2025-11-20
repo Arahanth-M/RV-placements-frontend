@@ -9,13 +9,13 @@ const API = axios.create({
 export const authAPI = {
   getCurrentUser: () => API.get('/api/auth/current_user'),
   logout: () => API.get('/api/auth/logout'),
+  isAdmin: () => API.get('/api/auth/is_admin'),
 };
 
 export const companyAPI = {
   getAllCompanies: () => API.get('/api/companies'),
   getCompany: (id) => API.get(`/api/companies/${id}`),
   createCompany: (data) => API.post('/api/companies', data),
-  sendKnowMore: (companyName) => API.post('/api/companies/know-more', { companyName }),
 };
 
 export const experienceAPI = {

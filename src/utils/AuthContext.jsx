@@ -7,6 +7,7 @@ const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
 
 const AuthContext = createContext({
   user: null,
+  isAdmin: false,
   loading: true,
   login: () => {},
   signup: () => {},
@@ -30,6 +31,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,12 +43,21 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.getCurrentUser();
       if (response.data) {
         setUser(response.data);
+        // Check admin status
+        try {
+          const adminResponse = await authAPI.isAdmin();
+          setIsAdmin(adminResponse.data?.isAdmin || false);
+        } catch (error) {
+          setIsAdmin(false);
+        }
       } else {
         setUser(null);
+        setIsAdmin(false);
       }
     } catch (error) {
       console.log('User not authenticated');
       setUser(null);
+      setIsAdmin(false);
     } finally {
       setLoading(false);
     }
@@ -76,9 +87,11 @@ export const AuthProvider = ({ children }) => {
     try {
       await authAPI.logout();
       setUser(null);
+      setIsAdmin(false);
     } catch (error) {
       console.error('Logout failed:', error);
       setUser(null);
+      setIsAdmin(false);
     }
   };
 
@@ -88,14 +101,23 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.getCurrentUser();
       if (response.data) {
         setUser(response.data);
+        // Check admin status
+        try {
+          const adminResponse = await authAPI.isAdmin();
+          setIsAdmin(adminResponse.data?.isAdmin || false);
+        } catch (error) {
+          setIsAdmin(false);
+        }
         return response.data;
       } else {
         setUser(null);
+        setIsAdmin(false);
         return null;
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);
       setUser(null);
+      setIsAdmin(false);
       return null;
     } finally {
       setLoading(false);
@@ -104,6 +126,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    isAdmin,
     loading,
     login,
     signup,

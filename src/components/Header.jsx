@@ -17,8 +17,7 @@ const Header = () => {
   const adminsCornerMenuRef = useRef(null);
   const loginMenuRef = useRef(null);
   
-  const ADMIN_EMAIL = "arahanthm.cs22@rvce.edu.in";
-  const isAdmin = user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const { isAdmin } = useAuth();
 
   const handleLogout = async () => {
     await logout();
