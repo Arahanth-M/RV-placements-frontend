@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { companyAPI } from "../utils/api";
 
 function Home() {
   // External image URLs
@@ -7,6 +8,7 @@ function Home() {
     "https://rvce.edu.in/wp-content/uploads/2025/10/IMG_0701-copy.png",
   ];
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [companyLogos, setCompanyLogos] = useState([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -15,6 +17,24 @@ function Home() {
 
     return () => clearInterval(interval);
   }, [images.length]);
+
+  // Fetch companies with logos from database
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const res = await companyAPI.getAllCompanies();
+        // Filter companies that have logos and are approved
+        const companiesWithLogos = (res.data || [])
+          .filter(company => company.logo && company.logo.trim() !== '')
+          .slice(0, 6); // Limit to 6 companies for the marquee
+        
+        setCompanyLogos(companiesWithLogos);
+      } catch (err) {
+        console.error("❌ Error fetching companies for marquee:", err);
+      }
+    };
+    fetchCompanies();
+  }, []);
 
   return (
     <div className="bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
@@ -157,6 +177,63 @@ function Home() {
           </div>
         </div>
       </div>
+
+      {/* Company Logos Marquee Section */}
+      {companyLogos.length > 0 && (
+        <div className="bg-white py-8 sm:py-12 border-t border-b border-gray-200 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <h3 className="text-center text-xl sm:text-2xl font-bold text-gray-800 mb-6 sm:mb-8">
+              Our Partner Companies
+            </h3>
+            <div className="relative w-full overflow-hidden">
+              <div className="flex animate-marquee whitespace-nowrap" style={{ width: 'max-content' }}>
+                {/* First set of logos from database */}
+                {companyLogos.map((company, idx) => (
+                  <div
+                    key={idx}
+                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                  >
+                    <img
+                      src={company.logo}
+                      alt={company.name || "Company logo"}
+                      className="max-h-full max-w-full object-contain"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const fallback = e.target.parentElement.querySelector('.fallback-text');
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden fallback-text items-center justify-center text-gray-400 font-semibold text-sm">
+                      {company.name || "Company"}
+                    </div>
+                  </div>
+                ))}
+                {/* Duplicate set for seamless loop */}
+                {companyLogos.map((company, idx) => (
+                  <div
+                    key={`duplicate-${idx}`}
+                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                  >
+                    <img
+                      src={company.logo}
+                      alt={company.name || "Company logo"}
+                      className="max-h-full max-w-full object-contain"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const fallback = e.target.parentElement.querySelector('.fallback-text');
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden fallback-text items-center justify-center text-gray-400 font-semibold text-sm">
+                      {company.name || "Company"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Future Vision Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">

@@ -24,4 +24,23 @@ html, body, #root {
     overflow-x: auto; /* allow horizontal scroll inside pre rather than page */
     max-width: 100%;
   }
+
+  /* Marquee animation */
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 40s linear infinite;
+    display: flex;
+  }
+
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
   

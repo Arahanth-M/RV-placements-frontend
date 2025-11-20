@@ -16,6 +16,7 @@ export const companyAPI = {
   getCompany: (id) => API.get(`/api/companies/${id}`),
   createCompany: (data) => API.post('/api/companies', data),
   sendKnowMore: (companyName) => API.post('/api/companies/know-more', { companyName }),
+  rateDifficulty: (id, rating) => API.post(`/api/companies/${id}/rate-difficulty`, { rating }),
 };
 
 export const experienceAPI = {

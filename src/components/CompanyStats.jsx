@@ -344,7 +344,15 @@ function CompanyStats() {
             <CompanyCard
               key={c._id}
               company={c}
-              onClick={() => navigate(`/company/${c._id}`)}
+              onRatingUpdate={(companyId, updatedRating) => {
+                setCompanies(prevCompanies =>
+                  prevCompanies.map(company =>
+                    company._id === companyId
+                      ? { ...company, ...updatedRating }
+                      : company
+                  )
+                );
+              }}
             />
           ))
         ) : (
