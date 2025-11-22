@@ -126,10 +126,10 @@ function App() {
               </main>
 
               <Footer />
-              <GlobalChatbot />
-            </div>
-          </PremiumProvider>
-        </AuthProvider>
+                <GlobalChatbot />
+              </div>
+            </PremiumProvider>
+          </AuthProvider>
       </BrowserRouter>
     </Provider>
   );

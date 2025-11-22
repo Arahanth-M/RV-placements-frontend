@@ -335,15 +335,35 @@ function OATab({ company }) {
       }
     }) || [];
 
+  // Function to convert escape sequences to their actual characters
+  const unescapeString = (str) => {
+    if (typeof str !== "string") return str;
+    
+    // Handle common escape sequences
+    return str
+      .replace(/\\n/g, "\n")      // \n -> newline
+      .replace(/\\t/g, "\t")      // \t -> tab
+      .replace(/\\r/g, "\r")      // \r -> carriage return
+      .replace(/\\"/g, '"')       // \" -> double quote
+      .replace(/\\'/g, "'")       // \' -> single quote
+      .replace(/\\\\/g, "\\");     // \\ -> backslash (must be last to avoid double replacement)
+  };
+
   const solutions =
     company.onlineQuestions_solution?.map((sol) => {
       if (!sol) return "";
-      if (typeof sol === "string") return sol;
-      try {
-        return JSON.parse(sol);
-      } catch {
-        return String(sol);
+      let processedSol;
+      if (typeof sol === "string") {
+        processedSol = sol;
+      } else {
+        try {
+          processedSol = JSON.parse(sol);
+        } catch {
+          processedSol = String(sol);
+        }
       }
+      // Convert escape sequences to actual characters
+      return unescapeString(processedSol);
     }) || [];
 
   return (
