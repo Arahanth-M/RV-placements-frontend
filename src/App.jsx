@@ -21,6 +21,7 @@ import Leetcode from "./components/Leetcode";
 import Feedback from "./components/Feedback";
 import AdminDashboard from "./components/AdminDashboard";
 import Events from "./components/Events";
+import Analytics from "./components/Analytics";
 import PrivacyPolicy from "./components/PrivacyPolicy";
 import TermsConditions from "./components/TermsConditions";
 import ShippingPolicy from "./components/ShippingPolicy";
@@ -106,6 +107,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Events />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/analytics" 
+                    element={
+                      <ProtectedRoute>
+                        <Analytics />
                       </ProtectedRoute>
                     } 
                   />

@@ -335,39 +335,66 @@ function OATab({ company }) {
       }
     }) || [];
 
-  // Function to convert escape sequences to their actual characters and remove special characters
+  // Function to convert escape sequences to their actual characters
   const unescapeString = (str) => {
     if (typeof str !== "string") return str;
     
     // Handle common escape sequences
-    let processed = str
+    return str
       .replace(/\\n/g, "\n")      // \n -> newline
       .replace(/\\t/g, "\t")      // \t -> tab
       .replace(/\\r/g, "\r")      // \r -> carriage return
       .replace(/\\"/g, '"')       // \" -> double quote
       .replace(/\\'/g, "'")       // \' -> single quote
       .replace(/\\\\/g, "\\");     // \\ -> backslash (must be last to avoid double replacement)
-    
-    // Remove opening and closing square brackets
-    processed = processed.replace(/\[/g, "").replace(/\]/g, "");
-    
-    return processed;
   };
 
   const solutions =
     company.onlineQuestions_solution?.map((sol) => {
       if (!sol) return "";
       let processedSol;
+      
+      // Handle different input formats
       if (typeof sol === "string") {
-        processedSol = sol;
-      } else {
+        // Try to parse as JSON first (handles cases like ["solution\nhere"])
         try {
-          processedSol = JSON.parse(sol);
+          const parsed = JSON.parse(sol);
+          // If it's an array, extract the first element
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            processedSol = String(parsed[0]);
+          } else {
+            processedSol = String(parsed);
+          }
         } catch {
-          processedSol = String(sol);
+          // Not valid JSON, check if it starts and ends with brackets
+          // (handles cases where it's stored as a string representation of an array)
+          const trimmed = sol.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            // Try one more time to parse after trimming
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                processedSol = String(parsed[0]);
+              } else {
+                processedSol = String(parsed);
+              }
+            } catch {
+              // If still can't parse, remove outer brackets manually
+              processedSol = trimmed.slice(1, -1);
+            }
+          } else {
+            // Use as-is
+            processedSol = sol;
+          }
         }
+      } else if (Array.isArray(sol) && sol.length > 0) {
+        // If it's already an array, extract the first element
+        processedSol = String(sol[0]);
+      } else {
+        processedSol = String(sol);
       }
-      // Convert escape sequences to actual characters
+      
+      // Convert escape sequences to actual characters (e.g., \n -> newline)
       return unescapeString(processedSol);
     }) || [];
 

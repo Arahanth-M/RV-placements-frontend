@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { FaArrowLeft, FaSearch } from "react-icons/fa";
+import Analytics from "./Analytics";
 
 function YearStatsTable({ year, data, onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("Table");
 
   // Filter data based on search term
   // Search in all fields, but prioritize company name fields
@@ -76,81 +78,114 @@ function YearStatsTable({ year, data, onBack }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      <div className="p-4 sm:p-6 border-b border-gray-200">
-        <button
-          onClick={onBack}
-          className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm sm:text-base mb-4"
-        >
-          <FaArrowLeft className="mr-2" />
-          Back to Year Selection
-        </button>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-            {year} Placement Statistics
-          </h2>
-          <div className="relative w-full sm:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaSearch className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search by company name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
-            />
-          </div>
-        </div>
-        {searchTerm && (
-          <p className="text-sm text-gray-600 mt-2">
-            Showing {filteredData.length} of {data.length} results
-          </p>
-        )}
+    <div className="space-y-6">
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm sm:text-base"
+      >
+        <FaArrowLeft className="mr-2" />
+        Back to Year Selection
+      </button>
+
+      {/* Tab Navigation */}
+      <div className="bg-blue-900 rounded-lg p-1 flex gap-1">
+        {["Table", "Analytics"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm sm:text-base ${
+              activeTab === tab
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-300 hover:text-white"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
-      {filteredData.length === 0 ? (
-        <div className="p-8 text-center">
-          <p className="text-gray-600">No results found for "{searchTerm}"</p>
-          <button
-            onClick={() => setSearchTerm("")}
-            className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm"
-          >
-            Clear search
-          </button>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {headers.map((header) => (
-                  <th
-                    key={header}
-                    className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {header.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredData.map((row, index) => (
-                <tr key={row._id || index} className="hover:bg-gray-50">
-                  {headers.map((header) => (
-                    <td
-                      key={header}
-                      className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700"
-                    >
-                      {formatCellValue(row[header])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Tab Content */}
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        {activeTab === "Table" && (
+          <>
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
+                {year} Placement Statistics
+              </h2>
+              <div className="relative w-full sm:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaSearch className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by company name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
+                />
+              </div>
+              {searchTerm && (
+                <p className="text-sm text-gray-600 mt-2">
+                  Showing {filteredData.length} of {data.length} results
+                </p>
+              )}
+            </div>
+
+            {filteredData.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-gray-600">No results found for "{searchTerm}"</p>
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm"
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {headers.map((header) => (
+                        <th
+                          key={header}
+                          className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {header.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredData.map((row, index) => (
+                      <tr key={row._id || index} className="hover:bg-gray-50">
+                        {headers.map((header) => (
+                          <td
+                            key={header}
+                            className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700"
+                          >
+                            {formatCellValue(row[header])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "Analytics" && (
+          <div className="p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
+              {year} Analytics
+            </h2>
+            <Analytics year={year} embedded={true} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
