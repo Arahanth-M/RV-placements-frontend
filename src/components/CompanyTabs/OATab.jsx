@@ -414,7 +414,16 @@ function OATab({ company }) {
           const parsed = JSON.parse(sol);
           // If it's an array, extract the first element
           if (Array.isArray(parsed) && parsed.length > 0) {
-            processedSol = String(parsed[0]);
+            const firstItem = parsed[0];
+            if (typeof firstItem === "object" && firstItem !== null) {
+              // Try to extract common fields from object
+              processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
+            } else {
+              processedSol = String(firstItem);
+            }
+          } else if (typeof parsed === "object" && parsed !== null) {
+            // Try to extract common fields from object
+            processedSol = parsed.solution || parsed.answer || parsed.text || parsed.content || JSON.stringify(parsed);
           } else {
             processedSol = String(parsed);
           }
@@ -427,7 +436,16 @@ function OATab({ company }) {
             try {
               const parsed = JSON.parse(trimmed);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                processedSol = String(parsed[0]);
+                const firstItem = parsed[0];
+                if (typeof firstItem === "object" && firstItem !== null) {
+                  // Try to extract common fields from object
+                  processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
+                } else {
+                  processedSol = String(firstItem);
+                }
+              } else if (typeof parsed === "object" && parsed !== null) {
+                // Try to extract common fields from object
+                processedSol = parsed.solution || parsed.answer || parsed.text || parsed.content || JSON.stringify(parsed);
               } else {
                 processedSol = String(parsed);
               }
@@ -442,7 +460,16 @@ function OATab({ company }) {
         }
       } else if (Array.isArray(sol) && sol.length > 0) {
         // If it's already an array, extract the first element
-        processedSol = String(sol[0]);
+        const firstItem = sol[0];
+        if (typeof firstItem === "object" && firstItem !== null) {
+          // Try to extract common fields from object
+          processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
+        } else {
+          processedSol = String(firstItem);
+        }
+      } else if (typeof sol === "object" && sol !== null) {
+        // If it's an object, try to extract common fields
+        processedSol = sol.solution || sol.answer || sol.text || sol.content || JSON.stringify(sol);
       } else {
         processedSol = String(sol);
       }
