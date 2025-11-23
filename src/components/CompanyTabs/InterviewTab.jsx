@@ -167,28 +167,28 @@ function InterviewTab({ company }) {
   };
 
   // Process interview questions solutions
+  // Structure: [{"answer":"solution text"}]
   const solutions =
     company.interviewQuestions_solution?.map((sol) => {
       if (!sol) return "";
-      let processedSol;
+      let processedSol = "";
       
       // Handle different input formats
       if (typeof sol === "string") {
-        // Try to parse as JSON first (handles cases like ["solution\nhere"])
+        // Try to parse as JSON first (handles cases like [{"answer":"solution"}])
         try {
           const parsed = JSON.parse(sol);
-          // If it's an array, extract the first element
+          // If it's an array of objects, extract the answer field from first object
           if (Array.isArray(parsed) && parsed.length > 0) {
             const firstItem = parsed[0];
             if (typeof firstItem === "object" && firstItem !== null) {
-              // Try to extract common fields from object
-              processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
+              processedSol = firstItem.answer || firstItem.solution || firstItem.text || firstItem.content || "";
             } else {
               processedSol = String(firstItem);
             }
           } else if (typeof parsed === "object" && parsed !== null) {
-            // Try to extract common fields from object
-            processedSol = parsed.solution || parsed.answer || parsed.text || parsed.content || JSON.stringify(parsed);
+            // Single object, extract answer field
+            processedSol = parsed.answer || parsed.solution || parsed.text || parsed.content || "";
           } else {
             processedSol = String(parsed);
           }
@@ -202,14 +202,12 @@ function InterviewTab({ company }) {
               if (Array.isArray(parsed) && parsed.length > 0) {
                 const firstItem = parsed[0];
                 if (typeof firstItem === "object" && firstItem !== null) {
-                  // Try to extract common fields from object
-                  processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
+                  processedSol = firstItem.answer || firstItem.solution || firstItem.text || firstItem.content || "";
                 } else {
                   processedSol = String(firstItem);
                 }
               } else if (typeof parsed === "object" && parsed !== null) {
-                // Try to extract common fields from object
-                processedSol = parsed.solution || parsed.answer || parsed.text || parsed.content || JSON.stringify(parsed);
+                processedSol = parsed.answer || parsed.solution || parsed.text || parsed.content || "";
               } else {
                 processedSol = String(parsed);
               }
@@ -223,17 +221,16 @@ function InterviewTab({ company }) {
           }
         }
       } else if (Array.isArray(sol) && sol.length > 0) {
-        // If it's already an array, extract the first element
+        // If it's already an array, extract the answer from first object
         const firstItem = sol[0];
         if (typeof firstItem === "object" && firstItem !== null) {
-          // Try to extract common fields from object
-          processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
+          processedSol = firstItem.answer || firstItem.solution || firstItem.text || firstItem.content || "";
         } else {
           processedSol = String(firstItem);
         }
       } else if (typeof sol === "object" && sol !== null) {
-        // If it's an object, try to extract common fields
-        processedSol = sol.solution || sol.answer || sol.text || sol.content || JSON.stringify(sol);
+        // If it's an object, extract the answer field
+        processedSol = sol.answer || sol.solution || sol.text || sol.content || "";
       } else {
         processedSol = String(sol);
       }
