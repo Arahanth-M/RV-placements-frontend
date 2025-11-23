@@ -25,6 +25,7 @@ function CompanyCard({ company }) {
 
   const handleCardClick = () => {
     // Store that we're navigating from company cards view
+    // The parent component (CompanyStats) will store the current state via useEffect cleanup
     sessionStorage.setItem('fromCompanyCards', 'true');
     navigate(`/companies/${company._id}`);
   };

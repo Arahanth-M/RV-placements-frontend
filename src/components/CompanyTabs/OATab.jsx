@@ -270,6 +270,7 @@
 // export default OATab;
 
 import React, { useState } from "react";
+import { FaCopy, FaCheck } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 
 function OATab({ company }) {
@@ -278,6 +279,7 @@ function OATab({ company }) {
   const [solution, setSolution] = useState("");
   const [openQuestionIndex, setOpenQuestionIndex] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({}); // track solution open per question
+  const [copiedIndex, setCopiedIndex] = useState(null); // track which solution was copied
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -315,6 +317,36 @@ function OATab({ company }) {
       ...prev,
       [questionIdx]: !prev[questionIdx],
     }));
+  };
+
+  const handleCopySolution = async (solutionText, index) => {
+    try {
+      await navigator.clipboard.writeText(solutionText);
+      setCopiedIndex(index);
+      setTimeout(() => {
+        setCopiedIndex(null);
+      }, 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error("Failed to copy solution:", err);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = solutionText;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand("copy");
+        setCopiedIndex(index);
+        setTimeout(() => {
+          setCopiedIndex(null);
+        }, 2000);
+      } catch (fallbackErr) {
+        console.error("Fallback copy failed:", fallbackErr);
+        alert("Failed to copy solution. Please try selecting and copying manually.");
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   // Normalize questions & solutions
@@ -450,9 +482,28 @@ function OATab({ company }) {
                         </button>
                         {openSolutionIndex[index] && (
                           <div className="px-4 pb-4">
-                            <pre className="bg-gray-900 text-green-200 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
-                              <code>{solutions[index]}</code>
-                            </pre>
+                            <div className="relative">
+                              <button
+                                onClick={() => handleCopySolution(solutions[index], index)}
+                                className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
+                                title="Copy solution"
+                              >
+                                {copiedIndex === index ? (
+                                  <>
+                                    <FaCheck className="w-3 h-3" />
+                                    <span>Copied!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaCopy className="w-3 h-3" />
+                                    <span>Copy</span>
+                                  </>
+                                )}
+                              </button>
+                              <pre className="bg-gray-900 text-green-200 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                <code>{solutions[index]}</code>
+                              </pre>
+                            </div>
                           </div>
                         )}
                       </div>

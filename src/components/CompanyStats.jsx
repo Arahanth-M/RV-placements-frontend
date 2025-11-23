@@ -35,7 +35,7 @@ function CompanyStats() {
   const location = useLocation();
   const { user } = useAuth();
 
-  // Check for navigation state or sessionStorage to restore selectedYear
+  // Check for navigation state or sessionStorage to restore selectedYear and company cards state
   useEffect(() => {
     // Check if state was passed from navigation
     if (location.state?.selectedYear) {
@@ -47,7 +47,30 @@ function CompanyStats() {
         setSelectedYear(storedYear);
       }
     }
-  }, [location.state]);
+
+    // Restore company cards state if coming back from company details
+    if (selectedYear === 2026 && sessionStorage.getItem('fromCompanyCards') === 'true') {
+      const storedSearch = sessionStorage.getItem('companystats_search');
+      const storedCategory = sessionStorage.getItem('companystats_category');
+      const storedPage = sessionStorage.getItem('companystats_page');
+      
+      if (storedSearch !== null) setSearch(storedSearch);
+      if (storedCategory !== null) setCategory(storedCategory);
+      if (storedPage !== null) setCurrentPage(parseInt(storedPage) || 1);
+      
+      // Clear the flag after restoring
+      sessionStorage.removeItem('fromCompanyCards');
+    }
+  }, [location.state, selectedYear]);
+
+  // Store company cards state whenever it changes (for restoring after navigation)
+  useEffect(() => {
+    if (selectedYear === 2026) {
+      sessionStorage.setItem('companystats_search', search);
+      sessionStorage.setItem('companystats_category', category);
+      sessionStorage.setItem('companystats_page', String(currentPage));
+    }
+  }, [selectedYear, search, category, currentPage]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
