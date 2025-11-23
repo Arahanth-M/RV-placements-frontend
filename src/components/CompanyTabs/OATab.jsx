@@ -367,18 +367,39 @@ function OATab({ company }) {
       }
     }) || [];
 
-  // Function to convert escape sequences to their actual characters
+  // Function to convert escape sequences to their actual characters and remove unnecessary quotes
   const unescapeString = (str) => {
     if (typeof str !== "string") return str;
     
     // Handle common escape sequences
-    return str
+    let processed = str
       .replace(/\\n/g, "\n")      // \n -> newline
       .replace(/\\t/g, "\t")      // \t -> tab
       .replace(/\\r/g, "\r")      // \r -> carriage return
       .replace(/\\"/g, '"')       // \" -> double quote
       .replace(/\\'/g, "'")       // \' -> single quote
       .replace(/\\\\/g, "\\");     // \\ -> backslash (must be last to avoid double replacement)
+    
+    // Remove outer quotes if the string is wrapped in matching quotes
+    // Only remove if the entire string is wrapped and there are no quotes in the middle
+    const trimmed = processed.trim();
+    if (trimmed.length > 1) {
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        const innerContent = trimmed.slice(1, -1);
+        // Only remove if there are no unescaped quotes in the middle
+        if (!innerContent.includes('"') || innerContent.match(/^["'].*["']$/)) {
+          processed = innerContent;
+        }
+      } else if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+        const innerContent = trimmed.slice(1, -1);
+        // Only remove if there are no unescaped quotes in the middle
+        if (!innerContent.includes("'") || innerContent.match(/^["'].*["']$/)) {
+          processed = innerContent;
+        }
+      }
+    }
+    
+    return processed;
   };
 
   const solutions =

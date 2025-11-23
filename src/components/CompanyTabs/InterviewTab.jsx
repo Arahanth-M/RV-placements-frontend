@@ -93,6 +93,7 @@ function InterviewTab({ company }) {
   const [modalType, setModalType] = useState("");
   const [content, setContent] = useState("");
   const [openIndexQ, setOpenIndexQ] = useState(null);
+  const [openSolutionIndex, setOpenSolutionIndex] = useState({}); // track solution open per question
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,6 +130,97 @@ function InterviewTab({ company }) {
     : company.interviewQuestions
     ? [company.interviewQuestions]
     : [];
+
+  // Function to convert escape sequences to their actual characters and remove unnecessary quotes
+  const unescapeString = (str) => {
+    if (typeof str !== "string") return str;
+    
+    // Handle common escape sequences
+    let processed = str
+      .replace(/\\n/g, "\n")      // \n -> newline
+      .replace(/\\t/g, "\t")      // \t -> tab
+      .replace(/\\r/g, "\r")      // \r -> carriage return
+      .replace(/\\"/g, '"')       // \" -> double quote
+      .replace(/\\'/g, "'")       // \' -> single quote
+      .replace(/\\\\/g, "\\");     // \\ -> backslash (must be last to avoid double replacement)
+    
+    // Remove outer quotes if the string is wrapped in matching quotes
+    // Only remove if the entire string is wrapped and there are no quotes in the middle
+    const trimmed = processed.trim();
+    if (trimmed.length > 1) {
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        const innerContent = trimmed.slice(1, -1);
+        // Only remove if there are no unescaped quotes in the middle
+        if (!innerContent.includes('"') || innerContent.match(/^["'].*["']$/)) {
+          processed = innerContent;
+        }
+      } else if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+        const innerContent = trimmed.slice(1, -1);
+        // Only remove if there are no unescaped quotes in the middle
+        if (!innerContent.includes("'") || innerContent.match(/^["'].*["']$/)) {
+          processed = innerContent;
+        }
+      }
+    }
+    
+    return processed;
+  };
+
+  // Process interview questions solutions
+  const solutions =
+    company.interviewQuestions_solution?.map((sol) => {
+      if (!sol) return "";
+      let processedSol;
+      
+      // Handle different input formats
+      if (typeof sol === "string") {
+        // Try to parse as JSON first (handles cases like ["solution\nhere"])
+        try {
+          const parsed = JSON.parse(sol);
+          // If it's an array, extract the first element
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            processedSol = String(parsed[0]);
+          } else {
+            processedSol = String(parsed);
+          }
+        } catch {
+          // Not valid JSON, check if it starts and ends with brackets
+          const trimmed = sol.trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            // Try one more time to parse after trimming
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                processedSol = String(parsed[0]);
+              } else {
+                processedSol = String(parsed);
+              }
+            } catch {
+              // If still can't parse, remove outer brackets manually
+              processedSol = trimmed.slice(1, -1);
+            }
+          } else {
+            // Use as-is
+            processedSol = sol;
+          }
+        }
+      } else if (Array.isArray(sol) && sol.length > 0) {
+        // If it's already an array, extract the first element
+        processedSol = String(sol[0]);
+      } else {
+        processedSol = String(sol);
+      }
+      
+      // Convert escape sequences to actual characters (e.g., \n -> newline)
+      return unescapeString(processedSol);
+    }) || [];
+
+  const toggleSolutionAccordion = (questionIdx) => {
+    setOpenSolutionIndex((prev) => ({
+      ...prev,
+      [questionIdx]: !prev[questionIdx],
+    }));
+  };
 
   // Normalize interview process - now it's always an array
   let interviewProcess = [];
@@ -179,8 +271,38 @@ function InterviewTab({ company }) {
                 </button>
 
                 {openIndexQ === index && (
-                  <div className="px-4 pb-4 text-gray-700 leading-relaxed break-words whitespace-pre-wrap">
-                    {q}
+                  <div className="px-4 pb-4 text-gray-700 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
+                    <p>{q || `Question ${index + 1}`}</p>
+
+                    {/* Solution Accordion */}
+                    {solutions[index] && solutions[index].trim().length > 0 ? (
+                      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+                        <button
+                          onClick={() => toggleSolutionAccordion(index)}
+                          className="w-full text-left px-4 py-2 font-medium text-blue-700 flex justify-between items-center"
+                        >
+                          <span>View Solution</span>
+                          <span className="text-lg">
+                            {openSolutionIndex[index] ? "−" : "+"}
+                          </span>
+                        </button>
+                        {openSolutionIndex[index] && (
+                          <div className="px-4 pb-4">
+                            <pre className="bg-gray-900 text-green-200 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              <code>{solutions[index]}</code>
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+                        <div className="px-4 py-2">
+                          <p className="text-sm text-gray-500 italic">
+                            Solution not yet provided
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
