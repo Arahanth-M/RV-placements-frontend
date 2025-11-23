@@ -14,11 +14,16 @@ const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'approved'
+  const [companies, setCompanies] = useState([]);
+  const [approvedCompanies, setApprovedCompanies] = useState([]);
+  const [companyTab, setCompanyTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [approvingIds, setApprovingIds] = useState(new Set());
   const [rejectingIds, setRejectingIds] = useState(new Set());
+  const [approvingCompanyIds, setApprovingCompanyIds] = useState(new Set());
+  const [rejectingCompanyIds, setRejectingCompanyIds] = useState(new Set());
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventForm, setEventForm] = useState({
@@ -37,16 +42,20 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
 
-      const [statsResponse, pendingSubmissionsResponse, approvedSubmissionsResponse, eventsResponse] = await Promise.all([
+      const [statsResponse, pendingSubmissionsResponse, approvedSubmissionsResponse, pendingCompaniesResponse, approvedCompaniesResponse, eventsResponse] = await Promise.all([
         adminAPI.getStats(),
         adminAPI.getSubmissions({ params: { status: 'pending' } }),
         adminAPI.getSubmissions({ params: { status: 'approved' } }),
+        adminAPI.getCompanies({ params: { status: 'pending' } }),
+        adminAPI.getCompanies({ params: { status: 'approved' } }),
         eventAPI.getAllEvents().catch(() => ({ data: [] })), // Handle errors gracefully
       ]);
 
       setStats(statsResponse.data);
       setSubmissions(pendingSubmissionsResponse.data || []);
       setApprovedSubmissions(approvedSubmissionsResponse.data || []);
+      setCompanies(pendingCompaniesResponse.data || []);
+      setApprovedCompanies(approvedCompaniesResponse.data || []);
       setEvents(eventsResponse.data || []);
     } catch (err) {
       console.error('Error fetching admin data:', err);
@@ -166,6 +175,72 @@ const AdminDashboard = () => {
       setRejectingIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(submissionId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleApproveCompany = async (companyId) => {
+    if (!window.confirm('Are you sure you want to approve this company? It will be visible to all users.')) {
+      return;
+    }
+
+    try {
+      setApprovingCompanyIds(prev => new Set(prev).add(companyId));
+      
+      const response = await adminAPI.approveCompany(companyId);
+      
+      // Move the approved company from pending to approved list
+      const approvedCompany = companies.find(comp => comp._id === companyId);
+      if (approvedCompany) {
+        approvedCompany.status = 'approved';
+        approvedCompany.approvedAt = new Date();
+        setApprovedCompanies(prev => [approvedCompany, ...prev]);
+        setCompanies(prev => prev.filter(comp => comp._id !== companyId));
+      }
+      
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+      
+      alert('Company approved successfully!');
+    } catch (err) {
+      console.error('Error approving company:', err);
+      alert('Failed to approve company. Please try again.');
+    } finally {
+      setApprovingCompanyIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(companyId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleRejectCompany = async (companyId) => {
+    if (!window.confirm('Are you sure you want to reject this company? This will permanently delete it from the database.')) {
+      return;
+    }
+
+    try {
+      setRejectingCompanyIds(prev => new Set(prev).add(companyId));
+      
+      await adminAPI.rejectCompany(companyId);
+      
+      // Remove the rejected company from the list
+      setCompanies(prev => prev.filter(comp => comp._id !== companyId));
+      
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+      
+      alert('Company rejected and deleted successfully!');
+    } catch (err) {
+      console.error('Error rejecting company:', err);
+      alert('Failed to reject company. Please try again.');
+    } finally {
+      setRejectingCompanyIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(companyId);
         return newSet;
       });
     }
@@ -564,6 +639,167 @@ const AdminDashboard = () => {
                           })}
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* Companies Management Section */}
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6 sm:mt-8">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Companies</h2>
+                    <p className="text-sm text-gray-600 mt-1">Manage company submissions and approvals</p>
+                  </div>
+                  <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
+                    <button
+                      onClick={() => setCompanyTab('pending')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        companyTab === 'pending'
+                          ? 'bg-blue-900 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Pending ({stats.pendingCompanies || 0})
+                    </button>
+                    <button
+                      onClick={() => setCompanyTab('approved')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        companyTab === 'approved'
+                          ? 'bg-blue-900 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      Approved ({stats.totalCompanies || 0})
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {companyTab === 'pending' ? (
+                companies.length === 0 ? (
+                  <div className="p-8 sm:p-12 text-center">
+                    <p className="text-gray-600 text-sm sm:text-base">No pending companies found.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <div className="p-4 sm:p-6 space-y-4">
+                        {companies.map((company) => (
+                          <div key={company._id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:bg-gray-50">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                              <div className="flex-1">
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{company.name}</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                                  <p><span className="font-medium">Type:</span> {company.type || 'N/A'}</p>
+                                  <p><span className="font-medium">Count:</span> {company.count || 'N/A'}</p>
+                                  {company.submittedBy && (
+                                    <>
+                                      <p><span className="font-medium">Submitted By:</span> {company.submittedBy.name || 'N/A'}</p>
+                                      <p><span className="font-medium">Email:</span> {company.submittedBy.email || 'N/A'}</p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-col sm:flex-row w-full sm:w-auto">
+                                <button
+                                  onClick={() => handleApproveCompany(company._id)}
+                                  disabled={approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)}
+                                  className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
+                                    approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-green-600 text-white hover:bg-green-700'
+                                  }`}
+                                >
+                                  {approvingCompanyIds.has(company._id) ? 'Approving...' : 'Approve'}
+                                </button>
+                                <button
+                                  onClick={() => handleRejectCompany(company._id)}
+                                  disabled={approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)}
+                                  className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
+                                    approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-red-600 text-white hover:bg-red-700'
+                                  }`}
+                                >
+                                  {rejectingCompanyIds.has(company._id) ? 'Rejecting...' : 'Reject'}
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Company Details */}
+                            <div className="mt-4 space-y-3 text-sm">
+                              {company.interviewExperience && company.interviewExperience.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-gray-700 mb-1">Interview Experience:</p>
+                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                    {company.interviewExperience.map((exp, idx) => (
+                                      <p key={idx} className="text-gray-600 mb-1">{exp}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {company.interviewQuestions && company.interviewQuestions.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-gray-700 mb-1">Interview Questions:</p>
+                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                    {company.interviewQuestions.map((q, idx) => (
+                                      <p key={idx} className="text-gray-600 mb-1">{q}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {company.onlineQuestions && company.onlineQuestions.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-gray-700 mb-1">Online Questions:</p>
+                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                    {company.onlineQuestions.map((q, idx) => (
+                                      <p key={idx} className="text-gray-600 mb-1">{q}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {company.Must_Do_Topics && company.Must_Do_Topics.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-gray-700 mb-1">Must Do Topics:</p>
+                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                    {company.Must_Do_Topics.map((topic, idx) => (
+                                      <p key={idx} className="text-gray-600 mb-1">{topic}</p>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              ) : (
+                approvedCompanies.length === 0 ? (
+                  <div className="p-8 sm:p-12 text-center">
+                    <p className="text-gray-600 text-sm sm:text-base">No approved companies found.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle">
+                      <div className="p-4 sm:p-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {approvedCompanies.map((company) => (
+                            <div key={company._id} className="border border-gray-200 rounded-lg p-4 bg-green-50">
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-base sm:text-lg font-semibold text-gray-900">{company.name}</h3>
+                                <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  Approved
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )

@@ -33,6 +33,9 @@ export const adminAPI = {
   getUserCount: () => API.get('/api/admin/stats/users'),
   approveSubmission: (id) => API.post(`/api/admin/submissions/${id}/approve`),
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
+  getCompanies: (config) => API.get('/api/admin/companies', config),
+  approveCompany: (id) => API.post(`/api/admin/companies/${id}/approve`),
+  rejectCompany: (id) => API.delete(`/api/admin/companies/${id}/reject`),
 };
 
 export const eventAPI = {

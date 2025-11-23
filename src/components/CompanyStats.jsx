@@ -490,20 +490,20 @@ function CompanyStats() {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-2 sm:p-4">
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-4 sm:p-6 rounded-t-xl sm:rounded-t-2xl">
+            <div className="bg-blue-900 text-gray-300 p-4 sm:p-6 rounded-t-xl sm:rounded-t-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div className="bg-white bg-opacity-20 p-1.5 sm:p-2 rounded-lg">
-                    <FaBuilding className="text-lg sm:text-xl" />
+                    <FaBuilding className="text-lg sm:text-xl text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold">Add New Company</h2>
-                    <p className="text-indigo-100 text-xs sm:text-sm">Share your placement experience</p>
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Add New Company</h2>
+                    <p className="text-gray-300 text-xs sm:text-sm">Share your placement experience</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-white hover:bg-white hover:bg-opacity-20 p-1.5 sm:p-2 rounded-lg transition duration-200"
+                  className="text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-20 p-1.5 sm:p-2 rounded-lg transition duration-200"
                   aria-label="Close"
                 >
                   <FaTimes className="text-lg sm:text-xl" />
@@ -517,7 +517,7 @@ function CompanyStats() {
                 {/* Basic Information Section */}
                 <div className="bg-gray-50 rounded-xl p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center">
-                    <FaBuilding className="mr-2 text-indigo-600 text-sm sm:text-base" />
+                    <FaBuilding className="mr-2 text-blue-900 text-sm sm:text-base" />
                     Basic Information
                   </h3>
                   <div className="space-y-3 sm:space-y-4">
@@ -531,7 +531,7 @@ function CompanyStats() {
                         placeholder="e.g., Google, Microsoft, Amazon"
                         value={newCompany.name}
                         onChange={handleInputChange}
-                        className="w-full border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 text-sm sm:text-base"
+                        className="w-full border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 transition duration-200 text-sm sm:text-base"
                         required
                       />
                     </div>
@@ -546,7 +546,7 @@ function CompanyStats() {
                         placeholder="e.g., FTE, Internship + FTE, Only Internship"
                         value={newCompany.type}
                         onChange={handleInputChange}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 transition duration-200"
                         required
                       />
                     </div>
@@ -561,7 +561,7 @@ function CompanyStats() {
                         placeholder="e.g., 25, 50, 100"
                         value={newCompany.count}
                         onChange={handleInputChange}
-                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 transition duration-200"
                         required
                       />
                     </div>
@@ -571,7 +571,7 @@ function CompanyStats() {
                 {/* Experience & Questions Section */}
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <FaEdit className="mr-2 text-indigo-600" />
+                    <FaEdit className="mr-2 text-blue-900" />
                     Experience & Questions
                   </h3>
                   <div className="space-y-6">
@@ -594,7 +594,7 @@ function CompanyStats() {
                                     onChange={(e) =>
                                       handleArrayInputChange(field, i, e.target.value)
                                     }
-                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-vertical min-h-[100px] transition duration-200"
+                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 resize-vertical min-h-[100px] transition duration-200"
                                     placeholder={`Enter ${field === "interviewExperience" ? "your interview experience" : field === "interviewQuestions" ? "interview questions asked" : field === "onlineQuestions" ? "online assessment questions" : "topics to focus on"}...`}
                                     required
                                   />
@@ -605,7 +605,7 @@ function CompanyStats() {
                                     onChange={(e) =>
                                       handleArrayInputChange(field, i, e.target.value)
                                     }
-                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-blue-900 transition duration-200"
                                     placeholder="Enter topic..."
                                     required
                                   />
@@ -627,9 +627,9 @@ function CompanyStats() {
                           <button
                             type="button"
                             onClick={() => addField(field)}
-                            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-50 to-blue-50 border-2 border-dashed border-indigo-300 text-indigo-600 hover:from-indigo-100 hover:to-blue-100 hover:border-indigo-400 font-medium py-3 px-4 rounded-lg transition-all duration-200 group"
+                            className="w-full flex items-center justify-center space-x-2 bg-blue-50 border-2 border-dashed border-blue-300 text-blue-900 hover:bg-blue-100 hover:border-blue-400 font-medium py-3 px-4 rounded-lg transition-all duration-200 group"
                           >
-                            <div className="bg-indigo-100 group-hover:bg-indigo-200 p-1 rounded-full transition duration-200">
+                            <div className="bg-blue-100 group-hover:bg-blue-200 p-1 rounded-full transition duration-200">
                               <FaPlus className="text-sm" />
                             </div>
                             <span>Add {field.includes("Questions") ? "Question" : "Item"}</span>
@@ -643,7 +643,7 @@ function CompanyStats() {
             </div>
 
             {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200">
+            <div className="bg-blue-900 px-6 py-4 rounded-b-2xl">
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -655,7 +655,7 @@ function CompanyStats() {
                 <button
                   type="submit"
                   form="company-form"
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-blue-700 transition duration-200 shadow-lg"
+                  className="px-6 py-3 bg-white text-blue-900 rounded-lg font-medium hover:bg-gray-100 transition duration-200 shadow-lg"
                 >
                   Submit for Review
                 </button>
