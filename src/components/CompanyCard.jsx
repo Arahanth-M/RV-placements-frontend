@@ -1,8 +1,47 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaThumbsUp } from "react-icons/fa";
+import { companyAPI } from "../utils/api";
+import { useAuth } from "../utils/AuthContext";
 
-function CompanyCard({ company }) {
+function CompanyCard({ company, onUpdate }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
+  const [hasUpvoted, setHasUpvoted] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+
+  // Update local state when company prop changes
+  useEffect(() => {
+    setHelpfulCount(company.helpfulCount || 0);
+  }, [company.helpfulCount]);
+
+  // Check if user has already upvoted this company
+  useEffect(() => {
+    const checkUpvoteStatus = async () => {
+      if (!user) {
+        setIsCheckingStatus(false);
+        return;
+      }
+
+      try {
+        const response = await companyAPI.getHelpfulStatus(company._id);
+        setHasUpvoted(response.data.hasUpvoted || false);
+        if (response.data.helpfulCount !== undefined) {
+          setHelpfulCount(response.data.helpfulCount);
+        }
+      } catch (err) {
+        console.error("Error checking upvote status:", err);
+        // If user is not logged in, just set hasUpvoted to false
+        setHasUpvoted(false);
+      } finally {
+        setIsCheckingStatus(false);
+      }
+    };
+
+    checkUpvoteStatus();
+  }, [company._id, user]);
 
   // Helper function to get company initials
   const getCompanyInitials = () => {
@@ -28,6 +67,44 @@ function CompanyCard({ company }) {
     // The parent component (CompanyStats) will store the current state via useEffect cleanup
     sessionStorage.setItem('fromCompanyCards', 'true');
     navigate(`/companies/${company._id}`);
+  };
+
+  const handleThumbsUp = async (e) => {
+    e.stopPropagation(); // Prevent card click navigation
+    
+    if (isUpdating || hasUpvoted) return; // Prevent multiple clicks or if already upvoted
+    
+    if (!user) {
+      alert("Please log in to upvote this company");
+      return;
+    }
+    
+    try {
+      setIsUpdating(true);
+      const response = await companyAPI.incrementHelpfulCount(company._id);
+      setHelpfulCount(response.data.helpfulCount);
+      setHasUpvoted(true);
+      
+      // Notify parent component to update the company list if callback provided
+      if (onUpdate) {
+        onUpdate(company._id, response.data.helpfulCount);
+      }
+    } catch (err) {
+      console.error("Error updating helpful count:", err);
+      if (err.response?.status === 400) {
+        // User has already upvoted
+        setHasUpvoted(true);
+        if (err.response?.data?.helpfulCount !== undefined) {
+          setHelpfulCount(err.response.data.helpfulCount);
+        }
+      } else if (err.response?.status === 401) {
+        alert("Please log in to upvote this company");
+      } else {
+        alert("Failed to upvote. Please try again.");
+      }
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -93,11 +170,25 @@ function CompanyCard({ company }) {
         <span className="text-gray-600">{company.eligibility}</span>
       </div>
 
-      {/* <div className="flex items-center gap-2 bg-gradient-to-r from-indigo-100 to-indigo-50 
-                      rounded-lg px-3 py-2 w-fit">
-        <span className="font-semibold text-indigo-600">Role:</span>
-        <span className="text-gray-800">{company.roles[0]?.roleName}</span>
-      </div> */}
+      {/* Helpful Count Section */}
+      <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
+        <span className="text-sm text-gray-600">Was this helpful?</span>
+        <button
+          onClick={handleThumbsUp}
+          disabled={isUpdating || hasUpvoted || isCheckingStatus}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold ${
+            hasUpvoted
+              ? "bg-green-100 text-green-700 cursor-not-allowed"
+              : isUpdating || isCheckingStatus
+              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+              : "bg-blue-50 hover:bg-blue-100 text-blue-700"
+          }`}
+          title={hasUpvoted ? "You have already upvoted this company" : "Mark as helpful"}
+        >
+          <FaThumbsUp className={`w-4 h-4 ${hasUpvoted ? "text-green-600" : ""}`} />
+          <span>{helpfulCount}</span>
+        </button>
+      </div>
       
     </div>
   );

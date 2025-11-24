@@ -16,6 +16,8 @@ export const companyAPI = {
   getAllCompanies: () => API.get('/api/companies'),
   getCompany: (id) => API.get(`/api/companies/${id}`),
   createCompany: (data) => API.post('/api/companies', data),
+  incrementHelpfulCount: (id) => API.post(`/api/companies/${id}/helpful`),
+  getHelpfulStatus: (id) => API.get(`/api/companies/${id}/helpful/status`),
 };
 
 export const experienceAPI = {
