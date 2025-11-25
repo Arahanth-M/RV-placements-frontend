@@ -64,6 +64,8 @@ export const notificationAPI = {
   getUnreadCount: () => API.get('/api/notifications/unread/count'),
   markAsSeen: (id) => API.put(`/api/notifications/${id}/seen`),
   markAllAsSeen: () => API.put('/api/notifications/mark-all-seen'),
+  deleteNotification: (id) => API.delete(`/api/notifications/${id}`),
+  clearAllNotifications: () => API.delete('/api/notifications'),
 };
 
 export default API;

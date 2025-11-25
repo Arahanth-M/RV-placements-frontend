@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaBell } from "react-icons/fa";
+import { FaBell, FaTimes, FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { notificationAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
@@ -106,6 +106,36 @@ function NotificationBell() {
     setShowDropdown(!showDropdown);
   };
 
+  // Delete a single notification
+  const handleDeleteNotification = async (notificationId, e) => {
+    e.stopPropagation(); // Prevent triggering the notification click
+    try {
+      await notificationAPI.deleteNotification(notificationId);
+      setNotifications((prev) => prev.filter((notif) => notif._id !== notificationId));
+      // Update unread count if the deleted notification was unread
+      const deletedNotif = notifications.find((n) => n._id === notificationId);
+      if (deletedNotif && !deletedNotif.isSeen) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+    }
+  };
+
+  // Clear all notifications
+  const handleClearAll = async (e) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to clear all notifications?")) {
+      try {
+        await notificationAPI.clearAllNotifications();
+        setNotifications([]);
+        setUnreadCount(0);
+      } catch (err) {
+        console.error("Error clearing notifications:", err);
+      }
+    }
+  };
+
   // Don't show if user is not logged in
   if (!user) {
     return null;
@@ -132,14 +162,26 @@ function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
           <div className="bg-blue-900 text-white px-4 py-3 flex justify-between items-center">
             <h3 className="font-semibold text-lg">Notifications</h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAllAsSeen}
-                className="text-sm text-gray-300 hover:text-white underline"
-              >
-                Mark all as read
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-sm text-gray-300 hover:text-white underline flex items-center gap-1"
+                  title="Clear all notifications"
+                >
+                  <FaTrash className="w-3 h-3" />
+                  Clear all
+                </button>
+              )}
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsSeen}
+                  className="text-sm text-gray-300 hover:text-white underline"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-y-auto max-h-80">
@@ -153,8 +195,7 @@ function NotificationBell() {
               notifications.map((notification) => (
                 <div
                   key={notification._id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={`px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  className={`px-4 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors ${
                     !notification.isSeen ? "bg-blue-50" : ""
                   }`}
                 >
@@ -164,7 +205,10 @@ function NotificationBell() {
                         !notification.isSeen ? "bg-blue-600" : "bg-transparent"
                       }`}
                     />
-                    <div className="flex-1 min-w-0">
+                    <div 
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => handleNotificationClick(notification)}
+                    >
                       <p className="font-semibold text-gray-900 text-sm">
                         {notification.title}
                       </p>
@@ -183,6 +227,13 @@ function NotificationBell() {
                         )}
                       </p>
                     </div>
+                    <button
+                      onClick={(e) => handleDeleteNotification(notification._id, e)}
+                      className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors p-1"
+                      title="Delete notification"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))
