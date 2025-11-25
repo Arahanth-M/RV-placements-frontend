@@ -63,9 +63,10 @@ function CompanyCard({ company, onUpdate }) {
   const defaultLogo = getDefaultLogo();
 
   const handleCardClick = () => {
-    // Store that we're navigating from company cards view
+    // Store that we're navigating from company cards view (user-specific)
     // The parent component (CompanyStats) will store the current state via useEffect cleanup
-    sessionStorage.setItem('fromCompanyCards', 'true');
+    const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
+    sessionStorage.setItem(storageKey, 'true');
     navigate(`/companies/${company._id}`);
   };
 

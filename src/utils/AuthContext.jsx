@@ -128,11 +128,48 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       await authAPI.logout();
+      
+      // Clear user-specific sessionStorage items
+      const keysToRemove = [
+        'companystats_selectedYear',
+        'companystats_search',
+        'companystats_category',
+        'companystats_page',
+        'fromCompanyCards'
+      ];
+      
+      // Remove all user-specific sessionStorage keys
+      Object.keys(sessionStorage).forEach(key => {
+        keysToRemove.forEach(baseKey => {
+          if (key.startsWith(baseKey)) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      });
+      
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();
     } catch (error) {
       console.error('Logout failed:', error);
+      
+      // Clear sessionStorage even if logout API call fails
+      const keysToRemove = [
+        'companystats_selectedYear',
+        'companystats_search',
+        'companystats_category',
+        'companystats_page',
+        'fromCompanyCards'
+      ];
+      
+      Object.keys(sessionStorage).forEach(key => {
+        keysToRemove.forEach(baseKey => {
+          if (key.startsWith(baseKey)) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      });
+      
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BASE_URL } from "../utils/constants";
+import { useAuth } from "../utils/AuthContext";
 
 import GeneralTab from "./CompanyTabs/GeneralTab";
 import OATab from "./CompanyTabs/OATab";
@@ -14,6 +15,7 @@ import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 function CompanyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [company, setCompany] = useState(null);
   const [activeTab, setActiveTab] = useState("general");
 
@@ -38,13 +40,16 @@ function CompanyDetails() {
     });
 
   const handleBack = () => {
-    // Check if we came from company cards view
-    const fromCompanyCards = sessionStorage.getItem('fromCompanyCards');
+    // Check if we came from company cards view (user-specific)
+    const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
+    const selectedYearKey = user && user.userId ? `companystats_selectedYear_${user.userId}` : 'companystats_selectedYear';
+    
+    const fromCompanyCards = sessionStorage.getItem(storageKey);
     if (fromCompanyCards === 'true') {
       // Navigate to company stats with year 2026 to show company cards
-      sessionStorage.setItem('companystats_selectedYear', '2026');
+      sessionStorage.setItem(selectedYearKey, '2026');
       navigate('/companystats', { state: { selectedYear: 2026 } });
-      sessionStorage.removeItem('fromCompanyCards');
+      sessionStorage.removeItem(storageKey);
     } else {
       // Default back navigation
       navigate(-1);
