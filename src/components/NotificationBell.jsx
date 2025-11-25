@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaBell, FaTimes, FaTrash } from "react-icons/fa";
+import { FaBell, FaTimes, FaTrash, FaSync } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { notificationAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
@@ -14,11 +14,13 @@ function NotificationBell() {
   const dropdownRef = useRef(null);
 
   // Fetch notifications and unread count
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (silent = false) => {
     if (!user) return;
 
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       const [notificationsRes, countRes] = await Promise.all([
         notificationAPI.getNotifications(),
         notificationAPI.getUnreadCount(),
@@ -28,16 +30,27 @@ function NotificationBell() {
     } catch (err) {
       console.error("Error fetching notifications:", err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
+  };
+
+  // Manual refresh handler
+  const handleRefresh = async (e) => {
+    e.stopPropagation();
+    await fetchNotifications(false);
   };
 
   // Fetch notifications on mount and when user changes
   useEffect(() => {
     if (user) {
       fetchNotifications();
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
+      // Poll for new notifications every 3 seconds for real-time updates
+      const interval = setInterval(() => {
+        // Fetch silently (without showing loading state) to avoid UI flicker
+        fetchNotifications(true);
+      }, 3000);
       return () => clearInterval(interval);
     } else {
       setNotifications([]);
@@ -163,6 +176,13 @@ function NotificationBell() {
           <div className="bg-blue-900 text-white px-4 py-3 flex justify-between items-center">
             <h3 className="font-semibold text-lg">Notifications</h3>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleRefresh}
+                className="text-sm text-gray-300 hover:text-white transition-transform hover:rotate-180"
+                title="Refresh notifications"
+              >
+                <FaSync className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
               {notifications.length > 0 && (
                 <button
                   onClick={handleClearAll}
