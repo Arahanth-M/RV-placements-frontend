@@ -59,4 +59,11 @@ export const commentAPI = {
   deleteComment: (commentId) => API.delete(`/api/comments/${commentId}`),
 };
 
+export const notificationAPI = {
+  getNotifications: () => API.get('/api/notifications'),
+  getUnreadCount: () => API.get('/api/notifications/unread/count'),
+  markAsSeen: (id) => API.put(`/api/notifications/${id}/seen`),
+  markAllAsSeen: () => API.put('/api/notifications/mark-all-seen'),
+};
+
 export default API;

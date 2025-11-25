@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt } from "react-icons/fa";
+import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo2.png";
 
 const Header = () => {
@@ -199,7 +200,10 @@ const Header = () => {
           </div>
 
           {/* User Profile/Login */}
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Notification Bell - only show when user is logged in */}
+            {user && <NotificationBell />}
+            
             {loading ? (
               <div className="text-sm text-gray-300">Loading...</div>
             ) : user ? (
@@ -423,6 +427,13 @@ const Header = () => {
           </Link> */}
 
           <div className="mt-4">
+            {/* Notification Bell for mobile */}
+            {user && (
+              <div className="mb-4">
+                <NotificationBell />
+              </div>
+            )}
+            
             {loading ? (
               <div className="text-sm text-gray-300">Loading...</div>
             ) : user ? (
