@@ -255,17 +255,6 @@ function GeneralTab({ company = {} }) {
             <p className="text-sm sm:text-base text-gray-700 mb-2 break-words">
               <b>Stipend:</b> {role.internshipStipend ?? 0}
             </p>
-
-            {role.finalPayFirstYear && (
-              <p className="text-sm sm:text-base text-gray-700 mb-2 break-words">
-                <b>First Year Pay:</b> {role.finalPayFirstYear}
-              </p>
-            )}
-            {role.finalPayAnnual && (
-              <p className="text-sm sm:text-base text-gray-700 break-words">
-                <b>Annual Pay:</b> {role.finalPayAnnual}
-              </p>
-            )}
           </div>
         ))}
       </div>
