@@ -30,6 +30,25 @@ function CompanyDetails() {
 
   if (!company) return <p className="p-6 text-gray-600">Loading...</p>;
 
+  // Helper function to get company initials
+  const getCompanyInitials = () => {
+    if (!company.name) return 'XX';
+    
+    const words = company.name.trim().split(/\s+/);
+    if (words.length >= 2) {
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    }
+    return words[0].substring(0, 2).toUpperCase();
+  };
+
+  // Default logo image (SVG with company initials)
+  const getDefaultLogo = () => {
+    const initials = getCompanyInitials();
+    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%236366F1'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'%3E${encodeURIComponent(initials)}%3C/text%3E%3C/svg%3E`;
+  };
+  
+  const defaultLogo = getDefaultLogo();
+
   // Check if company has interview_questions
   const hasInterviewQuestions = company.interview_questions && 
     Array.isArray(company.interview_questions) && 
@@ -70,10 +89,38 @@ function CompanyDetails() {
       </button>
       
       <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 mb-2">
-          {company.name}
-        </h1>
-        <p className="text-base sm:text-lg text-gray-700">{company.type}</p>
+        <div className="flex items-center gap-4">
+          {/* Company Logo */}
+          <div 
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg shadow-md border-2 border-gray-200 flex-shrink-0 bg-white flex items-center justify-center overflow-hidden"
+            data-testid="company-logo"
+          >
+            {company.logo && company.logo.trim() !== '' ? (
+              <img
+                src={company.logo}
+                alt={company.name || "Company logo"}
+                className="w-full h-full object-contain p-1"
+                onError={(e) => {
+                  // Fallback to default logo if image fails to load
+                  e.target.src = defaultLogo;
+                }}
+              />
+            ) : (
+              <img
+                src={defaultLogo}
+                alt={company.name || "Company logo"}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
+          {/* Company Name and Type */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 mb-2 break-words">
+              {company.name}
+            </h1>
+            <p className="text-base sm:text-lg text-gray-700 break-words">{company.type}</p>
+          </div>
+        </div>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
         {["general", "oa", "interview", "mustdo", "comments"].map((tab) => (

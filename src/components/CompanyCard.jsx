@@ -125,16 +125,17 @@ function CompanyCard({ company, onUpdate }) {
       data-testid="company-card"
     >
       {/* Company Logo/Header Section */}
-      <div className="flex items-center mb-4">
+      <div className="flex items-center gap-3 mb-4">
+        {/* Company Logo */}
         <div 
-          className="w-12 h-12 rounded-lg shadow-sm border border-gray-200 mr-3 bg-white flex items-center justify-center overflow-hidden"
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg shadow-md border-2 border-gray-200 flex-shrink-0 bg-white flex items-center justify-center overflow-hidden"
           data-testid="company-logo"
         >
           {company.logo && company.logo.trim() !== '' ? (
             <img
               src={company.logo}
               alt={company.name || "Company logo"}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-1"
               onError={(e) => {
                 // Fallback to default logo if image fails to load
                 e.target.src = defaultLogo;
@@ -148,11 +149,12 @@ function CompanyCard({ company, onUpdate }) {
             />
           )}
         </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-extrabold text-gray-800 tracking-tight">
+        {/* Company Name and Type */}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-tight truncate">
             {company.name}
           </h2>
-          <p className="text-sm text-gray-500 italic">{company.type}</p>
+          <p className="text-sm text-gray-500 italic truncate">{company.type}</p>
         </div>
       </div>
 
