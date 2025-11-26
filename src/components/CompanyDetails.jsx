@@ -65,9 +65,20 @@ function CompanyDetails() {
     
     const fromCompanyCards = sessionStorage.getItem(storageKey);
     if (fromCompanyCards === 'true') {
-      // Navigate to company stats with year 2026 to show company cards
-      sessionStorage.setItem(selectedYearKey, '2026');
-      navigate('/companystats', { state: { selectedYear: 2026 } });
+      // Get the stored selectedYear (could be 2024, 2025, 2026, or null for year selection)
+      const storedYear = sessionStorage.getItem(selectedYearKey);
+      let yearToRestore = null;
+      
+      if (storedYear && storedYear !== '') {
+        const parsedYear = parseInt(storedYear);
+        if (!isNaN(parsedYear)) {
+          yearToRestore = parsedYear;
+        }
+      }
+      // If storedYear is empty string or null, yearToRestore stays null (year selection screen)
+      
+      // Navigate to company stats with the restored year (or null for year selection)
+      navigate('/companystats', { state: { selectedYear: yearToRestore } });
       sessionStorage.removeItem(storageKey);
     } else {
       // Default back navigation

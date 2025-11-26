@@ -84,17 +84,44 @@ function CompanyStats() {
     if (!user) return;
 
     // Check if state was passed from navigation
-    if (location.state?.selectedYear) {
-      setSelectedYear(location.state.selectedYear);
+    if (location.state?.selectedYear !== undefined) {
+      const yearToSet = location.state.selectedYear;
+      setSelectedYear(yearToSet);
+      // Store the selectedYear in sessionStorage
+      if (yearToSet !== null) {
+        sessionStorage.setItem(getStorageKey('companystats_selectedYear'), String(yearToSet));
+      } else {
+        sessionStorage.setItem(getStorageKey('companystats_selectedYear'), '');
+      }
     } else if (sessionStorage.getItem(getStorageKey('companystats_selectedYear'))) {
       // Check sessionStorage for selectedYear (user-specific)
-      const storedYear = parseInt(sessionStorage.getItem(getStorageKey('companystats_selectedYear')));
-      if (storedYear) {
-        setSelectedYear(storedYear);
+      const storedYear = sessionStorage.getItem(getStorageKey('companystats_selectedYear'));
+      if (storedYear === '') {
+        // Empty string means year selection screen (null)
+        setSelectedYear(null);
+      } else {
+        const parsedYear = parseInt(storedYear);
+        if (!isNaN(parsedYear)) {
+          setSelectedYear(parsedYear);
+        }
       }
     }
+  }, [location.state, user]);
 
-    // Restore company cards state if coming back from company details
+  // Store selectedYear in sessionStorage whenever it changes (but not on initial mount)
+  useEffect(() => {
+    if (user && user.userId && selectedYear !== null) {
+      sessionStorage.setItem(getStorageKey('companystats_selectedYear'), String(selectedYear));
+    } else if (user && user.userId && selectedYear === null) {
+      // Store null as empty string to indicate year selection screen
+      sessionStorage.setItem(getStorageKey('companystats_selectedYear'), '');
+    }
+  }, [selectedYear, user]);
+
+  // Restore company cards state if coming back from company details
+  useEffect(() => {
+    if (!user) return;
+    
     if (selectedYear === 2026 && sessionStorage.getItem(getStorageKey('fromCompanyCards')) === 'true') {
       const storedSearch = sessionStorage.getItem(getStorageKey('companystats_search'));
       const storedCategory = sessionStorage.getItem(getStorageKey('companystats_category'));
@@ -107,7 +134,7 @@ function CompanyStats() {
       // Clear the flag after restoring
       sessionStorage.removeItem(getStorageKey('fromCompanyCards'));
     }
-  }, [location.state, selectedYear, user]);
+  }, [selectedYear, user]);
 
   // Store company cards state whenever it changes (for restoring after navigation)
   useEffect(() => {
