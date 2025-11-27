@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt } from "react-icons/fa";
+import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle } from "react-icons/fa";
 import NotificationBell from "./NotificationBell";
+import { adminAPI } from "../utils/api";
 import logo from "../assets/logo2.png";
 
 const Header = () => {
@@ -13,6 +14,7 @@ const Header = () => {
   const [showStudentsCornerMenu, setShowStudentsCornerMenu] = useState(false);
   const [showAdminsCornerMenu, setShowAdminsCornerMenu] = useState(false);
   const [showLoginMenu, setShowLoginMenu] = useState(false);
+  const [hasPendingItems, setHasPendingItems] = useState(false);
   const accountMenuRef = useRef(null);
   const studentsCornerMenuRef = useRef(null);
   const adminsCornerMenuRef = useRef(null);
@@ -29,6 +31,34 @@ const Header = () => {
     // Always show dropdown, similar to Students Corner
     setShowAdminsCornerMenu(!showAdminsCornerMenu);
   };
+
+  // Check for pending items (submissions or companies) when admin is logged in
+  useEffect(() => {
+    if (!isAdmin || !user) {
+      setHasPendingItems(false);
+      return;
+    }
+
+    const checkPendingItems = async () => {
+      try {
+        const stats = await adminAPI.getStats();
+        const hasPending = (stats.data?.pendingSubmissions > 0) || (stats.data?.pendingCompanies > 0);
+        setHasPendingItems(hasPending);
+      } catch (error) {
+        console.error("Error checking pending items:", error);
+        // Don't show indicator on error
+        setHasPendingItems(false);
+      }
+    };
+
+    // Check immediately
+    checkPendingItems();
+
+    // Poll every 10 seconds for pending items
+    const interval = setInterval(checkPendingItems, 10000);
+
+    return () => clearInterval(interval);
+  }, [isAdmin, user]);
 
   // Close account menu when clicking outside
   useEffect(() => {
@@ -154,10 +184,13 @@ const Header = () => {
               <div className="relative" ref={adminsCornerMenuRef}>
                 <button
                   onClick={handleAdminsCornerClick}
-                  className="nav-link flex items-center text-gray-300 hover:text-white"
+                  className="nav-link flex items-center text-gray-300 hover:text-white relative"
                 >
                   <FaUserShield className="w-4 h-4 mr-1.5" />
                   Admins Corner
+                  {hasPendingItems && (
+                    <FaExclamationCircle className="w-4 h-4 ml-1 text-red-500 animate-pulse" title="Pending items require action" />
+                  )}
                   <svg className="w-4 h-4 ml-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -390,11 +423,14 @@ const Header = () => {
           <div className="space-y-1">
             <button
               onClick={() => setShowAdminsCornerMenu(!showAdminsCornerMenu)}
-              className="w-full text-left nav-link flex items-center justify-between text-gray-300 hover:text-white"
+              className="w-full text-left nav-link flex items-center justify-between text-gray-300 hover:text-white relative"
             >
               <div className="flex items-center">
                 <FaUserShield className="w-4 h-4 mr-2" />
                 Admins Corner
+                {hasPendingItems && (
+                  <FaExclamationCircle className="w-4 h-4 ml-2 text-red-500 animate-pulse" title="Pending items require action" />
+                )}
               </div>
               <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAdminsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
