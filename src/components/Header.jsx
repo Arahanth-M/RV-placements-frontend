@@ -1,9 +1,9 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle } from "react-icons/fa";
 import NotificationBell from "./NotificationBell";
-import { adminAPI } from "../utils/api";
+import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.png";
 
 const Header = () => {
@@ -15,12 +15,14 @@ const Header = () => {
   const [showAdminsCornerMenu, setShowAdminsCornerMenu] = useState(false);
   const [showLoginMenu, setShowLoginMenu] = useState(false);
   const [hasPendingItems, setHasPendingItems] = useState(false);
+  const [hasNewEvents, setHasNewEvents] = useState(false);
   const accountMenuRef = useRef(null);
   const studentsCornerMenuRef = useRef(null);
   const adminsCornerMenuRef = useRef(null);
   const loginMenuRef = useRef(null);
   
   const { isAdmin } = useAuth();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
@@ -59,6 +61,94 @@ const Header = () => {
 
     return () => clearInterval(interval);
   }, [isAdmin, user]);
+
+  // Check for new events when user is logged in
+  useEffect(() => {
+    if (!user) {
+      setHasNewEvents(false);
+      return;
+    }
+
+    const checkNewEvents = async () => {
+      try {
+        const response = await eventAPI.getAllEvents();
+        const events = response.data || [];
+        
+        if (events.length === 0) {
+          setHasNewEvents(false);
+          return;
+        }
+
+        // Get the latest event's createdAt timestamp
+        const latestEvent = events.reduce((latest, event) => {
+          const eventDate = new Date(event.createdAt || event.updatedAt);
+          const latestDate = new Date(latest.createdAt || latest.updatedAt);
+          return eventDate > latestDate ? event : latest;
+        }, events[0]);
+
+        const latestEventTimestamp = new Date(latestEvent.createdAt || latestEvent.updatedAt).getTime();
+        
+        // Get the last seen timestamp from sessionStorage (user-specific)
+        const storageKey = user && user.userId ? `lastSeenEventTimestamp_${user.userId}` : 'lastSeenEventTimestamp';
+        const lastSeenTimestamp = sessionStorage.getItem(storageKey);
+        
+        if (!lastSeenTimestamp) {
+          // First time checking - don't show indicator, but store the timestamp
+          sessionStorage.setItem(storageKey, String(latestEventTimestamp));
+          setHasNewEvents(false);
+        } else {
+          // Check if there are events newer than the last seen timestamp
+          const hasNew = latestEventTimestamp > parseInt(lastSeenTimestamp);
+          setHasNewEvents(hasNew);
+        }
+      } catch (error) {
+        console.error("Error checking new events:", error);
+        setHasNewEvents(false);
+      }
+    };
+
+    // Check immediately
+    checkNewEvents();
+
+    // Poll every 15 seconds for new events
+    const interval = setInterval(checkNewEvents, 15000);
+
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Mark events as seen when user visits the events page
+  useEffect(() => {
+    if (location.pathname === '/events' && user) {
+      const checkAndMarkAsSeen = async () => {
+        try {
+          const response = await eventAPI.getAllEvents();
+          const events = response.data || [];
+          
+          if (events.length > 0) {
+            // Get the latest event's createdAt timestamp
+            const latestEvent = events.reduce((latest, event) => {
+              const eventDate = new Date(event.createdAt || event.updatedAt);
+              const latestDate = new Date(latest.createdAt || latest.updatedAt);
+              return eventDate > latestDate ? event : latest;
+            }, events[0]);
+
+            const latestEventTimestamp = new Date(latestEvent.createdAt || latestEvent.updatedAt).getTime();
+            
+            // Store the latest event timestamp as the last seen timestamp
+            const storageKey = user && user.userId ? `lastSeenEventTimestamp_${user.userId}` : 'lastSeenEventTimestamp';
+            sessionStorage.setItem(storageKey, String(latestEventTimestamp));
+            setHasNewEvents(false);
+          }
+        } catch (error) {
+          console.error("Error marking events as seen:", error);
+        }
+      };
+
+      // Small delay to ensure events page has loaded
+      const timeout = setTimeout(checkAndMarkAsSeen, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [location.pathname, user]);
 
   // Close account menu when clicking outside
   useEffect(() => {
@@ -118,9 +208,12 @@ const Header = () => {
                 <FaHome className="w-4 h-4 mr-1.5" />
                 Home
               </Link>
-              <Link to="/events" className="nav-link flex items-center text-gray-300 hover:text-white">
+              <Link to="/events" className="nav-link flex items-center text-gray-300 hover:text-white relative">
                 <FaCalendarAlt className="w-4 h-4 mr-1.5" />
                 Events
+                {hasNewEvents && (
+                  <FaExclamationCircle className="w-4 h-4 ml-1 text-red-500 animate-pulse" title="New events posted" />
+                )}
               </Link>
               <div className="relative" ref={studentsCornerMenuRef}>
                 <button
@@ -338,9 +431,12 @@ const Header = () => {
             <FaHome className="w-4 h-4 mr-2" />
             Home
           </Link>
-          <Link to="/events" className="block nav-link flex items-center text-gray-300 hover:text-white">
+          <Link to="/events" className="block nav-link flex items-center text-gray-300 hover:text-white relative">
             <FaCalendarAlt className="w-4 h-4 mr-2" />
             Events
+            {hasNewEvents && (
+              <FaExclamationCircle className="w-4 h-4 ml-2 text-red-500 animate-pulse" title="New events posted" />
+            )}
           </Link>
           <div className="space-y-1">
             <button
