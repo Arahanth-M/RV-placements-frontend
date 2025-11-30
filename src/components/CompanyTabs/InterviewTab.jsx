@@ -93,6 +93,7 @@ function InterviewTab({ company }) {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("");
   const [content, setContent] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({}); // track solution open per question
   const [copiedIndex, setCopiedIndex] = useState(null); // track which solution was copied
@@ -111,6 +112,7 @@ function InterviewTab({ company }) {
               ? "interviewQuestions"
               : "interviewProcess",
           content,
+          isAnonymous: modalType === "process" ? isAnonymous : false, // Only allow anonymous for interviewProcess
           }),
       });
 
@@ -119,6 +121,7 @@ function InterviewTab({ company }) {
       alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
 
       setContent("");
+      setIsAnonymous(false);
       setShowModal(false);
     } catch (err) {
       console.error(err);
@@ -278,13 +281,41 @@ function InterviewTab({ company }) {
     }
   };
 
-  // Normalize interview process - now it's always an array
+  // Normalize interview process - handle both legacy string format and new JSON string format
   let interviewProcess = [];
   if (Array.isArray(company.interviewProcess)) {
-    interviewProcess = company.interviewProcess.filter(p => p && p.trim().length > 0);
+    interviewProcess = company.interviewProcess
+      .map(p => {
+        if (!p || typeof p !== 'string') return null;
+        
+        const trimmed = p.trim();
+        if (trimmed.length === 0) return null;
+        
+        // Try to parse as JSON (new format with metadata)
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === 'object' && parsed.content) {
+            return {
+              content: parsed.content.trim(),
+              isAnonymous: parsed.isAnonymous === true || parsed.isAnonymous === 'true',
+              submittedBy: parsed.submittedBy || null
+            };
+          }
+        } catch {
+          // Not JSON, treat as legacy string format
+        }
+        
+        // Legacy string format - no submitter info
+        return {
+          content: trimmed,
+          isAnonymous: false,
+          submittedBy: null
+        };
+      })
+      .filter(p => p !== null);
   } else if (typeof company.interviewProcess === "string" && company.interviewProcess.trim().length > 0) {
     // Legacy support: convert string to array
-    interviewProcess = [company.interviewProcess.trim()];
+    interviewProcess = [{ content: company.interviewProcess.trim(), isAnonymous: false, submittedBy: null }];
   }
 
   return (
@@ -409,18 +440,32 @@ function InterviewTab({ company }) {
         {interviewProcess.length > 0 ? (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="space-y-4 text-gray-700 leading-relaxed">
-              {interviewProcess.map((process, index) => (
+              {interviewProcess.map((process, index) => {
+                const processContent = process.content || process;
+                const isAnonymous = process.isAnonymous === true || process.isAnonymous === 'true';
+                const submittedBy = process.submittedBy || null;
+                const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
+                
+                return (
                 <div key={index} className="break-words border-l-4 border-blue-900 pl-4 py-2 bg-white rounded-r shadow-sm">
                   <div className="flex items-start gap-2 mb-2">
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-900 text-white rounded-full flex items-center justify-center font-semibold text-xs">
                       {index + 1}
                     </span>
-                    <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-gray-800 flex-1">
-                      {process}
-                    </p>
+                      <div className="flex-1">
+                        <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-gray-800">
+                          {processContent}
+                        </p>
+                        {showSubmitter && (
+                          <p className="text-xs text-gray-500 mt-2 italic">
+                            Submitted by: {submittedBy.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -445,11 +490,29 @@ function InterviewTab({ company }) {
                 className="w-full p-2 border rounded"
                 required
               />
+              {modalType === "process" && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isAnonymous"
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                    className="w-4 h-4 text-blue-900 border-gray-300 rounded focus:ring-blue-900"
+                  />
+                  <label htmlFor="isAnonymous" className="text-sm text-gray-700">
+                    Submit anonymously
+                  </label>
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   className="px-3 py-1 border rounded"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setContent("");
+                    setIsAnonymous(false);
+                  }}
                 >
                   Cancel
                 </button>

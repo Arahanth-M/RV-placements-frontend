@@ -32,6 +32,7 @@ const AdminDashboard = () => {
     lastDateToRegister: '',
   });
   const [deletingIds, setDeletingIds] = useState(new Set());
+  const [deletingCompanyIds, setDeletingCompanyIds] = useState(new Set());
 
   useEffect(() => {
     fetchDashboardData();
@@ -239,6 +240,66 @@ const AdminDashboard = () => {
       alert('Failed to reject company. Please try again.');
     } finally {
       setRejectingCompanyIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(companyId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeleteApprovedSubmission = async (submissionId) => {
+    if (!window.confirm('Are you sure you want to delete this approved submission? This will permanently remove it from the database.')) {
+      return;
+    }
+
+    try {
+      setDeletingIds(prev => new Set(prev).add(submissionId));
+      
+      await adminAPI.deleteApprovedSubmission(submissionId);
+      
+      // Remove the deleted submission from the approved list
+      setApprovedSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
+      
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+      
+      alert('Approved submission deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting approved submission:', err);
+      alert('Failed to delete approved submission. Please try again.');
+    } finally {
+      setDeletingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(submissionId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeleteApprovedCompany = async (companyId) => {
+    if (!window.confirm('Are you sure you want to delete this approved company? This will permanently remove it from the database.')) {
+      return;
+    }
+
+    try {
+      setDeletingCompanyIds(prev => new Set(prev).add(companyId));
+      
+      await adminAPI.deleteApprovedCompany(companyId);
+      
+      // Remove the deleted company from the approved list
+      setApprovedCompanies(prev => prev.filter(comp => comp._id !== companyId));
+      
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+      
+      alert('Approved company deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting approved company:', err);
+      alert('Failed to delete approved company. Please try again.');
+    } finally {
+      setDeletingCompanyIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(companyId);
         return newSet;
@@ -491,7 +552,12 @@ const AdminDashboard = () => {
                               <tr key={submission._id} className="hover:bg-gray-50">
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
-                                    <p className="text-xs sm:text-sm font-medium text-gray-900">{submission.submittedBy.name}</p>
+                                    <p className="text-xs sm:text-sm font-medium text-gray-900">
+                                      {submission.submittedBy.name}
+                                      {submission.isAnonymous && (
+                                        <span className="ml-2 text-xs text-orange-600 font-normal">(Anonymous)</span>
+                                      )}
+                                    </p>
                                     <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
                                   </div>
                                 </td>
@@ -587,6 +653,9 @@ const AdminDashboard = () => {
                             <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Status
                             </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Action
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -596,7 +665,12 @@ const AdminDashboard = () => {
                               <tr key={submission._id} className="hover:bg-gray-50">
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
-                                    <p className="text-xs sm:text-sm font-medium text-gray-900">{submission.submittedBy.name}</p>
+                                    <p className="text-xs sm:text-sm font-medium text-gray-900">
+                                      {submission.submittedBy.name}
+                                      {submission.isAnonymous && (
+                                        <span className="ml-2 text-xs text-orange-600 font-normal">(Anonymous)</span>
+                                      )}
+                                    </p>
                                     <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
                                   </div>
                                 </td>
@@ -633,6 +707,19 @@ const AdminDashboard = () => {
                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                                     Approved
                                   </span>
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                  <button
+                                    onClick={() => handleDeleteApprovedSubmission(submission._id)}
+                                    disabled={deletingIds.has(submission._id)}
+                                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
+                                      deletingIds.has(submission._id)
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : 'bg-red-600 text-white hover:bg-red-700'
+                                    }`}
+                                  >
+                                    {deletingIds.has(submission._id) ? 'Deleting...' : 'Delete'}
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -790,11 +877,24 @@ const AdminDashboard = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {approvedCompanies.map((company) => (
                             <div key={company._id} className="border border-gray-200 rounded-lg p-4 bg-green-50">
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-base sm:text-lg font-semibold text-gray-900">{company.name}</h3>
-                                <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                  Approved
-                                </span>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">{company.name}</h3>
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Approved
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteApprovedCompany(company._id)}
+                                  disabled={deletingCompanyIds.has(company._id)}
+                                  className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
+                                    deletingCompanyIds.has(company._id)
+                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      : 'bg-red-600 text-white hover:bg-red-700'
+                                  }`}
+                                >
+                                  {deletingCompanyIds.has(company._id) ? 'Deleting...' : <FaTrash />}
+                                </button>
                               </div>
                             </div>
                           ))}
