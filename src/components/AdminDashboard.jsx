@@ -33,6 +33,9 @@ const AdminDashboard = () => {
   });
   const [deletingIds, setDeletingIds] = useState(new Set());
   const [deletingCompanyIds, setDeletingCompanyIds] = useState(new Set());
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [approvingAll, setApprovingAll] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -307,6 +310,77 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleViewFullSubmission = (submission) => {
+    setSelectedSubmission(submission);
+    setShowSubmissionModal(true);
+  };
+
+  const handleApproveAll = async () => {
+    if (submissions.length === 0) {
+      alert('No pending submissions to approve.');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to approve all ${submissions.length} pending submission(s)? This will update the company database.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setApprovingAll(true);
+      const totalSubmissions = submissions.length;
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      // Approve all submissions sequentially to avoid overwhelming the server
+      for (const submission of submissions) {
+        try {
+          setApprovingIds(prev => new Set(prev).add(submission._id));
+          await adminAPI.approveSubmission(submission._id);
+          
+          // Move the approved submission from pending to approved list
+          const approvedSubmission = { ...submission };
+          approvedSubmission.status = 'approved';
+          approvedSubmission.approvedAt = new Date();
+          setApprovedSubmissions(prev => [approvedSubmission, ...prev]);
+          setSubmissions(prev => prev.filter(sub => sub._id !== submission._id));
+          
+          successCount++;
+        } catch (err) {
+          console.error(`Error approving submission ${submission._id}:`, err);
+          failCount++;
+          const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unknown error';
+          errors.push(`Submission ${submission.companyId?.name || submission._id}: ${errorMsg}`);
+        } finally {
+          setApprovingIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(submission._id);
+            return newSet;
+          });
+        }
+      }
+
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+
+      // Show summary
+      if (failCount === 0) {
+        alert(`Successfully approved all ${successCount} submission(s)!`);
+      } else {
+        const errorSummary = errors.slice(0, 5).join('\n');
+        const moreErrors = errors.length > 5 ? `\n... and ${errors.length - 5} more error(s)` : '';
+        alert(`Approved ${successCount} submission(s), but ${failCount} failed:\n\n${errorSummary}${moreErrors}`);
+      }
+    } catch (err) {
+      console.error('Error in bulk approval:', err);
+      alert('An error occurred during bulk approval. Please try again.');
+    } finally {
+      setApprovingAll(false);
+    }
+  };
+
   // Event Management Functions
   const handleEventSubmit = async (e) => {
     e.preventDefault();
@@ -489,27 +563,42 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-bold text-gray-900">Submissions</h2>
                     <p className="text-sm text-gray-600 mt-1">Manage user submissions across the platform</p>
                   </div>
-                  <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
-                    <button
-                      onClick={() => setActiveTab('pending')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        activeTab === 'pending'
-                          ? 'bg-blue-900 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      Pending ({stats.pendingSubmissions || 0})
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('approved')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        activeTab === 'approved'
-                          ? 'bg-blue-900 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      Approved ({stats.approvedSubmissions || 0})
-                    </button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {activeTab === 'pending' && submissions.length > 0 && (
+                      <button
+                        onClick={handleApproveAll}
+                        disabled={approvingAll}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          approvingAll
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                      >
+                        {approvingAll ? 'Approving All...' : `Approve All (${submissions.length})`}
+                      </button>
+                    )}
+                    <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
+                      <button
+                        onClick={() => setActiveTab('pending')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          activeTab === 'pending'
+                            ? 'bg-blue-900 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        Pending ({stats.pendingSubmissions || 0})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('approved')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          activeTab === 'approved'
+                            ? 'bg-blue-900 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        Approved ({stats.approvedSubmissions || 0})
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -549,7 +638,11 @@ const AdminDashboard = () => {
                           {submissions.map((submission) => {
                             const content = parseContent(submission.content);
                             return (
-                              <tr key={submission._id} className="hover:bg-gray-50">
+                              <tr 
+                                key={submission._id} 
+                                className="hover:bg-gray-50 cursor-pointer"
+                                onClick={() => handleViewFullSubmission(submission)}
+                              >
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <p className="text-xs sm:text-sm font-medium text-gray-900">
@@ -587,7 +680,7 @@ const AdminDashboard = () => {
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
                                   {formatDate(submission.submittedAt)}
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center gap-1 sm:gap-2 flex-col sm:flex-row">
                                     <button
                                       onClick={() => handleApprove(submission._id)}
@@ -662,7 +755,11 @@ const AdminDashboard = () => {
                           {approvedSubmissions.map((submission) => {
                             const content = parseContent(submission.content);
                             return (
-                              <tr key={submission._id} className="hover:bg-gray-50">
+                              <tr 
+                                key={submission._id} 
+                                className="hover:bg-gray-50 cursor-pointer"
+                                onClick={() => handleViewFullSubmission(submission)}
+                              >
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <p className="text-xs sm:text-sm font-medium text-gray-900">
@@ -708,7 +805,7 @@ const AdminDashboard = () => {
                                     Approved
                                   </span>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     onClick={() => handleDeleteApprovedSubmission(submission._id)}
                                     disabled={deletingIds.has(submission._id)}
@@ -1087,6 +1184,141 @@ const AdminDashboard = () => {
           </>
         )}
       </div>
+
+      {/* Full Submission Details Modal */}
+      {showSubmissionModal && selectedSubmission && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-900">Full Submission Details</h3>
+              <button
+                onClick={() => {
+                  setShowSubmissionModal(false);
+                  setSelectedSubmission(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Submission Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Submitted By</p>
+                  <p className="text-base text-gray-900 mt-1">
+                    {selectedSubmission.submittedBy?.name || 'N/A'}
+                    {selectedSubmission.isAnonymous && (
+                      <span className="ml-2 text-sm text-orange-600">(Anonymous)</span>
+                    )}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">{selectedSubmission.submittedBy?.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Company</p>
+                  <p className="text-base text-gray-900 mt-1">{selectedSubmission.companyId?.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Type</p>
+                  <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                    {selectedSubmission.type || 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <span className={`inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full ${
+                    selectedSubmission.status === 'approved' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {selectedSubmission.status === 'approved' ? 'Approved' : 'Pending'}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Submitted At</p>
+                  <p className="text-base text-gray-900 mt-1">{formatDate(selectedSubmission.submittedAt)}</p>
+                </div>
+                {selectedSubmission.approvedAt && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Approved At</p>
+                    <p className="text-base text-gray-900 mt-1">{formatDate(selectedSubmission.approvedAt)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Full Content */}
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Full Submission Content</p>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  {(() => {
+                    const content = parseContent(selectedSubmission.content);
+                    if (content.question || content.solution) {
+                      return (
+                        <div className="space-y-3">
+                          {content.question && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700 mb-1">Question:</p>
+                              <p className="text-base text-gray-900 whitespace-pre-wrap break-words">{content.question}</p>
+                            </div>
+                          )}
+                          {content.solution && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700 mb-1">Solution:</p>
+                              <pre className="text-base text-gray-900 whitespace-pre-wrap break-words font-sans bg-white p-3 rounded border border-gray-200 overflow-x-auto">
+                                {content.solution}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <p className="text-base text-gray-900 whitespace-pre-wrap break-words">{selectedSubmission.content}</p>
+                      );
+                    }
+                  })()}
+                </div>
+              </div>
+
+              {/* Action Buttons for Pending Submissions */}
+              {selectedSubmission.status !== 'approved' && (
+                <div className="border-t border-gray-200 pt-4 flex gap-3">
+                  <button
+                    onClick={async () => {
+                      await handleApprove(selectedSubmission._id);
+                      setShowSubmissionModal(false);
+                      setSelectedSubmission(null);
+                    }}
+                    disabled={approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                      approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                  >
+                    {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleReject(selectedSubmission._id);
+                      setShowSubmissionModal(false);
+                      setSelectedSubmission(null);
+                    }}
+                    disabled={approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                      approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-red-600 text-white hover:bg-red-700'
+                    }`}
+                  >
+                    {rejectingIds.has(selectedSubmission._id) ? 'Rejecting...' : 'Reject'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
