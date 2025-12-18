@@ -36,6 +36,7 @@ const AdminDashboard = () => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [approvingAll, setApprovingAll] = useState(false);
+  const [approvingAllCompanies, setApprovingAllCompanies] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -378,6 +379,71 @@ const AdminDashboard = () => {
       alert('An error occurred during bulk approval. Please try again.');
     } finally {
       setApprovingAll(false);
+    }
+  };
+
+  const handleApproveAllCompanies = async () => {
+    if (companies.length === 0) {
+      alert('No pending companies to approve.');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to approve all ${companies.length} pending company/companies? They will be visible to all users.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setApprovingAllCompanies(true);
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      // Approve all companies sequentially to avoid overwhelming the server
+      for (const company of companies) {
+        try {
+          setApprovingCompanyIds(prev => new Set(prev).add(company._id));
+          await adminAPI.approveCompany(company._id);
+          
+          // Move the approved company from pending to approved list
+          const approvedCompany = { ...company };
+          approvedCompany.status = 'approved';
+          approvedCompany.approvedAt = new Date();
+          setApprovedCompanies(prev => [approvedCompany, ...prev]);
+          setCompanies(prev => prev.filter(comp => comp._id !== company._id));
+          
+          successCount++;
+        } catch (err) {
+          console.error(`Error approving company ${company._id}:`, err);
+          failCount++;
+          const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unknown error';
+          errors.push(`Company ${company.name || company._id}: ${errorMsg}`);
+        } finally {
+          setApprovingCompanyIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(company._id);
+            return newSet;
+          });
+        }
+      }
+
+      // Refresh stats
+      const statsResponse = await adminAPI.getStats();
+      setStats(statsResponse.data);
+
+      // Show summary
+      if (failCount === 0) {
+        alert(`Successfully approved all ${successCount} company/companies! They are now visible to all users.`);
+      } else {
+        const errorSummary = errors.slice(0, 5).join('\n');
+        const moreErrors = errors.length > 5 ? `\n... and ${errors.length - 5} more error(s)` : '';
+        alert(`Approved ${successCount} company/companies, but ${failCount} failed:\n\n${errorSummary}${moreErrors}`);
+      }
+    } catch (err) {
+      console.error('Error in bulk company approval:', err);
+      alert('An error occurred during bulk approval. Please try again.');
+    } finally {
+      setApprovingAllCompanies(false);
     }
   };
 
@@ -837,27 +903,42 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-bold text-gray-900">Companies</h2>
                     <p className="text-sm text-gray-600 mt-1">Manage company submissions and approvals</p>
                   </div>
-                  <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
-                    <button
-                      onClick={() => setCompanyTab('pending')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        companyTab === 'pending'
-                          ? 'bg-blue-900 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      Pending ({stats.pendingCompanies || 0})
-                    </button>
-                    <button
-                      onClick={() => setCompanyTab('approved')}
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        companyTab === 'approved'
-                          ? 'bg-blue-900 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      Approved ({stats.totalCompanies || 0})
-                    </button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {companyTab === 'pending' && companies.length > 0 && (
+                      <button
+                        onClick={handleApproveAllCompanies}
+                        disabled={approvingAllCompanies}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          approvingAllCompanies
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                      >
+                        {approvingAllCompanies ? 'Approving All...' : `Approve All (${companies.length})`}
+                      </button>
+                    )}
+                    <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
+                      <button
+                        onClick={() => setCompanyTab('pending')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          companyTab === 'pending'
+                            ? 'bg-blue-900 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        Pending ({stats.pendingCompanies || 0})
+                      </button>
+                      <button
+                        onClick={() => setCompanyTab('approved')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          companyTab === 'approved'
+                            ? 'bg-blue-900 text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        Approved ({stats.totalCompanies || 0})
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
