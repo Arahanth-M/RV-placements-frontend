@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import YearStatsTable from "../components/YearStatsTable";
@@ -17,8 +17,10 @@ function CompanyStats() {
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [cluster, setCluster] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
+  const [showClusterFilter, setShowClusterFilter] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newCompany, setNewCompany] = useState({
     name: "",
@@ -34,6 +36,7 @@ function CompanyStats() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const clusterFilterRef = useRef(null);
 
   // Helper function to get user-specific storage keys
   const getStorageKey = (key) => {
@@ -49,6 +52,7 @@ function CompanyStats() {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
+        'companystats_cluster',
         'companystats_page',
         'fromCompanyCards'
       ];
@@ -65,6 +69,7 @@ function CompanyStats() {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
+        'companystats_cluster',
         'companystats_page',
         'fromCompanyCards'
       ];
@@ -125,10 +130,12 @@ function CompanyStats() {
     if (selectedYear === 2026 && sessionStorage.getItem(getStorageKey('fromCompanyCards')) === 'true') {
       const storedSearch = sessionStorage.getItem(getStorageKey('companystats_search'));
       const storedCategory = sessionStorage.getItem(getStorageKey('companystats_category'));
+      const storedCluster = sessionStorage.getItem(getStorageKey('companystats_cluster'));
       const storedPage = sessionStorage.getItem(getStorageKey('companystats_page'));
       
       if (storedSearch !== null) setSearch(storedSearch);
       if (storedCategory !== null) setCategory(storedCategory);
+      if (storedCluster !== null) setCluster(storedCluster);
       if (storedPage !== null) setCurrentPage(parseInt(storedPage) || 1);
       
       // Clear the flag after restoring
@@ -141,9 +148,10 @@ function CompanyStats() {
     if (selectedYear === 2026 && user && user.userId) {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
       sessionStorage.setItem(getStorageKey('companystats_category'), category);
+      sessionStorage.setItem(getStorageKey('companystats_cluster'), cluster);
       sessionStorage.setItem(getStorageKey('companystats_page'), String(currentPage));
     }
-  }, [selectedYear, search, category, currentPage, user]);
+  }, [selectedYear, search, category, cluster, currentPage, user]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
@@ -204,6 +212,23 @@ function CompanyStats() {
     }
   }, [selectedYear, user]);
 
+  // Close cluster filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (clusterFilterRef.current && !clusterFilterRef.current.contains(event.target)) {
+        setShowClusterFilter(false);
+      }
+    };
+
+    if (showClusterFilter) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showClusterFilter]);
+
   // Filter companies (only for 2026)
   const filteredCompanies = companies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -213,6 +238,13 @@ function CompanyStats() {
         return c.type.toLowerCase().includes("internship + fte");
       }
       return c.type.toLowerCase() === category.toLowerCase();
+    })
+    .filter((c) => {
+      if (cluster === "all") return true;
+      // Handle null/undefined and trim whitespace for comparison
+      const companyCluster = c.cluster ? c.cluster.trim() : null;
+      const selectedCluster = cluster.trim();
+      return companyCluster === selectedCluster;
     });
 
   const indexOfLastCompany = currentPage * companiesPerPage;
@@ -411,6 +443,7 @@ function CompanyStats() {
             setCompanies([]);
             setSearch("");
             setCategory("all");
+            setCluster("all");
             setCurrentPage(1);
           }}
           className="mb-4 flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm sm:text-base"
@@ -418,19 +451,103 @@ function CompanyStats() {
           <FaArrowLeft className="mr-2" />
           Back to Year Selection
         </button>
-        <div className="flex justify-center">
-          <input
-            type="text"
-            placeholder="Search companies..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full sm:w-1/2 lg:w-1/3 px-4 py-2 sm:py-3 border border-gray-300 
-                       rounded-xl shadow-sm focus:outline-none focus:ring-2 
-                       focus:ring-indigo-400 transition duration-200 text-sm sm:text-base"
-          />
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex justify-center flex-1 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Search companies..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full sm:w-1/2 lg:w-1/3 px-4 py-2 sm:py-3 border border-gray-300 
+                         rounded-xl shadow-sm focus:outline-none focus:ring-2 
+                         focus:ring-indigo-400 transition duration-200 text-sm sm:text-base"
+            />
+          </div>
+          {/* Cluster Filter Dropdown */}
+          <div className="relative" ref={clusterFilterRef}>
+            <button
+              onClick={() => setShowClusterFilter(!showClusterFilter)}
+              className="px-4 py-2 sm:py-3 border border-gray-300 rounded-xl shadow-sm 
+                         bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 
+                         focus:ring-indigo-400 transition duration-200 text-sm sm:text-base 
+                         text-gray-700 font-medium min-w-[200px] sm:min-w-[250px] flex items-center justify-between"
+            >
+              <span>
+                {cluster === "all" 
+                  ? "All Clusters" 
+                  : cluster === "Computer Science and Engineering"
+                  ? "CSE"
+                  : cluster === "Electronics and Communication"
+                  ? "ECE"
+                  : cluster === "Mechanical Engineering"
+                  ? "ME"
+                  : cluster}
+              </span>
+              <svg
+                className={`w-4 h-4 ml-2 transition-transform ${showClusterFilter ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {showClusterFilter && (
+              <div className="absolute right-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg py-2 w-full min-w-[200px] sm:min-w-[250px] z-50">
+                <button
+                  onClick={() => {
+                    setCluster("all");
+                    setShowClusterFilter(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-indigo-100 ${
+                    cluster === "all" ? "font-semibold bg-indigo-50" : ""
+                  }`}
+                >
+                  All Clusters
+                </button>
+                <button
+                  onClick={() => {
+                    setCluster("Computer Science and Engineering");
+                    setShowClusterFilter(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-indigo-100 ${
+                    cluster === "Computer Science and Engineering" ? "font-semibold bg-indigo-50" : ""
+                  }`}
+                >
+                  Computer Science and Engineering
+                </button>
+                <button
+                  onClick={() => {
+                    setCluster("Electronics and Communication");
+                    setShowClusterFilter(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-indigo-100 ${
+                    cluster === "Electronics and Communication" ? "font-semibold bg-indigo-50" : ""
+                  }`}
+                >
+                  Electronics and Communication
+                </button>
+                <button
+                  onClick={() => {
+                    setCluster("Mechanical Engineering");
+                    setShowClusterFilter(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full px-4 py-2 text-left hover:bg-indigo-100 ${
+                    cluster === "Mechanical Engineering" ? "font-semibold bg-indigo-50" : ""
+                  }`}
+                >
+                  Mechanical Engineering
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -444,7 +561,9 @@ function CompanyStats() {
           ))
         ) : (
           <p className="text-gray-500 col-span-full text-center">
-            No companies found.
+            {cluster !== "all" 
+              ? `No companies in ${cluster} cluster is available.`
+              : "No companies found."}
           </p>
         )}
       </div>
