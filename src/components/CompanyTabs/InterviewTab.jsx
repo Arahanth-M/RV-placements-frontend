@@ -319,13 +319,13 @@ function InterviewTab({ company }) {
   }
 
   return (
-    <div className="space-y-6 px-4 sm:px-6 lg:px-0 max-w-screen-xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
       {/* Interview Questions */}
-      <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
-        <h2 className="text-2xl font-bold mb-4 text-blue-800 flex justify-between items-center">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-indigo-400 mb-4 flex justify-between items-center">
           Interview Questions
           <button
-            className="flex items-center space-x-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
+            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
             onClick={() => {
               setModalType("interviewQ");
               setShowModal(true);
@@ -343,33 +343,33 @@ function InterviewTab({ company }) {
             {interviewQuestions.map((q, index) => (
               <div
                 key={index}
-                className="border rounded-lg shadow-sm bg-gray-100 min-w-0 overflow-hidden"
+                className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
                 <button
                   onClick={() =>
                     setOpenIndexQ(openIndexQ === index ? null : index)
                   }
-                  className="w-full text-left px-4 py-3 font-semibold text-gray-800 flex justify-between items-center min-w-0"
+                  className="w-full text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
                 >
                   <span className="truncate">Question {index + 1}</span>
-                  <span className="text-lg">
+                  <span className="text-lg text-slate-400">
                     {openIndexQ === index ? "−" : "+"}
                   </span>
                 </button>
 
                 {openIndexQ === index && (
-                  <div className="px-4 pb-4 text-gray-700 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
+                  <div className="px-4 pb-4 text-slate-300 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
                     <p>{q || `Question ${index + 1}`}</p>
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
-                      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
                         <button
                           onClick={() => toggleSolutionAccordion(index)}
-                          className="w-full text-left px-4 py-2 font-medium text-blue-700 flex justify-between items-center"
+                          className="w-full text-left px-4 py-2 font-medium text-indigo-400 flex justify-between items-center"
                         >
                           <span>View Solution</span>
-                          <span className="text-lg">
+                          <span className="text-lg text-slate-400">
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
@@ -378,7 +378,7 @@ function InterviewTab({ company }) {
                             <div className="relative">
                               <button
                                 onClick={() => handleCopySolution(solutions[index], index)}
-                                className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
+                                className="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
                                 title="Copy solution"
                               >
                                 {copiedIndex === index ? (
@@ -393,7 +393,7 @@ function InterviewTab({ company }) {
                                   </>
                                 )}
                               </button>
-                              <pre className="bg-gray-900 text-green-200 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              <pre className="bg-slate-900 text-green-300 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
                                 <code>{solutions[index]}</code>
                               </pre>
                             </div>
@@ -401,9 +401,9 @@ function InterviewTab({ company }) {
                         )}
                       </div>
                     ) : (
-                      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
                         <div className="px-4 py-2">
-                          <p className="text-sm text-gray-500 italic">
+                          <p className="text-sm text-slate-400 italic">
                             Solution not yet provided
                           </p>
                         </div>
@@ -415,16 +415,16 @@ function InterviewTab({ company }) {
             ))}
           </div>
         ) : (
-          <p>No interview questions yet.</p>
+          <p className="text-slate-400">No interview questions yet.</p>
         )}
       </div>
 
       {/* Interview Process */}
-      <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
-        <h2 className="text-2xl font-bold mb-4 text-blue-800 flex justify-between items-center">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-indigo-400 mb-4 flex justify-between items-center">
           Interview Process
           <button
-            className="flex items-center space-x-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
+            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
             onClick={() => {
               setModalType("process");
               setShowModal(true);
@@ -438,46 +438,44 @@ function InterviewTab({ company }) {
         </h2>
 
         {interviewProcess.length > 0 ? (
-          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="space-y-4 text-gray-700 leading-relaxed">
-              {interviewProcess.map((process, index) => {
-                const processContent = process.content || process;
-                const isAnonymous = process.isAnonymous === true || process.isAnonymous === 'true';
-                const submittedBy = process.submittedBy || null;
-                const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
-                
-                return (
-                <div key={index} className="break-words border-l-4 border-blue-900 pl-4 py-2 bg-white rounded-r shadow-sm">
-                  <div className="flex items-start gap-2 mb-2">
-                    <span className="flex-shrink-0 w-6 h-6 bg-blue-900 text-white rounded-full flex items-center justify-center font-semibold text-xs">
+          <div className="space-y-4">
+            {interviewProcess.map((process, index) => {
+              const processContent = process.content || process;
+              const isAnonymous = process.isAnonymous === true || process.isAnonymous === 'true';
+              const submittedBy = process.submittedBy || null;
+              const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
+              
+              return (
+                <div key={index} className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
                       {index + 1}
                     </span>
-                      <div className="flex-1">
-                        <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-gray-800">
-                          {processContent}
+                    <div className="flex-1">
+                      <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-slate-300">
+                        {processContent}
+                      </p>
+                      {showSubmitter && (
+                        <p className="text-xs text-slate-400 mt-2 italic">
+                          Submitted by: {submittedBy.name}
                         </p>
-                        {showSubmitter && (
-                          <p className="text-xs text-gray-500 mt-2 italic">
-                            Submitted by: {submittedBy.name}
-                          </p>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <p>No interview process info yet.</p>
+          <p className="text-slate-400">No interview process info yet.</p>
         )}
       </div>
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white p-4 rounded w-96">
-            <h3 className="text-lg font-bold mb-2">
+          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold mb-4 text-indigo-400">
               {modalType === "interviewQ"
                 ? "Add Interview Question"
                 : "Add Interview Process"}
@@ -487,7 +485,7 @@ function InterviewTab({ company }) {
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Enter here..."
-                className="w-full p-2 border rounded"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 required
               />
               {modalType === "process" && (
@@ -497,9 +495,9 @@ function InterviewTab({ company }) {
                     id="isAnonymous"
                     checked={isAnonymous}
                     onChange={(e) => setIsAnonymous(e.target.checked)}
-                    className="w-4 h-4 text-blue-900 border-gray-300 rounded focus:ring-blue-900"
+                    className="w-4 h-4 text-indigo-600 border-slate-600 rounded focus:ring-indigo-500 bg-slate-900"
                   />
-                  <label htmlFor="isAnonymous" className="text-sm text-gray-700">
+                  <label htmlFor="isAnonymous" className="text-sm text-slate-300">
                     Submit anonymously
                   </label>
                 </div>
@@ -507,7 +505,7 @@ function InterviewTab({ company }) {
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="px-3 py-1 border rounded"
+                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
                   onClick={() => {
                     setShowModal(false);
                     setContent("");
@@ -518,7 +516,7 @@ function InterviewTab({ company }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-blue-900 text-white rounded hover:bg-blue-800 transition-colors"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Submit
                 </button>

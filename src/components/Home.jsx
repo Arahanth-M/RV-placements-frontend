@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { companyAPI } from "../utils/api";
+import homeImage5 from "../assets/home5.png";
+import logo3 from "../assets/logo3.png";
 
 function Home() {
-  // External image URLs
+  // Local image assets
   const images = [
-    "https://rvce.edu.in/wp-content/uploads/2025/11/plane.png",
-    "https://rvce.edu.in/wp-content/uploads/2025/10/IMG_0701-copy.png",
+    homeImage5,
+    logo3,
   ];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [companyLogos, setCompanyLogos] = useState([]);
@@ -37,17 +39,17 @@ function Home() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-b from-indigo-100 via-white to-indigo-50 min-h-screen">
+    <div className="min-h-screen" style={{ backgroundColor: '#302C2C' }}>
       {/* Hero Section - Title on Left, Images on Right */}
-      <div className="w-full bg-white py-8 sm:py-12 md:py-16 px-4 sm:px-6">
+      <div className="w-full py-8 sm:py-12 md:py-16 px-4 sm:px-6" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
             {/* Left Side - Title and Description */}
             <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-gray-900 mb-4 sm:mb-6">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white mb-4 sm:mb-6">
                 Welcome to RVCE Placement Dashboard
               </h1>
-              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 leading-relaxed">
+              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 leading-relaxed">
                 Your ultimate destination for placement preparation. Gain access to 
                 company insights, interview experiences, curated resources, and 
                 guidance from seniors: Everything you need to land your dream 
@@ -57,7 +59,7 @@ function Home() {
 
             {/* Right Side - Image Slideshow */}
             <div className="flex-1 w-full lg:w-auto">
-              <div className="relative w-full flex items-center justify-center bg-gray-100 rounded-xl overflow-hidden" style={{ minHeight: '300px', maxHeight: '70vh' }}>
+              <div className="relative w-full flex items-center justify-center rounded-xl overflow-hidden" style={{ minHeight: '300px', maxHeight: '70vh', backgroundColor: '#2a2a2a' }}>
                 {images.map((image, index) => (
                   <img
                     key={index}
@@ -88,10 +90,10 @@ function Home() {
       {/* Challenges Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
         <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-4 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 px-2">
             Challenges Students Face During Placements
           </h2>
-          <div className="w-24 h-1 bg-indigo-600 mx-auto"></div>
+          <div className="w-24 h-1 bg-blue-500 mx-auto"></div>
         </div>
         <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           {[
@@ -114,23 +116,24 @@ function Home() {
           ].map((point, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
+              className="rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              style={{ backgroundColor: '#1a1a1a', border: '2px solid #126FA6' }}
             >
               <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">{point.icon}</div>
-              <p className="text-base sm:text-lg text-gray-700 leading-relaxed">{point.text}</p>
+              <p className="text-base sm:text-lg text-gray-300 leading-relaxed">{point.text}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* What We Provide Section */}
-      <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-indigo-100 py-12 sm:py-16 md:py-20">
+      <div className="py-12 sm:py-16 md:py-20" style={{ backgroundColor: '#2a2a2a' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-4 px-2">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 px-2">
               What We Provide
             </h2>
-            <div className="w-24 h-1 bg-indigo-600 mx-auto"></div>
+            <div className="w-24 h-1 bg-blue-500 mx-auto"></div>
           </div>
           <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
@@ -167,11 +170,12 @@ function Home() {
             ].map((feature, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
+                className="rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+                style={{ backgroundColor: '#1a1a1a', border: '2px solid #126FA6' }}
               >
                 <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{feature.icon}</div>
-                <h3 className="text-lg sm:text-xl font-bold text-blue-900 mb-2 sm:mb-3">{feature.title}</h3>
-                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{feature.text}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-blue-400 mb-2 sm:mb-3">{feature.title}</h3>
+                <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{feature.text}</p>
               </div>
             ))}
           </div>
@@ -180,9 +184,9 @@ function Home() {
 
       {/* Company Logos Marquee Section */}
       {companyLogos.length > 0 && (
-        <div className="bg-white py-8 sm:py-12 border-t border-b border-gray-200 overflow-hidden">
+        <div className="py-8 sm:py-12 border-t border-b border-gray-600 overflow-hidden" style={{ backgroundColor: '#1a1a1a' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <h3 className="text-center text-xl sm:text-2xl font-bold text-gray-800 mb-6 sm:mb-8">
+            <h3 className="text-center text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8">
               Our Recruiters
             </h3>
             <div className="relative w-full overflow-hidden">
@@ -191,7 +195,8 @@ function Home() {
                 {companyLogos.map((company, idx) => (
                   <div
                     key={idx}
-                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 rounded-lg shadow-sm border p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                    style={{ backgroundColor: '#2a2a2a', border: '1px solid #126FA6' }}
                   >
                     <img
                       src={company.logo}
@@ -212,7 +217,8 @@ function Home() {
                 {companyLogos.map((company, idx) => (
                   <div
                     key={`duplicate-${idx}`}
-                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 rounded-lg shadow-sm border p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                    style={{ backgroundColor: '#2a2a2a', border: '1px solid #126FA6' }}
                   >
                     <img
                       src={company.logo}
@@ -238,10 +244,10 @@ function Home() {
       {/* Future Vision Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
         <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-4 px-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 px-2">
             Our Future Vision 🚀
           </h2>
-          <div className="w-24 h-1 bg-indigo-600 mx-auto"></div>
+          <div className="w-24 h-1 bg-blue-500 mx-auto"></div>
         </div>
         <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {[
@@ -263,11 +269,12 @@ function Home() {
           ].map((plan, idx) => (
             <div
               key={idx}
-              className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-indigo-100"
+              className="rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+              style={{ backgroundColor: '#1a1a1a', border: '2px solid #126FA6' }}
             >
               <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{plan.icon}</div>
-              <h3 className="text-lg sm:text-xl font-bold text-blue-900 mb-2 sm:mb-3">{plan.title}</h3>
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{plan.text}</p>
+              <h3 className="text-lg sm:text-xl font-bold text-blue-400 mb-2 sm:mb-3">{plan.title}</h3>
+              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">{plan.text}</p>
             </div>
           ))}
         </div>

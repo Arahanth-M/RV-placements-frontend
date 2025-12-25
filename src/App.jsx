@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import appStore from "./utils/appStore"; 
 import { AuthProvider } from "./utils/AuthContext";
 import { PremiumProvider } from "./utils/PremiumContext";
-import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import Home from "./components/Home";
 import AuthCallback from "./components/AuthCallback";
@@ -28,33 +28,20 @@ import ShippingPolicy from "./components/ShippingPolicy";
 import CancellationRefund from "./components/CancellationRefund";
 import Developers from "./components/Developers";
 import GlobalChatbot from "./components/GlobalChatbot";
+import StudentProfilePage from "./components/StudentProfilePage";
+import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 
 
 function App() {
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  useEffect(() => {
-    const headerEl = document.querySelector("header");
-    if (headerEl) {
-      setHeaderHeight(headerEl.offsetHeight);
-    }
-
-    const handleResize = () => {
-      if (headerEl) setHeaderHeight(headerEl.offsetHeight);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   return (
     <Provider store={appStore}>
       <BrowserRouter basename="/">
         <AuthProvider>
           <PremiumProvider>
-            <div className="flex flex-col min-h-screen">
-              <Header />
+            <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#302C2C' }}>
+              <Sidebar />
 
-              <main className="flex-grow" style={{ paddingTop: headerHeight }}>
+              <main className="flex-grow">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
@@ -131,12 +118,21 @@ function App() {
                   <Route path="/shipping" element={<ShippingPolicy />} />
                   <Route path="/cancellation" element={<CancellationRefund />} />
                   <Route path="/developers" element={<Developers />} />
+                  <Route 
+                    path="/profile" 
+                    element={
+                      <ProtectedRoute>
+                        <StudentProfilePage />
+                      </ProtectedRoute>
+                    } 
+                  />
                 </Routes>
               </main>
 
               <Footer />
-                <GlobalChatbot />
-              </div>
+              <GlobalChatbot />
+              <PlacementPopupWrapper />
+            </div>
             </PremiumProvider>
           </AuthProvider>
       </BrowserRouter>

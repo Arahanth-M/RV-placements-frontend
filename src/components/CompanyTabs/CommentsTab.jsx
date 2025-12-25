@@ -167,155 +167,159 @@ function CommentsTab({ company }) {
 
   if (loading) {
     return (
-      <div className="bg-white shadow-md rounded-lg p-6 sm:p-8 border">
-        <div className="flex items-center justify-center py-12">
-          <FaSpinner className="animate-spin text-4xl text-indigo-600" />
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+          <div className="flex items-center justify-center py-12">
+            <FaSpinner className="animate-spin text-4xl text-indigo-400" />
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border">
-      <h2 className="text-2xl font-bold mb-4 sm:mb-6 text-blue-800">
-        Comments & Discussions
-      </h2>
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-4 sm:mb-6 text-indigo-400">
+          Comments & Discussions
+        </h2>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4">
-          <p className="text-red-600 text-sm sm:text-base">{error}</p>
-        </div>
-      )}
-
-      {/* Comment Form */}
-      {user ? (
-        <form onSubmit={handleSubmit} className="mb-6 sm:mb-8">
-          <div className="mb-3 sm:mb-4">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Share your thoughts about this company - work culture, experience, questions, or clarifications..."
-              className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-vertical min-h-[100px] text-sm sm:text-base"
-              maxLength={2000}
-              disabled={submitting}
-            />
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-xs sm:text-sm text-gray-500">
-                {newComment.length}/2000 characters
-              </p>
-              <button
-                type="submit"
-                disabled={submitting || !newComment.trim()}
-                className="px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-200 flex items-center gap-2 text-sm sm:text-base"
-              >
-                {submitting ? (
-                  <>
-                    <FaSpinner className="animate-spin" />
-                    Posting...
-                  </>
-                ) : (
-                  <>
-                    <FaPaperPlane />
-                    Post Comment
-                  </>
-                )}
-              </button>
-            </div>
+        {error && (
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 sm:p-4 mb-4">
+            <p className="text-red-300 text-sm sm:text-base">{error}</p>
           </div>
-        </form>
-      ) : (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 sm:mb-8">
-          <p className="text-blue-800 text-sm sm:text-base">
-            Please <a href="/auth/callback" className="underline font-semibold">log in</a> to post a comment.
-          </p>
-        </div>
-      )}
+        )}
 
-      {/* Comments List */}
-      <div className="space-y-4">
-        {comments.length === 0 && !loading ? (
-          <div className="text-center py-8 sm:py-12">
-            <FaUser className="mx-auto text-gray-400 text-4xl sm:text-5xl mb-3 sm:mb-4" />
-            <p className="text-gray-600 text-sm sm:text-base">
-              No comments yet. Be the first to share your thoughts!
-            </p>
-          </div>
-        ) : (
-          <>
-            {pagination.totalComments > 0 && (
-              <div className="text-sm text-gray-600 mb-4">
-                Showing {comments.length} of {pagination.totalComments} comment{pagination.totalComments !== 1 ? 's' : ''}
-              </div>
-            )}
-            {comments.map((comment) => {
-              const isOwner = user && comment.user?._id === user._id;
-              const canDelete = isOwner || isAdmin;
-              
-              return (
-                <div
-                  key={comment._id}
-                  className="border border-gray-200 rounded-lg p-4 sm:p-5 bg-gray-50 hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2 sm:mb-3">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
-                        {comment.user?.picture ? (
-                          <img
-                            src={comment.user.picture}
-                            alt={comment.username}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <FaUser />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 text-sm sm:text-base">
-                          {comment.username || comment.user?.username || "Anonymous"}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-500">
-                          {formatDate(comment.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDelete(comment._id)}
-                        className="text-red-500 hover:text-red-700 p-1 sm:p-2 hover:bg-red-50 rounded transition duration-200"
-                        title={isAdmin && !isOwner ? "Delete comment (Admin)" : "Delete comment"}
-                      >
-                        <FaTrash className="text-sm sm:text-base" />
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
-                    {comment.comment}
-                  </p>
-                </div>
-              );
-            })}
-            
-            {/* Load More Button */}
-            {pagination.hasNextPage && (
-              <div className="flex justify-center pt-4">
+        {/* Comment Form */}
+        {user ? (
+          <form onSubmit={handleSubmit} className="mb-6 sm:mb-8">
+            <div className="mb-3 sm:mb-4">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Share your thoughts about this company - work culture, experience, questions, or clarifications..."
+                className="w-full border border-slate-600 rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-slate-900 text-slate-200 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-vertical min-h-[100px] text-sm sm:text-base"
+                maxLength={2000}
+                disabled={submitting}
+              />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs sm:text-sm text-slate-400">
+                  {newComment.length}/2000 characters
+                </p>
                 <button
-                  onClick={loadMoreComments}
-                  disabled={loadingMore}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-200 flex items-center gap-2"
+                  type="submit"
+                  disabled={submitting || !newComment.trim()}
+                  className="px-4 sm:px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-600 disabled:cursor-not-allowed transition duration-200 flex items-center gap-2 text-sm sm:text-base"
                 >
-                  {loadingMore ? (
+                  {submitting ? (
                     <>
                       <FaSpinner className="animate-spin" />
-                      Loading...
+                      Posting...
                     </>
                   ) : (
-                    "Load More Comments"
+                    <>
+                      <FaPaperPlane />
+                      Post Comment
+                    </>
                   )}
                 </button>
               </div>
-            )}
-          </>
+            </div>
+          </form>
+        ) : (
+          <div className="bg-indigo-900/30 border border-indigo-700 rounded-lg p-4 mb-6 sm:mb-8">
+            <p className="text-indigo-300 text-sm sm:text-base">
+              Please <a href="/auth/callback" className="underline font-semibold">log in</a> to post a comment.
+            </p>
+          </div>
         )}
+
+        {/* Comments List */}
+        <div className="space-y-4">
+          {comments.length === 0 && !loading ? (
+            <div className="text-center py-8 sm:py-12">
+              <FaUser className="mx-auto text-slate-500 text-4xl sm:text-5xl mb-3 sm:mb-4" />
+              <p className="text-slate-400 text-sm sm:text-base">
+                No comments yet. Be the first to share your thoughts!
+              </p>
+            </div>
+          ) : (
+            <>
+              {pagination.totalComments > 0 && (
+                <div className="text-sm text-slate-400 mb-4">
+                  Showing {comments.length} of {pagination.totalComments} comment{pagination.totalComments !== 1 ? 's' : ''}
+                </div>
+              )}
+              {comments.map((comment) => {
+                const isOwner = user && comment.user?._id === user._id;
+                const canDelete = isOwner || isAdmin;
+                
+                return (
+                  <div
+                    key={comment._id}
+                    className="border border-slate-700 rounded-lg p-4 sm:p-5 bg-slate-800/60 hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
+                          {comment.user?.picture ? (
+                            <img
+                              src={comment.user.picture}
+                              alt={comment.username}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <FaUser />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-200 text-sm sm:text-base">
+                            {comment.username || comment.user?.username || "Anonymous"}
+                          </p>
+                          <p className="text-xs sm:text-sm text-slate-400">
+                            {formatDate(comment.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(comment._id)}
+                          className="text-red-400 hover:text-red-300 p-1 sm:p-2 hover:bg-red-900/30 rounded transition duration-200"
+                          title={isAdmin && !isOwner ? "Delete comment (Admin)" : "Delete comment"}
+                        >
+                          <FaTrash className="text-sm sm:text-base" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-slate-300 text-sm sm:text-base leading-relaxed whitespace-pre-wrap break-words">
+                      {comment.comment}
+                    </p>
+                  </div>
+                );
+              })}
+              
+              {/* Load More Button */}
+              {pagination.hasNextPage && (
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={loadMoreComments}
+                    disabled={loadingMore}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-600 disabled:cursor-not-allowed transition duration-200 flex items-center gap-2"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <FaSpinner className="animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Load More Comments"
+                    )}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

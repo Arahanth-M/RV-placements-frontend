@@ -28,7 +28,7 @@ function CompanyDetails() {
       );
   }, [id]);
 
-  if (!company) return <p className="p-6 text-gray-600">Loading...</p>;
+  if (!company) return <div className="p-6" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}><p className="text-slate-400">Loading...</p></div>;
 
   // Helper function to get company initials
   const getCompanyInitials = () => {
@@ -87,11 +87,11 @@ function CompanyDetails() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}>
       {/* Back Button */}
       <button
         onClick={handleBack}
-        className="mb-4 flex items-center text-gray-600 hover:text-gray-800 font-medium text-sm sm:text-base transition-colors"
+        className="mb-4 flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base transition-colors"
       >
         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -99,11 +99,11 @@ function CompanyDetails() {
         Back
       </button>
       
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border mb-4 sm:mb-6">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-4">
           {/* Company Logo */}
           <div 
-            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg shadow-md border-2 border-gray-200 flex-shrink-0 bg-white flex items-center justify-center overflow-hidden"
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg shadow-md border-2 border-slate-700 flex-shrink-0 bg-slate-800 flex items-center justify-center overflow-hidden"
             data-testid="company-logo"
           >
             {company.logo && company.logo.trim() !== '' ? (
@@ -126,10 +126,10 @@ function CompanyDetails() {
           </div>
           {/* Company Name and Type */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-blue-900 mb-2 break-words">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 break-words">
               {company.name}
             </h1>
-            <p className="text-base sm:text-lg text-gray-700 break-words">{company.type}</p>
+            <p className="text-base sm:text-lg text-slate-300 break-words">{company.type}</p>
           </div>
         </div>
       </div>
@@ -140,8 +140,8 @@ function CompanyDetails() {
             onClick={() => setActiveTab(tab)}
             className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === tab
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
             }`}
           >
             {tab === "general"
@@ -160,8 +160,8 @@ function CompanyDetails() {
             onClick={() => setActiveTab("video")}
             className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "video"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
             }`}
           >
             Video
@@ -172,8 +172,8 @@ function CompanyDetails() {
             onClick={() => setActiveTab("offcampus")}
             className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "offcampus"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
             }`}
           >
             Off-Campus Questions

@@ -160,7 +160,7 @@ function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleBellClick}
-        className="relative p-2 text-gray-300 hover:text-white transition-colors"
+        className="relative p-2 text-slate-300 hover:text-white transition-colors"
         title="Notifications"
       >
         <FaBell className="w-5 h-5" />
@@ -172,13 +172,13 @@ function NotificationBell() {
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
-          <div className="bg-blue-900 text-white px-4 py-3 flex justify-between items-center">
-            <h3 className="font-semibold text-lg">Notifications</h3>
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900/95 backdrop-blur rounded-lg shadow-xl border border-slate-800 z-50 max-h-96 overflow-hidden flex flex-col">
+          <div className="bg-slate-800 border-b border-slate-700 text-white px-4 py-3 flex justify-between items-center">
+            <h3 className="font-semibold text-lg text-indigo-400">Notifications</h3>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleRefresh}
-                className="text-sm text-gray-300 hover:text-white transition-transform hover:rotate-180"
+                className="text-sm text-slate-300 hover:text-white transition-transform hover:rotate-180"
                 title="Refresh notifications"
               >
                 <FaSync className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -186,7 +186,7 @@ function NotificationBell() {
               {notifications.length > 0 && (
                 <button
                   onClick={handleClearAll}
-                  className="text-sm text-gray-300 hover:text-white underline flex items-center gap-1"
+                  className="text-sm text-slate-300 hover:text-white underline flex items-center gap-1"
                   title="Clear all notifications"
                 >
                   <FaTrash className="w-3 h-3" />
@@ -196,7 +196,7 @@ function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsSeen}
-                  className="text-sm text-gray-300 hover:text-white underline"
+                  className="text-sm text-slate-300 hover:text-white underline"
                 >
                   Mark all as read
                 </button>
@@ -206,36 +206,36 @@ function NotificationBell() {
 
           <div className="overflow-y-auto max-h-80">
             {loading ? (
-              <div className="p-4 text-center text-gray-500">Loading...</div>
+              <div className="p-4 text-center text-slate-400">Loading...</div>
             ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
+              <div className="p-4 text-center text-slate-400">
                 No notifications yet
               </div>
             ) : (
               notifications.map((notification) => (
                 <div
                   key={notification._id}
-                  className={`px-4 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                    !notification.isSeen ? "bg-blue-50" : ""
+                  className={`px-4 py-3 border-b border-slate-700 hover:bg-slate-800/60 transition-colors ${
+                    !notification.isSeen ? "bg-slate-800/40" : ""
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <div
                       className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
-                        !notification.isSeen ? "bg-blue-600" : "bg-transparent"
+                        !notification.isSeen ? "bg-indigo-500" : "bg-transparent"
                       }`}
                     />
                     <div 
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => handleNotificationClick(notification)}
                     >
-                      <p className="font-semibold text-gray-900 text-sm">
+                      <p className="font-semibold text-white text-sm">
                         {notification.title}
                       </p>
-                      <p className="text-gray-600 text-sm mt-1">
+                      <p className="text-slate-300 text-sm mt-1">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         {new Date(notification.createdAt).toLocaleDateString(
                           "en-US",
                           {
@@ -249,7 +249,7 @@ function NotificationBell() {
                     </div>
                     <button
                       onClick={(e) => handleDeleteNotification(notification._id, e)}
-                      className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors p-1"
+                      className="flex-shrink-0 text-slate-400 hover:text-red-400 transition-colors p-1"
                       title="Delete notification"
                     >
                       <FaTimes className="w-4 h-4" />

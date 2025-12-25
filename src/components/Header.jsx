@@ -1,632 +1,157 @@
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaBars, FaTimes, FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle } from "react-icons/fa";
 import NotificationBell from "./NotificationBell";
-import { adminAPI, eventAPI } from "../utils/api";
-import logo from "../assets/logo2.png";
 
 const Header = () => {
-  const { user, login, signup, logout, loading } = useAuth();
+  const { user, studentData, login, signup, logout, loading } = useAuth();
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [showStudentsCornerMenu, setShowStudentsCornerMenu] = useState(false);
-  const [showAdminsCornerMenu, setShowAdminsCornerMenu] = useState(false);
   const [showLoginMenu, setShowLoginMenu] = useState(false);
-  const [hasPendingItems, setHasPendingItems] = useState(false);
-  const [hasNewEvents, setHasNewEvents] = useState(false);
   const accountMenuRef = useRef(null);
-  const studentsCornerMenuRef = useRef(null);
-  const adminsCornerMenuRef = useRef(null);
   const loginMenuRef = useRef(null);
-  
-  const { isAdmin } = useAuth();
-  const location = useLocation();
 
   const handleLogout = async () => {
     await logout();
     navigate("/");
   };
 
-  const handleAdminsCornerClick = () => {
-    // Always show dropdown, similar to Students Corner
-    setShowAdminsCornerMenu(!showAdminsCornerMenu);
-  };
-
-  // Check for pending items (submissions or companies) when admin is logged in
-  useEffect(() => {
-    if (!isAdmin || !user) {
-      setHasPendingItems(false);
-      return;
-    }
-
-    const checkPendingItems = async () => {
-      try {
-        const stats = await adminAPI.getStats();
-        const hasPending = (stats.data?.pendingSubmissions > 0) || (stats.data?.pendingCompanies > 0);
-        setHasPendingItems(hasPending);
-      } catch (error) {
-        console.error("Error checking pending items:", error);
-        // Don't show indicator on error
-        setHasPendingItems(false);
-      }
-    };
-
-    // Check immediately
-    checkPendingItems();
-
-    // Poll every 10 seconds for pending items
-    const interval = setInterval(checkPendingItems, 10000);
-
-    return () => clearInterval(interval);
-  }, [isAdmin, user]);
-
-  // Check for new events when user is logged in
-  useEffect(() => {
-    if (!user) {
-      setHasNewEvents(false);
-      return;
-    }
-
-    const checkNewEvents = async () => {
-      try {
-        const response = await eventAPI.getAllEvents();
-        const events = response.data || [];
-        
-        if (events.length === 0) {
-          setHasNewEvents(false);
-          return;
-        }
-
-        // Get the latest event's createdAt timestamp
-        const latestEvent = events.reduce((latest, event) => {
-          const eventDate = new Date(event.createdAt || event.updatedAt);
-          const latestDate = new Date(latest.createdAt || latest.updatedAt);
-          return eventDate > latestDate ? event : latest;
-        }, events[0]);
-
-        const latestEventTimestamp = new Date(latestEvent.createdAt || latestEvent.updatedAt).getTime();
-        
-        // Get the last seen timestamp from sessionStorage (user-specific)
-        const storageKey = user && user.userId ? `lastSeenEventTimestamp_${user.userId}` : 'lastSeenEventTimestamp';
-        const lastSeenTimestamp = sessionStorage.getItem(storageKey);
-        
-        if (!lastSeenTimestamp) {
-          // First time checking - don't show indicator, but store the timestamp
-          sessionStorage.setItem(storageKey, String(latestEventTimestamp));
-          setHasNewEvents(false);
-        } else {
-          // Check if there are events newer than the last seen timestamp
-          const hasNew = latestEventTimestamp > parseInt(lastSeenTimestamp);
-          setHasNewEvents(hasNew);
-        }
-      } catch (error) {
-        console.error("Error checking new events:", error);
-        setHasNewEvents(false);
-      }
-    };
-
-    // Check immediately
-    checkNewEvents();
-
-    // Poll every 15 seconds for new events
-    const interval = setInterval(checkNewEvents, 15000);
-
-    return () => clearInterval(interval);
-  }, [user]);
-
-  // Mark events as seen when user visits the events page
-  useEffect(() => {
-    if (location.pathname === '/events' && user) {
-      const checkAndMarkAsSeen = async () => {
-        try {
-          const response = await eventAPI.getAllEvents();
-          const events = response.data || [];
-          
-          if (events.length > 0) {
-            // Get the latest event's createdAt timestamp
-            const latestEvent = events.reduce((latest, event) => {
-              const eventDate = new Date(event.createdAt || event.updatedAt);
-              const latestDate = new Date(latest.createdAt || latest.updatedAt);
-              return eventDate > latestDate ? event : latest;
-            }, events[0]);
-
-            const latestEventTimestamp = new Date(latestEvent.createdAt || latestEvent.updatedAt).getTime();
-            
-            // Store the latest event timestamp as the last seen timestamp
-            const storageKey = user && user.userId ? `lastSeenEventTimestamp_${user.userId}` : 'lastSeenEventTimestamp';
-            sessionStorage.setItem(storageKey, String(latestEventTimestamp));
-            setHasNewEvents(false);
-          }
-        } catch (error) {
-          console.error("Error marking events as seen:", error);
-        }
-      };
-
-      // Small delay to ensure events page has loaded
-      const timeout = setTimeout(checkAndMarkAsSeen, 500);
-      return () => clearTimeout(timeout);
-    }
-  }, [location.pathname, user]);
-
-  // Close account menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Don't close if mobile menu is open (mobile menu handles its own state)
-      if (isOpen) {
-        return;
-      }
-      
-      // Don't close if clicking on a link (let navigation happen first)
-      if (event.target.closest('a')) {
-        return;
-      }
-      
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
         setShowAccountMenu(false);
-      }
-      if (studentsCornerMenuRef.current && !studentsCornerMenuRef.current.contains(event.target)) {
-        setShowStudentsCornerMenu(false);
       }
       if (loginMenuRef.current && !loginMenuRef.current.contains(event.target)) {
         setShowLoginMenu(false);
       }
-      if (adminsCornerMenuRef.current && !adminsCornerMenuRef.current.contains(event.target)) {
-        setShowAdminsCornerMenu(false);
-      }
     };
 
-    // Use both mousedown and touchstart for better mobile support
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [isOpen]);
+  }, []);
 
   return (
-    <header className="shadow-lg fixed top-0 left-0 right-0 z-50" style={{ backgroundColor: '#6C9FCC' }}>
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link to="/" className="flex items-center">
-              <img 
-                src={logo} 
-                alt="CompanyTracker Logo" 
-                className="max-h-14 max-w-32 w-auto h-auto object-contain hover:opacity-80 transition-opacity duration-200"  
-              />
-            </Link>
-          </div>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              <Link to="/" className="nav-link flex items-center text-gray-300 hover:text-white">
-                <FaHome className="w-4 h-4 mr-1.5" />
-                Home
-              </Link>
-              <Link to="/events" className="nav-link flex items-center text-gray-300 hover:text-white relative">
-                <FaCalendarAlt className="w-4 h-4 mr-1.5" />
-                Events
-                {hasNewEvents && (
-                  <FaExclamationCircle className="w-4 h-4 ml-1 text-red-500 animate-pulse" title="New events posted" />
-                )}
-              </Link>
-              <div className="relative" ref={studentsCornerMenuRef}>
-                <button
-                  onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
-                  className="nav-link flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaGraduationCap className="w-4 h-4 mr-1.5" />
-                  Students Corner
-                  <svg className="w-4 h-4 ml-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {showStudentsCornerMenu && (
-                  <div className="absolute left-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <Link
-                        to="/companystats"
-                        onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      >
-                        <FaChartBar className="w-4 h-4 mr-2" />
-                        Company Stats
-                      </Link>
-                      <Link
-                        to="/resources"
-                        onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      >
-                        <FaBook className="w-4 h-4 mr-2" />
-                        Resources
-                      </Link>
-                      <Link
-                        to="/leetcode"
-                        onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      >
-                        <FaCode className="w-4 h-4 mr-2" />
-                        Leetcode
-                      </Link>
-                      <Link
-                        to="/feedback"
-                        onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      >
-                        <FaComments className="w-4 h-4 mr-2" />
-                        Feedback
-                      </Link>
-                      <Link
-                        to="/internshipExperience"
-                        onClick={() => setShowStudentsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      >
-                        <FaBriefcase className="w-4 h-4 mr-2" />
-                        Experiences
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="relative" ref={adminsCornerMenuRef}>
-                <button
-                  onClick={handleAdminsCornerClick}
-                  className="nav-link flex items-center text-gray-300 hover:text-white relative"
-                >
-                  <FaUserShield className="w-4 h-4 mr-1.5" />
-                  Admins Corner
-                  {hasPendingItems && (
-                    <FaExclamationCircle className="w-4 h-4 ml-1 text-red-500 animate-pulse" title="Pending items require action" />
-                  )}
-                  <svg className="w-4 h-4 ml-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {showAdminsCornerMenu && (
-                  <div className="absolute left-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <Link
-                        to="/admin/dashboard"
-                        onClick={() => setShowAdminsCornerMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                      >
-                        <FaTachometerAlt className="w-4 h-4 mr-2" />
-                        Dashboard
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <Link to="/contact" className="nav-link flex items-center text-gray-300 hover:text-white">
-                <FaEnvelope className="w-4 h-4 mr-1.5" />
-                Contact
-              </Link>
-              {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
-              {/* <Link to="/premium" className="nav-link">
-                {user ? 'Premium' : 'Get Premium'}
-              </Link> */}
+    <header className="fixed top-0 right-0 z-50 p-4">
+      <div className="flex items-center space-x-4">
+        {/* Notification Bell - only show when user is logged in */}
+        {user && <NotificationBell />}
+        
+        {loading ? (
+          <div className="text-sm text-slate-300">Loading...</div>
+        ) : user ? (
+          <div className="flex items-center space-x-4 relative" ref={accountMenuRef}>
+            <div 
+              className="cursor-pointer rounded-full hover:ring-2 hover:ring-gray-300 transition-all"
+              onClick={() => setShowAccountMenu(!showAccountMenu)}
+              title="Account Menu"
+            >
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.username}
+                  className="w-10 h-10 rounded-full border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gray-400 border-2 border-gray-200 flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">
+                    {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Mobile Hamburger */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-300 hover:text-white focus:outline-none"
-            >
-              {isOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
-            </button>
-          </div>
-
-          {/* User Profile/Login */}
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Notification Bell - only show when user is logged in */}
-            {user && <NotificationBell />}
             
-            {loading ? (
-              <div className="text-sm text-gray-300">Loading...</div>
-            ) : user ? (
-              <div className="flex items-center space-x-4 relative" ref={accountMenuRef}>
-                <div 
-                  className="flex items-center space-x-2 cursor-pointer px-2 py-1 rounded-md hover:opacity-80"
-                  style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-                  onClick={() => setShowAccountMenu(!showAccountMenu)}
-                >
-                  {user.picture && (
-                    <img
-                      src={user.picture}
-                      alt={user.username}
-                      className="w-8 h-8 rounded-full"
-                    />
+            {showAccountMenu && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50">
+                <div className="py-1">
+                  <div 
+                    className="px-4 py-2 text-sm text-slate-400 border-b border-slate-700 break-words cursor-pointer hover:text-indigo-400 hover:bg-slate-700 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (studentData) {
+                        setShowAccountMenu(false);
+                        navigate('/profile');
+                      }
+                    }}
+                  >
+                    {user.email}
+                  </div>
+                  {studentData && (
+                    <button
+                      onClick={() => {
+                        setShowAccountMenu(false);
+                        navigate('/profile');
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                    >
+                      View Profile
+                    </button>
                   )}
-                  <span className="text-sm text-gray-300">{user.username}</span>
-                  <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <button
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      signup();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                  >
+                    Switch Account
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      handleLogout();
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700 transition-colors"
+                  >
+                    Logout
+                  </button>
                 </div>
-                
-                {showAccountMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <div className="px-4 py-2 text-sm text-gray-500 border-b break-words">
-                        {user.email}
-                      </div>
-                      <button
-                        onClick={() => {
-                          setShowAccountMenu(false);
-                          signup();
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Switch Account
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowAccountMenu(false);
-                          handleLogout();
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="relative" ref={loginMenuRef}>
-                <button
-                  onClick={() => setShowLoginMenu(!showLoginMenu)}
-                  className="bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600 flex items-center"
-                >
-                  Login
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                
-                {showLoginMenu && (
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setShowLoginMenu(false);
-                          login(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Login as Student
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowLoginMenu(false);
-                          login(true);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Login as Admin
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
-        </div>
-      </nav>
-
-      {/* Mobile Dropdown Menu */}
-      {isOpen && (
-        <div className="md:hidden shadow-lg px-4 pb-4 space-y-2" style={{ backgroundColor: '#6C9FCC' }}>
-          <Link to="/" className="block nav-link flex items-center text-gray-300 hover:text-white">
-            <FaHome className="w-4 h-4 mr-2" />
-            Home
-          </Link>
-          <Link to="/events" className="block nav-link flex items-center text-gray-300 hover:text-white relative">
-            <FaCalendarAlt className="w-4 h-4 mr-2" />
-            Events
-            {hasNewEvents && (
-              <FaExclamationCircle className="w-4 h-4 ml-2 text-red-500 animate-pulse" title="New events posted" />
-            )}
-          </Link>
-          <div className="space-y-1">
+        ) : (
+          <div className="relative" ref={loginMenuRef}>
             <button
-              onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
-              className="w-full text-left nav-link flex items-center justify-between text-gray-300 hover:text-white"
+              onClick={() => setShowLoginMenu(!showLoginMenu)}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 flex items-center shadow-md"
             >
-              <div className="flex items-center">
-                <FaGraduationCap className="w-4 h-4 mr-2" />
-                Students Corner
-              </div>
-              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showStudentsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+              Login
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {showStudentsCornerMenu && (
-              <div className="pl-4 space-y-1" onClick={(e) => e.stopPropagation()}>
-                <Link 
-                  to="/companystats" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowStudentsCornerMenu(false);
-                    setIsOpen(false);
-                  }} 
-                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaChartBar className="w-4 h-4 mr-2" />
-                  Company Stats
-                </Link>
-                <Link 
-                  to="/resources" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowStudentsCornerMenu(false);
-                    setIsOpen(false);
-                  }} 
-                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaBook className="w-4 h-4 mr-2" />
-                  Resources
-                </Link>
-                <Link 
-                  to="/leetcode" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowStudentsCornerMenu(false);
-                    setIsOpen(false);
-                  }} 
-                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaCode className="w-4 h-4 mr-2" />
-                  Leetcode
-                </Link>
-                <Link 
-                  to="/feedback" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowStudentsCornerMenu(false);
-                    setIsOpen(false);
-                  }} 
-                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaComments className="w-4 h-4 mr-2" />
-                  Feedback
-                </Link>
-                <Link 
-                  to="/internshipExperience" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowStudentsCornerMenu(false);
-                    setIsOpen(false);
-                  }} 
-                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaBriefcase className="w-4 h-4 mr-2" />
-                  Experiences
-                </Link>
-              </div>
-            )}
-          </div>
-          <div className="space-y-1">
-            <button
-              onClick={() => setShowAdminsCornerMenu(!showAdminsCornerMenu)}
-              className="w-full text-left nav-link flex items-center justify-between text-gray-300 hover:text-white relative"
-            >
-              <div className="flex items-center">
-                <FaUserShield className="w-4 h-4 mr-2" />
-                Admins Corner
-                {hasPendingItems && (
-                  <FaExclamationCircle className="w-4 h-4 ml-2 text-red-500 animate-pulse" title="Pending items require action" />
-                )}
-              </div>
-              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAdminsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
-              </svg>
-            </button>
-            {showAdminsCornerMenu && (
-              <div className="pl-4 space-y-1" onClick={(e) => e.stopPropagation()}>
-                <Link 
-                  to="/admin/dashboard" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowAdminsCornerMenu(false);
-                    setIsOpen(false);
-                  }} 
-                  className="block nav-link text-sm flex items-center text-gray-300 hover:text-white"
-                >
-                  <FaTachometerAlt className="w-4 h-4 mr-2" />
-                  Dashboard
-                </Link>
-              </div>
-            )}
-          </div>
-          <Link to="/contact" className="block nav-link flex items-center text-gray-300 hover:text-white">
-            <FaEnvelope className="w-4 h-4 mr-2" />
-            Contact
-          </Link>
-          {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
-          {/* <Link to="/premium" className="block nav-link">
-            {user ? 'Premium' : 'Get Premium'}
-          </Link> */}
-
-          <div className="mt-4">
-            {/* Notification Bell for mobile */}
-            {user && (
-              <div className="mb-4">
-                <NotificationBell />
-              </div>
-            )}
             
-            {loading ? (
-              <div className="text-sm text-gray-300">Loading...</div>
-            ) : user ? (
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-center space-x-2">
-                  {user.picture && (
-                    <img
-                      src={user.picture}
-                      alt={user.username}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  )}
-                  <div className="flex flex-col">
-                    <span className="text-sm text-gray-300">{user.username}</span>
-                    <span className="text-xs text-gray-400">{user.email}</span>
-                  </div>
+            {showLoginMenu && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowLoginMenu(false);
+                      login(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+                  >
+                    Login as Student
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLoginMenu(false);
+                      login(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+                  >
+                    Login as Admin
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    signup();
-                  }}
-                  className="w-full bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
-                >
-                  Switch Account
-                </button>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    handleLogout();
-                  }}
-                  className="w-full bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    login(false);
-                  }}
-                  className="w-full bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
-                >
-                  Login as Student
-                </button>
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    login(true);
-                  }}
-                  className="w-full bg-indigo-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-600"
-                >
-                  Login as Admin
-                </button>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </header>
   );
 };

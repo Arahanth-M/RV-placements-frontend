@@ -70,4 +70,13 @@ export const notificationAPI = {
   clearAllNotifications: () => API.delete('/api/notifications'),
 };
 
+export const studentAPI = {
+  getStudentByUSN: (usn) => API.get(`/api/students/student-data/${usn}`),
+  getStudentByName: (username) => API.get(`/api/students/student-data-by-name/${encodeURIComponent(username)}`),
+};
+
+export const placementAPI = {
+  submitPlacementData: (companyId, data) => API.post(`/api/placement/${companyId}/placement-data`, data),
+};
+
 export default API;

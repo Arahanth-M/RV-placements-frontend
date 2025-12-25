@@ -119,16 +119,19 @@ function CompanyCard({ company, onUpdate }) {
           handleCardClick();
         }
       }}
-      className="bg-white border border-gray-200 rounded-2xl shadow-md p-6 cursor-pointer 
-                 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-in-out
-                 hover:border-indigo-400"
+      className="rounded-2xl shadow-md p-6 cursor-pointer 
+                 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-in-out"
+      style={{
+        backgroundColor: '#1a1a1a',
+        border: '2px solid #126FA6'
+      }}
       data-testid="company-card"
     >
       {/* Company Logo/Header Section */}
       <div className="flex items-center gap-3 mb-4">
         {/* Company Logo */}
         <div 
-          className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg shadow-md border-2 border-gray-200 flex-shrink-0 bg-white flex items-center justify-center overflow-hidden"
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg shadow-md border-2 border-slate-700 flex-shrink-0 bg-slate-800 flex items-center justify-center overflow-hidden"
           data-testid="company-logo"
         >
           {company.logo && company.logo.trim() !== '' ? (
@@ -151,44 +154,44 @@ function CompanyCard({ company, onUpdate }) {
         </div>
         {/* Company Name and Type */}
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-tight truncate">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight truncate">
             {company.name}
           </h2>
-          <p className="text-sm text-gray-500 italic truncate">{company.type}</p>
+          <p className="text-sm text-slate-400 italic truncate">{company.type}</p>
         </div>
       </div>
 
       <div className="mb-3">
-        <span className="font-semibold text-gray-700">Date of interview: </span>
-        <span className="text-gray-600">{company.date_of_visit}</span>
+        <span className="font-semibold text-slate-300">Date of interview: </span>
+        <span className="text-slate-400">{company.date_of_visit}</span>
       </div>
 
       <div className="mb-3">
-        <span className="font-semibold text-gray-700">Business Model: </span>
-        <span className="text-gray-600">{company.business_model}</span>
+        <span className="font-semibold text-slate-300">Business Model: </span>
+        <span className="text-slate-400">{company.business_model}</span>
       </div>
 
       <div className="mb-3">
-        <span className="font-semibold text-gray-700">Eligibility: </span>
-        <span className="text-gray-600">{company.eligibility}</span>
+        <span className="font-semibold text-slate-300">Eligibility: </span>
+        <span className="text-slate-400">{company.eligibility}</span>
       </div>
 
       {/* Helpful Count Section */}
-      <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between">
-        <span className="text-sm text-gray-600">Was this helpful?</span>
+      <div className="mt-4 pt-3 border-t border-slate-700 flex items-center justify-between">
+        <span className="text-sm text-slate-300">Was this helpful?</span>
         <button
           onClick={handleThumbsUp}
           disabled={isUpdating || hasUpvoted || isCheckingStatus}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold ${
             hasUpvoted
-              ? "bg-green-100 text-green-700 cursor-not-allowed"
+              ? "bg-green-600 text-white cursor-not-allowed"
               : isUpdating || isCheckingStatus
-              ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-              : "bg-blue-50 hover:bg-blue-100 text-blue-700"
+              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700 text-white"
           }`}
           title={hasUpvoted ? "You have already upvoted this company" : "Mark as helpful"}
         >
-          <FaThumbsUp className={`w-4 h-4 ${hasUpvoted ? "text-green-600" : ""}`} />
+          <FaThumbsUp className={`w-4 h-4 ${hasUpvoted ? "text-white" : "text-white"}`} />
           <span>{helpfulCount}</span>
         </button>
       </div>

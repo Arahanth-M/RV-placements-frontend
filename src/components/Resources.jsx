@@ -9,14 +9,14 @@ const Resources = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-blue-900 mb-3 sm:mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4">
             Study Resources
           </h1>
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-700 max-w-3xl mx-auto px-2">
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl text-slate-400 max-w-3xl mx-auto px-2">
             Curated collection of resources to help you ace your technical interviews and excel in your career
           </p>
         </div>
@@ -26,13 +26,13 @@ const Resources = () => {
           {resourceCategories.map((category, index) => (
             <div
               key={category.id}
-              className="bg-blue-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-blue-700"
+              className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
             >
               {/* Category Header */}
-              <div className="bg-blue-700 text-white p-4 sm:p-6">
+              <div className="bg-slate-800/60 border-b border-slate-700 text-white p-4 sm:p-6">
                 <div className="flex items-center space-x-2 sm:space-x-4">
                   <div className="text-2xl sm:text-3xl">{getIcon(category.icon)}</div>
-                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-white">{category.title}</h2>
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-indigo-400">{category.title}</h2>
                 </div>
               </div>
 
@@ -57,7 +57,7 @@ const Resources = () => {
                           href={resource.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm sm:text-base text-gray-300 hover:text-white transition-colors break-words"
+                          className="text-sm sm:text-base text-slate-300 hover:text-indigo-400 transition-colors break-words"
                         >
                           {resource.name}
                         </a>
@@ -71,11 +71,11 @@ const Resources = () => {
         </div>
 
         {/* Disclaimer */}
-        <div className="mt-8 sm:mt-12 bg-blue-800 border border-blue-700 rounded-lg p-4 sm:p-6 max-w-4xl mx-auto">
-          <h3 className="text-base sm:text-lg font-semibold text-white mb-2">
+        <div className="mt-8 sm:mt-12 bg-slate-900/70 backdrop-blur border border-slate-800 rounded-lg p-4 sm:p-6 max-w-4xl mx-auto">
+          <h3 className="text-base sm:text-lg font-semibold text-indigo-400 mb-2">
             📝 Affiliate Link Disclaimer
           </h3>
-          <p className="text-gray-300 text-xs sm:text-sm">
+          <p className="text-slate-300 text-xs sm:text-sm">
             Some links in this section are affiliate links. When you purchase through these links, 
             we may earn a small commission at no extra cost to you. This helps us maintain and improve 
             the platform. All resources are selected based on their educational value and quality.
@@ -84,14 +84,14 @@ const Resources = () => {
 
         {/* Call to Action */}
         <div className="mt-8 sm:mt-12 text-center">
-          <div className="bg-blue-800 border border-blue-700 rounded-xl p-6 sm:p-8 text-white">
+          <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6 sm:p-8">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-semibold text-white mb-3 sm:mb-4">Ready to Start Learning?</h2>
-            <p className="text-sm sm:text-base md:text-lg mb-4 sm:mb-6 text-gray-300">
+            <p className="text-sm sm:text-base md:text-lg mb-4 sm:mb-6 text-slate-400">
               Begin your journey with these carefully curated resources and boost your placement preparation
             </p>
             <a
               href="/companystats"
-              className="inline-block bg-white text-blue-900 px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-sm sm:text-base"
+              className="inline-block bg-indigo-600 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors text-sm sm:text-base"
             >
               Explore Company Stats
             </a>

@@ -13,12 +13,12 @@ function Developers() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Our Developers</h1>
-          <p className="text-sm sm:text-base md:text-lg text-gray-600">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">Our Developers</h1>
+          <p className="text-sm sm:text-base md:text-lg text-slate-400">
             Meet the team behind the platform
           </p>
         </div>
@@ -26,23 +26,23 @@ function Developers() {
         {/* Developers Grid */}
         {developers.length === 0 ? (
           <div className="text-center py-8 sm:py-12">
-            <FaUser className="mx-auto text-gray-400 text-4xl sm:text-6xl mb-4" />
-            <p className="text-gray-600 text-base sm:text-lg">No developers added yet.</p>
-            <p className="text-gray-500 mt-2 text-sm sm:text-base">Check back soon!</p>
+            <FaUser className="mx-auto text-slate-600 text-4xl sm:text-6xl mb-4" />
+            <p className="text-slate-300 text-base sm:text-lg">No developers added yet.</p>
+            <p className="text-slate-400 mt-2 text-sm sm:text-base">Check back soon!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {developers.map((developer, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow text-center"
+                className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow text-center"
               >
                 {/* Photo */}
                 <div className="mb-3 sm:mb-4">
                   <img
                     src={developer.photo}
                     alt={developer.name}
-                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto object-cover border-4 border-indigo-100"
+                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto object-cover border-4 border-slate-700"
                     onError={(e) => {
                       e.target.src = "https://via.placeholder.com/200x200?text=Photo";
                     }}
@@ -50,7 +50,7 @@ function Developers() {
                 </div>
 
                 {/* Name */}
-                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
                   {developer.name}
                 </h3>
 

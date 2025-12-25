@@ -1,187 +1,51 @@
-// import React, { useState } from "react";
-
-// function GeneralTab({ company = {} }) {
-//   const [aboutOpen, setAboutOpen] = useState(false);
-
-//   const formatAboutCompany = (text) => {
-//     if (!text) return null;
-//     return text.split("\n").map((line, idx) => {
-//       const trimmed = line.trim();
-//       if (!trimmed) return null;
-
-//       if (/^[-•\d]/.test(trimmed)) {
-//         return (
-//           <p key={idx} className="mb-2 break-words">
-//             <span className="font-bold break-words">{trimmed}</span>
-//           </p>
-//         );
-//       }
-
-//       return (
-//         <p key={idx} className="mb-3 leading-relaxed break-words">
-//           {trimmed}
-//         </p>
-//       );
-//     });
-//   };
-
-//   return (
-//     <div className="space-y-6 px-4 sm:px-6 lg:px-0 max-w-screen-xl mx-auto">
-//       {/* About */}
-//       <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
-//         <button
-//           onClick={() => setAboutOpen(!aboutOpen)}
-//           className="w-full flex justify-between items-center text-xl font-bold text-blue-800"
-//         >
-//           About The Company
-//           <span className="ml-2 text-gray-600">{aboutOpen ? "▲" : "▼"}</span>
-//         </button>
-
-//         {aboutOpen && (
-//           <div className="mt-4 text-gray-700 leading-relaxed break-words">
-//             {formatAboutCompany(company["About The Company"])}
-//           </div>
-//         )}
-//       </div>
-
-//       {/* General Info */}
-//       <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
-//         <h2 className="text-xl font-bold text-blue-800 mb-4">
-//           General Information
-//         </h2>
-//         <p className="text-lg text-gray-700 mb-3 break-words">
-//           <b>Eligibility:</b> {company.eligibility ?? "Not provided"}
-//         </p>
-//         <p className="text-lg text-gray-700 mb-3 break-words">
-//           <b>Business Model:</b> {company.business_model ?? "Not provided"}
-//         </p>
-//       </div>
-
-//       {/* Roles */}
-//       <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
-//         <h2 className="text-xl font-bold text-blue-800 mb-4">Roles</h2>
-//         {(company.roles ?? []).map((role, index) => (
-//           <div
-//             key={index}
-//             className="border p-4 my-4 rounded-lg bg-gray-50 shadow-sm min-w-0"
-//           >
-//             <p className="text-lg font-semibold text-blue-700 mb-3 break-words">
-//               {role.roleName}
-//             </p>
-
-//             {role.ctc && (
-//               <div className="mb-4">
-//                 <p className="font-bold text-gray-800 mb-2">CTC Split-up:</p>
-//                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-//                   {Object.entries(role.ctc).map(([key, value]) => (
-//                     <div
-//                       key={key}
-//                       className="flex justify-between bg-white px-3 py-2 border rounded min-w-0"
-//                     >
-//                       <span className="capitalize font-medium break-words">
-//                         {key}
-//                       </span>
-//                       <span className="text-gray-700 break-words">{value}</span>
-//                     </div>
-//                   ))}
-//                 </div>
-//               </div>
-//             )}
-
-// <p className="text-gray-700 mb-2 break-words">
-//   <b>Stipend:</b> {role.internshipStipend ?? 0}
-// </p>
-
-//             {role.finalPayFirstYear && (
-//               <p className="text-gray-700 mb-2 break-words">
-//                 <b>First Year Pay:</b> {role.finalPayFirstYear}
-//               </p>
-//             )}
-//             {role.finalPayAnnual && (
-//               <p className="text-gray-700 break-words">
-//                 <b>Annual Pay:</b> {role.finalPayAnnual}
-//               </p>
-//             )}
-//           </div>
-//         ))}
-//       </div>
-
-     
-//     </div>
-//   );
-// }
-
-// export default GeneralTab;
-
-
 
 
 import React, { useState } from "react";
 
 function GeneralTab({ company = {} }) {
-  const [aboutOpen, setAboutOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(true);
 
-  // Format CTC value - handles both string and number types
   const formatCTCValue = (value) => {
-    if (value === null || value === undefined) {
-      return 'N/A';
-    }
-    
-    // If it's already a string, return it as is
-    if (typeof value === 'string') {
-      return value;
-    }
-    
-    // If it's a number, format it with commas
-    if (typeof value === 'number') {
-      return value.toLocaleString('en-IN');
-    }
-    
-    // For any other type, convert to string
-    return String(value);
+    if (value === null || value === undefined) return "N/A";
+    if (typeof value === "number") return `₹ ${value.toLocaleString("en-IN")}`;
+    return value;
   };
 
-  // --- UPDATED FORMATTER ---
   const formatAboutCompany = (text) => {
     if (!text) return null;
 
-    // Replace escaped newlines (\n) with real line breaks
     const normalized = text.replace(/\\n/g, "\n");
 
-    // Split text by multiple newlines
     return normalized.split(/\n+/).map((line, idx) => {
       const trimmed = line.trim();
       if (!trimmed) return null;
 
-      // Section titles like "1. Company Culture & Values:" or "Skills and Experience Valued by the Company:"
       if (/^\d+\.\s+.+?:$/.test(trimmed) || /^[A-Za-z].+?:$/.test(trimmed)) {
         return (
-          <p
+          <h3
             key={idx}
-            className="mt-4 mb-2 font-bold text-blue-800 text-lg break-words"
+            className="mt-4 text-indigo-400 font-semibold text-lg"
           >
             {trimmed}
-          </p>
+          </h3>
         );
       }
 
-      // Bullet points like "-" or "•"
       if (/^[-•]/.test(trimmed)) {
         return (
           <p
             key={idx}
-            className="ml-4 mb-2 text-gray-700 leading-relaxed break-words"
+            className="ml-4 text-slate-300 leading-relaxed"
           >
             {trimmed}
           </p>
         );
       }
 
-      // Normal paragraphs
       return (
         <p
           key={idx}
-          className="mb-2 text-gray-700 leading-relaxed break-words"
+          className="text-slate-300 leading-relaxed"
         >
           {trimmed}
         </p>
@@ -190,74 +54,97 @@ function GeneralTab({ company = {} }) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-2 sm:px-4 md:px-6 lg:px-0 max-w-screen-xl mx-auto">
-      {/* About The Company */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border overflow-hidden">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+      
+      {/* ABOUT COMPANY */}
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <button
           onClick={() => setAboutOpen(!aboutOpen)}
-          className="w-full flex justify-between items-center text-base sm:text-lg md:text-xl font-bold text-blue-800"
+          className="w-full flex justify-between items-center"
         >
-          <span className="text-left">About The Company</span>
-          <span className="ml-2 text-gray-600 flex-shrink-0">{aboutOpen ? "▲" : "▼"}</span>
+          <h2 className="text-xl font-semibold text-indigo-400">
+            About the Company
+          </h2>
+          <span className="text-slate-400">
+            {aboutOpen ? "−" : "+"}
+          </span>
         </button>
 
         {aboutOpen && (
-          <div className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-700 leading-relaxed break-words max-h-[400px] sm:max-h-[600px] overflow-y-auto">
+          <div className="mt-4 max-h-[500px] overflow-y-auto pr-2 space-y-2">
             {formatAboutCompany(company["About The Company"])}
           </div>
         )}
       </div>
 
-      {/* General Info */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border overflow-hidden">
-        <h2 className="text-lg sm:text-xl font-bold text-blue-800 mb-3 sm:mb-4">
+      {/* GENERAL INFO */}
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-indigo-400 mb-4">
           General Information
         </h2>
-        <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-2 sm:mb-3 break-words">
-          <b>Eligibility:</b> {company.eligibility ?? "Not provided"}
-        </p>
-        <p className="text-sm sm:text-base md:text-lg text-gray-700 mb-2 sm:mb-3 break-words">
-          <b>Business Model:</b> {company.business_model ?? "Not provided"}
-        </p>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="bg-slate-800/60 rounded-lg p-4">
+            <p className="text-slate-400 text-sm">Eligibility</p>
+            <p className="text-slate-200 mt-1">
+              {company.eligibility ?? "Not provided"}
+            </p>
+          </div>
+
+          <div className="bg-slate-800/60 rounded-lg p-4">
+            <p className="text-slate-400 text-sm">Business Model</p>
+            <p className="text-slate-200 mt-1">
+              {company.business_model ?? "Not provided"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Roles */}
-      <div className="bg-white shadow-md rounded-lg p-4 sm:p-6 border overflow-hidden">
-        <h2 className="text-lg sm:text-xl font-bold text-blue-800 mb-3 sm:mb-4">Roles</h2>
+      {/* ROLES */}
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <h2 className="text-xl font-semibold text-indigo-400 mb-4">
+          Roles Offered
+        </h2>
+
         {(company.roles ?? []).map((role, index) => (
           <div
             key={index}
-            className="border p-3 sm:p-4 my-3 sm:my-4 rounded-lg bg-gray-50 shadow-sm min-w-0"
+            className="mb-6 bg-gradient-to-br from-slate-800/70 to-slate-900 rounded-xl p-5 border border-slate-700"
           >
-            <p className="text-base sm:text-lg font-semibold text-blue-700 mb-2 sm:mb-3 break-words">
+            <h3 className="text-lg font-semibold text-white mb-4">
               {role.roleName}
-            </p>
+            </h3>
 
+            {/* CTC */}
             {role.ctc && (
-              <div className="mb-3 sm:mb-4">
-                <p className="font-bold text-gray-800 mb-2 text-sm sm:text-base">CTC Split-up:</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  {Object.entries(role.ctc).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex flex-col sm:flex-row sm:justify-between bg-white px-3 py-2 border rounded min-w-0 gap-1 sm:gap-0"
-                    >
-                      <span className="capitalize font-medium break-words text-xs sm:text-sm">
-                        {key}:
-                      </span>
-                      <span className="text-gray-700 break-words text-xs sm:text-sm sm:text-right">{formatCTCValue(value)}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                {Object.entries(role.ctc).map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="bg-slate-800 rounded-lg p-4"
+                  >
+                    <p className="text-slate-400 text-xs uppercase">
+                      {key.replace(/_/g, " ")}
+                    </p>
+                    <p className="text-slate-200 font-medium mt-1">
+                      {formatCTCValue(value)}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
 
-            <p className="text-sm sm:text-base text-gray-700 mb-2 break-words">
-              <b>Stipend:</b> {role.internshipStipend ?? 0}
-            </p>
+            {/* Stipend */}
+            <div className="bg-slate-800 rounded-lg p-4 w-fit">
+              <p className="text-slate-400 text-xs">Internship Stipend</p>
+              <p className="text-slate-200 font-medium mt-1">
+                ₹ {role.internshipStipend ?? 0}
+              </p>
+            </div>
           </div>
         ))}
       </div>
+
     </div>
   );
 }

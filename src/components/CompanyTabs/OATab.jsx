@@ -479,12 +479,12 @@ function OATab({ company }) {
     }) || [];
 
   return (
-    <div className="space-y-6 px-4 sm:px-6 lg:px-0 max-w-screen-xl mx-auto">
-      <div className="bg-white shadow-md rounded-lg p-6 border overflow-hidden">
-        <h2 className="text-2xl font-bold mb-4 text-blue-800 flex justify-between items-center">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
           Online Assessment Questions
           <button
-            className="flex items-center space-x-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
+            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
             onClick={() => setShowModal(true)}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -499,32 +499,32 @@ function OATab({ company }) {
             {parsedQuestions.map((q, index) => (
               <div
                 key={index}
-                className="border rounded-lg shadow-sm bg-gray-100 min-w-0 overflow-hidden"
+                className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
                 {/* Question Accordion */}
                 <button
                   onClick={() => toggleQuestionAccordion(index)}
-                  className="w-full text-left px-4 py-3 font-semibold text-gray-800 flex justify-between items-center min-w-0"
+                  className="w-full text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
                 >
                   <span className="truncate">Question {index + 1}</span>
-                  <span className="text-lg">
+                  <span className="text-lg text-slate-400">
                     {openQuestionIndex === index ? "−" : "+"}
                   </span>
                 </button>
 
                 {openQuestionIndex === index && (
-                  <div className="px-4 pb-4 text-gray-700 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
+                  <div className="px-4 pb-4 text-slate-300 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
                     <p>{q || `Question ${index + 1}`}</p>
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
-                      <div className="border rounded-lg bg-white shadow-sm overflow-hidden">
+                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
                         <button
                           onClick={() => toggleSolutionAccordion(index)}
-                          className="w-full text-left px-4 py-2 font-medium text-blue-700 flex justify-between items-center"
+                          className="w-full text-left px-4 py-2 font-medium text-indigo-400 flex justify-between items-center"
                         >
                           <span>View Solution</span>
-                          <span className="text-lg">
+                          <span className="text-lg text-slate-400">
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
@@ -533,7 +533,7 @@ function OATab({ company }) {
                             <div className="relative">
                               <button
                                 onClick={() => handleCopySolution(solutions[index], index)}
-                                className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
+                                className="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
                                 title="Copy solution"
                               >
                                 {copiedIndex === index ? (
@@ -548,7 +548,7 @@ function OATab({ company }) {
                                   </>
                                 )}
                               </button>
-                              <pre className="bg-gray-900 text-green-200 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              <pre className="bg-slate-900 text-green-300 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
                                 <code>{solutions[index]}</code>
                               </pre>
                             </div>
@@ -556,7 +556,7 @@ function OATab({ company }) {
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">
+                      <p className="text-sm text-slate-400 italic">
                         No solution submitted yet.
                       </p>
                     )}
@@ -566,40 +566,40 @@ function OATab({ company }) {
             ))}
           </div>
         ) : (
-          <p>No online assessment questions yet.</p>
+          <p className="text-slate-400">No online assessment questions yet.</p>
         )}
       </div>
 
       {/* Modal to add new question */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white p-4 rounded w-96">
-            <h3 className="text-lg font-bold mb-2">Add Online Assessment</h3>
+          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold mb-4 text-indigo-400">Add Online Assessment</h3>
             <form onSubmit={handleSubmit} className="space-y-3">
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="Enter question"
-                className="w-full p-2 border rounded"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 required
               />
               <textarea
                 value={solution}
                 onChange={(e) => setSolution(e.target.value)}
                 placeholder="Enter solution (optional)"
-                className="w-full p-2 border rounded"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="px-3 py-1 border rounded"
+                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
                   onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-blue-600 text-white rounded"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Submit
                 </button>

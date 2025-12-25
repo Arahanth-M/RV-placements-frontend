@@ -523,26 +523,26 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600">Manage and monitor platform activity</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
+          <p className="text-sm sm:text-base text-slate-400">Manage and monitor platform activity</p>
         </div>
 
         {/* Loading State */}
         {loading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
+            <p className="mt-4 text-slate-400">Loading dashboard...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8">
-            <p className="text-red-800">{error}</p>
+          <div className="bg-red-900/30 border border-red-700 rounded-lg p-6 mb-8">
+            <p className="text-red-300">{error}</p>
           </div>
         )}
 
@@ -550,70 +550,70 @@ const AdminDashboard = () => {
         {!loading && !error && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Users</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalUsers}</p>
+                    <p className="text-sm font-medium text-slate-400">Total Users</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stats.totalUsers}</p>
                   </div>
-                  <div className="bg-blue-100 rounded-full p-3">
-                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-indigo-600 rounded-full p-3">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Pending Submissions</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.pendingSubmissions || 0}</p>
+                    <p className="text-sm font-medium text-slate-400">Pending Submissions</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stats.pendingSubmissions || 0}</p>
                   </div>
-                  <div className="bg-yellow-100 rounded-full p-3">
-                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-yellow-600 rounded-full p-3">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Approved Submissions</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.approvedSubmissions || 0}</p>
+                    <p className="text-sm font-medium text-slate-400">Approved Submissions</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stats.approvedSubmissions || 0}</p>
                   </div>
-                  <div className="bg-green-100 rounded-full p-3">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-green-600 rounded-full p-3">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Approved Companies</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalCompanies}</p>
+                    <p className="text-sm font-medium text-slate-400">Approved Companies</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stats.totalCompanies}</p>
                   </div>
-                  <div className="bg-purple-100 rounded-full p-3">
-                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-purple-600 rounded-full p-3">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Pending Companies</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stats.pendingCompanies}</p>
+                    <p className="text-sm font-medium text-slate-400">Pending Companies</p>
+                    <p className="text-3xl font-bold text-white mt-2">{stats.pendingCompanies}</p>
                   </div>
-                  <div className="bg-yellow-100 rounded-full p-3">
-                    <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-yellow-600 rounded-full p-3">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
@@ -622,12 +622,12 @@ const AdminDashboard = () => {
             </div>
 
             {/* Submissions Table */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Submissions</h2>
-                    <p className="text-sm text-gray-600 mt-1">Manage user submissions across the platform</p>
+                    <h2 className="text-xl font-semibold text-indigo-400">Submissions</h2>
+                    <p className="text-sm text-slate-400 mt-1">Manage user submissions across the platform</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     {activeTab === 'pending' && submissions.length > 0 && (
@@ -636,20 +636,20 @@ const AdminDashboard = () => {
                         disabled={approvingAll}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           approvingAll
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                             : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
                       >
                         {approvingAll ? 'Approving All...' : `Approve All (${submissions.length})`}
                       </button>
                     )}
-                    <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
+                    <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
                       <button
                         onClick={() => setActiveTab('pending')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           activeTab === 'pending'
-                            ? 'bg-blue-900 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-slate-300 hover:bg-slate-700'
                         }`}
                       >
                         Pending ({stats.pendingSubmissions || 0})
@@ -658,8 +658,8 @@ const AdminDashboard = () => {
                         onClick={() => setActiveTab('approved')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           activeTab === 'approved'
-                            ? 'bg-blue-900 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-slate-300 hover:bg-slate-700'
                         }`}
                       >
                         Approved ({stats.approvedSubmissions || 0})
@@ -672,35 +672,35 @@ const AdminDashboard = () => {
               {activeTab === 'pending' ? (
                 submissions.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
-                    <p className="text-gray-600 text-sm sm:text-base">No pending submissions found.</p>
+                    <p className="text-slate-400 text-sm sm:text-base">No pending submissions found.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <div className="inline-block min-w-full align-middle">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-slate-700">
+                        <thead className="bg-slate-800/60">
                           <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                               Submitted By
                             </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                               Company
                             </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                               Type
                             </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden md:table-cell">
                               Content
                             </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden lg:table-cell">
                               Submitted At
                             </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                               Action
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-slate-800/40 divide-y divide-slate-700">
                           {submissions.map((submission) => {
                             const content = parseContent(submission.content);
                             return (
@@ -753,7 +753,7 @@ const AdminDashboard = () => {
                                       disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
                                       className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
                                         approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                           : 'bg-green-600 text-white hover:bg-green-700'
                                       }`}
                                     >
@@ -764,7 +764,7 @@ const AdminDashboard = () => {
                                       disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
                                       className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
                                         approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                           : 'bg-red-600 text-white hover:bg-red-700'
                                       }`}
                                     >
@@ -783,13 +783,13 @@ const AdminDashboard = () => {
               ) : (
                 approvedSubmissions.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
-                    <p className="text-gray-600 text-sm sm:text-base">No approved submissions found.</p>
+                    <p className="text-slate-400 text-sm sm:text-base">No approved submissions found.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <div className="inline-block min-w-full align-middle">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-slate-700">
+                        <thead className="bg-slate-800/60">
                           <tr>
                             <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Submitted By
@@ -817,57 +817,57 @@ const AdminDashboard = () => {
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-slate-800/40 divide-y divide-slate-700">
                           {approvedSubmissions.map((submission) => {
                             const content = parseContent(submission.content);
                             return (
                               <tr 
                                 key={submission._id} 
-                                className="hover:bg-gray-50 cursor-pointer"
+                                className="hover:bg-slate-700/50 cursor-pointer"
                                 onClick={() => handleViewFullSubmission(submission)}
                               >
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
-                                    <p className="text-xs sm:text-sm font-medium text-gray-900">
+                                    <p className="text-xs sm:text-sm font-medium text-slate-200">
                                       {submission.submittedBy.name}
                                       {submission.isAnonymous && (
-                                        <span className="ml-2 text-xs text-orange-600 font-normal">(Anonymous)</span>
+                                        <span className="ml-2 text-xs text-orange-400 font-normal">(Anonymous)</span>
                                       )}
                                     </p>
-                                    <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
+                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
                                   </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <p className="text-xs sm:text-sm text-gray-900">
+                                  <p className="text-xs sm:text-sm text-slate-200">
                                     {submission.companyId?.name || 'N/A'}
                                   </p>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-600 text-white capitalize">
                                     {submission.type}
                                   </span>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                                  <div className="text-xs sm:text-sm text-gray-900 max-w-md">
+                                  <div className="text-xs sm:text-sm text-slate-300 max-w-md">
                                     {content.question && (
                                       <p className="font-medium mb-1 truncate">Q: {content.question}</p>
                                     )}
                                     {content.solution && (
-                                      <p className="text-gray-600 truncate">A: {content.solution}</p>
+                                      <p className="text-slate-400 truncate">A: {content.solution}</p>
                                     )}
                                     {!content.question && !content.solution && (
-                                      <p className="text-gray-500 truncate">{submission.content}</p>
+                                      <p className="text-slate-400 truncate">{submission.content}</p>
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
                                   {formatDate(submission.submittedAt)}
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
                                   {submission.approvedAt ? formatDate(submission.approvedAt) : 'N/A'}
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-600 text-white">
                                     Approved
                                   </span>
                                 </td>
@@ -877,7 +877,7 @@ const AdminDashboard = () => {
                                     disabled={deletingIds.has(submission._id)}
                                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
                                       deletingIds.has(submission._id)
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                         : 'bg-red-600 text-white hover:bg-red-700'
                                     }`}
                                   >
@@ -896,12 +896,12 @@ const AdminDashboard = () => {
             </div>
 
             {/* Companies Management Section */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6 sm:mt-8">
-              <div className="px-6 py-4 border-b border-gray-200">
+            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden mt-6 sm:mt-8">
+              <div className="px-6 py-4 border-b border-slate-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Companies</h2>
-                    <p className="text-sm text-gray-600 mt-1">Manage company submissions and approvals</p>
+                    <h2 className="text-xl font-semibold text-indigo-400">Companies</h2>
+                    <p className="text-sm text-slate-400 mt-1">Manage company submissions and approvals</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     {companyTab === 'pending' && companies.length > 0 && (
@@ -910,20 +910,20 @@ const AdminDashboard = () => {
                         disabled={approvingAllCompanies}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           approvingAllCompanies
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                             : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
                       >
                         {approvingAllCompanies ? 'Approving All...' : `Approve All (${companies.length})`}
                       </button>
                     )}
-                    <div className="flex gap-2 border border-gray-200 rounded-lg p-1">
+                    <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
                       <button
                         onClick={() => setCompanyTab('pending')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           companyTab === 'pending'
-                            ? 'bg-blue-900 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-slate-300 hover:bg-slate-700'
                         }`}
                       >
                         Pending ({stats.pendingCompanies || 0})
@@ -932,8 +932,8 @@ const AdminDashboard = () => {
                         onClick={() => setCompanyTab('approved')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                           companyTab === 'approved'
-                            ? 'bg-blue-900 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white'
+                            : 'text-slate-300 hover:bg-slate-700'
                         }`}
                       >
                         Approved ({stats.totalCompanies || 0})
@@ -946,18 +946,18 @@ const AdminDashboard = () => {
               {companyTab === 'pending' ? (
                 companies.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
-                    <p className="text-gray-600 text-sm sm:text-base">No pending companies found.</p>
+                    <p className="text-slate-400 text-sm sm:text-base">No pending companies found.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <div className="inline-block min-w-full align-middle">
                       <div className="p-4 sm:p-6 space-y-4">
                         {companies.map((company) => (
-                          <div key={company._id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:bg-gray-50">
+                          <div key={company._id} className="border border-slate-700 rounded-lg p-4 sm:p-6 bg-slate-800/60 hover:bg-slate-800">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                               <div className="flex-1">
-                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{company.name}</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                                <h3 className="text-lg sm:text-xl font-bold text-slate-200 mb-2">{company.name}</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-400">
                                   <p><span className="font-medium">Type:</span> {company.type || 'N/A'}</p>
                                   <p><span className="font-medium">Count:</span> {company.count || 'N/A'}</p>
                                   {company.submittedBy && (
@@ -974,7 +974,7 @@ const AdminDashboard = () => {
                                   disabled={approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)}
                                   className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
                                     approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)
-                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-green-600 text-white hover:bg-green-700'
                                   }`}
                                 >
@@ -985,7 +985,7 @@ const AdminDashboard = () => {
                                   disabled={approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)}
                                   className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
                                     approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)
-                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-red-600 text-white hover:bg-red-700'
                                   }`}
                                 >
@@ -998,40 +998,40 @@ const AdminDashboard = () => {
                             <div className="mt-4 space-y-3 text-sm">
                               {company.interviewExperience && company.interviewExperience.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-gray-700 mb-1">Interview Experience:</p>
-                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                  <p className="font-medium text-slate-300 mb-1">Interview Experience:</p>
+                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
                                     {company.interviewExperience.map((exp, idx) => (
-                                      <p key={idx} className="text-gray-600 mb-1">{exp}</p>
+                                      <p key={idx} className="text-slate-400 mb-1">{exp}</p>
                                     ))}
                                   </div>
                                 </div>
                               )}
                               {company.interviewQuestions && company.interviewQuestions.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-gray-700 mb-1">Interview Questions:</p>
-                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                  <p className="font-medium text-slate-300 mb-1">Interview Questions:</p>
+                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
                                     {company.interviewQuestions.map((q, idx) => (
-                                      <p key={idx} className="text-gray-600 mb-1">{q}</p>
+                                      <p key={idx} className="text-slate-400 mb-1">{q}</p>
                                     ))}
                                   </div>
                                 </div>
                               )}
                               {company.onlineQuestions && company.onlineQuestions.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-gray-700 mb-1">Online Questions:</p>
-                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                  <p className="font-medium text-slate-300 mb-1">Online Questions:</p>
+                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
                                     {company.onlineQuestions.map((q, idx) => (
-                                      <p key={idx} className="text-gray-600 mb-1">{q}</p>
+                                      <p key={idx} className="text-slate-400 mb-1">{q}</p>
                                     ))}
                                   </div>
                                 </div>
                               )}
                               {company.Must_Do_Topics && company.Must_Do_Topics.length > 0 && (
                                 <div>
-                                  <p className="font-medium text-gray-700 mb-1">Must Do Topics:</p>
-                                  <div className="bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
+                                  <p className="font-medium text-slate-300 mb-1">Must Do Topics:</p>
+                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
                                     {company.Must_Do_Topics.map((topic, idx) => (
-                                      <p key={idx} className="text-gray-600 mb-1">{topic}</p>
+                                      <p key={idx} className="text-slate-400 mb-1">{topic}</p>
                                     ))}
                                   </div>
                                 </div>
@@ -1046,7 +1046,7 @@ const AdminDashboard = () => {
               ) : (
                 approvedCompanies.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
-                    <p className="text-gray-600 text-sm sm:text-base">No approved companies found.</p>
+                    <p className="text-slate-400 text-sm sm:text-base">No approved companies found.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -1054,11 +1054,11 @@ const AdminDashboard = () => {
                       <div className="p-4 sm:p-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {approvedCompanies.map((company) => (
-                            <div key={company._id} className="border border-gray-200 rounded-lg p-4 bg-green-50">
+                            <div key={company._id} className="border border-slate-700 rounded-lg p-4 bg-slate-800/60">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2 flex-1">
-                                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">{company.name}</h3>
-                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  <h3 className="text-base sm:text-lg font-semibold text-slate-200">{company.name}</h3>
+                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-600 text-white">
                                     Approved
                                   </span>
                                 </div>
@@ -1067,7 +1067,7 @@ const AdminDashboard = () => {
                                   disabled={deletingCompanyIds.has(company._id)}
                                   className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
                                     deletingCompanyIds.has(company._id)
-                                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                      ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-red-600 text-white hover:bg-red-700'
                                   }`}
                                 >
@@ -1085,11 +1085,11 @@ const AdminDashboard = () => {
             </div>
 
             {/* Events Management Section */}
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-6 sm:mt-8">
-              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden mt-6 sm:mt-8">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Events Management</h2>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1">Manage off-campus placements, hackathons, and other events</p>
+                  <h2 className="text-xl font-semibold text-indigo-400">Events Management</h2>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-1">Manage off-campus placements, hackathons, and other events</p>
                 </div>
                 <button
                   onClick={() => {
@@ -1101,7 +1101,7 @@ const AdminDashboard = () => {
                       lastDateToRegister: '',
                     });
                   }}
-                  className="bg-blue-900 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-800 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+                  className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
                 >
                   <FaPlus className="w-4 h-4" />
                   {showEventForm ? 'Cancel' : 'Post an Event'}
@@ -1110,10 +1110,10 @@ const AdminDashboard = () => {
 
               {/* Event Form */}
               {showEventForm && (
-                <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-gray-200 bg-gray-50">
+                <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-700 bg-slate-800/60">
                   <form onSubmit={handleEventSubmit} className="space-y-3 sm:space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         Title *
                       </label>
                       <input
@@ -1121,12 +1121,12 @@ const AdminDashboard = () => {
                         required
                         value={eventForm.title}
                         onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 text-sm sm:text-base"
+                        className="w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                         placeholder="Event title"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         Registration URL *
                       </label>
                       <input
@@ -1134,12 +1134,12 @@ const AdminDashboard = () => {
                         required
                         value={eventForm.url}
                         onChange={(e) => setEventForm({ ...eventForm, url: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 text-sm sm:text-base"
+                        className="w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                         placeholder="https://example.com/register"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         Last Date to Register *
                       </label>
                       <input
@@ -1147,7 +1147,7 @@ const AdminDashboard = () => {
                         required
                         value={eventForm.lastDateToRegister}
                         onChange={(e) => setEventForm({ ...eventForm, lastDateToRegister: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-900 text-sm sm:text-base"
+                        className="w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-900 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                       />
                     </div>
                     <div className="flex flex-col sm:flex-row justify-end gap-2">
@@ -1162,13 +1162,13 @@ const AdminDashboard = () => {
                             lastDateToRegister: '',
                           });
                         }}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm sm:text-base"
+                        className="px-4 py-2 border border-slate-600 rounded-md text-slate-300 hover:bg-slate-700 text-sm sm:text-base"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800 text-sm sm:text-base"
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm sm:text-base"
                       >
                         {editingEvent ? 'Update Event' : 'Create Event'}
                       </button>
@@ -1180,14 +1180,14 @@ const AdminDashboard = () => {
               {/* Events List */}
               {events.length === 0 ? (
                 <div className="p-8 sm:p-12 text-center">
-                  <FaCalendarAlt className="mx-auto text-gray-400 text-3xl sm:text-4xl mb-4" />
-                  <p className="text-gray-600 text-sm sm:text-base">No events found. Create your first event!</p>
+                  <FaCalendarAlt className="mx-auto text-slate-500 text-3xl sm:text-4xl mb-4" />
+                  <p className="text-slate-400 text-sm sm:text-base">No events found. Create your first event!</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto -mx-4 sm:mx-0">
                   <div className="inline-block min-w-full align-middle">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-slate-700">
+                      <thead className="bg-slate-800/60">
                         <tr>
                           <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Title
@@ -1203,20 +1203,20 @@ const AdminDashboard = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-slate-800/40 divide-y divide-slate-700">
                         {events.map((event) => {
                           const isPastDeadline = new Date(event.lastDateToRegister) < new Date();
                           return (
-                            <tr key={event._id} className={`hover:bg-gray-50 ${isPastDeadline ? 'opacity-60' : ''}`}>
+                            <tr key={event._id} className={`hover:bg-slate-700/50 ${isPastDeadline ? 'opacity-60' : ''}`}>
                               <td className="px-3 sm:px-6 py-4">
-                                <p className="text-xs sm:text-sm font-medium text-gray-900">{event.title}</p>
+                                <p className="text-xs sm:text-sm font-medium text-slate-200">{event.title}</p>
                               </td>
                               <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                <div className="text-xs sm:text-sm text-gray-900">
+                                <div className="text-xs sm:text-sm text-slate-200">
                                   {formatEventDate(event.lastDateToRegister)}
                                 </div>
                                 {isPastDeadline && (
-                                  <span className="text-xs text-red-600">Past Deadline</span>
+                                  <span className="text-xs text-red-400">Past Deadline</span>
                                 )}
                               </td>
                               <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
@@ -1224,7 +1224,7 @@ const AdminDashboard = () => {
                                   href={event.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-900 hover:text-blue-800 flex items-center gap-1 text-xs sm:text-sm"
+                                  className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 text-xs sm:text-sm"
                                 >
                                   <FaExternalLinkAlt className="w-3 h-3" />
                                   View Link
@@ -1234,7 +1234,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-center gap-1 sm:gap-2 flex-col sm:flex-row">
                                   <button
                                     onClick={() => handleEditEvent(event)}
-                                    className="px-2 sm:px-3 py-1 bg-blue-900 text-white rounded-md text-xs sm:text-sm hover:bg-blue-800 flex items-center gap-1 w-full sm:w-auto justify-center"
+                                    className="px-2 sm:px-3 py-1 bg-indigo-600 text-white rounded-md text-xs sm:text-sm hover:bg-indigo-700 flex items-center gap-1 w-full sm:w-auto justify-center"
                                   >
                                     <FaEdit className="w-3 h-3" />
                                     Edit
@@ -1244,7 +1244,7 @@ const AdminDashboard = () => {
                                     disabled={deletingIds.has(event._id)}
                                     className={`px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm flex items-center gap-1 w-full sm:w-auto justify-center ${
                                       deletingIds.has(event._id)
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                         : 'bg-red-600 text-white hover:bg-red-700'
                                     }`}
                                   >
@@ -1269,15 +1269,15 @@ const AdminDashboard = () => {
       {/* Full Submission Details Modal */}
       {showSubmissionModal && selectedSubmission && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-900">Full Submission Details</h3>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-indigo-400">Full Submission Details</h3>
               <button
                 onClick={() => {
                   setShowSubmissionModal(false);
                   setSelectedSubmission(null);
                 }}
-                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                className="text-slate-400 hover:text-slate-200 text-2xl font-bold"
               >
                 ×
               </button>
@@ -1286,51 +1286,51 @@ const AdminDashboard = () => {
               {/* Submission Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Submitted By</p>
-                  <p className="text-base text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-slate-400">Submitted By</p>
+                  <p className="text-base text-slate-200 mt-1">
                     {selectedSubmission.submittedBy?.name || 'N/A'}
                     {selectedSubmission.isAnonymous && (
-                      <span className="ml-2 text-sm text-orange-600">(Anonymous)</span>
+                      <span className="ml-2 text-sm text-orange-400">(Anonymous)</span>
                     )}
                   </p>
-                  <p className="text-sm text-gray-600 mt-1">{selectedSubmission.submittedBy?.email || 'N/A'}</p>
+                  <p className="text-sm text-slate-400 mt-1">{selectedSubmission.submittedBy?.email || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Company</p>
-                  <p className="text-base text-gray-900 mt-1">{selectedSubmission.companyId?.name || 'N/A'}</p>
+                  <p className="text-sm font-medium text-slate-400">Company</p>
+                  <p className="text-base text-slate-200 mt-1">{selectedSubmission.companyId?.name || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Type</p>
-                  <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                  <p className="text-sm font-medium text-slate-400">Type</p>
+                  <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-indigo-600 text-white capitalize">
                     {selectedSubmission.type || 'N/A'}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <p className="text-sm font-medium text-slate-400">Status</p>
                   <span className={`inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full ${
                     selectedSubmission.status === 'approved' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-yellow-600 text-white'
                   }`}>
                     {selectedSubmission.status === 'approved' ? 'Approved' : 'Pending'}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Submitted At</p>
-                  <p className="text-base text-gray-900 mt-1">{formatDate(selectedSubmission.submittedAt)}</p>
+                  <p className="text-sm font-medium text-slate-400">Submitted At</p>
+                  <p className="text-base text-slate-200 mt-1">{formatDate(selectedSubmission.submittedAt)}</p>
                 </div>
                 {selectedSubmission.approvedAt && (
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Approved At</p>
-                    <p className="text-base text-gray-900 mt-1">{formatDate(selectedSubmission.approvedAt)}</p>
+                    <p className="text-sm font-medium text-slate-400">Approved At</p>
+                    <p className="text-base text-slate-200 mt-1">{formatDate(selectedSubmission.approvedAt)}</p>
                   </div>
                 )}
               </div>
 
               {/* Full Content */}
-              <div className="border-t border-gray-200 pt-4">
-                <p className="text-sm font-medium text-gray-500 mb-2">Full Submission Content</p>
-                <div className="bg-gray-50 rounded-lg p-4">
+              <div className="border-t border-slate-700 pt-4">
+                <p className="text-sm font-medium text-slate-400 mb-2">Full Submission Content</p>
+                <div className="bg-slate-900 rounded-lg p-4">
                   {(() => {
                     const content = parseContent(selectedSubmission.content);
                     if (content.question || content.solution) {
@@ -1338,14 +1338,14 @@ const AdminDashboard = () => {
                         <div className="space-y-3">
                           {content.question && (
                             <div>
-                              <p className="text-sm font-semibold text-gray-700 mb-1">Question:</p>
-                              <p className="text-base text-gray-900 whitespace-pre-wrap break-words">{content.question}</p>
+                              <p className="text-sm font-semibold text-slate-300 mb-1">Question:</p>
+                              <p className="text-base text-slate-200 whitespace-pre-wrap break-words">{content.question}</p>
                             </div>
                           )}
                           {content.solution && (
                             <div>
-                              <p className="text-sm font-semibold text-gray-700 mb-1">Solution:</p>
-                              <pre className="text-base text-gray-900 whitespace-pre-wrap break-words font-sans bg-white p-3 rounded border border-gray-200 overflow-x-auto">
+                              <p className="text-sm font-semibold text-slate-300 mb-1">Solution:</p>
+                              <pre className="text-base text-slate-200 whitespace-pre-wrap break-words font-sans bg-slate-800 p-3 rounded border border-slate-700 overflow-x-auto">
                                 {content.solution}
                               </pre>
                             </div>
@@ -1354,7 +1354,7 @@ const AdminDashboard = () => {
                       );
                     } else {
                       return (
-                        <p className="text-base text-gray-900 whitespace-pre-wrap break-words">{selectedSubmission.content}</p>
+                        <p className="text-base text-slate-200 whitespace-pre-wrap break-words">{selectedSubmission.content}</p>
                       );
                     }
                   })()}
@@ -1363,7 +1363,7 @@ const AdminDashboard = () => {
 
               {/* Action Buttons for Pending Submissions */}
               {selectedSubmission.status !== 'approved' && (
-                <div className="border-t border-gray-200 pt-4 flex gap-3">
+                <div className="border-t border-slate-700 pt-4 flex gap-3">
                   <button
                     onClick={async () => {
                       await handleApprove(selectedSubmission._id);
@@ -1373,7 +1373,7 @@ const AdminDashboard = () => {
                     disabled={approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                       approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                         : 'bg-green-600 text-white hover:bg-green-700'
                     }`}
                   >
@@ -1388,7 +1388,7 @@ const AdminDashboard = () => {
                     disabled={approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                       approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                         : 'bg-red-600 text-white hover:bg-red-700'
                     }`}
                   >

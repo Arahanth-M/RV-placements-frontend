@@ -211,7 +211,7 @@ function Analytics({ year = null, embedded = false }) {
   const content = (
     <>
       {!embedded && (
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-blue-900 mb-8 text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-8 text-center">
           Placement Analytics
         </h1>
       )}
@@ -220,13 +220,13 @@ function Analytics({ year = null, embedded = false }) {
       {show2024 && (
         <div className="mb-12">
           {!embedded && (
-            <h2 className="text-2xl sm:text-3xl font-bold text-blue-800 mb-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-400 mb-6 text-center">
               2024 Placement Statistics
             </h2>
           )}
             {branches2024.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-6 text-center">
-              <p className="text-gray-600">No branch data available for 2024</p>
+            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-lg shadow-md p-6 text-center">
+              <p className="text-slate-400">No branch data available for 2024</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -235,27 +235,27 @@ function Analytics({ year = null, embedded = false }) {
                 return (
                   <div
                     key={`2024-${branch}`}
-                    className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow"
+                    className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
                   >
-                    <h3 className="text-xl font-bold text-blue-900 mb-4 pb-2 border-b border-gray-200">
+                    <h3 className="text-xl font-semibold text-indigo-400 mb-4 pb-2 border-b border-slate-700">
                       {branch}
                     </h3>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Average CTC:</span>
-                        <span className="font-semibold text-blue-900">
+                        <span className="text-slate-400">Average CTC:</span>
+                        <span className="font-semibold text-white">
                           {formatCurrency(stats.avgCTC)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Highest CTC:</span>
-                        <span className="font-semibold text-green-600">
+                        <span className="text-slate-400">Highest CTC:</span>
+                        <span className="font-semibold text-green-400">
                           {formatCurrency(stats.highestCTC)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Median CTC:</span>
-                        <span className="font-semibold text-indigo-600">
+                        <span className="text-slate-400">Median CTC:</span>
+                        <span className="font-semibold text-indigo-400">
                           {formatCurrency(stats.medianCTC)}
                         </span>
                       </div>
@@ -272,13 +272,13 @@ function Analytics({ year = null, embedded = false }) {
       {show2025 && (
         <div className="mb-12">
           {!embedded && (
-            <h2 className="text-2xl sm:text-3xl font-bold text-blue-800 mb-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-400 mb-6 text-center">
               2025 Placement Statistics
             </h2>
           )}
             {branches2025.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-6 text-center">
-              <p className="text-gray-600">No branch data available for 2025</p>
+            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-lg shadow-md p-6 text-center">
+              <p className="text-slate-400">No branch data available for 2025</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -287,27 +287,27 @@ function Analytics({ year = null, embedded = false }) {
                 return (
                   <div
                     key={`2025-${branch}`}
-                    className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow"
+                    className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
                   >
-                    <h3 className="text-xl font-bold text-blue-900 mb-4 pb-2 border-b border-gray-200">
+                    <h3 className="text-xl font-semibold text-indigo-400 mb-4 pb-2 border-b border-slate-700">
                       {branch}
                     </h3>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Average CTC:</span>
-                        <span className="font-semibold text-blue-900">
+                        <span className="text-slate-400">Average CTC:</span>
+                        <span className="font-semibold text-white">
                           {formatCurrency(stats.avgCTC)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Highest CTC:</span>
-                        <span className="font-semibold text-green-600">
+                        <span className="text-slate-400">Highest CTC:</span>
+                        <span className="font-semibold text-green-400">
                           {formatCurrency(stats.highestCTC)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Median CTC:</span>
-                        <span className="font-semibold text-indigo-600">
+                        <span className="text-slate-400">Median CTC:</span>
+                        <span className="font-semibold text-indigo-400">
                           {formatCurrency(stats.medianCTC)}
                         </span>
                       </div>
@@ -325,12 +325,12 @@ function Analytics({ year = null, embedded = false }) {
   if (loading) {
     const loadingContent = (
       <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-        <p className="mt-4 text-gray-600">Loading analytics data...</p>
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
+        <p className="mt-4 text-slate-400">Loading analytics data...</p>
       </div>
     );
     return embedded ? loadingContent : (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
         <div className="max-w-7xl mx-auto">{loadingContent}</div>
       </div>
     );
@@ -338,19 +338,19 @@ function Analytics({ year = null, embedded = false }) {
 
   if (error) {
     const errorContent = (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <p className="text-red-800">{error}</p>
+      <div className="bg-red-900/30 border border-red-700 rounded-lg p-6 text-center">
+        <p className="text-red-300">{error}</p>
       </div>
     );
     return embedded ? errorContent : (
-      <div className="min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
         <div className="max-w-7xl mx-auto">{errorContent}</div>
       </div>
     );
   }
 
   return embedded ? content : (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-100 via-white to-indigo-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
       <div className="max-w-7xl mx-auto">{content}</div>
     </div>
   );

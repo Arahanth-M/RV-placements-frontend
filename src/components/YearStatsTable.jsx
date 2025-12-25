@@ -40,15 +40,15 @@ function YearStatsTable({ year, data, onBack }) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 sm:p-8">
         <button
           onClick={onBack}
-          className="mb-4 flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm sm:text-base"
+          className="mb-4 flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base"
         >
           <FaArrowLeft className="mr-2" />
           Back to Year Selection
         </button>
-        <p className="text-gray-600 text-center py-8">No data available for {year} stats.</p>
+        <p className="text-slate-400 text-center py-8">No data available for {year} stats.</p>
       </div>
     );
   }
@@ -82,22 +82,22 @@ function YearStatsTable({ year, data, onBack }) {
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center text-indigo-600 hover:text-indigo-800 font-medium text-sm sm:text-base"
+        className="flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base ml-16 sm:ml-20"
       >
         <FaArrowLeft className="mr-2" />
         Back to Year Selection
       </button>
 
       {/* Tab Navigation */}
-      <div className="bg-blue-900 rounded-lg p-1 flex gap-1">
+      <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-1 flex gap-1">
         {["Table", "Analytics"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 px-4 py-2.5 rounded-md transition-all duration-200 font-medium text-sm sm:text-base ${
               activeTab === tab
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-300 hover:text-white"
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "text-slate-300 hover:text-white hover:bg-slate-700"
             }`}
           >
             {tab}
@@ -106,27 +106,27 @@ function YearStatsTable({ year, data, onBack }) {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg overflow-hidden">
         {activeTab === "Table" && (
           <>
-            <div className="p-4 sm:p-6 border-b border-gray-200">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">
+            <div className="p-4 sm:p-6 border-b border-slate-700">
+              <h2 className="text-xl font-semibold text-indigo-400 mb-4">
                 {year} Placement Statistics
               </h2>
               <div className="relative w-full sm:w-64">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="h-4 w-4 text-gray-400" />
+                  <FaSearch className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                   type="text"
                   placeholder="Search by company name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
+                  className="block w-full pl-10 pr-3 py-2 border border-slate-600 rounded-lg bg-slate-800 text-white placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
                 />
               </div>
               {searchTerm && (
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm text-slate-400 mt-2">
                   Showing {filteredData.length} of {data.length} results
                 </p>
               )}
@@ -134,36 +134,36 @@ function YearStatsTable({ year, data, onBack }) {
 
             {filteredData.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-gray-600">No results found for "{searchTerm}"</p>
+                <p className="text-slate-400">No results found for "{searchTerm}"</p>
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="mt-4 text-indigo-600 hover:text-indigo-800 font-medium text-sm"
+                  className="mt-4 text-indigo-400 hover:text-indigo-300 font-medium text-sm"
                 >
                   Clear search
                 </button>
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-slate-700">
+                  <thead className="bg-slate-800/60">
                     <tr>
                       {headers.map((header) => (
                         <th
                           key={header}
-                          className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
                         >
                           {header.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-slate-800/40 divide-y divide-slate-700">
                     {filteredData.map((row, index) => (
-                      <tr key={row._id || index} className="hover:bg-gray-50">
+                      <tr key={row._id || index} className="hover:bg-slate-700/50">
                         {headers.map((header) => (
                           <td
                             key={header}
-                            className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700"
+                            className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-slate-300"
                           >
                             {formatCellValue(row[header])}
                           </td>
@@ -179,7 +179,7 @@ function YearStatsTable({ year, data, onBack }) {
 
         {activeTab === "Analytics" && (
           <div className="p-4 sm:p-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
+            <h2 className="text-xl font-semibold text-indigo-400 mb-6">
               {year} Analytics
             </h2>
             <Analytics year={year} embedded={true} />

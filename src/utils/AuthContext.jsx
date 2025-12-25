@@ -8,12 +8,14 @@ const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
 const AuthContext = createContext({
   user: null,
   isAdmin: false,
+  studentData: null,
   loading: true,
   login: () => {},
   signup: () => {},
   logout: async () => {},
   checkUser: async () => {},
   setUser: () => {},
+  setStudentData: () => {},
   refreshUser: async () => null,
   _isProvider: false, // Sentinel to check if inside provider
 });
@@ -32,6 +34,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // 7 hours in milliseconds
@@ -59,6 +62,36 @@ export const AuthProvider = ({ children }) => {
   const clearLoginTimestamp = () => {
     localStorage.removeItem(LOGIN_TIMESTAMP_KEY);
   };
+
+  // Load student data from localStorage when user changes
+  useEffect(() => {
+    if (user) {
+      const userId = user.userId || user._id;
+      const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
+      const storedStudentData = localStorage.getItem(studentDataKey) || localStorage.getItem('studentData');
+      
+      if (storedStudentData) {
+        try {
+          const parsedData = JSON.parse(storedStudentData);
+          setStudentData(parsedData);
+          // Also store in user-specific key if using generic key
+          if (userId && !localStorage.getItem(studentDataKey)) {
+            localStorage.setItem(studentDataKey, storedStudentData);
+          }
+        } catch (err) {
+          console.error('Error parsing stored student data:', err);
+          localStorage.removeItem(studentDataKey);
+          localStorage.removeItem('studentData');
+        }
+      } else {
+        // Clear student data if user changes and no data found
+        setStudentData(null);
+      }
+    } else {
+      // Clear student data when user logs out
+      setStudentData(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     checkUser();
@@ -147,6 +180,14 @@ export const AuthProvider = ({ children }) => {
         });
       });
       
+      // Clear student data (both user-specific and generic)
+      if (user) {
+        const userId = user.userId || user._id;
+        const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
+        localStorage.removeItem(studentDataKey);
+      }
+      localStorage.removeItem('studentData');
+      setStudentData(null);
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();
@@ -170,6 +211,14 @@ export const AuthProvider = ({ children }) => {
         });
       });
       
+      // Clear student data (both user-specific and generic)
+      if (user) {
+        const userId = user.userId || user._id;
+        const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
+        localStorage.removeItem(studentDataKey);
+      }
+      localStorage.removeItem('studentData');
+      setStudentData(null);
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();
@@ -258,15 +307,38 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Wrapper for setStudentData that also updates localStorage (user-specific)
+  const handleSetStudentData = useCallback((data) => {
+    setStudentData(data);
+    if (data && user) {
+      const userId = user.userId || user._id;
+      const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
+      const dataString = JSON.stringify(data);
+      localStorage.setItem(studentDataKey, dataString);
+      // Also store in generic key for backward compatibility
+      localStorage.setItem('studentData', dataString);
+    } else {
+      // Clear both user-specific and generic keys
+      if (user) {
+        const userId = user.userId || user._id;
+        const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
+        localStorage.removeItem(studentDataKey);
+      }
+      localStorage.removeItem('studentData');
+    }
+  }, [user]);
+
   const value = {
     user,
     isAdmin,
+    studentData,
     loading,
     login,
     signup,
     logout,
     checkUser,
     setUser,
+    setStudentData: handleSetStudentData,
     refreshUser,
     _isProvider: true, // Mark that this is from a provider
   };
