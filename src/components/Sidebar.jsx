@@ -448,7 +448,7 @@ const Sidebar = () => {
                   </div>
                   
                   {showAccountMenu && (
-                    <div className="absolute bottom-full left-0 mb-2 w-full bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50">
+                    <div className="absolute top-full left-0 mt-2 w-full bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50 md:bottom-full md:top-auto md:mt-0 md:mb-2">
                       <div className="py-1">
                         <div 
                           className="px-4 py-2 text-sm text-slate-400 border-b border-slate-700 break-words cursor-pointer hover:text-indigo-400 hover:bg-slate-700 transition-colors"
@@ -493,7 +493,7 @@ const Sidebar = () => {
                         </button>
                       </div>
                     </div>
-                )}
+                  )}
               </div>
               </>
             ) : (
