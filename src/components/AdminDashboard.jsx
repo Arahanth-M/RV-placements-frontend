@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI, eventAPI } from '../utils/api';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar } from 'react-icons/fa';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -13,10 +13,11 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'approved'
+  const [activeMainTab, setActiveMainTab] = useState('submissions'); // 'submissions', 'companies', 'events'
+  const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
-  const [companyTab, setCompanyTab] = useState('pending'); // 'pending' or 'approved'
+  const [companiesSubTab, setCompaniesSubTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -523,10 +524,10 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
           <p className="text-sm sm:text-base text-slate-400">Manage and monitor platform activity</p>
         </div>
@@ -549,88 +550,126 @@ const AdminDashboard = () => {
         {/* Stats Cards */}
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Total Users</p>
-                    <p className="text-3xl font-bold text-white mt-2">{stats.totalUsers}</p>
+                    <p className="text-xs font-medium text-slate-400">Total Users</p>
+                    <p className="text-2xl font-bold text-white mt-1">{stats.totalUsers}</p>
                   </div>
-                  <div className="bg-indigo-600 rounded-full p-3">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-indigo-600 rounded-full p-2">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Pending Submissions</p>
-                    <p className="text-3xl font-bold text-white mt-2">{stats.pendingSubmissions || 0}</p>
+                    <p className="text-xs font-medium text-slate-400">Pending Submissions</p>
+                    <p className="text-2xl font-bold text-white mt-1">{stats.pendingSubmissions || 0}</p>
                   </div>
-                  <div className="bg-yellow-600 rounded-full p-3">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-yellow-600 rounded-full p-2">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Approved Submissions</p>
-                    <p className="text-3xl font-bold text-white mt-2">{stats.approvedSubmissions || 0}</p>
+                    <p className="text-xs font-medium text-slate-400">Approved Submissions</p>
+                    <p className="text-2xl font-bold text-white mt-1">{stats.approvedSubmissions || 0}</p>
                   </div>
-                  <div className="bg-green-600 rounded-full p-3">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-green-600 rounded-full p-2">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Approved Companies</p>
-                    <p className="text-3xl font-bold text-white mt-2">{stats.totalCompanies}</p>
+                    <p className="text-xs font-medium text-slate-400">Pending Companies</p>
+                    <p className="text-2xl font-bold text-white mt-1">{stats.pendingCompanies}</p>
                   </div>
-                  <div className="bg-purple-600 rounded-full p-3">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  <div className="bg-yellow-600 rounded-full p-2">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Pending Companies</p>
-                    <p className="text-3xl font-bold text-white mt-2">{stats.pendingCompanies}</p>
+                    <p className="text-xs font-medium text-slate-400">Approved Companies</p>
+                    <p className="text-2xl font-bold text-white mt-1">{stats.totalCompanies}</p>
                   </div>
-                  <div className="bg-yellow-600 rounded-full p-3">
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <div className="bg-purple-600 rounded-full p-2">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Submissions Table */}
+            {/* Main Tabs Navigation */}
+            <div className="flex gap-2 sm:gap-4 mb-6 flex-wrap overflow-x-auto pb-2">
+              <button
+                onClick={() => setActiveMainTab('submissions')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'submissions'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaFileAlt />
+                Submissions
+              </button>
+              <button
+                onClick={() => setActiveMainTab('companies')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'companies'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaBuilding />
+                Companies
+              </button>
+              <button
+                onClick={() => setActiveMainTab('events')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'events'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaCalendar />
+                Events
+              </button>
+            </div>
+
+            {/* Main Content Area */}
+            {activeMainTab === 'submissions' && (
             <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-indigo-400">Submissions</h2>
-                    <p className="text-sm text-slate-400 mt-1">Manage user submissions across the platform</p>
+                      <h2 className="text-xl font-semibold text-indigo-400">Submissions Management</h2>
+                      <p className="text-sm text-slate-400 mt-1">Review and approve user submissions</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    {activeTab === 'pending' && submissions.length > 0 && (
+                      {submissionsSubTab === 'pending' && submissions.length > 0 && (
                       <button
                         onClick={handleApproveAll}
                         disabled={approvingAll}
@@ -645,9 +684,9 @@ const AdminDashboard = () => {
                     )}
                     <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
                       <button
-                        onClick={() => setActiveTab('pending')}
+                          onClick={() => setSubmissionsSubTab('pending')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          activeTab === 'pending'
+                            submissionsSubTab === 'pending'
                             ? 'bg-indigo-600 text-white'
                             : 'text-slate-300 hover:bg-slate-700'
                         }`}
@@ -655,9 +694,9 @@ const AdminDashboard = () => {
                         Pending ({stats.pendingSubmissions || 0})
                       </button>
                       <button
-                        onClick={() => setActiveTab('approved')}
+                          onClick={() => setSubmissionsSubTab('approved')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          activeTab === 'approved'
+                            submissionsSubTab === 'approved'
                             ? 'bg-indigo-600 text-white'
                             : 'text-slate-300 hover:bg-slate-700'
                         }`}
@@ -669,7 +708,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {activeTab === 'pending' ? (
+                {submissionsSubTab === 'pending' ? (
                 submissions.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
                     <p className="text-slate-400 text-sm sm:text-base">No pending submissions found.</p>
@@ -894,17 +933,18 @@ const AdminDashboard = () => {
                 )
               )}
             </div>
+            )}
 
-            {/* Companies Management Section */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden mt-6 sm:mt-8">
+            {activeMainTab === 'companies' && (
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-indigo-400">Companies</h2>
-                    <p className="text-sm text-slate-400 mt-1">Manage company submissions and approvals</p>
+                      <h2 className="text-xl font-semibold text-indigo-400">Companies Management</h2>
+                      <p className="text-sm text-slate-400 mt-1">Review and approve company submissions</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    {companyTab === 'pending' && companies.length > 0 && (
+                      {companiesSubTab === 'pending' && companies.length > 0 && (
                       <button
                         onClick={handleApproveAllCompanies}
                         disabled={approvingAllCompanies}
@@ -919,9 +959,9 @@ const AdminDashboard = () => {
                     )}
                     <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
                       <button
-                        onClick={() => setCompanyTab('pending')}
+                          onClick={() => setCompaniesSubTab('pending')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          companyTab === 'pending'
+                            companiesSubTab === 'pending'
                             ? 'bg-indigo-600 text-white'
                             : 'text-slate-300 hover:bg-slate-700'
                         }`}
@@ -929,9 +969,9 @@ const AdminDashboard = () => {
                         Pending ({stats.pendingCompanies || 0})
                       </button>
                       <button
-                        onClick={() => setCompanyTab('approved')}
+                          onClick={() => setCompaniesSubTab('approved')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          companyTab === 'approved'
+                            companiesSubTab === 'approved'
                             ? 'bg-indigo-600 text-white'
                             : 'text-slate-300 hover:bg-slate-700'
                         }`}
@@ -943,7 +983,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {companyTab === 'pending' ? (
+                {companiesSubTab === 'pending' ? (
                 companies.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
                     <p className="text-slate-400 text-sm sm:text-base">No pending companies found.</p>
@@ -1081,32 +1121,33 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 )
-              )}
-            </div>
-
-            {/* Events Management Section */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden mt-6 sm:mt-8">
-              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                <div>
-                  <h2 className="text-xl font-semibold text-indigo-400">Events Management</h2>
-                  <p className="text-xs sm:text-sm text-slate-400 mt-1">Manage off-campus placements, hackathons, and other events</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowEventForm(!showEventForm);
-                    setEditingEvent(null);
-                    setEventForm({
-                      title: '',
-                      url: '',
-                      lastDateToRegister: '',
-                    });
-                  }}
-                  className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-                >
-                  <FaPlus className="w-4 h-4" />
-                  {showEventForm ? 'Cancel' : 'Post an Event'}
-                </button>
+                )}
               </div>
+            )}
+
+            {activeMainTab === 'events' && (
+              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                  <div>
+                    <h2 className="text-xl font-semibold text-indigo-400">Events Management</h2>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-1">Manage off-campus placements, hackathons, and other events</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowEventForm(!showEventForm);
+                      setEditingEvent(null);
+                      setEventForm({
+                        title: '',
+                        url: '',
+                        lastDateToRegister: '',
+                      });
+                    }}
+                    className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
+                  >
+                    <FaPlus className="w-4 h-4" />
+                    {showEventForm ? 'Cancel' : 'Post an Event'}
+                  </button>
+                </div>
 
               {/* Event Form */}
               {showEventForm && (
@@ -1261,7 +1302,8 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>
