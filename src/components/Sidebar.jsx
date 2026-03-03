@@ -38,6 +38,9 @@ const Sidebar = () => {
       return;
     }
 
+    const pollIntervalMs = 60000; // Poll every 60 seconds (was 10s)
+    let intervalId = null;
+
     const checkPendingItems = async () => {
       try {
         const stats = await adminAPI.getStats();
@@ -49,9 +52,35 @@ const Sidebar = () => {
       }
     };
 
-    checkPendingItems();
-    const interval = setInterval(checkPendingItems, 10000);
-    return () => clearInterval(interval);
+    const startPolling = () => {
+      checkPendingItems();
+      if (!intervalId) {
+        intervalId = setInterval(checkPendingItems, pollIntervalMs);
+      }
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    startPolling();
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [isAdmin, user]);
 
   // Check for new events when user is logged in
@@ -61,11 +90,14 @@ const Sidebar = () => {
       return;
     }
 
+    const pollIntervalMs = 60000; // Poll every 60 seconds (was 15s)
+    let intervalId = null;
+
     const checkNewEvents = async () => {
       try {
         const response = await eventAPI.getAllEvents();
         const events = response.data || [];
-        
+
         if (events.length === 0) {
           setHasNewEvents(false);
           return;
@@ -80,7 +112,7 @@ const Sidebar = () => {
         const latestEventTimestamp = new Date(latestEvent.createdAt || latestEvent.updatedAt).getTime();
         const storageKey = user && user.userId ? `lastSeenEventTimestamp_${user.userId}` : 'lastSeenEventTimestamp';
         const lastSeenTimestamp = sessionStorage.getItem(storageKey);
-        
+
         if (!lastSeenTimestamp) {
           sessionStorage.setItem(storageKey, String(latestEventTimestamp));
           setHasNewEvents(false);
@@ -94,9 +126,35 @@ const Sidebar = () => {
       }
     };
 
-    checkNewEvents();
-    const interval = setInterval(checkNewEvents, 15000);
-    return () => clearInterval(interval);
+    const startPolling = () => {
+      checkNewEvents();
+      if (!intervalId) {
+        intervalId = setInterval(checkNewEvents, pollIntervalMs);
+      }
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    startPolling();
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [user]);
 
   // Mark events as seen when user visits the events page

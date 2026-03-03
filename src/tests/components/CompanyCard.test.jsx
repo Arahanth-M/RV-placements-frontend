@@ -24,9 +24,9 @@ describe('CompanyCard Component', () => {
     name: 'Google Inc.',
     type: 'FTE',
     business_model: 'B2C',
-    eligibility: 'CS/IT students',
     date_of_visit: '2024-01-15',
-    count: 50
+    count: 50,
+    focusTags: ['DSA', 'CS Fundamentals']
   }
 
   beforeEach(() => {
@@ -44,8 +44,8 @@ describe('CompanyCard Component', () => {
     expect(screen.getByText('FTE')).toBeInTheDocument()
     expect(screen.getByText('2024-01-15')).toBeInTheDocument()
     expect(screen.getByText('B2C')).toBeInTheDocument()
-    expect(screen.getByText('CS/IT students')).toBeInTheDocument()
-    expect(screen.getByText('50')).toBeInTheDocument()
+    expect(screen.getByText('DSA')).toBeInTheDocument()
+    expect(screen.getByText('CS Fundamentals')).toBeInTheDocument()
   })
 
   it('renders company initials correctly', () => {
@@ -102,36 +102,6 @@ describe('CompanyCard Component', () => {
     fireEvent.click(card)
 
     expect(mockNavigate).toHaveBeenCalledWith(`/companies/${mockCompany._id}`)
-  })
-
-  it('displays count as "Not available" when count is undefined', () => {
-    const companyWithoutCount = {
-      ...mockCompany,
-      count: undefined
-    }
-
-    render(
-      <TestWrapper>
-        <CompanyCard company={companyWithoutCount} />
-      </TestWrapper>
-    )
-
-    expect(screen.getByText('Not available')).toBeInTheDocument()
-  })
-
-  it('displays count as "Not available" when count is null', () => {
-    const companyWithNullCount = {
-      ...mockCompany,
-      count: null
-    }
-
-    render(
-      <TestWrapper>
-        <CompanyCard company={companyWithNullCount} />
-      </TestWrapper>
-    )
-
-    expect(screen.getByText('Not available')).toBeInTheDocument()
   })
 
   it('handles companies with multiple words in name', () => {
@@ -192,8 +162,26 @@ describe('CompanyCard Component', () => {
 
     expect(screen.getByText(/Date of interview:/)).toBeInTheDocument()
     expect(screen.getByText(/Business Model:/)).toBeInTheDocument()
-    expect(screen.getByText(/Eligibility:/)).toBeInTheDocument()
-    expect(screen.getByText(/Count:/)).toBeInTheDocument()
+    expect(screen.getByText(/Focus areas/)).toBeInTheDocument()
+  })
+
+  it('renders focus tags when provided', () => {
+    render(
+      <TestWrapper>
+        <CompanyCard company={{ ...mockCompany, focusTags: ['DSA', 'ML / AI'] }} />
+      </TestWrapper>
+    )
+    expect(screen.getByText('DSA')).toBeInTheDocument()
+    expect(screen.getByText('ML / AI')).toBeInTheDocument()
+  })
+
+  it('does not show Focus areas section when focusTags is empty', () => {
+    render(
+      <TestWrapper>
+        <CompanyCard company={{ ...mockCompany, focusTags: [] }} />
+      </TestWrapper>
+    )
+    expect(screen.queryByText(/Focus areas/)).not.toBeInTheDocument()
   })
 
   it('displays initials in a styled container', () => {

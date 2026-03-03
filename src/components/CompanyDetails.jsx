@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { BASE_URL } from "../utils/constants";
 import { useAuth } from "../utils/AuthContext";
+import { companyAPI } from "../utils/api";
 
 import GeneralTab from "./CompanyTabs/GeneralTab";
 import OATab from "./CompanyTabs/OATab";
@@ -18,16 +17,29 @@ function CompanyDetails() {
   const { user } = useAuth();
   const [company, setCompany] = useState(null);
   const [activeTab, setActiveTab] = useState("general");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    axios
-      .get(BASE_URL + `/api/companies/${id}`, { withCredentials: true })
+    if (!id) return;
+    companyAPI
+      .getCompany(id)
       .then((res) => setCompany(res.data))
       .catch((err) =>
         console.error("❌ Error fetching company details:", err)
       );
   }, [id]);
 
+  const handleRefresh = () => {
+    if (!id || isRefreshing) return;
+    setIsRefreshing(true);
+    companyAPI
+      .refreshCompany(id)
+      .then((res) => setCompany(res.data))
+      .catch((err) => console.error("❌ Error refreshing company:", err))
+      .finally(() => setIsRefreshing(false));
+  };
+
+  if (!id) return <div className="p-6" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}><p className="text-slate-400">Invalid company link.</p></div>;
   if (!company) return <div className="p-6" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}><p className="text-slate-400">Loading...</p></div>;
 
   // Helper function to get company initials
@@ -89,15 +101,25 @@ function CompanyDetails() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}>
       {/* Back Button */}
-      <button
-        onClick={handleBack}
-        className="mb-4 flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base transition-colors"
-      >
-        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        Back
-      </button>
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <button
+          onClick={handleBack}
+          className="flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Reload from server (will show in Network tab)"
+        >
+          {isRefreshing ? 'Refreshing…' : 'Refresh from server'}
+        </button>
+      </div>
       
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-4">

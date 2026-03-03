@@ -171,10 +171,22 @@ function CompanyCard({ company, onUpdate }) {
         <span className="text-slate-400">{company.business_model}</span>
       </div>
 
-      <div className="mb-3">
-        <span className="font-semibold text-slate-300">Eligibility: </span>
-        <span className="text-slate-400">{company.eligibility}</span>
-      </div>
+      {/* Focus tags: DSA, CS Fundamentals, ML/AI based on interview process, questions & must-do topics */}
+      {company.focusTags && company.focusTags.length > 0 && (
+        <div className="mb-3">
+          <span className="font-semibold text-slate-300 block mb-1.5">Focus areas</span>
+          <div className="flex flex-wrap gap-1.5">
+            {company.focusTags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-900/60 text-indigo-200 border border-indigo-700/80"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Helpful Count Section */}
       <div className="mt-4 pt-3 border-t border-slate-700 flex items-center justify-between">

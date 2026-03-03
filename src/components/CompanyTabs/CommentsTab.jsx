@@ -325,5 +325,6 @@ function CommentsTab({ company }) {
   );
 }
 
+// Ensure default export for React.lazy and direct imports
 export default CommentsTab;
 

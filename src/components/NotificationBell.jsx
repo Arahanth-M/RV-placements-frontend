@@ -44,18 +44,51 @@ function NotificationBell() {
 
   // Fetch notifications on mount and when user changes
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      // Poll for new notifications every 3 seconds for real-time updates
-      const interval = setInterval(() => {
-        // Fetch silently (without showing loading state) to avoid UI flicker
-        fetchNotifications(true);
-      }, 3000);
-      return () => clearInterval(interval);
-    } else {
+    if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      return;
     }
+
+    const pollIntervalMs = 60000; // Poll every 60 seconds (was 3s)
+    let intervalId = null;
+
+    const runFetch = (silent = true) => {
+      fetchNotifications(silent);
+    };
+
+    runFetch(false); // Initial fetch with loading state
+
+    const startPolling = () => {
+      if (!intervalId) {
+        intervalId = setInterval(() => runFetch(true), pollIntervalMs);
+      }
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    // Only poll when tab is visible; stop when user switches tab or minimizes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runFetch(true);
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    startPolling();
+
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [user]);
 
   // Close dropdown when clicking outside

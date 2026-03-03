@@ -1,7 +1,4 @@
-
-
 import React from "react";
-import ReactPlayer from "react-player";
 import { usePremium } from "../../utils/PremiumContext";
 import { useAuth } from "../../utils/AuthContext";
 import { Link } from "react-router-dom";
@@ -144,4 +141,4 @@ function VideoTab({ videoUrl }) {
   );
 }
 
-export default VideoTab;
+export { VideoTab as default };
