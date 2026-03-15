@@ -19,6 +19,7 @@ const API = axios.create({
 
 // In-flight promise deduplication: only one network request for companies list at a time
 let companiesListPromise = null;
+const companyDetailsPromises = new Map();
 
 // Cache TTL for company list/details: after this many ms, cached data is treated as stale
 // and refetched from the server. Set to 2 minutes.
@@ -107,14 +108,46 @@ export const companyAPI = {
       console.warn('IndexedDB get company details failed, falling back to API', e);
     }
 
-    // 2. Cache miss or incomplete: fetch and store
-    const res = await API.get(`/api/companies/${id}`);
-    try {
-      await setCachedCompanyDetails(id, res.data);
-    } catch (e) {
-      console.warn('IndexedDB set company details failed', e);
+    // 2. Cache miss or incomplete: fetch and store (deduped)
+    if (!companyDetailsPromises.has(id)) {
+      companyDetailsPromises.set(
+        id,
+        (async () => {
+          try {
+            const res = await API.get(`/api/companies/${id}`);
+            try {
+              await setCachedCompanyDetails(id, res.data);
+            } catch (e) {
+              console.warn('IndexedDB set company details failed', e);
+            }
+            return res;
+          } finally {
+            companyDetailsPromises.delete(id);
+          }
+        })()
+      );
     }
-    return res;
+    return companyDetailsPromises.get(id);
+  },
+
+  /** Warm detail cache ahead of navigation to reduce first-open latency. */
+  async prefetchCompany(id) {
+    if (!id) return;
+    try {
+      const cached = await getCachedCompanyDetails(id, CACHE_TTL_MS);
+      if (cached != null && typeof cached === 'object' && (cached._id || cached.name)) {
+        const hasListShape = 'focusTags' in cached && !Array.isArray(cached.onlineQuestions);
+        if (!hasListShape) return;
+      }
+    } catch {
+      // Ignore cache read errors and continue with a best-effort prefetch.
+    }
+
+    try {
+      await companyAPI.getCompany(id);
+    } catch {
+      // Best-effort prefetch; navigation path handles errors.
+    }
   },
 
   /** Force refetch company from API (clears cache for this company). Use to see network request or get latest data. */

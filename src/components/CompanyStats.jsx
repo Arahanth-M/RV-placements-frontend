@@ -345,7 +345,7 @@ function CompanyStats() {
             setCluster("all");
             setCurrentPage(1);
           }}
-          className="mb-4 flex items-center text-theme-accent font-medium text-sm sm:text-base ml-16 sm:ml-20"
+          className="mb-4 flex items-center back-link-theme text-sm sm:text-base ml-16 sm:ml-20"
         >
           <FaArrowLeft className="mr-2" />
           Back to Year Selection
@@ -521,7 +521,7 @@ function CompanyStats() {
         </div>
       )}
 
-      <div className="fixed bottom-16 sm:bottom-20 right-4 sm:right-6 z-50 flex flex-col gap-3 sm:gap-4 items-end">
+      <div className="fixed bottom-40 sm:bottom-44 right-16 sm:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end">
         <button
           onClick={() => setShowFilter((prev) => !prev)}
           className="fab filter-fab bg-theme-accent p-3 sm:p-4 rounded-full shadow-lg transition duration-200"

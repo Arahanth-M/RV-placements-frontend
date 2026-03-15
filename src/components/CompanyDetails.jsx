@@ -60,8 +60,36 @@ function CompanyDetails() {
   if (!id) return <div className="p-6 min-h-screen bg-theme-app"><p className="text-theme-secondary">Invalid company link.</p></div>;
   if (loading && !company) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-screen bg-theme-app">
-        <p className="text-theme-secondary">Loading...</p>
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+        <div className="mb-4">
+          <div className="shimmer-box h-5 w-20 rounded-md" />
+        </div>
+
+        <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex items-center gap-4">
+            <div className="shimmer-box w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg flex-shrink-0" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="shimmer-box h-8 sm:h-10 w-56 max-w-full rounded-lg" />
+              <div className="shimmer-box h-5 w-40 rounded-md" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap">
+          {[1, 2, 3, 4, 5, 6].map((item) => (
+            <div key={item} className="shimmer-box h-10 w-24 sm:w-28 rounded-lg" />
+          ))}
+        </div>
+
+        <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+          <div className="space-y-4">
+            <div className="shimmer-box h-6 w-48 rounded-md" />
+            <div className="shimmer-box h-4 w-full rounded-md" />
+            <div className="shimmer-box h-4 w-[92%] rounded-md" />
+            <div className="shimmer-box h-4 w-[85%] rounded-md" />
+            <div className="shimmer-box h-24 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -72,7 +100,7 @@ function CompanyDetails() {
         <p className="text-theme-secondary text-sm mb-4">This company is not available from cache. Please connect to the internet to view it.</p>
         <button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 rounded-lg bg-theme-accent text-white transition-colors"
+          className="px-4 py-2 rounded-lg bg-theme-card border border-theme back-link-theme transition-colors"
         >
           Go back
         </button>
@@ -85,7 +113,7 @@ function CompanyDetails() {
         <p className="text-theme-secondary mb-4">Could not load this company. Please try again.</p>
         <button
           onClick={() => navigate(-1)}
-          className="px-4 py-2 rounded-lg bg-theme-card border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
+          className="px-4 py-2 rounded-lg bg-theme-card border border-theme back-link-theme hover:bg-theme-nav transition-colors"
         >
           Go back
         </button>
@@ -137,7 +165,7 @@ function CompanyDetails() {
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
         <button
           onClick={handleBack}
-          className="flex items-center text-theme-accent font-medium text-sm sm:text-base transition-colors"
+          className="flex items-center back-link-theme text-sm sm:text-base transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

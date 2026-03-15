@@ -16,13 +16,13 @@ body {
   --text-primary: #1f2430;
   --text-secondary: #444f63;
   --text-muted: #6f7a8f;
-  --accent: #3dbb8b;
-  --accent-secondary: #5acfa0;
-  --accent-hover: #34a87d;
+  --accent: #32cd32;
+  --accent-secondary: #5fe05f;
+  --accent-hover: #2eb82e;
   --primary: #5f5bd7;
   --primary-soft: #ececff;
-  --green: #3dbb8b;
-  --success: #45b97f;
+  --green: #32cd32;
+  --success: #32cd32;
   --success-foreground: #ffffff;
   --warning: #e9c46a;
   --warning-foreground: #5b4205;
@@ -59,9 +59,9 @@ body {
   --text-secondary: #c0c6d1;
   --text-muted: #8b94a7;
 
-  --accent: #34d399;
-  --accent-secondary: #6ee7b7;
-  --accent-hover: #2cc88f;
+  --accent: #32cd32;
+  --accent-secondary: #5fe05f;
+  --accent-hover: #2eb82e;
   --border: rgba(148, 163, 184, 0.22);
   --border-sidebar: rgba(255, 255, 255, 0.1);
   --input-bg: #171b25;
@@ -89,6 +89,28 @@ body {
 .hover\:text-theme-accent:hover { color: var(--accent); }
 .hover\:bg-theme-nav:hover { background-color: var(--nav-hover); }
 .nav-active-theme { background-color: var(--nav-active); }
+
+/* Unified back button/link color across pages */
+.back-link-theme {
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+[data-theme="light"] .back-link-theme {
+  color: #32cd32;
+}
+
+[data-theme="light"] .back-link-theme:hover {
+  color: #2eb82e;
+}
+
+[data-theme="dark"] .back-link-theme {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .back-link-theme:hover {
+  color: #3b82f6;
+}
 
 /* Focus ring using theme accent */
 .focus\:ring-theme-accent:focus {
@@ -156,7 +178,7 @@ body {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 10px;
-  background: #16a34a !important;
+  background: #32cd32 !important;
   color: white !important;
   font-weight: 500;
   font-size: 14px;
@@ -180,6 +202,11 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   font-weight: 500;
   font-size: 14px;
+}
+
+[data-theme="dark"] .company-card .full-details-btn {
+  border: 1px solid rgba(52, 211, 153, 0.55);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
 }
 
 /* Pagination - dark mode */
@@ -225,7 +252,7 @@ body {
   width: 55px;
   height: 55px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), #10b981);
+  background: linear-gradient(135deg, var(--accent), #2eb82e);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -236,7 +263,7 @@ body {
 
 [data-theme="dark"] .fab.fab--secondary {
   bottom: 96px;
-  background: linear-gradient(135deg, #16a34a, #15803d);
+  background: linear-gradient(135deg, #32cd32, #2eb82e);
 }
 
 /* ========== Light mode only: exact spec styling ========== */
@@ -251,36 +278,58 @@ body {
 }
 
 [data-theme="light"] .page-container {
-  padding: 40px 80px;
+  padding: 1rem;
 }
 
 [data-theme="light"] .top-bar {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 1rem;
+  margin-bottom: 2rem;
 }
 
 [data-theme="light"] .search-bar {
-  width: 300px;
+  width: 100%;
+  min-height: 44px;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-light);
   background: white;
   box-shadow: var(--shadow-soft);
-  font-size: 14px;
+  font-size: 0.95rem;
   outline: none;
 }
 
 [data-theme="light"] .filter-dropdown {
+  width: 100%;
+  min-height: 44px;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-light);
   background: white;
   box-shadow: var(--shadow-soft);
-  font-size: 14px;
+  font-size: 0.95rem;
   outline: none;
+}
+
+@media (min-width: 640px) {
+  [data-theme="light"] .page-container {
+    padding: 1.5rem;
+  }
+
+  [data-theme="light"] .top-bar {
+    flex-direction: row;
+  }
+
+  [data-theme="light"] .search-bar {
+    width: min(28rem, 70vw);
+  }
+
+  [data-theme="light"] .filter-dropdown {
+    width: 250px;
+  }
 }
 
 /* Company grid - light mode */
@@ -430,6 +479,11 @@ body {
   padding: 8px 12px;
   border-radius: var(--radius-md);
   font-size: 14px;
+}
+
+[data-theme="light"] .company-card .full-details-btn {
+  border: 1px solid var(--accent);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 /* Pagination - light mode */
@@ -672,4 +726,136 @@ html, body, #root {
   .animate-slide-in-right {
     animation: slide-in-right 0.3s ease-out;
   }
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer-box {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-card) 88%, #ffffff 12%) 25%,
+    color-mix(in srgb, var(--bg-card-hover) 75%, #ffffff 25%) 50%,
+    color-mix(in srgb, var(--bg-card) 88%, #ffffff 12%) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* Keep CompanyStats layout stable across theme changes */
+.page-container {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-container {
+    padding: 1.5rem;
+  }
+}
+
+.top-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 640px) {
+  .top-bar {
+    flex-direction: row;
+  }
+}
+
+.search-bar {
+  width: 100%;
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+
+.filter-dropdown {
+  width: 100%;
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 640px) {
+  .search-bar {
+    width: min(28rem, 70vw);
+  }
+
+  .filter-dropdown {
+    width: 250px;
+  }
+}
+
+.company-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .company-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .company-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.company-card {
+  min-height: 320px;
+  height: auto;
+  padding: 22px !important;
+  border-radius: 16px !important;
+}
+
+.company-card .company-logo {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  border-radius: 12px !important;
+}
+
+.filter-fab,
+.add-fab,
+.fab {
+  width: 55px;
+  height: 55px;
+}
+
+/* Smooth color-only theme transitions (no layout shift). */
+.page-container,
+.top-bar,
+.search-bar,
+.filter-dropdown,
+.company-card,
+.company-card .company-logo,
+.pagination button,
+.nav-active-theme,
+.bg-theme-app,
+.bg-theme-card,
+.bg-theme-input,
+.text-theme-primary,
+.text-theme-secondary,
+.text-theme-muted,
+.border-theme,
+.border-theme-input {
+  transition:
+    background-color 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
   

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaThumbsUp, FaChartBar, FaTimes } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
@@ -18,6 +18,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
   const [editClearedOA, setEditClearedOA] = useState("");
   const [editGotIn, setEditGotIn] = useState("");
   const [statsSaving, setStatsSaving] = useState(false);
+  const hasPrefetchedRef = useRef(false);
 
   // Update local state when company prop changes
   useEffect(() => {
@@ -56,6 +57,17 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
     sessionStorage.setItem(storageKey, 'true');
     navigate(`/companies/${company._id}`);
+  };
+
+  const handleViewDetailsClick = (e) => {
+    e.stopPropagation();
+    handleCardClick();
+  };
+
+  const prefetchDetails = () => {
+    if (hasPrefetchedRef.current || !company?._id) return;
+    hasPrefetchedRef.current = true;
+    companyAPI.prefetchCompany(company._id);
   };
 
   const handleThumbsUp = async (e) => {
@@ -148,16 +160,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
   return (
     <div
-      onClick={handleCardClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleCardClick();
-        }
-      }}
-      className="rounded-2xl shadow-md p-6 cursor-pointer company-card h-full flex flex-col
+      className="rounded-2xl shadow-md p-6 company-card h-full flex flex-col
                  hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-in-out bg-theme-card border-2 border-theme-accent"
       data-testid="company-card"
     >
@@ -209,6 +212,17 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
           </div>
         </div>
       )}
+
+      <div className="mt-4 mb-3">
+        <button
+          onClick={handleViewDetailsClick}
+          onMouseEnter={prefetchDetails}
+          onTouchStart={prefetchDetails}
+          className="full-details-btn w-full px-4 py-2.5 rounded-xl font-semibold text-sm sm:text-base bg-theme-accent hover:bg-theme-accent text-white transition-colors duration-200"
+        >
+          Click to View Full Details
+        </button>
+      </div>
 
       {/* Helpful Count Section */}
       <div className="card-divider mt-4 pt-3 border-t border-theme" aria-hidden="true" />

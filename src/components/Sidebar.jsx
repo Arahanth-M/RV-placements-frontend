@@ -515,7 +515,11 @@ const Sidebar = () => {
                         }}
                       />
                     ) : null}
-                    <div className="w-10 h-10 rounded-full bg-theme-card border-2 border-theme flex items-center justify-center ${user.picture ? 'hidden' : ''}">
+                    <div
+                      className={`w-10 h-10 rounded-full bg-theme-card border-2 border-theme flex items-center justify-center ${
+                        user.picture ? "hidden" : ""
+                      }`}
+                    >
                       <span className="text-theme-primary font-semibold text-sm">
                         {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
                       </span>

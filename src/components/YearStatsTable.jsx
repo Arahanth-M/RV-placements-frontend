@@ -43,7 +43,7 @@ function YearStatsTable({ year, data, onBack }) {
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 sm:p-8">
         <button
           onClick={onBack}
-          className="mb-4 flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base"
+          className="mb-4 flex items-center back-link-theme text-sm sm:text-base"
         >
           <FaArrowLeft className="mr-2" />
           Back to Year Selection
@@ -82,7 +82,7 @@ function YearStatsTable({ year, data, onBack }) {
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base ml-16 sm:ml-20"
+        className="flex items-center back-link-theme text-sm sm:text-base ml-16 sm:ml-20"
       >
         <FaArrowLeft className="mr-2" />
         Back to Year Selection

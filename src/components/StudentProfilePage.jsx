@@ -15,7 +15,7 @@ const StudentProfilePage = () => {
           <p className="text-slate-300 mb-6">Student profile data is not available. Please contact support.</p>
           <button
             onClick={() => navigate(-1)}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors"
+            className="px-6 py-3 bg-theme-card border border-theme back-link-theme font-semibold rounded-lg transition-colors"
           >
             Go Back
           </button>
@@ -84,7 +84,7 @@ const StudentProfilePage = () => {
         <div className="mb-6 sm:mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base mb-4"
+            className="flex items-center back-link-theme text-sm sm:text-base mb-4"
           >
             <FaArrowLeft className="mr-2" />
             Back

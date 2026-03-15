@@ -110,7 +110,7 @@ const Login = () => {
 
             <button
               onClick={() => setShowOptions(false)}
-              className="w-full flex justify-center py-2 px-4 border border-slate-700 rounded-md shadow-sm text-sm font-medium text-slate-400 bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
+              className="w-full flex justify-center py-2 px-4 border border-slate-700 rounded-md shadow-sm text-sm back-link-theme bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors"
             >
               ← Back
             </button>
