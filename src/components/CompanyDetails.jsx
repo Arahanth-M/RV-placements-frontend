@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI } from "../utils/api";
+import CompanyLogo from "./CompanyLogo";
 
 import GeneralTab from "./CompanyTabs/GeneralTab";
 import OATab from "./CompanyTabs/OATab";
+import CodingTab from "./CompanyTabs/CodingTab";
 import InterviewTab from "./CompanyTabs/InterviewTab";
 import MustDoTab from "./CompanyTabs/MustDoTab";
 import VideoTab from "./CompanyTabs/VideoTab";
@@ -14,19 +16,35 @@ import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 function CompanyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [company, setCompany] = useState(null);
   const [activeTab, setActiveTab] = useState("general");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(null); // 'offline' | 'error' | null
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
+    setLoading(true);
+    setLoadError(null);
+    setCompany(null);
     companyAPI
       .getCompany(id)
-      .then((res) => setCompany(res.data))
-      .catch((err) =>
-        console.error("❌ Error fetching company details:", err)
-      );
+      .then((res) => {
+        setCompany(res.data);
+        setLoadError(null);
+      })
+      .catch((err) => {
+        console.error("❌ Error fetching company details:", err);
+        const isOffline =
+          typeof navigator !== "undefined" && !navigator.onLine;
+        const networkError =
+          err.message === "Network Error" ||
+          err.code === "ERR_NETWORK" ||
+          (err.response == null && err.request != null);
+        setLoadError(isOffline || networkError ? "offline" : "error");
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   const handleRefresh = () => {
@@ -39,27 +57,42 @@ function CompanyDetails() {
       .finally(() => setIsRefreshing(false));
   };
 
-  if (!id) return <div className="p-6" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}><p className="text-slate-400">Invalid company link.</p></div>;
-  if (!company) return <div className="p-6" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}><p className="text-slate-400">Loading...</p></div>;
-
-  // Helper function to get company initials
-  const getCompanyInitials = () => {
-    if (!company.name) return 'XX';
-    
-    const words = company.name.trim().split(/\s+/);
-    if (words.length >= 2) {
-      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-    }
-    return words[0].substring(0, 2).toUpperCase();
-  };
-
-  // Default logo image (SVG with company initials)
-  const getDefaultLogo = () => {
-    const initials = getCompanyInitials();
-    return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%236366F1'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'%3E${encodeURIComponent(initials)}%3C/text%3E%3C/svg%3E`;
-  };
-  
-  const defaultLogo = getDefaultLogo();
+  if (!id) return <div className="p-6 min-h-screen bg-theme-app"><p className="text-theme-secondary">Invalid company link.</p></div>;
+  if (loading && !company) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen bg-theme-app">
+        <p className="text-theme-secondary">Loading...</p>
+      </div>
+    );
+  }
+  if (loadError === 'offline' && !company) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center text-center min-h-screen bg-theme-app">
+        <p className="text-theme-primary font-medium mb-2">You are offline.</p>
+        <p className="text-theme-secondary text-sm mb-4">This company is not available from cache. Please connect to the internet to view it.</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 rounded-lg bg-theme-accent text-white transition-colors"
+        >
+          Go back
+        </button>
+      </div>
+    );
+  }
+  if (loadError && !company) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center text-center min-h-screen bg-theme-app">
+        <p className="text-theme-secondary mb-4">Could not load this company. Please try again.</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 rounded-lg bg-theme-card border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
+        >
+          Go back
+        </button>
+      </div>
+    );
+  }
+  if (!company) return null;
 
   // Check if company has interview_questions
   const hasInterviewQuestions = company.interview_questions && 
@@ -99,77 +132,59 @@ function CompanyDetails() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto" style={{ backgroundColor: '#302C2C', minHeight: '100vh' }}>
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
       {/* Back Button */}
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
         <button
           onClick={handleBack}
-          className="flex items-center text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base transition-colors"
+          className="flex items-center text-theme-accent font-medium text-sm sm:text-base transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           Back
         </button>
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Reload from server (will show in Network tab)"
-        >
-          {isRefreshing ? 'Refreshing…' : 'Refresh from server'}
-        </button>
       </div>
       
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+      <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
         <div className="flex items-center gap-4">
           {/* Company Logo */}
           <div 
-            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg shadow-md border-2 border-slate-700 flex-shrink-0 bg-slate-800 flex items-center justify-center overflow-hidden"
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg shadow-md border-2 border-theme flex-shrink-0 bg-theme-card flex items-center justify-center overflow-hidden"
             data-testid="company-logo"
           >
-            {company.logo && company.logo.trim() !== '' ? (
-              <img
-                src={company.logo}
-                alt={company.name || "Company logo"}
-                className="w-full h-full object-contain p-1"
-                onError={(e) => {
-                  // Fallback to default logo if image fails to load
-                  e.target.src = defaultLogo;
-                }}
-              />
-            ) : (
-              <img
-                src={defaultLogo}
-                alt={company.name || "Company logo"}
-                className="w-full h-full object-cover"
-              />
-            )}
+            <CompanyLogo
+              company={company}
+              className="w-full h-full object-contain p-1"
+              alt={company.name || "Company logo"}
+            />
           </div>
           {/* Company Name and Type */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 break-words">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-theme-primary mb-2 break-words">
               {company.name}
             </h1>
-            <p className="text-base sm:text-lg text-slate-300 break-words">{company.type}</p>
+            <p className="text-base sm:text-lg text-theme-secondary break-words">{company.type}</p>
           </div>
         </div>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "interview", "mustdo", "comments"].map((tab) => (
+        {["general", "oa", "coding", "interview", "mustdo", "comments"].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
+            className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === tab
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                ? "company-tab-btn--active"
+                : "bg-theme-card border border-theme text-theme-secondary"
             }`}
           >
             {tab === "general"
               ? "General"
               : tab === "oa"
               ? "OA Questions"
+              : tab === "coding"
+              ? "Coding"
               : tab === "interview"
               ? "Interview Experience"
               : tab === "mustdo"
@@ -180,10 +195,10 @@ function CompanyDetails() {
         {company.videoUrl && (
           <button
             onClick={() => setActiveTab("video")}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
+            className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "video"
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                ? "company-tab-btn--active"
+                : "bg-theme-card border border-theme text-theme-secondary"
             }`}
           >
             Video
@@ -192,23 +207,32 @@ function CompanyDetails() {
         {hasInterviewQuestions && (
           <button
             onClick={() => setActiveTab("offcampus")}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
+            className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "offcampus"
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                ? "company-tab-btn--active"
+                : "bg-theme-card border border-theme text-theme-secondary"
             }`}
           >
             Off-Campus Questions
           </button>
         )}
       </div>
-      {activeTab === "general" && <GeneralTab company={company} />}
-      {activeTab === "oa" && <OATab company={company} />}
-      {activeTab === "interview" && <InterviewTab company={company} />}
-      {activeTab === "mustdo" && <MustDoTab company={company} />}
-      {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
-      {activeTab === "comments" && <CommentsTab company={company} />}
-      {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
+      <div className="company-tab-content">
+        {activeTab === "general" && (
+          <GeneralTab
+            company={company}
+            isAdmin={isAdmin}
+            onRolesUpdated={handleRefresh}
+          />
+        )}
+        {activeTab === "oa" && <OATab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
+        {activeTab === "coding" && <CodingTab company={company} />}
+        {activeTab === "interview" && <InterviewTab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
+        {activeTab === "mustdo" && <MustDoTab company={company} />}
+        {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
+        {activeTab === "comments" && <CommentsTab company={company} />}
+        {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
+      </div>
     </div>
   );
 }

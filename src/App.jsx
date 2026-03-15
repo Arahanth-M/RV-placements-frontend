@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import appStore from "./utils/appStore"; 
+import appStore from "./utils/appStore";
 import { AuthProvider } from "./utils/AuthContext";
 import { PremiumProvider } from "./utils/PremiumContext";
+import { ThemeProvider } from "./utils/ThemeContext";
 import Sidebar from "./components/Sidebar";
 import Footer from "./components/Footer";
 import Home from "./components/Home";
@@ -30,6 +30,7 @@ import Developers from "./components/Developers";
 import GlobalChatbot from "./components/GlobalChatbot";
 import StudentProfilePage from "./components/StudentProfilePage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
+import Leaderboard from "./components/Leaderboard";
 
 
 function App() {
@@ -38,14 +39,23 @@ function App() {
       <BrowserRouter basename="/">
         <AuthProvider>
           <PremiumProvider>
-            <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#302C2C' }}>
-              <Sidebar />
+            <ThemeProvider>
+              <div className="flex flex-col min-h-screen bg-theme-app text-theme-primary">
+                <Sidebar />
 
               <main className="flex-grow">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/companystats" element={<CompanyStats />} />
+                  <Route
+                    path="/leaderboard"
+                    element={
+                      <ProtectedRoute>
+                        <Leaderboard />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route 
                     path="/companies/:id" 
                     element={
@@ -133,7 +143,8 @@ function App() {
               <GlobalChatbot />
               <PlacementPopupWrapper />
             </div>
-            </PremiumProvider>
+            </ThemeProvider>
+          </PremiumProvider>
           </AuthProvider>
       </BrowserRouter>
     </Provider>

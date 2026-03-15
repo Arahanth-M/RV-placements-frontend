@@ -5,6 +5,8 @@ import {
   setCachedCompaniesList,
   getCachedCompanyDetails,
   setCachedCompanyDetails,
+  getCachedYearStats,
+  setCachedYearStats,
   updateCachedHelpfulCount,
   clearCompaniesListCache,
   clearCompanyDetailsCache,
@@ -18,6 +20,10 @@ const API = axios.create({
 // In-flight promise deduplication: only one network request for companies list at a time
 let companiesListPromise = null;
 
+// Cache TTL for company list/details: after this many ms, cached data is treated as stale
+// and refetched from the server. Set to 2 minutes.
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
 export const authAPI = {
   getCurrentUser: () => API.get('/api/auth/current_user'),
   logout: () => API.get('/api/auth/logout'),
@@ -27,9 +33,23 @@ export const authAPI = {
 // Cache-first company API: always prefer IndexedDB; hit backend only on cache miss
 export const companyAPI = {
   async getAllCompanies() {
-    // 1. Try IndexedDB first – if we have a cached list, return it (no network call)
+    // If offline, always try to use cached list without TTL
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      try {
+        const cached = await getCachedCompaniesList(undefined);
+        if (Array.isArray(cached)) {
+          return { data: cached };
+        }
+      } catch (e) {
+        console.warn('IndexedDB get companies list (offline) failed', e);
+      }
+      // No cached data available while offline
+      return Promise.reject(new Error('Offline and no cached companies available'));
+    }
+
+    // 1. Try IndexedDB first – if we have a cached list within TTL, return it (no network call)
     try {
-      const cached = await getCachedCompaniesList();
+      const cached = await getCachedCompaniesList(CACHE_TTL_MS);
       if (Array.isArray(cached)) {
         return { data: cached };
       }
@@ -60,17 +80,34 @@ export const companyAPI = {
   async getCompany(id) {
     if (!id) return Promise.reject(new Error('Company id is required'));
 
-    // 1. Try IndexedDB first
+    // If offline, always try to use cached details without TTL
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      try {
+        const cached = await getCachedCompanyDetails(id, undefined);
+        if (cached != null && typeof cached === 'object' && (cached._id || cached.name)) {
+          return { data: cached };
+        }
+      } catch (e) {
+        console.warn('IndexedDB get company details (offline) failed', e);
+      }
+      return Promise.reject(new Error('Offline and no cached company available'));
+    }
+
+    // 1. Try IndexedDB first (within TTL) – but only use cache if it has full detail shape (e.g. onlineQuestions)
     try {
-      const cached = await getCachedCompanyDetails(id);
+      const cached = await getCachedCompanyDetails(id, CACHE_TTL_MS);
       if (cached != null && typeof cached === 'object' && (cached._id || cached.name)) {
-        return { data: cached };
+        // If cache looks like a list item (has focusTags but no onlineQuestions), it's incomplete – refetch
+        const hasListShape = 'focusTags' in cached && !Array.isArray(cached.onlineQuestions);
+        if (!hasListShape) {
+          return { data: cached };
+        }
       }
     } catch (e) {
       console.warn('IndexedDB get company details failed, falling back to API', e);
     }
 
-    // 2. Cache miss: fetch and store
+    // 2. Cache miss or incomplete: fetch and store
     const res = await API.get(`/api/companies/${id}`);
     try {
       await setCachedCompanyDetails(id, res.data);
@@ -140,6 +177,14 @@ export const adminAPI = {
   approveCompany: (id) => API.post(`/api/admin/companies/${id}/approve`),
   rejectCompany: (id) => API.delete(`/api/admin/companies/${id}/reject`),
   deleteApprovedCompany: (id) => API.delete(`/api/admin/companies/${id}/delete`),
+  updateOAQuestion: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/oa-questions/${index}`, data),
+  deleteOAQuestion: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/oa-questions/${index}`),
+  updateInterviewQuestion: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/interview-questions/${index}`, data),
+  deleteInterviewQuestion: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/interview-questions/${index}`),
+  updateInterviewProcess: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/interview-process/${index}`, data),
+  deleteInterviewProcess: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/interview-process/${index}`),
+  updateCompanyStats: (companyId, data) => API.put(`/api/admin/companies/${companyId}/stats`, data),
+  updateCompanyRoles: (companyId, roles) => API.put(`/api/admin/companies/${companyId}/roles`, { roles }),
 };
 
 export const eventAPI = {
@@ -151,7 +196,26 @@ export const eventAPI = {
 };
 
 export const yearStatsAPI = {
-  getYearStats: (year) => API.get(`/api/year-stats/${year}`),
+  async getYearStats(year) {
+    // 1. Try IndexedDB first – year stats are effectively static, so no TTL is used.
+    try {
+      const cached = await getCachedYearStats(year);
+      if (cached != null) {
+        return { data: cached };
+      }
+    } catch (e) {
+      console.warn('IndexedDB get year stats failed, falling back to API', e);
+    }
+
+    // 2. Cache miss: fetch from API and store once
+    const res = await API.get(`/api/year-stats/${year}`);
+    try {
+      await setCachedYearStats(year, res.data);
+    } catch (e) {
+      console.warn('IndexedDB set year stats failed', e);
+    }
+    return res;
+  },
 };
 
 export const commentAPI = {
@@ -177,6 +241,10 @@ export const studentAPI = {
 
 export const placementAPI = {
   submitPlacementData: (companyId, data) => API.post(`/api/placement/${companyId}/placement-data`, data),
+};
+
+export const leaderboardAPI = {
+  getLeaderboard: () => API.get('/api/leaderboard'),
 };
 
 export default API;

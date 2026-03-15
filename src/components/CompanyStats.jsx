@@ -2,11 +2,9 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import YearStatsTable from "../components/YearStatsTable";
-import { BASE_URL, MESSAGES } from "../utils/constants";
-import { FaFilter, FaPlus, FaCalendarAlt, FaBuilding, FaChartBar, FaBriefcase, FaUsers, FaArrowLeft } from "react-icons/fa";
+import { FaFilter, FaCalendarAlt, FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
-import PlacementForm from "./PlacementForm";
 
 function CompanyStats() {
   // Year selection state
@@ -22,14 +20,11 @@ function CompanyStats() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   const [showClusterFilter, setShowClusterFilter] = useState(false);
-  const [showPlacementForm, setShowPlacementForm] = useState(false);
-  const [placementCompanyId, setPlacementCompanyId] = useState(null);
-  const [placementCompanyName, setPlacementCompanyName] = useState('');
 
-  const companiesPerPage = 6;
+  const companiesPerPage = 9;
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, studentData } = useAuth();
+  const { user, isAdmin } = useAuth();
   const clusterFilterRef = useRef(null);
 
   // Helper function to get user-specific storage keys
@@ -249,118 +244,17 @@ function CompanyStats() {
   );
   const totalPages = Math.ceil(filteredCompanies.length / companiesPerPage);
 
-  // Calculate statistics for 2026
-  const stats = {
-    totalCompanies: (companies || []).length,
-    all: (companies || []).length,
-    fte: (companies || []).filter(c => c && c.type && c.type.toLowerCase() === "fte").length,
-    internshipPlusFte: (companies || []).filter(c => c && c.type && c.type.toLowerCase().includes("internship + fte")).length,
-    onlyInternship: (companies || []).filter(c => c && c.type && c.type.toLowerCase().includes("only internship")).length,
-  };
-
-  // Handle + button click - show placement form for user's placed company
-  const handlePlusButtonClick = async () => {
-    if (!user || !studentData) {
-      alert('Please login and verify your USN to access this feature.');
-      return;
-    }
-
-    // Get placed company from student data
-    const placedCompanyField = studentData.Company || 
-                               studentData['Placed Company'] || 
-                               studentData['Company Name'] ||
-                               studentData.company ||
-                               studentData.placedCompany ||
-                               studentData.PlacedCompany;
-
-    if (!placedCompanyField) {
-      alert('You are not placed in any company. This form is only for placed students.');
-      return;
-    }
-
-    try {
-      // Fetch companies if not already loaded
-      let companiesList = companies || [];
-      if (companiesList.length === 0) {
-        const res = await companyAPI.getAllCompanies();
-        companiesList = res.data || [];
-      }
-
-      // Find company by name
-      const company = companiesList.find(c => 
-        c.name && c.name.toLowerCase().trim() === placedCompanyField.toString().toLowerCase().trim()
-      );
-
-      if (company) {
-        setPlacementCompanyId(company._id);
-        setPlacementCompanyName(company.name);
-        setShowPlacementForm(true);
-      } else {
-        alert(`Company "${placedCompanyField}" not found in the system. Please contact support.`);
-      }
-    } catch (err) {
-      console.error('Error finding company:', err);
-      alert('Error finding your placed company. Please try again.');
-    }
-  };
-
-  // Check if user is new and show placement form
-  useEffect(() => {
-    const checkNewUserPlacement = async () => {
-      if (!user || !studentData) return;
-      
-      // Check if user is new (created within last 5 minutes)
-      const isNewUser = user.isNewUser === true;
-      
-      if (isNewUser) {
-        // Get placed company from student data
-        const placedCompanyField = studentData.Company || 
-                                   studentData['Placed Company'] || 
-                                   studentData['Company Name'] ||
-                                   studentData.company ||
-                                   studentData.placedCompany ||
-                                   studentData.PlacedCompany;
-
-        if (placedCompanyField) {
-          try {
-            // Always fetch companies to ensure we have the latest data
-            const res = await companyAPI.getAllCompanies();
-            const companiesList = res.data || [];
-
-            // Find company by name
-            const company = companiesList.find(c => 
-              c.name && c.name.toLowerCase().trim() === placedCompanyField.toString().toLowerCase().trim()
-            );
-
-            if (company) {
-              // Check if form already submitted
-              const submittedKey = `placementFormSubmitted_${company._id}`;
-              const isSubmitted = localStorage.getItem(submittedKey) === 'true';
-              
-              if (!isSubmitted) {
-                setPlacementCompanyId(company._id);
-                setPlacementCompanyName(company.name);
-                setShowPlacementForm(true);
-              }
-            }
-          } catch (err) {
-            console.error('Error checking new user placement:', err);
-          }
-        }
-      }
-    };
-
-    checkNewUserPlacement();
-  }, [user, studentData]);
+  // Statistics for 2026 were previously calculated here for UI cards (total companies, FTE, etc.).
+  // That summary UI has been removed as per requirements, so we no longer compute those aggregates.
 
   // Year selection view
   if (selectedYear === null) {
     return (
-      <div className="p-6 sm:p-8 min-h-screen" style={{ backgroundColor: '#302C2C' }}>
+      <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
         <div className="max-w-7xl mx-auto">
           {/* Year Selection Cards */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Select Year</h2>
+            <h2 className="text-xl font-semibold text-theme-primary mb-4">Select Year</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[2024, 2025, 2026].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
@@ -377,14 +271,11 @@ function CompanyStats() {
                     setSelectedYear(year);
                   }}
                   disabled={isDisabled}
-                  className={`rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 ${
+                  className={`rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card ${
                     isDisabled
-                      ? "opacity-50 cursor-not-allowed border-gray-600"
-                      : "hover:shadow-2xl hover:scale-105 border-transparent hover:border-blue-500"
+                      ? "opacity-50 cursor-not-allowed border-theme"
+                      : "hover:shadow-2xl hover:scale-105 border-theme hover:border-theme-accent"
                   }`}
-                  style={{
-                    backgroundColor: isDisabled ? '#1a1a1a' : '#1a1a1a'
-                  }}
                 >
                   <div className="flex flex-col items-center text-center">
                     <div className={`rounded-full p-4 sm:p-5 mb-4 ${
@@ -394,10 +285,10 @@ function CompanyStats() {
                         isDisabled ? "text-gray-500" : "text-blue-300"
                       }`} />
                     </div>
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-theme-primary mb-2">
                       {year} Stats
                     </h2>
-                    <p className="text-gray-300 text-sm sm:text-base">
+                    <p className="text-theme-secondary text-sm sm:text-base">
                       {year === 2026 ? "View Company Cards" : "View Statistics Table"}
                     </p>
                     {isDisabled && (
@@ -419,12 +310,12 @@ function CompanyStats() {
   // Year stats table view (2024 or 2025)
   if (selectedYear === 2024 || selectedYear === 2025) {
     return (
-      <div className="p-4 sm:p-6 min-h-screen" style={{ backgroundColor: '#302C2C' }}>
+      <div className="p-4 sm:p-6 min-h-screen bg-theme-app">
         <div className="max-w-7xl mx-auto">
           {loadingYearStats ? (
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-8 sm:p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400 mx-auto mb-4"></div>
-              <p className="text-slate-400">Loading {selectedYear} statistics...</p>
+            <div className="bg-theme-card border border-theme rounded-xl shadow-lg p-8 sm:p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-theme-accent mx-auto mb-4"></div>
+              <p className="text-theme-secondary">Loading {selectedYear} statistics...</p>
             </div>
           ) : (
             <YearStatsTable
@@ -443,7 +334,7 @@ function CompanyStats() {
 
   // Company cards view (2026)
   return (
-    <div className="p-4 sm:p-6 min-h-screen relative" style={{ backgroundColor: '#302C2C' }}>
+    <div className="page-container p-4 sm:p-6 min-h-screen relative bg-theme-app">
       <div className="mb-4 sm:mb-6">
         <button
           onClick={() => {
@@ -454,12 +345,12 @@ function CompanyStats() {
             setCluster("all");
             setCurrentPage(1);
           }}
-          className="mb-4 flex items-center text-blue-400 hover:text-blue-300 font-medium text-sm sm:text-base ml-16 sm:ml-20"
+          className="mb-4 flex items-center text-theme-accent font-medium text-sm sm:text-base ml-16 sm:ml-20"
         >
           <FaArrowLeft className="mr-2" />
           Back to Year Selection
         </button>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <div className="top-bar flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <div className="w-full sm:w-auto sm:max-w-md">
           <input
             type="text"
@@ -469,19 +360,14 @@ function CompanyStats() {
               setSearch(e.target.value);
               setCurrentPage(1);
             }}
-              className="w-full px-4 py-2 sm:py-3 border border-slate-600 
-                       rounded-xl shadow-sm focus:outline-none focus:ring-2 
-                         focus:ring-indigo-500 transition duration-200 text-sm sm:text-base bg-slate-800 text-white placeholder-slate-400"
+              className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
           />
         </div>
           {/* Cluster Filter Dropdown */}
           <div className="relative w-full sm:w-auto" ref={clusterFilterRef}>
             <button
               onClick={() => setShowClusterFilter(!showClusterFilter)}
-              className="w-full sm:w-auto px-4 py-2 sm:py-3 border border-slate-600 rounded-xl shadow-sm 
-                         bg-slate-800 hover:bg-slate-700 focus:outline-none focus:ring-2 
-                         focus:ring-indigo-500 transition duration-200 text-sm sm:text-base 
-                         text-white font-medium min-w-[200px] sm:min-w-[250px] flex items-center justify-between"
+              className="filter-dropdown w-full sm:w-auto px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm bg-theme-input hover:bg-theme-card-hover focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base text-theme-primary font-medium min-w-[200px] sm:min-w-[250px] flex items-center justify-between"
             >
               <span>
                 {cluster === "all" 
@@ -504,15 +390,15 @@ function CompanyStats() {
               </svg>
             </button>
             {showClusterFilter && (
-              <div className="absolute right-0 mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-lg py-2 w-full min-w-[200px] sm:min-w-[250px] z-50">
+              <div className="absolute right-0 mt-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-full min-w-[200px] sm:min-w-[250px] z-50">
                 <button
                   onClick={() => {
                     setCluster("all");
                     setShowClusterFilter(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                    cluster === "all" ? "font-semibold bg-slate-700 text-white" : ""
+                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                    cluster === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
                   }`}
                 >
                   All Clusters
@@ -523,8 +409,8 @@ function CompanyStats() {
                     setShowClusterFilter(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                    cluster === "Computer Science and Engineering" ? "font-semibold bg-slate-700 text-white" : ""
+                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                    cluster === "Computer Science and Engineering" ? "font-semibold nav-active-theme text-theme-primary" : ""
                   }`}
                 >
                   Computer Science and Engineering
@@ -535,8 +421,8 @@ function CompanyStats() {
                     setShowClusterFilter(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                    cluster === "Electronics and Communication" ? "font-semibold bg-slate-700 text-white" : ""
+                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                    cluster === "Electronics and Communication" ? "font-semibold nav-active-theme text-theme-primary" : ""
                   }`}
                 >
                   Electronics and Communication
@@ -547,8 +433,8 @@ function CompanyStats() {
                     setShowClusterFilter(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                    cluster === "Mechanical Engineering" ? "font-semibold bg-slate-700 text-white" : ""
+                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                    cluster === "Mechanical Engineering" ? "font-semibold nav-active-theme text-theme-primary" : ""
                   }`}
                 >
                   Mechanical Engineering
@@ -559,62 +445,14 @@ function CompanyStats() {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="max-w-7xl mx-auto mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-            {/* Total Companies */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-400">Total Companies</h3>
-                <FaBuilding className="text-indigo-400 text-lg sm:text-xl" />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.totalCompanies}</p>
-            </div>
-
-            {/* All */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-400">All</h3>
-                <FaChartBar className="text-indigo-400 text-lg sm:text-xl" />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.all}</p>
-            </div>
-
-            {/* Only Internship */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-400">Only Internship</h3>
-                <FaBriefcase className="text-indigo-400 text-lg sm:text-xl" />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.onlyInternship}</p>
-            </div>
-
-            {/* Internship + FTE */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-400">Internship + FTE</h3>
-                <FaUsers className="text-indigo-400 text-lg sm:text-xl" />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.internshipPlusFte}</p>
-            </div>
-
-            {/* Only FTE */}
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm sm:text-base font-semibold text-slate-400">Only FTE</h3>
-                <FaBriefcase className="text-indigo-400 text-lg sm:text-xl" />
-              </div>
-              <p className="text-2xl sm:text-3xl font-bold text-white">{stats.fte}</p>
-            </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="company-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         {currentCompanies.length > 0 ? (
           currentCompanies.map((c) => (
             <CompanyCard
               key={c._id}
               company={c}
+              isAdmin={isAdmin}
+              onStatsUpdated={() => companyAPI.getAllCompanies().then((res) => setCompanies(res.data))}
             />
           ))
         ) : (
@@ -627,11 +465,11 @@ function CompanyStats() {
       </div>
 
       {filteredCompanies.length > companiesPerPage && (
-        <div className="flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
+        <div className="pagination flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-600 transition duration-200 text-sm sm:text-base"
+            className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
           >
             Prev
           </button>
@@ -650,10 +488,10 @@ function CompanyStats() {
               if (!shouldShow) {
                 // Show ellipsis for gaps
                 if (pageNum === 2 && currentPage > 4) {
-                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-gray-400">...</span>;
+                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-theme-muted">...</span>;
                 }
                 if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
-                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-gray-400">...</span>;
+                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-theme-muted">...</span>;
                 }
                 return null;
               }
@@ -662,11 +500,8 @@ function CompanyStats() {
                 <button
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition duration-200 text-sm sm:text-base ${
-                    pageNum === currentPage
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                  }`}
+                  data-active={pageNum === currentPage ? "true" : undefined}
+                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition duration-200 text-sm sm:text-base ${pageNum === currentPage ? "active bg-theme-accent text-white" : "bg-theme-card border border-theme text-theme-secondary hover:bg-theme-nav"}`}
                 >
                   {pageNum}
                 </button>
@@ -679,7 +514,7 @@ function CompanyStats() {
               setCurrentPage((prev) => Math.min(prev + 1, totalPages))
             }
             disabled={currentPage === totalPages}
-            className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-600 transition duration-200 text-sm sm:text-base"
+            className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
           >
             Next
           </button>
@@ -689,33 +524,22 @@ function CompanyStats() {
       <div className="fixed bottom-16 sm:bottom-20 right-4 sm:right-6 z-50 flex flex-col gap-3 sm:gap-4 items-end">
         <button
           onClick={() => setShowFilter((prev) => !prev)}
-          className="bg-indigo-600 text-white p-3 sm:p-4 rounded-full shadow-lg hover:bg-indigo-700 transition duration-200"
+          className="fab filter-fab bg-theme-accent p-3 sm:p-4 rounded-full shadow-lg transition duration-200"
           aria-label="Filter"
         >
           <FaFilter size={18} className="sm:w-5 sm:h-5" />
         </button>
 
-        {user && (
-          <button
-            onClick={handlePlusButtonClick}
-            className="bg-green-500 text-white p-3 sm:p-4 rounded-full shadow-lg hover:bg-green-600 transition duration-200"
-            aria-label="Fill Placement Form"
-            title="Fill Placement Form"
-          >
-            <FaPlus size={18} className="sm:w-5 sm:h-5" />
-          </button>
-        )}
-
         {showFilter && (
-          <div className="absolute bottom-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0">
+          <div className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0">
             <button
               onClick={() => {
                 setCategory("all");
                 setShowFilter(false);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                category === "all" ? "font-semibold bg-slate-700 text-white" : ""
+              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                category === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
               }`}
             >
               All
@@ -726,8 +550,8 @@ function CompanyStats() {
                 setShowFilter(false);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                category === "fte" ? "font-semibold bg-slate-700 text-white" : ""
+              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                category === "fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
               }`}
             >
               FTE
@@ -738,8 +562,8 @@ function CompanyStats() {
                 setShowFilter(false);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                category === "internship + fte" ? "font-semibold bg-slate-700 text-white" : ""
+              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                category === "internship + fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
               }`}
             >
               Internship + FTE
@@ -750,8 +574,8 @@ function CompanyStats() {
                 setShowFilter(false);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-left hover:bg-slate-700 text-slate-300 ${
-                category === "only internship(6 months)" ? "font-semibold bg-slate-700 text-white" : ""
+              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                category === "only internship(6 months)" ? "font-semibold nav-active-theme text-theme-primary" : ""
               }`}
             >
               Only Internship
@@ -759,23 +583,6 @@ function CompanyStats() {
           </div>
         )}
       </div>
-
-      {/* Placement Form */}
-      {showPlacementForm && placementCompanyId && placementCompanyName && (
-        <PlacementForm
-          companyName={placementCompanyName}
-          companyId={placementCompanyId}
-          onSuccess={() => {
-            setShowPlacementForm(false);
-            // Refresh companies list
-            companyAPI.getAllCompanies().then(res => {
-              setCompanies(res.data);
-            });
-          }}
-          onClose={() => setShowPlacementForm(false)}
-          isRequired={false}
-        />
-      )}
     </div>
   );
 }

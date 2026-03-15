@@ -40,6 +40,8 @@ export const AuthProvider = ({ children }) => {
   // 7 hours in milliseconds
   const SESSION_DURATION = 7 * 60 * 60 * 1000; // 7 hours
   const LOGIN_TIMESTAMP_KEY = 'loginTimestamp';
+  const LAST_USER_KEY = 'lastUser';
+  const LAST_USER_IS_ADMIN_KEY = 'lastUserIsAdmin';
 
   // Check if session has expired
   const isSessionExpired = () => {
@@ -99,12 +101,37 @@ export const AuthProvider = ({ children }) => {
 
   const checkUser = async () => {
     try {
+      // If we're offline, fall back to last-known user for read-only/offline mode
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const storedUser = localStorage.getItem(LAST_USER_KEY);
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            const storedIsAdmin = localStorage.getItem(LAST_USER_IS_ADMIN_KEY);
+            // In offline mode, treat user as non-admin to avoid admin writes
+            const offlineIsAdmin = storedIsAdmin ? JSON.parse(storedIsAdmin) === true : false;
+            setIsAdmin(offlineIsAdmin && false);
+          } catch {
+            setUser(null);
+            setIsAdmin(false);
+          }
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+        }
+        setLoading(false);
+        return;
+      }
+
       // First check if session has expired
       if (isSessionExpired() && localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
         console.log('Session expired. Clearing user data.');
         clearLoginTimestamp();
         setUser(null);
         setIsAdmin(false);
+        localStorage.removeItem(LAST_USER_KEY);
+        localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
         setLoading(false);
         return;
       }
@@ -112,6 +139,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.getCurrentUser();
       if (response.data) {
         setUser(response.data);
+        // Persist last-known user for offline read-only mode
+        localStorage.setItem(LAST_USER_KEY, JSON.stringify(response.data));
         // Store login timestamp if not already stored (for existing sessions)
         if (!localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
           storeLoginTimestamp();
@@ -119,20 +148,27 @@ export const AuthProvider = ({ children }) => {
         // Check admin status
         try {
           const adminResponse = await authAPI.isAdmin();
-          setIsAdmin(adminResponse.data?.isAdmin || false);
+          const adminFlag = adminResponse.data?.isAdmin || false;
+          setIsAdmin(adminFlag);
+          localStorage.setItem(LAST_USER_IS_ADMIN_KEY, JSON.stringify(adminFlag));
         } catch (error) {
           setIsAdmin(false);
+          localStorage.setItem(LAST_USER_IS_ADMIN_KEY, JSON.stringify(false));
         }
       } else {
         setUser(null);
         setIsAdmin(false);
         clearLoginTimestamp();
+        localStorage.removeItem(LAST_USER_KEY);
+        localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
       }
     } catch (error) {
       console.log('User not authenticated');
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();
+      localStorage.removeItem(LAST_USER_KEY);
+      localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
     } finally {
       setLoading(false);
     }
@@ -191,6 +227,8 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();
+      localStorage.removeItem(LAST_USER_KEY);
+      localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
     } catch (error) {
       console.error('Logout failed:', error);
       
@@ -222,6 +260,8 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAdmin(false);
       clearLoginTimestamp();
+      localStorage.removeItem(LAST_USER_KEY);
+      localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
     }
   }, []);
 
@@ -264,6 +304,28 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = async () => {
     setLoading(true);
     try {
+      // If offline, reuse last-known user rather than calling API
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const storedUser = localStorage.getItem(LAST_USER_KEY);
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            const storedIsAdmin = localStorage.getItem(LAST_USER_IS_ADMIN_KEY);
+            const offlineIsAdmin = storedIsAdmin ? JSON.parse(storedIsAdmin) === true : false;
+            setIsAdmin(offlineIsAdmin && false);
+          } catch {
+            setUser(null);
+            setIsAdmin(false);
+          }
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+        }
+        setLoading(false);
+        return null;
+      }
+
       // Check if session has expired before refreshing
       if (isSessionExpired() && localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
         console.log('Session expired. Logging out...');

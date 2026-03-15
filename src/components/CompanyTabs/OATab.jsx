@@ -269,16 +269,23 @@
 // export default OATab;
 
 import React, { useState } from "react";
-import { FaCopy, FaCheck } from "react-icons/fa";
+import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
+import { adminAPI } from "../../utils/api";
 
-function OATab({ company }) {
+function OATab({ company, isAdmin, onCompanyUpdate }) {
   const [showModal, setShowModal] = useState(false);
   const [question, setQuestion] = useState("");
   const [solution, setSolution] = useState("");
   const [openQuestionIndex, setOpenQuestionIndex] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({}); // track solution open per question
   const [copiedIndex, setCopiedIndex] = useState(null); // track which solution was copied
+  const [editIndex, setEditIndex] = useState(null);
+  const [editQuestion, setEditQuestion] = useState("");
+  const [editSolution, setEditSolution] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const safeCompany = company || {};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -288,7 +295,7 @@ function OATab({ company }) {
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Include cookies for authentication
         body: JSON.stringify({
-          companyId: company._id,
+          companyId: safeCompany._id,
           type: "onlineQuestions",
           content: JSON.stringify({ question, solution }),
         }),
@@ -316,6 +323,45 @@ function OATab({ company }) {
       ...prev,
       [questionIdx]: !prev[questionIdx],
     }));
+  };
+
+  const handleEditOA = (index, questionText, solutionText) => {
+    setEditIndex(index);
+    setEditQuestion(questionText || "");
+    setEditSolution(solutionText || "");
+  };
+
+  const handleSaveEditOA = async (e) => {
+    e.preventDefault();
+    if (editIndex == null || !safeCompany._id) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.updateOAQuestion(safeCompany._id, editIndex, { question: editQuestion, solution: editSolution });
+      if (onCompanyUpdate) onCompanyUpdate();
+      setEditIndex(null);
+      setEditQuestion("");
+      setEditSolution("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update question.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteOA = async (index) => {
+    if (!safeCompany._id || !window.confirm("Delete this OA question?")) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.deleteOAQuestion(safeCompany._id, index);
+      if (onCompanyUpdate) onCompanyUpdate();
+      setOpenQuestionIndex(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete question.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleCopySolution = async (solutionText, index) => {
@@ -350,7 +396,7 @@ function OATab({ company }) {
 
   // Normalize questions & solutions
   const parsedQuestions =
-    company.onlineQuestions?.map((qa) => {
+    safeCompany.onlineQuestions?.map((qa) => {
       if (!qa) return "";
       if (typeof qa === "string") return qa;
       if (typeof qa === "object" && qa.question) return qa.question;
@@ -402,7 +448,7 @@ function OATab({ company }) {
   };
 
   const solutions =
-    company.onlineQuestions_solution?.map((sol) => {
+    safeCompany.onlineQuestions_solution?.map((sol) => {
       if (!sol) return "";
       let processedSol;
       
@@ -500,16 +546,38 @@ function OATab({ company }) {
                 key={index}
                 className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
-                {/* Question Accordion */}
-                <button
-                  onClick={() => toggleQuestionAccordion(index)}
-                  className="w-full text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
-                >
-                  <span className="truncate">Question {index + 1}</span>
-                  <span className="text-lg text-slate-400">
-                    {openQuestionIndex === index ? "−" : "+"}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleQuestionAccordion(index)}
+                    className="flex-1 text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
+                  >
+                    <span className="truncate">Question {index + 1}</span>
+                    <span className="text-lg text-slate-400">
+                      {openQuestionIndex === index ? "−" : "+"}
+                    </span>
+                  </button>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 pr-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleEditOA(index, q, solutions[index])}
+                        className="p-2 rounded-md text-amber-400 hover:bg-slate-700 transition-colors"
+                        title="Edit question"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteOA(index)}
+                        disabled={actionLoading}
+                        className="p-2 rounded-md text-red-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        title="Delete question"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {openQuestionIndex === index && (
                   <div className="px-4 pb-4 text-slate-300 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
@@ -547,7 +615,7 @@ function OATab({ company }) {
                                   </>
                                 )}
                               </button>
-                              <pre className="bg-slate-900 text-green-300 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              <pre className="bg-slate-900 text-green-300 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre font-mono">
                                 <code>{solutions[index]}</code>
                               </pre>
                             </div>
@@ -601,6 +669,46 @@ function OATab({ company }) {
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                 >
                   Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal to edit OA question (admin) */}
+      {editIndex !== null && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold mb-4 text-amber-400">Edit OA Question {editIndex + 1}</h3>
+            <form onSubmit={handleSaveEditOA} className="space-y-3">
+              <textarea
+                value={editQuestion}
+                onChange={(e) => setEditQuestion(e.target.value)}
+                placeholder="Question"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+              <textarea
+                value={editSolution}
+                onChange={(e) => setEditSolution(e.target.value)}
+                placeholder="Solution (optional)"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
+                  onClick={() => { setEditIndex(null); setEditQuestion(""); setEditSolution(""); }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50"
+                >
+                  {actionLoading ? "Saving…" : "Save"}
                 </button>
               </div>
             </form>

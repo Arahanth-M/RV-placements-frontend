@@ -1,13 +1,15 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars } from "react-icons/fa";
+import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon } from "react-icons/fa";
+import { useTheme } from "../utils/ThemeContext";
 import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.png";
 import NotificationBell from "./NotificationBell";
 
 const Sidebar = () => {
   const { user, isAdmin, studentData, login, signup, logout, loading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
@@ -278,10 +280,10 @@ const Sidebar = () => {
       {/* Hamburger icon indicator at top left */}
       <div
         ref={hamburgerRef}
-        className="fixed top-4 left-4 z-40 p-2 bg-slate-800 border border-slate-700 rounded-md shadow-lg cursor-pointer hover:bg-slate-700 transition-colors"
+        className="fixed top-4 left-4 z-40 p-2 bg-theme-card border border-theme rounded-md shadow-lg cursor-pointer hover:bg-theme-card-hover transition-colors text-theme-primary"
         title="Hover to open sidebar"
       >
-        <FaBars className="w-5 h-5 text-slate-200" />
+        <FaBars className="w-5 h-5" />
       </div>
 
       {/* Hover zone - invisible trigger area on the left edge (excludes top right area) */}
@@ -298,30 +300,45 @@ const Sidebar = () => {
       {/* Sidebar */}
       <aside
         ref={sidebarRef}
-        className={`fixed left-0 top-0 bottom-0 w-64 z-40 transition-transform duration-300 ease-in-out bg-slate-900 ${
+        className={`fixed left-0 top-0 bottom-0 w-64 z-40 transition-transform duration-300 ease-in-out bg-theme-sidebar border-theme-sidebar ${
           isVisible ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ 
-          boxShadow: isVisible ? '2px 0 10px rgba(0,0,0,0.3)' : 'none'
+        style={{
+          boxShadow: isVisible ? '2px 0 10px rgba(0,0,0,0.3)' : 'none',
+          borderRightWidth: '1px'
         }}
       >
         <div className="h-full flex flex-col overflow-y-auto">
           {/* Logo */}
-          <div className="p-4 border-b border-slate-700 bg-white">
+          <div className="sidebar-logo-wrap p-4 border-b border-theme-sidebar bg-theme-card">
             <Link to="/" className="flex items-center" onClick={() => setIsVisible(false)}>
-              <img 
-                src={logo} 
-                alt="CompanyTracker Logo" 
-                className="max-h-12 max-w-28 w-auto h-auto object-contain hover:opacity-80 transition-opacity duration-200"  
+              <img
+                src={logo}
+                alt="CompanyTracker Logo"
+                className="max-h-12 max-w-28 w-auto h-auto object-contain hover:opacity-80 transition-opacity duration-200"
               />
             </Link>
+          </div>
+
+          {/* Theme Toggle */}
+          <div className="px-4 py-2 border-b border-theme-sidebar flex items-center justify-between">
+            <span className="text-sm text-theme-secondary">Theme</span>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-theme-card border border-theme hover:bg-theme-card-hover transition-colors text-theme-primary"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <FaSun className="w-5 h-5" /> : <FaMoon className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Navigation Items */}
           <nav className="flex-1 p-4 space-y-2">
             <Link 
               to="/" 
-              className="nav-link flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+              className="nav-link flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
               onClick={() => setIsVisible(false)}
             >
               <FaHome className="w-5 h-5 mr-3" />
@@ -330,7 +347,7 @@ const Sidebar = () => {
 
             <Link 
               to="/events" 
-              className="nav-link flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors relative"
+              className="nav-link flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors relative"
               onClick={() => setIsVisible(false)}
             >
               <FaCalendarAlt className="w-5 h-5 mr-3" />
@@ -344,13 +361,13 @@ const Sidebar = () => {
             <div className="relative" ref={studentsCornerMenuRef}>
               <button
                 onClick={() => setShowStudentsCornerMenu(!showStudentsCornerMenu)}
-                className="w-full nav-link flex items-center justify-between text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                className="w-full nav-link flex items-center justify-between text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
               >
                 <div className="flex items-center">
                   <FaGraduationCap className="w-5 h-5 mr-3" />
                   Students Corner
                 </div>
-                <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-theme-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showStudentsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
                 </svg>
               </button>
@@ -363,10 +380,21 @@ const Sidebar = () => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
-                    className="block nav-link text-sm flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
                     <FaChartBar className="w-4 h-4 mr-2" />
                     Company Stats
+                  </Link>
+                  <Link
+                    to="/leaderboard"
+                    onClick={() => {
+                      setShowStudentsCornerMenu(false);
+                      setIsVisible(false);
+                    }}
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                  >
+                    <FaTrophy className="w-4 h-4 mr-2" />
+                    Leaderboard
                   </Link>
                   <Link
                     to="/resources"
@@ -374,7 +402,7 @@ const Sidebar = () => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
-                    className="block nav-link text-sm flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
                     <FaBook className="w-4 h-4 mr-2" />
                     Resources
@@ -385,7 +413,7 @@ const Sidebar = () => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
-                    className="block nav-link text-sm flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
                     <FaCode className="w-4 h-4 mr-2" />
                     Leetcode
@@ -396,7 +424,7 @@ const Sidebar = () => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
-                    className="block nav-link text-sm flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
                     <FaComments className="w-4 h-4 mr-2" />
                     Feedback
@@ -407,7 +435,7 @@ const Sidebar = () => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
-                    className="block nav-link text-sm flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
                     <FaBriefcase className="w-4 h-4 mr-2" />
                     Experiences
@@ -421,7 +449,7 @@ const Sidebar = () => {
               <div className="relative" ref={adminsCornerMenuRef}>
                 <button
                   onClick={() => setShowAdminsCornerMenu(!showAdminsCornerMenu)}
-                  className="w-full nav-link flex items-center justify-between text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors relative"
+                  className="w-full nav-link flex items-center justify-between text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors relative"
                 >
                   <div className="flex items-center">
                     <FaUserShield className="w-5 h-5 mr-3" />
@@ -430,7 +458,7 @@ const Sidebar = () => {
                       <FaExclamationCircle className="w-4 h-4 ml-2 text-red-400 animate-pulse" title="Pending items require action" />
                     )}
                   </div>
-                  <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-theme-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAdminsCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
                   </svg>
                 </button>
@@ -443,7 +471,7 @@ const Sidebar = () => {
                         setShowAdminsCornerMenu(false);
                         setIsVisible(false);
                       }}
-                      className="block nav-link text-sm flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+                      className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                     >
                       <FaTachometerAlt className="w-4 h-4 mr-2" />
                       Dashboard
@@ -455,7 +483,7 @@ const Sidebar = () => {
 
             <Link 
               to="/contact" 
-              className="nav-link flex items-center text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-md transition-colors"
+              className="nav-link flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
               onClick={() => setIsVisible(false)}
             >
               <FaEnvelope className="w-5 h-5 mr-3" />
@@ -464,14 +492,14 @@ const Sidebar = () => {
           </nav>
 
           {/* Login/Profile Section at Bottom */}
-          <div className="p-4 border-t border-slate-700">
+          <div className="p-4 border-t border-theme-sidebar">
             {loading ? (
-              <div className="text-sm text-slate-300">Loading...</div>
+              <div className="text-sm text-theme-secondary">Loading...</div>
             ) : user ? (
               <>
                 <div className="relative" ref={accountMenuRef}>
                   <div 
-                    className="flex items-center space-x-3 cursor-pointer px-3 py-2 rounded-md hover:bg-slate-800 transition-colors"
+                    className="flex items-center space-x-3 cursor-pointer px-3 py-2 rounded-md hover:bg-theme-nav transition-colors"
                     onClick={() => setShowAccountMenu(!showAccountMenu)}
                     title="Account Menu"
                   >
@@ -479,19 +507,23 @@ const Sidebar = () => {
                       <img
                         src={user.picture}
                         alt={user.username}
-                        className="w-10 h-10 rounded-full border-2 border-slate-600"
+                        className="w-10 h-10 rounded-full border-2 border-theme"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling?.classList.remove('hidden');
+                        }}
                       />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">
-                          {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
-                        </span>
-                      </div>
-                    )}
+                    ) : null}
+                    <div className="w-10 h-10 rounded-full bg-theme-card border-2 border-theme flex items-center justify-center ${user.picture ? 'hidden' : ''}">
+                      <span className="text-theme-primary font-semibold text-sm">
+                        {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                      </span>
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-slate-200 font-medium truncate">{user.username}</div>
+                      <div className="text-sm text-theme-primary font-medium truncate">{user.username}</div>
                       <div 
-                        className="text-xs text-slate-400 truncate cursor-pointer hover:text-indigo-400 transition-colors"
+                        className="text-xs text-theme-secondary truncate cursor-pointer hover:text-theme-accent transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowAccountMenu(!showAccountMenu);
@@ -500,16 +532,16 @@ const Sidebar = () => {
                         {user.email}
                       </div>
                     </div>
-                    <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-theme-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showAccountMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
                     </svg>
                   </div>
                   
                   {showAccountMenu && (
-                    <div className="absolute top-full left-0 mt-2 w-full bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50 md:bottom-full md:top-auto md:mt-0 md:mb-2">
+                    <div className="absolute top-full left-0 mt-2 w-full bg-theme-card border border-theme rounded-md shadow-lg z-50 md:bottom-full md:top-auto md:mt-0 md:mb-2">
                       <div className="py-1">
                         <div 
-                          className="px-4 py-2 text-sm text-slate-400 border-b border-slate-700 break-words cursor-pointer hover:text-indigo-400 hover:bg-slate-700 transition-colors"
+                          className="px-4 py-2 text-sm text-theme-secondary border-b border-theme break-words cursor-pointer hover:text-theme-accent hover:bg-theme-nav transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             if (studentData) {
@@ -526,7 +558,7 @@ const Sidebar = () => {
                               setShowAccountMenu(false);
                               navigate('/profile');
                             }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                            className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
                           >
                             View Profile
                           </button>
@@ -536,7 +568,7 @@ const Sidebar = () => {
                             setShowAccountMenu(false);
                             signup();
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 transition-colors"
+                          className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
                         >
                           Switch Account
                         </button>
@@ -545,7 +577,7 @@ const Sidebar = () => {
                             setShowAccountMenu(false);
                             handleLogout();
                           }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-700 transition-colors"
+                          className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-theme-nav transition-colors"
                         >
                           Logout
                         </button>
@@ -558,7 +590,7 @@ const Sidebar = () => {
               <div className="relative" ref={loginMenuRef}>
                 <button
                   onClick={() => setShowLoginMenu(!showLoginMenu)}
-                  className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 flex items-center justify-center transition-colors"
+                  className="w-full bg-theme-accent text-theme-primary px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center transition-colors"
                 >
                   Login
                   <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -567,14 +599,14 @@ const Sidebar = () => {
                 </button>
                 
                 {showLoginMenu && (
-                  <div className="absolute bottom-full left-0 mb-2 w-full bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50">
+                  <div className="absolute bottom-full left-0 mb-2 w-full bg-theme-card border border-theme rounded-md shadow-lg z-50">
                     <div className="py-1">
                       <button
                         onClick={() => {
                           setShowLoginMenu(false);
                           login(false);
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+                        className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav"
                       >
                         Login as Student
                       </button>
@@ -583,7 +615,7 @@ const Sidebar = () => {
                           setShowLoginMenu(false);
                           login(true);
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+                        className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav"
                       >
                         Login as Admin
                       </button>

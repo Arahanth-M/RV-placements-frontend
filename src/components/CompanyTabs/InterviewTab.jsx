@@ -86,34 +86,59 @@
 // export default InterviewTab;
 
 import React, { useState } from "react";
-import { FaCopy, FaCheck } from "react-icons/fa";
+import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
+import { adminAPI } from "../../utils/api";
 
-function InterviewTab({ company }) {
+function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState("");
   const [content, setContent] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
-  const [openSolutionIndex, setOpenSolutionIndex] = useState({}); // track solution open per question
-  const [copiedIndex, setCopiedIndex] = useState(null); // track which solution was copied
+  const [openSolutionIndex, setOpenSolutionIndex] = useState({});
+  const [copiedIndex, setCopiedIndex] = useState(null);
+  const [editIQIndex, setEditIQIndex] = useState(null);
+  const [editIQQuestion, setEditIQQuestion] = useState("");
+  const [editIQSolution, setEditIQSolution] = useState("");
+  const [editIPIndex, setEditIPIndex] = useState(null);
+  const [editIPContent, setEditIPContent] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [newIQQuestion, setNewIQQuestion] = useState("");
+  const [newIQSolution, setNewIQSolution] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      let payloadContent = content;
+      let payloadIsAnonymous = false;
+
+      if (modalType === "interviewQ") {
+        if (!newIQQuestion.trim()) {
+          alert("Please enter a question.");
+          return;
+        }
+        payloadContent = JSON.stringify({
+          question: newIQQuestion,
+          solution: newIQSolution,
+        });
+      } else {
+        payloadIsAnonymous = isAnonymous;
+      }
+
       const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Include cookies for authentication
+        credentials: "include",
         body: JSON.stringify({
           companyId: company._id,
           type:
             modalType === "interviewQ"
               ? "interviewQuestions"
               : "interviewProcess",
-          content,
-          isAnonymous: modalType === "process" ? isAnonymous : false, // Only allow anonymous for interviewProcess
-          }),
+          content: payloadContent,
+          isAnonymous: payloadIsAnonymous,
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to submit");
@@ -121,6 +146,8 @@ function InterviewTab({ company }) {
       alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
 
       setContent("");
+      setNewIQQuestion("");
+      setNewIQSolution("");
       setIsAnonymous(false);
       setShowModal(false);
     } catch (err) {
@@ -172,28 +199,85 @@ function InterviewTab({ company }) {
   };
 
   // Process interview questions solutions
-  // Structure: [{"answer":"solution text"}]
+  // Supported structures (often stored as JSON or JSON-like strings):
+  // - [{ "answer": "solution text" }]
+  // - [{ "answers": "solution text" }]
+  // - [{ "answers": ["line1", "line2"] }]
+  // If parsing fails but the string still looks JSON-like, we fall back to
+  // regex extraction of just the answer/answers value so we never dump
+  // the whole JSON into the UI.
   const solutions =
     company.interviewQuestions_solution?.map((sol) => {
       if (!sol) return "";
       let processedSol = "";
       
       // Handle different input formats
+      const extractAnswerFromJsonish = (str) => {
+        if (typeof str !== "string") return "";
+        const trimmed = str.trim();
+
+        // Try to capture "answer": "...."
+        const answerMatch = trimmed.match(/"answer"\s*:\s*"([\s\S]*?)"/);
+        if (answerMatch && answerMatch[1]) {
+          return answerMatch[1];
+        }
+
+        // Try to capture "answers": "...."
+        const answersSingleMatch = trimmed.match(/"answers"\s*:\s*"([\s\S]*?)"/);
+        if (answersSingleMatch && answersSingleMatch[1]) {
+          return answersSingleMatch[1];
+        }
+
+        // Try to capture "answers": ["...","..."]
+        const answersArrayMatch = trimmed.match(
+          /"answers"\s*:\s*\[([\s\S]*?)\]/
+        );
+        if (answersArrayMatch && answersArrayMatch[1]) {
+          const rawInside = answersArrayMatch[1];
+          // Grab all quoted strings inside the array
+          const itemMatches = [...rawInside.matchAll(/"([\s\S]*?)"/g)].map(
+            (m) => m[1]
+          );
+          if (itemMatches.length > 0) {
+            return itemMatches.join("\n\n");
+          }
+        }
+
+        return "";
+      };
+
       if (typeof sol === "string") {
         // Try to parse as JSON first (handles cases like [{"answer":"solution"}])
         try {
           const parsed = JSON.parse(sol);
-          // If it's an array of objects, extract the answer field from first object
+
+          const extractAnswerLike = (obj) => {
+            if (!obj || typeof obj !== "object") return "";
+            const raw =
+              obj.answer ??
+              obj.answers ??
+              obj.solution ??
+              obj.text ??
+              obj.content ??
+              "";
+            // If answers is an array, join lines nicely
+            if (Array.isArray(raw)) {
+              return raw.map((v) => String(v)).join("\n\n");
+            }
+            return raw;
+          };
+
+          // If it's an array of objects, extract the answer/answers field from first object
           if (Array.isArray(parsed) && parsed.length > 0) {
             const firstItem = parsed[0];
             if (typeof firstItem === "object" && firstItem !== null) {
-              processedSol = firstItem.answer || firstItem.solution || firstItem.text || firstItem.content || "";
+              processedSol = extractAnswerLike(firstItem);
             } else {
               processedSol = String(firstItem);
             }
           } else if (typeof parsed === "object" && parsed !== null) {
-            // Single object, extract answer field
-            processedSol = parsed.answer || parsed.solution || parsed.text || parsed.content || "";
+            // Single object, extract answer/answers field
+            processedSol = extractAnswerLike(parsed);
           } else {
             processedSol = String(parsed);
           }
@@ -207,35 +291,73 @@ function InterviewTab({ company }) {
               if (Array.isArray(parsed) && parsed.length > 0) {
                 const firstItem = parsed[0];
                 if (typeof firstItem === "object" && firstItem !== null) {
-                  processedSol = firstItem.answer || firstItem.solution || firstItem.text || firstItem.content || "";
+                  const raw =
+                    firstItem.answer ??
+                    firstItem.answers ??
+                    firstItem.solution ??
+                    firstItem.text ??
+                    firstItem.content ??
+                    "";
+                  processedSol = Array.isArray(raw)
+                    ? raw.map((v) => String(v)).join("\n\n")
+                    : raw;
                 } else {
                   processedSol = String(firstItem);
                 }
               } else if (typeof parsed === "object" && parsed !== null) {
-                processedSol = parsed.answer || parsed.solution || parsed.text || parsed.content || "";
+                const raw =
+                  parsed.answer ??
+                  parsed.answers ??
+                  parsed.solution ??
+                  parsed.text ??
+                  parsed.content ??
+                  "";
+                processedSol = Array.isArray(raw)
+                  ? raw.map((v) => String(v)).join("\n\n")
+                  : raw;
               } else {
                 processedSol = String(parsed);
               }
             } catch {
-              // If still can't parse, remove outer brackets manually
-              processedSol = trimmed.slice(1, -1);
+              // If still can't parse, try regex extraction of answer/answers
+              const extracted = extractAnswerFromJsonish(trimmed);
+              processedSol = extracted || trimmed.slice(1, -1);
             }
           } else {
-            // Use as-is
-            processedSol = sol;
+            // Try regex extraction of answer/answers before falling back
+            const extracted = extractAnswerFromJsonish(sol);
+            processedSol = extracted || sol;
           }
         }
       } else if (Array.isArray(sol) && sol.length > 0) {
         // If it's already an array, extract the answer from first object
         const firstItem = sol[0];
         if (typeof firstItem === "object" && firstItem !== null) {
-          processedSol = firstItem.answer || firstItem.solution || firstItem.text || firstItem.content || "";
+          const raw =
+            firstItem.answer ??
+            firstItem.answers ??
+            firstItem.solution ??
+            firstItem.text ??
+            firstItem.content ??
+            "";
+          processedSol = Array.isArray(raw)
+            ? raw.map((v) => String(v)).join("\n\n")
+            : raw;
         } else {
           processedSol = String(firstItem);
         }
       } else if (typeof sol === "object" && sol !== null) {
         // If it's an object, extract the answer field
-        processedSol = sol.answer || sol.solution || sol.text || sol.content || "";
+        const raw =
+          sol.answer ??
+          sol.answers ??
+          sol.solution ??
+          sol.text ??
+          sol.content ??
+          "";
+        processedSol = Array.isArray(raw)
+          ? raw.map((v) => String(v)).join("\n\n")
+          : raw;
       } else {
         processedSol = String(sol);
       }
@@ -278,6 +400,81 @@ function InterviewTab({ company }) {
         alert("Failed to copy solution. Please try selecting and copying manually.");
       }
       document.body.removeChild(textArea);
+    }
+  };
+
+  const handleEditIQ = (index, questionText, solutionText) => {
+    setEditIQIndex(index);
+    setEditIQQuestion(questionText || "");
+    setEditIQSolution(solutionText || "");
+  };
+
+  const handleSaveEditIQ = async (e) => {
+    e.preventDefault();
+    if (editIQIndex == null || !company?._id) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.updateInterviewQuestion(company._id, editIQIndex, { question: editIQQuestion, solution: editIQSolution });
+      if (onCompanyUpdate) onCompanyUpdate();
+      setEditIQIndex(null);
+      setEditIQQuestion("");
+      setEditIQSolution("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update question.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteIQ = async (index) => {
+    if (!company?._id || !window.confirm("Delete this interview question?")) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.deleteInterviewQuestion(company._id, index);
+      if (onCompanyUpdate) onCompanyUpdate();
+      setOpenIndexQ(null);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete question.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEditIP = (index, contentText) => {
+    setEditIPIndex(index);
+    setEditIPContent(contentText || "");
+  };
+
+  const handleSaveEditIP = async (e) => {
+    e.preventDefault();
+    if (editIPIndex == null || !company?._id) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.updateInterviewProcess(company._id, editIPIndex, { content: editIPContent });
+      if (onCompanyUpdate) onCompanyUpdate();
+      setEditIPIndex(null);
+      setEditIPContent("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update entry.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteIP = async (index) => {
+    if (!company?._id || !window.confirm("Delete this interview process entry?")) return;
+    setActionLoading(true);
+    try {
+      await adminAPI.deleteInterviewProcess(company._id, index);
+      if (onCompanyUpdate) onCompanyUpdate();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete entry.");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -345,17 +542,40 @@ function InterviewTab({ company }) {
                 key={index}
                 className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
-                <button
-                  onClick={() =>
-                    setOpenIndexQ(openIndexQ === index ? null : index)
-                  }
-                  className="w-full text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
-                >
-                  <span className="truncate">Question {index + 1}</span>
-                  <span className="text-lg text-slate-400">
-                    {openIndexQ === index ? "−" : "+"}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setOpenIndexQ(openIndexQ === index ? null : index)
+                    }
+                    className="flex-1 text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
+                  >
+                    <span className="truncate">Question {index + 1}</span>
+                    <span className="text-lg text-slate-400">
+                      {openIndexQ === index ? "−" : "+"}
+                    </span>
+                  </button>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 pr-2" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleEditIQ(index, q, solutions[index])}
+                        className="p-2 rounded-md text-amber-400 hover:bg-slate-700 transition-colors"
+                        title="Edit question"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteIQ(index)}
+                        disabled={actionLoading}
+                        className="p-2 rounded-md text-red-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        title="Delete question"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {openIndexQ === index && (
                   <div className="px-4 pb-4 text-slate-300 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
@@ -446,12 +666,12 @@ function InterviewTab({ company }) {
               const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
               
               return (
-                <div key={index} className="bg-slate-800/60 rounded-lg p-4 border border-slate-700">
-                  <div className="flex items-start gap-3">
+                <div key={index} className="bg-slate-800/60 rounded-lg p-4 border border-slate-700 flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
                       {index + 1}
                     </span>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-slate-300">
                         {processContent}
                       </p>
@@ -462,6 +682,27 @@ function InterviewTab({ company }) {
                       )}
                     </div>
                   </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => handleEditIP(index, processContent)}
+                        className="p-2 rounded-md text-amber-400 hover:bg-slate-700 transition-colors"
+                        title="Edit entry"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteIP(index)}
+                        disabled={actionLoading}
+                        className="p-2 rounded-md text-red-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                        title="Delete entry"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -477,30 +718,49 @@ function InterviewTab({ company }) {
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
             <h3 className="text-lg font-semibold mb-4 text-indigo-400">
               {modalType === "interviewQ"
-                ? "Add Interview Question"
+                ? "Add Interview Question & Solution"
                 : "Add Interview Process"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-3">
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Enter here..."
-                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-              {modalType === "process" && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isAnonymous"
-                    checked={isAnonymous}
-                    onChange={(e) => setIsAnonymous(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 border-slate-600 rounded focus:ring-indigo-500 bg-slate-900"
+              {modalType === "interviewQ" ? (
+                <>
+                  <textarea
+                    value={newIQQuestion}
+                    onChange={(e) => setNewIQQuestion(e.target.value)}
+                    placeholder="Enter interview question..."
+                    className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
                   />
-                  <label htmlFor="isAnonymous" className="text-sm text-slate-300">
-                    Submit anonymously
-                  </label>
-                </div>
+                  <textarea
+                    value={newIQSolution}
+                    onChange={(e) => setNewIQSolution(e.target.value)}
+                    placeholder="Enter solution (optional, but highly helpful for juniors)..."
+                    className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    rows={4}
+                  />
+                </>
+              ) : (
+                <>
+                  <textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Describe the interview process..."
+                    className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="isAnonymous"
+                      checked={isAnonymous}
+                      onChange={(e) => setIsAnonymous(e.target.checked)}
+                      className="w-4 h-4 text-indigo-600 border-slate-600 rounded focus:ring-indigo-500 bg-slate-900"
+                    />
+                    <label htmlFor="isAnonymous" className="text-sm text-slate-300">
+                      Submit anonymously
+                    </label>
+                  </div>
+                </>
               )}
               <div className="flex justify-end gap-2">
                 <button
@@ -509,6 +769,8 @@ function InterviewTab({ company }) {
                   onClick={() => {
                     setShowModal(false);
                     setContent("");
+                    setNewIQQuestion("");
+                    setNewIQSolution("");
                     setIsAnonymous(false);
                   }}
                 >
@@ -520,6 +782,56 @@ function InterviewTab({ company }) {
                 >
                   Submit
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Interview Question modal (admin) */}
+      {editIQIndex !== null && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold mb-4 text-amber-400">Edit Interview Question {editIQIndex + 1}</h3>
+            <form onSubmit={handleSaveEditIQ} className="space-y-3">
+              <textarea
+                value={editIQQuestion}
+                onChange={(e) => setEditIQQuestion(e.target.value)}
+                placeholder="Question"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+              <textarea
+                value={editIQSolution}
+                onChange={(e) => setEditIQSolution(e.target.value)}
+                placeholder="Solution (optional)"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700" onClick={() => { setEditIQIndex(null); setEditIQQuestion(""); setEditIQSolution(""); }}>Cancel</button>
+                <button type="submit" disabled={actionLoading} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">{actionLoading ? "Saving…" : "Save"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Interview Process modal (admin) */}
+      {editIPIndex !== null && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold mb-4 text-amber-400">Edit Interview Process {editIPIndex + 1}</h3>
+            <form onSubmit={handleSaveEditIP} className="space-y-3">
+              <textarea
+                value={editIPContent}
+                onChange={(e) => setEditIPContent(e.target.value)}
+                placeholder="Content"
+                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700" onClick={() => { setEditIPIndex(null); setEditIPContent(""); }}>Cancel</button>
+                <button type="submit" disabled={actionLoading} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">{actionLoading ? "Saving…" : "Save"}</button>
               </div>
             </form>
           </div>

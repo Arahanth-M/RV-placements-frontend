@@ -4,9 +4,11 @@
  */
 
 const DB_NAME = "RVPlacementsDB";
-const DB_VERSION = 1;
+// Bump version when adding new stores (e.g., year stats)
+const DB_VERSION = 2;
 const STORE_LIST = "companiesList";
 const STORE_DETAILS = "companyDetails";
+const STORE_YEAR_STATS = "yearStats";
 const LIST_KEY = "list";
 
 /**
@@ -26,15 +28,19 @@ export function openDB() {
       if (!db.objectStoreNames.contains(STORE_DETAILS)) {
         db.createObjectStore(STORE_DETAILS, { keyPath: "id" });
       }
+      if (!db.objectStoreNames.contains(STORE_YEAR_STATS)) {
+        db.createObjectStore(STORE_YEAR_STATS, { keyPath: "year" });
+      }
     };
   });
 }
 
 /**
  * Get the cached companies list from IndexedDB.
- * @returns {Promise<Array|null>} Companies array or null if not cached
+ * @param {number} [maxAgeMs] If provided, return null when cache is older than this many ms (TTL).
+ * @returns {Promise<Array|null>} Companies array or null if not cached or expired
  */
-export function getCachedCompaniesList() {
+export function getCachedCompaniesList(maxAgeMs) {
   return new Promise((resolve, reject) => {
     openDB()
       .then((db) => {
@@ -44,7 +50,17 @@ export function getCachedCompaniesList() {
         req.onsuccess = () => {
           db.close();
           const record = req.result;
-          resolve(record && Array.isArray(record.companies) ? record.companies : null);
+          if (!record || !Array.isArray(record.companies)) {
+            resolve(null);
+            return;
+          }
+          if (typeof maxAgeMs === 'number' && record.updatedAt != null) {
+            if (Date.now() - record.updatedAt > maxAgeMs) {
+              resolve(null); // expired
+              return;
+            }
+          }
+          resolve(record.companies);
         };
         req.onerror = () => {
           db.close();
@@ -83,9 +99,10 @@ export function setCachedCompaniesList(companies) {
 /**
  * Get cached company details by id.
  * @param {string} id Company _id
- * @returns {Promise<object|null>} Company object or null if not cached
+ * @param {number} [maxAgeMs] If provided, return null when cache is older than this many ms (TTL).
+ * @returns {Promise<object|null>} Company object or null if not cached or expired
  */
-export function getCachedCompanyDetails(id) {
+export function getCachedCompanyDetails(id, maxAgeMs) {
   return new Promise((resolve, reject) => {
     openDB()
       .then((db) => {
@@ -95,7 +112,17 @@ export function getCachedCompanyDetails(id) {
         req.onsuccess = () => {
           db.close();
           const record = req.result;
-          resolve(record && record.data ? record.data : null);
+          if (!record || !record.data) {
+            resolve(null);
+            return;
+          }
+          if (typeof maxAgeMs === 'number' && record.updatedAt != null) {
+            if (Date.now() - record.updatedAt > maxAgeMs) {
+              resolve(null); // expired
+              return;
+            }
+          }
+          resolve(record.data);
         };
         req.onerror = () => {
           db.close();
@@ -119,6 +146,64 @@ export function setCachedCompanyDetails(id, data) {
         const tx = db.transaction(STORE_DETAILS, "readwrite");
         const store = tx.objectStore(STORE_DETAILS);
         store.put({ id, data, updatedAt: Date.now() });
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        tx.onerror = () => {
+          db.close();
+          reject(tx.error);
+        };
+      })
+      .catch(reject);
+  });
+}
+
+/**
+ * Get cached year stats by year (no TTL; stats are effectively static).
+ * @param {number|string} year
+ * @returns {Promise<object|null>} Stats object or null if not cached
+ */
+export function getCachedYearStats(year) {
+  const key = String(year);
+  return new Promise((resolve, reject) => {
+    openDB()
+      .then((db) => {
+        const tx = db.transaction(STORE_YEAR_STATS, "readonly");
+        const store = tx.objectStore(STORE_YEAR_STATS);
+        const req = store.get(key);
+        req.onsuccess = () => {
+          db.close();
+          const record = req.result;
+          if (!record || record.data == null) {
+            resolve(null);
+            return;
+          }
+          resolve(record.data);
+        };
+        req.onerror = () => {
+          db.close();
+          reject(req.error);
+        };
+      })
+      .catch(reject);
+  });
+}
+
+/**
+ * Store year stats in IndexedDB (no TTL).
+ * @param {number|string} year
+ * @param {object|Array} data
+ * @returns {Promise<void>}
+ */
+export function setCachedYearStats(year, data) {
+  const key = String(year);
+  return new Promise((resolve, reject) => {
+    openDB()
+      .then((db) => {
+        const tx = db.transaction(STORE_YEAR_STATS, "readwrite");
+        const store = tx.objectStore(STORE_YEAR_STATS);
+        store.put({ year: key, data });
         tx.oncomplete = () => {
           db.close();
           resolve();
@@ -228,3 +313,17 @@ export function clearCompanyDetailsCache(id) {
       .catch(reject);
   });
 }
+
+// Explicit default so default import is always resolved (avoids "default cannot be resolved by star export" in some bundlers)
+export default {
+  openDB,
+  getCachedCompaniesList,
+  setCachedCompaniesList,
+  getCachedCompanyDetails,
+  setCachedCompanyDetails,
+  getCachedYearStats,
+  setCachedYearStats,
+  updateCachedHelpfulCount,
+  clearCompaniesListCache,
+  clearCompanyDetailsCache,
+};

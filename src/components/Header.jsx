@@ -55,14 +55,18 @@ const Header = () => {
                   src={user.picture}
                   alt={user.username}
                   className="w-10 h-10 rounded-full border-2 border-gray-200"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling?.classList.remove('hidden');
+                  }}
                 />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-400 border-2 border-gray-200 flex items-center justify-center">
-                  <span className="text-white font-semibold text-sm">
-                    {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
-                  </span>
-                </div>
-              )}
+              ) : null}
+              <div className={`w-10 h-10 rounded-full bg-gray-400 border-2 border-gray-200 flex items-center justify-center ${user.picture ? 'hidden' : ''}`}>
+                <span className="text-white font-semibold text-sm">
+                  {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                </span>
+              </div>
             </div>
             
             {showAccountMenu && (

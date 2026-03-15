@@ -261,16 +261,20 @@ function CommentsTab({ company }) {
                   >
                     <div className="flex items-start justify-between mb-2 sm:mb-3">
                       <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-xs sm:text-sm overflow-hidden">
                           {comment.user?.picture ? (
                             <img
                               src={comment.user.picture}
                               alt={comment.username}
                               className="w-full h-full rounded-full object-cover"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling?.classList.remove('hidden');
+                              }}
                             />
-                          ) : (
-                            <FaUser />
-                          )}
+                          ) : null}
+                          <span className={comment.user?.picture ? 'hidden' : ''}><FaUser /></span>
                         </div>
                         <div>
                           <p className="font-semibold text-slate-200 text-sm sm:text-base">
