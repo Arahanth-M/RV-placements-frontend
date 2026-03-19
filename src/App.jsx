@@ -31,6 +31,7 @@ import GlobalChatbot from "./components/GlobalChatbot";
 import StudentProfilePage from "./components/StudentProfilePage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
+import AIInterviews from "./components/AIInterviews";
 
 
 function App() {
@@ -90,6 +91,14 @@ function App() {
                         <Leetcode />
                       </ProtectedRoute>
                     } 
+                  />
+                  <Route
+                    path="/interviews"
+                    element={
+                      <ProtectedRoute>
+                        <AIInterviews />
+                      </ProtectedRoute>
+                    }
                   />
                   <Route 
                     path="/feedback" 

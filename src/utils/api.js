@@ -280,4 +280,19 @@ export const leaderboardAPI = {
   getLeaderboard: () => API.get('/api/leaderboard'),
 };
 
+export const interviewAPI = {
+  previewInterviewPlan: (companyId) =>
+    API.get(`/api/interview/preview-plan/${companyId}`),
+  startInterview: ({ userId, companyId }) =>
+    API.post('/api/interview/start-interview', { userId, companyId }),
+  submitAnswer: ({ sessionId, answer }) =>
+    API.post('/api/interview/submit-answer', { sessionId, answer }),
+  discardInterview: (sessionId) =>
+    API.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`),
+  getResumableInterview: ({ userId, companyId }) =>
+    API.get('/api/interview/resume-interview', { params: { userId, companyId } }),
+  getUserInterviewSessions: (userId) =>
+    API.get(`/api/interview/sessions/${encodeURIComponent(userId)}`),
+};
+
 export default API;

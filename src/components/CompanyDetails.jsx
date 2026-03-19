@@ -12,6 +12,7 @@ import MustDoTab from "./CompanyTabs/MustDoTab";
 import VideoTab from "./CompanyTabs/VideoTab";
 import CommentsTab from "./CompanyTabs/CommentsTab";
 import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
+import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 
 function CompanyDetails() {
   const { id } = useParams();
@@ -22,6 +23,9 @@ function CompanyDetails() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null); // 'offline' | 'error' | null
   const [loading, setLoading] = useState(true);
+  const [isInterviewLocked, setIsInterviewLocked] = useState(false);
+  const EXIT_WARNING_MESSAGE =
+    "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
 
   useEffect(() => {
     if (!id) return;
@@ -132,6 +136,16 @@ function CompanyDetails() {
     });
 
   const handleBack = () => {
+    if (isInterviewLocked) {
+      const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
+      if (!shouldExit) return;
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setActiveTab("general");
+      return;
+    }
+
     // Check if we came from company cards view (user-specific)
     const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
     const selectedYearKey = user && user.userId ? `companystats_selectedYear_${user.userId}` : 'companystats_selectedYear';
@@ -157,6 +171,22 @@ function CompanyDetails() {
       // Default back navigation
       navigate(-1);
     }
+  };
+
+  const handleTabChange = (nextTab) => {
+    if (
+      isInterviewLocked &&
+      activeTab === "aiinterview" &&
+      nextTab !== "aiinterview"
+    ) {
+      const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
+      if (!shouldExit) return;
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    setActiveTab(nextTab);
   };
 
   return (
@@ -197,10 +227,10 @@ function CompanyDetails() {
         </div>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "coding", "interview", "mustdo", "comments"].map((tab) => (
+        {["general", "oa", "coding", "interview", "aiinterview", "mustdo", "comments"].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => handleTabChange(tab)}
             className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === tab
                 ? "company-tab-btn--active"
@@ -215,6 +245,8 @@ function CompanyDetails() {
               ? "Coding"
               : tab === "interview"
               ? "Interview Experience"
+              : tab === "aiinterview"
+              ? "AI Interview"
               : tab === "mustdo"
               ? "Must Do Topics"
               : "Comments"}
@@ -222,7 +254,7 @@ function CompanyDetails() {
         ))}
         {company.videoUrl && (
           <button
-            onClick={() => setActiveTab("video")}
+            onClick={() => handleTabChange("video")}
             className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "video"
                 ? "company-tab-btn--active"
@@ -234,7 +266,7 @@ function CompanyDetails() {
         )}
         {hasInterviewQuestions && (
           <button
-            onClick={() => setActiveTab("offcampus")}
+            onClick={() => handleTabChange("offcampus")}
             className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
               activeTab === "offcampus"
                 ? "company-tab-btn--active"
@@ -256,6 +288,13 @@ function CompanyDetails() {
         {activeTab === "oa" && <OATab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
         {activeTab === "coding" && <CodingTab company={company} />}
         {activeTab === "interview" && <InterviewTab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
+        {activeTab === "aiinterview" && (
+          <AIInterviewTab
+            company={company}
+            onInterviewLockChange={setIsInterviewLocked}
+            onForceExitToGeneral={() => setActiveTab("general")}
+          />
+        )}
         {activeTab === "mustdo" && <MustDoTab company={company} />}
         {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
         {activeTab === "comments" && <CommentsTab company={company} />}

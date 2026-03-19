@@ -1,0 +1,192 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../utils/AuthContext";
+import { interviewAPI } from "../utils/api";
+
+function AIInterviews() {
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!user?.userId) {
+        setSessions([]);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+      try {
+        const { data } = await interviewAPI.getUserInterviewSessions(user.userId);
+        setSessions(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Failed to fetch interview sessions:", err);
+        setError("Failed to load interviews. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [user?.userId]);
+
+  const groupedSessions = useMemo(() => {
+    const completed = [];
+    const inProgress = [];
+
+    sessions.forEach((session) => {
+      if (session.status === "completed") {
+        completed.push(session);
+      } else {
+        inProgress.push(session);
+      }
+    });
+
+    return { completed, inProgress };
+  }, [sessions]);
+
+  return (
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+      <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 mb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-theme-primary">
+          Interviews
+        </h1>
+        <p className="mt-2 text-sm text-theme-secondary">
+          View all your AI mock interviews, including questions, answers, feedback, and final reports.
+        </p>
+      </div>
+
+      {loading && (
+        <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+          <p className="text-theme-secondary">Loading interviews...</p>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="bg-theme-card border border-red-500/40 rounded-xl p-4 sm:p-6">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && sessions.length === 0 && (
+        <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+          <p className="text-theme-secondary">No interviews found yet.</p>
+        </div>
+      )}
+
+      {!loading && !error && sessions.length > 0 && (
+        <div className="space-y-4">
+          <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-theme-primary mb-3">
+              In Progress ({groupedSessions.inProgress.length})
+            </h2>
+            {groupedSessions.inProgress.length === 0 ? (
+              <p className="text-sm text-theme-secondary">No in-progress interviews.</p>
+            ) : (
+              <div className="space-y-3">
+                {groupedSessions.inProgress.map((session) => (
+                  <InterviewSessionCard key={session._id} session={session} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-theme-primary mb-3">
+              Completed ({groupedSessions.completed.length})
+            </h2>
+            {groupedSessions.completed.length === 0 ? (
+              <p className="text-sm text-theme-secondary">No completed interviews.</p>
+            ) : (
+              <div className="space-y-3">
+                {groupedSessions.completed.map((session) => (
+                  <InterviewSessionCard key={session._id} session={session} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InterviewSessionCard({ session }) {
+  return (
+    <details className="rounded-lg border border-theme p-3 bg-theme-input">
+      <summary className="cursor-pointer text-sm font-semibold text-theme-primary">
+        {session.companyName || "Unknown Company"} -{" "}
+        {session.status === "completed" ? "Completed" : "In Progress"} -{" "}
+        {new Date(session.updatedAt).toLocaleString()}
+      </summary>
+
+      <div className="mt-3 space-y-3 text-sm">
+        <p className="text-theme-secondary">
+          <span className="font-semibold text-theme-primary">Round:</span>{" "}
+          {session.currentRound || "N/A"} |{" "}
+          <span className="font-semibold text-theme-primary">Difficulty:</span>{" "}
+          {session.difficultyLevel || "N/A"}
+        </p>
+
+        {Array.isArray(session.roundsPlan) && session.roundsPlan.length > 0 && (
+          <p className="text-theme-secondary">
+            <span className="font-semibold text-theme-primary">Rounds Plan:</span>{" "}
+            {session.roundsPlan.join(" -> ")}
+          </p>
+        )}
+
+        {Array.isArray(session.history) && session.history.length > 0 ? (
+          <div className="space-y-2">
+            {session.history.map((item, idx) => (
+              <div
+                key={`${session._id}-item-${idx}`}
+                className="p-3 rounded-md border border-theme bg-theme-card"
+              >
+                <p className="text-theme-primary">
+                  <span className="font-semibold">Q:</span> {item.question || "N/A"}
+                </p>
+                <p className="text-theme-secondary mt-1">
+                  <span className="font-semibold text-theme-primary">A:</span>{" "}
+                  {item.answer || "N/A"}
+                </p>
+                <p className="text-theme-secondary mt-1">
+                  <span className="font-semibold text-theme-primary">Feedback:</span>{" "}
+                  {item.feedback || "N/A"}
+                </p>
+                <p className="text-theme-secondary mt-1">
+                  <span className="font-semibold text-theme-primary">Score:</span>{" "}
+                  {typeof item.score === "number" ? `${item.score}/10` : "N/A"}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-theme-secondary">No answered questions yet.</p>
+        )}
+
+        {session.finalReport && (
+          <div className="p-3 rounded-md border border-emerald-500/30 bg-emerald-500/10">
+            <p className="text-theme-primary font-semibold mb-1">Final Report</p>
+            <p className="text-theme-secondary">
+              Overall Score: {session.finalReport.overallScore ?? 0}/10
+            </p>
+            <p className="text-theme-secondary mt-1">
+              Strengths: {(session.finalReport.strengths || []).join(", ") || "N/A"}
+            </p>
+            <p className="text-theme-secondary mt-1">
+              Weaknesses: {(session.finalReport.weaknesses || []).join(", ") || "N/A"}
+            </p>
+            <p className="text-theme-secondary mt-1">
+              Improvement Plan: {(session.finalReport.improvementPlan || []).join(", ") || "N/A"}
+            </p>
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+export default AIInterviews;
+

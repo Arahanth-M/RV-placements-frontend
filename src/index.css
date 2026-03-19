@@ -140,7 +140,7 @@ body {
 }
 
 [data-theme="dark"] .company-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-4px);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(52, 211, 153, 0.22);
   border-color: var(--accent) !important;
 }
@@ -158,10 +158,10 @@ body {
 
 /* Company logo container - dark mode */
 [data-theme="dark"] .company-card .company-logo {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  min-height: 42px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
   background: #151a24;
   border-radius: 10px;
   display: flex;
@@ -232,13 +232,13 @@ body {
   gap: 28px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1000px) {
   [data-theme="dark"] .company-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 650px) {
   [data-theme="dark"] .company-grid {
     grid-template-columns: 1fr;
   }
@@ -264,6 +264,15 @@ body {
 [data-theme="dark"] .fab.fab--secondary {
   bottom: 96px;
   background: linear-gradient(135deg, #32cd32, #2eb82e);
+}
+
+/* Keep filter FAB position identical across themes (match light mode). */
+[data-theme="dark"] .filter-fab {
+  position: fixed;
+  right: 30px;
+  bottom: 120px;
+  width: 50px;
+  height: 50px;
 }
 
 /* ========== Light mode only: exact spec styling ========== */
@@ -374,43 +383,25 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* Company logo - light mode */
-[data-theme="light"] .company-card .company-logo {
+/* Company logo + text sizing should remain identical across themes
+   to avoid grid/card reflow while toggling theme. */
+[data-theme="light"] .company-card .company-logo,
+[data-theme="dark"] .company-card .company-logo {
   width: 48px !important;
   height: 48px !important;
   min-width: 48px !important;
   min-height: 48px !important;
-  border-radius: var(--radius-md) !important;
-  background: #f3f4f6 !important;
-  border: none !important;
 }
 
-[data-theme="light"] .company-card .company-logo img {
-  width: 26px;
-}
-
-/* Company name & role - light mode */
-[data-theme="light"] .company-card .company-name {
-  font-size: 20px;
-  font-weight: 600;
-}
-
-[data-theme="light"] .company-card .company-role {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-/* Company info - light mode */
-[data-theme="light"] .company-card .company-info {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin-top: 8px;
-}
-
-[data-theme="light"] .company-card .company-info strong {
-  color: var(--text-primary);
-  font-weight: 500;
+[data-theme="light"] .company-card .company-name,
+[data-theme="dark"] .company-card .company-name,
+[data-theme="light"] .company-card .company-role,
+[data-theme="dark"] .company-card .company-role,
+[data-theme="light"] .company-card .company-info,
+[data-theme="dark"] .company-card .company-info {
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
 }
 
 /* Tags - light mode */

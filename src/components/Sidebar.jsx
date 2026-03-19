@@ -419,6 +419,17 @@ const Sidebar = () => {
                     Leetcode
                   </Link>
                   <Link
+                    to="/interviews"
+                    onClick={() => {
+                      setShowStudentsCornerMenu(false);
+                      setIsVisible(false);
+                    }}
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                  >
+                    <FaComments className="w-4 h-4 mr-2" />
+                    AI Interviews
+                  </Link>
+                  <Link
                     to="/feedback"
                     onClick={() => {
                       setShowStudentsCornerMenu(false);
