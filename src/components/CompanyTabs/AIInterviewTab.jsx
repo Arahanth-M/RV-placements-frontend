@@ -41,6 +41,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const [previewLoading, setPreviewLoading] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [timeLeftSec, setTimeLeftSec] = useState(0);
+  const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isInFullscreen, setIsInFullscreen] = useState(
     Boolean(document.fullscreenElement)
   );
@@ -56,11 +57,13 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const canSubmitAnswer = useMemo(() => {
     return (
       Boolean(sessionId) &&
+      Boolean(question) &&
       Boolean(answer.trim()) &&
       status === "in_progress" &&
+      !roundFeedbackView &&
       !loading
     );
-  }, [sessionId, answer, status, loading]);
+  }, [sessionId, question, answer, status, roundFeedbackView, loading]);
 
   const isInterviewActive = useMemo(() => {
     return Boolean(sessionId) && status === "in_progress";
@@ -305,6 +308,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setDifficultyLevel("");
     setRoundTransitionMessage("");
     setTimeLeftSec(0);
+    setRoundFeedbackView(null);
   };
 
   const handleResumeInterview = () => {
@@ -319,6 +323,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setTotalRounds(Number(resumeSession.totalRounds) || 0);
     setDifficultyLevel(resumeSession.difficultyLevel || "");
     setRoundTransitionMessage("");
+    setRoundFeedbackView(null);
     const resumeDifficulty = (resumeSession.difficultyLevel || "medium").toLowerCase();
     setTimeLeftSec(
       TIME_BY_DIFFICULTY_SECONDS[resumeDifficulty] ||
@@ -340,6 +345,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setScore(null);
     setReport(null);
     setRoundTransitionMessage("");
+    setRoundFeedbackView(null);
 
     try {
       const { data } = await interviewAPI.startInterview({
@@ -412,6 +418,22 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       setDifficultyLevel(data.difficultyLevel || "");
       setRoundTransitionMessage(data?.roundTransition?.message || "");
       setAnswer("");
+      if (data.roundCompleted) {
+        setRoundFeedbackView({
+          score:
+            typeof data?.roundFeedback?.score === "number"
+              ? data.roundFeedback.score
+              : null,
+          strengths: data?.roundFeedback?.strengths || [],
+          weaknesses: data?.roundFeedback?.weaknesses || [],
+          summary: data?.roundFeedback?.summary || "",
+          nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+        });
+        setQuestion("");
+        setTimeLeftSec(0);
+      } else {
+        setRoundFeedbackView(null);
+      }
       if (data.status === "completed") {
         setResumeSession(null);
         setTimeLeftSec(0);
@@ -426,6 +448,32 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     } catch (err) {
       console.error("Failed to submit interview answer:", err);
       setError(err?.response?.data?.error || "Failed to submit answer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartNextRound = async () => {
+    if (!sessionId || loading || !roundFeedbackView?.nextRoundAvailable) return;
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await interviewAPI.moveToNextRound({ sessionId });
+      setQuestion(data.question || "");
+      setStatus(data.status || "in_progress");
+      setCurrentRound(data.currentRound || "");
+      setCurrentRoundIndex(Math.max(0, (Number(data.currentRound) || 1) - 1));
+      const nextDifficulty = (data.difficulty || "medium").toLowerCase();
+      setDifficultyLevel(data.difficulty || "");
+      setTimeLeftSec(
+        TIME_BY_DIFFICULTY_SECONDS[nextDifficulty] ||
+          TIME_BY_DIFFICULTY_SECONDS.medium
+      );
+      setRoundFeedbackView(null);
+      await enterFullscreen();
+    } catch (err) {
+      console.error("Failed to start next round:", err);
+      setError(err?.response?.data?.error || "Failed to start next round.");
     } finally {
       setLoading(false);
     }
@@ -597,7 +645,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         </div>
       )}
 
-      {status === "in_progress" && sessionId && (
+      {status === "in_progress" && sessionId && question && !roundFeedbackView && (
         <div className="space-y-3">
           <label className="block">
             <span className="text-sm text-theme-secondary">Your Answer</span>
@@ -636,6 +684,53 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           {score !== null && (
             <p className="mt-2 text-sm font-medium text-theme-primary">
               Score: {score}/10
+            </p>
+          )}
+        </div>
+      )}
+
+      {roundFeedbackView && status === "in_progress" && (
+        <div className="mt-5 p-4 rounded-lg border border-indigo-500/40 bg-indigo-500/10">
+          <h3 className="text-lg font-semibold text-theme-primary mb-2">
+            Round Completed
+          </h3>
+          {roundFeedbackView.summary && (
+            <p className="text-sm text-theme-secondary mb-3">
+              {roundFeedbackView.summary}
+            </p>
+          )}
+          <p className="text-theme-primary text-sm mb-2">
+            <span className="font-semibold">Score:</span>{" "}
+            {roundFeedbackView.score !== null ? `${roundFeedbackView.score}/10` : "N/A"}
+          </p>
+          <div className="mb-2">
+            <p className="font-semibold text-theme-primary text-sm">Strengths</p>
+            <ul className="list-disc pl-5 text-theme-secondary text-sm">
+              {(roundFeedbackView.strengths || []).map((item, idx) => (
+                <li key={`rf-s-${idx}`}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="mb-4">
+            <p className="font-semibold text-theme-primary text-sm">Weaknesses</p>
+            <ul className="list-disc pl-5 text-theme-secondary text-sm">
+              {(roundFeedbackView.weaknesses || []).map((item, idx) => (
+                <li key={`rf-w-${idx}`}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          {roundFeedbackView.nextRoundAvailable ? (
+            <button
+              type="button"
+              onClick={handleStartNextRound}
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-60"
+            >
+              Start Next Round
+            </button>
+          ) : (
+            <p className="text-sm text-theme-secondary">
+              Final round completed. Generating final interview summary...
             </p>
           )}
         </div>

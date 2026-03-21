@@ -287,6 +287,8 @@ export const interviewAPI = {
     API.post('/api/interview/start-interview', { userId, companyId }),
   submitAnswer: ({ sessionId, answer }) =>
     API.post('/api/interview/submit-answer', { sessionId, answer }),
+  moveToNextRound: ({ sessionId }) =>
+    API.post('/api/interview/move-to-next-round', { sessionId }),
   discardInterview: (sessionId) =>
     API.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`),
   getResumableInterview: ({ userId, companyId }) =>
