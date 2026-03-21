@@ -40,7 +40,7 @@ const Events = () => {
   });
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
+    <div className="events-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">

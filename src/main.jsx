@@ -7,16 +7,8 @@ function Root() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    if (import.meta.env.PROD) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').catch((err) => {
-          console.error('Service worker registration failed:', err);
-        });
-      });
-      return;
-    }
-
-    // In development, disable service workers and clear caches to avoid stale bundles.
+    // Disable service workers and clear caches in all environments.
+    // This prevents stale frontend bundles from persisting after deploys.
     navigator.serviceWorker.getRegistrations().then((registrations) => {
       registrations.forEach((registration) => registration.unregister());
     });

@@ -524,7 +524,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
+    <div className="admin-dashboard-theme min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -534,9 +534,37 @@ const AdminDashboard = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
-            <p className="mt-4 text-slate-400">Loading dashboard...</p>
+          <div className="space-y-6" aria-live="polite" aria-busy="true">
+            <div className="space-y-2">
+              <div className="h-9 w-64 shimmer-box rounded-lg"></div>
+              <div className="h-5 w-80 max-w-full shimmer-box rounded-md"></div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div key={`stats-skeleton-${idx}`} className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="h-3 w-24 shimmer-box rounded"></div>
+                  <div className="h-7 w-16 shimmer-box rounded"></div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-700">
+                <div className="h-6 w-52 shimmer-box rounded"></div>
+              </div>
+              <div className="p-6 space-y-4">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={`row-skeleton-${idx}`} className="grid grid-cols-12 gap-3">
+                    <div className="col-span-3 h-4 shimmer-box rounded"></div>
+                    <div className="col-span-2 h-4 shimmer-box rounded"></div>
+                    <div className="col-span-2 h-4 shimmer-box rounded"></div>
+                    <div className="col-span-3 h-4 shimmer-box rounded hidden md:block"></div>
+                    <div className="col-span-2 h-4 shimmer-box rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -745,22 +773,22 @@ const AdminDashboard = () => {
                             return (
                               <tr 
                                 key={submission._id} 
-                                className="hover:bg-gray-50 cursor-pointer"
+                                className="hover:bg-slate-700/50 cursor-pointer"
                                 onClick={() => handleViewFullSubmission(submission)}
                               >
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
-                                    <p className="text-xs sm:text-sm font-medium text-gray-900">
+                                    <p className="text-xs sm:text-sm font-medium text-slate-200">
                                       {submission.submittedBy.name}
                                       {submission.isAnonymous && (
                                         <span className="ml-2 text-xs text-orange-600 font-normal">(Anonymous)</span>
                                       )}
                                     </p>
-                                    <p className="text-xs sm:text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
+                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
                                   </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <p className="text-xs sm:text-sm text-gray-900">
+                                  <p className="text-xs sm:text-sm text-slate-200">
                                     {submission.companyId?.name || 'N/A'}
                                   </p>
                                 </td>
@@ -770,19 +798,19 @@ const AdminDashboard = () => {
                                   </span>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                                  <div className="text-xs sm:text-sm text-gray-900 max-w-md">
+                                  <div className="text-xs sm:text-sm text-slate-300 max-w-md">
                                     {content.question && (
                                       <p className="font-medium mb-1 truncate">Q: {content.question}</p>
                                     )}
                                     {content.solution && (
-                                      <p className="text-gray-600 truncate">A: {content.solution}</p>
+                                      <p className="text-slate-400 truncate">A: {content.solution}</p>
                                     )}
                                     {!content.question && !content.solution && (
-                                      <p className="text-gray-500 truncate">{submission.content}</p>
+                                      <p className="text-slate-400 truncate">{submission.content}</p>
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 hidden lg:table-cell">
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
                                   {formatDate(submission.submittedAt)}
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>

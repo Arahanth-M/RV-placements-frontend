@@ -139,9 +139,11 @@ function CompanyDetails() {
     if (isInterviewLocked) {
       const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
       if (!shouldExit) return;
+      window.dispatchEvent(new Event("ai-interview-intentional-exit"));
       if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
       }
+      setIsInterviewLocked(false);
       setActiveTab("general");
       return;
     }
@@ -181,9 +183,11 @@ function CompanyDetails() {
     ) {
       const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
       if (!shouldExit) return;
+      window.dispatchEvent(new Event("ai-interview-intentional-exit"));
       if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
       }
+      setIsInterviewLocked(false);
     }
 
     setActiveTab(nextTab);

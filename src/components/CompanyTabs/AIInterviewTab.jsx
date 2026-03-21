@@ -3,19 +3,47 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { interviewAPI } from "../../utils/api";
 
-const TIME_BY_DIFFICULTY_SECONDS = {
-  easy: 20 * 60,
-  medium: 30 * 60,
-  hard: 40 * 60,
-};
 const EXIT_WARNING_MESSAGE =
   "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
 
-const formatTime = (totalSeconds) => {
-  const safe = Math.max(0, Number(totalSeconds) || 0);
-  const minutes = Math.floor(safe / 60);
-  const seconds = safe % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+const summarizeRoundAbout = (value, fallbackText) => {
+  const raw = Array.isArray(value) ? value.join(" ") : String(value || "");
+  const cleaned = raw
+    .replace(/^round\s*\d+\s*[:\-]?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return fallbackText;
+
+  // Keep preview concise: first clause only, max one short line.
+  let summary = cleaned.split(/[;|.]/)[0].trim() || cleaned;
+  const words = summary.split(" ").filter(Boolean);
+  if (words.length > 10) {
+    summary = `${words.slice(0, 10).join(" ")}...`;
+  }
+  if (summary.length > 72) {
+    summary = `${summary.slice(0, 69).trimEnd()}...`;
+  }
+
+  return summary || fallbackText;
+};
+
+const isIgnorableDiscardError = (err) => {
+  const status =
+    err?.response?.status ??
+    err?.status ??
+    err?.cause?.response?.status ??
+    null;
+  const errorMessage =
+    err?.response?.data?.error ||
+    err?.message ||
+    err?.cause?.message ||
+    "";
+
+  return (
+    status === 404 ||
+    String(errorMessage).toLowerCase().includes("no in-progress session found")
+  );
 };
 
 function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }) {
@@ -40,7 +68,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const [previewPlan, setPreviewPlan] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
-  const [timeLeftSec, setTimeLeftSec] = useState(0);
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isInFullscreen, setIsInFullscreen] = useState(
     Boolean(document.fullscreenElement)
@@ -49,6 +76,11 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const activeSessionIdRef = useRef("");
   const interviewActiveRef = useRef(false);
   const processingFullscreenExitRef = useRef(false);
+  const suppressFullscreenExitPromptRef = useRef(false);
+  const roundCompletedAtRef = useRef(0);
+  const loadingRef = useRef(false);
+  const roundFeedbackRef = useRef(null);
+  const questionRef = useRef("");
 
   const canStart = useMemo(() => {
     return Boolean(user?.userId && company?._id) && !loading;
@@ -69,6 +101,45 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     return Boolean(sessionId) && status === "in_progress";
   }, [sessionId, status]);
 
+  const previewRoundItems = useMemo(() => {
+    if (Array.isArray(previewPlan?.rounds) && previewPlan.rounds.length > 0) {
+      return previewPlan.rounds.map((item, index) => ({
+        roundNumber: item.roundNumber || index + 1,
+        about: summarizeRoundAbout(
+          item.about || item.type,
+          "General Interview"
+        ),
+      }));
+    }
+
+    if (Array.isArray(previewPlan?.roundsDetails) && previewPlan.roundsDetails.length > 0) {
+      return previewPlan.roundsDetails.map((item, index) => ({
+        roundNumber: index + 1,
+        about: summarizeRoundAbout(
+          item.questionType || item.round,
+          "General Interview"
+        ),
+      }));
+    }
+
+    if (Array.isArray(previewPlan?.roundsPlan) && previewPlan.roundsPlan.length > 0) {
+      return previewPlan.roundsPlan.map((item, index) => ({
+        roundNumber: index + 1,
+        about: summarizeRoundAbout(item, `Round ${index + 1}`),
+      }));
+    }
+
+    const total = Number(previewPlan?.totalRounds) || 0;
+    if (total > 0) {
+      return Array.from({ length: total }, (_, index) => ({
+        roundNumber: index + 1,
+        about: `Round ${index + 1}`,
+      }));
+    }
+
+    return [];
+  }, [previewPlan]);
+
   useEffect(() => {
     activeSessionIdRef.current = sessionId;
     interviewActiveRef.current = isInterviewActive;
@@ -76,6 +147,12 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       onInterviewLockChange(isInterviewActive);
     }
   }, [isInterviewActive, onInterviewLockChange, sessionId]);
+
+  useEffect(() => {
+    loadingRef.current = loading;
+    roundFeedbackRef.current = roundFeedbackView;
+    questionRef.current = question || "";
+  }, [loading, question, roundFeedbackView]);
 
   const fetchResumableInterview = useCallback(async () => {
     if (!user?.userId || !company?._id) {
@@ -116,6 +193,19 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     fetchPreviewPlan();
   }, [fetchResumableInterview, fetchPreviewPlan]);
 
+  useEffect(() => {
+    if (!previewPlan) return;
+    console.info("[AIInterviewTab] Preview payload", {
+      totalRounds: previewPlan?.totalRounds,
+      roundsCount: Array.isArray(previewPlan?.rounds) ? previewPlan.rounds.length : 0,
+      roundsPlanCount: Array.isArray(previewPlan?.roundsPlan) ? previewPlan.roundsPlan.length : 0,
+      roundsDetailsCount: Array.isArray(previewPlan?.roundsDetails)
+        ? previewPlan.roundsDetails.length
+        : 0,
+      computedPreviewCount: previewRoundItems.length,
+    });
+  }, [previewPlan, previewRoundItems.length]);
+
   const enterFullscreen = useCallback(async () => {
     if (document.fullscreenElement) return;
     const element = document.documentElement;
@@ -134,6 +224,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     try {
       await interviewAPI.discardInterview(targetSessionId);
     } catch (err) {
+      if (isIgnorableDiscardError(err)) {
+        // Already discarded / no in-progress session left; safe to ignore.
+        return;
+      }
       console.error("Failed to discard in-progress interview:", err);
     }
   }, []);
@@ -144,9 +238,14 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     resetInterviewState();
     if (document.fullscreenElement && document.exitFullscreen) {
       try {
+        suppressFullscreenExitPromptRef.current = true;
         await document.exitFullscreen();
       } catch {
         // Ignore fullscreen exit errors.
+      } finally {
+        window.setTimeout(() => {
+          suppressFullscreenExitPromptRef.current = false;
+        }, 1200);
       }
     }
     if (typeof onForceExitToGeneral === "function") {
@@ -210,12 +309,27 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   }, []);
 
   useEffect(() => {
+    const handleIntentionalExit = () => {
+      suppressFullscreenExitPromptRef.current = true;
+      window.setTimeout(() => {
+        suppressFullscreenExitPromptRef.current = false;
+      }, 1200);
+    };
+
+    window.addEventListener("ai-interview-intentional-exit", handleIntentionalExit);
+    return () =>
+      window.removeEventListener("ai-interview-intentional-exit", handleIntentionalExit);
+  }, []);
+
+  useEffect(() => {
     if (!isInterviewActive) return;
     const activeSessionId = sessionId;
 
     const handleFullscreenChange = () => {
       if (document.fullscreenElement) return;
       if (processingFullscreenExitRef.current) return;
+      if (suppressFullscreenExitPromptRef.current) return;
+      if (roundFeedbackRef.current || loadingRef.current) return;
 
       // User exited fullscreen (usually with ESC) before completion.
       if (status === "in_progress" && activeSessionId) {
@@ -250,42 +364,12 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   ]);
 
   useEffect(() => {
-    if (!isInterviewActive || timeLeftSec <= 0) return;
-
-    const interval = setInterval(() => {
-      setTimeLeftSec((prev) => (prev > 1 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isInterviewActive, timeLeftSec]);
-
-  useEffect(() => {
-    if (!isInterviewActive || timeLeftSec > 0 || !sessionId) return;
-
-    const timeoutHandler = async () => {
-      await discardCurrentInterview(sessionId);
-      alert(
-        "Interview time is over. The in-progress interview was discarded and your progress was lost."
-      );
-      setSessionId("");
-      setResumeSession(null);
-      resetInterviewState();
-      if (document.fullscreenElement && document.exitFullscreen) {
-        try {
-          await document.exitFullscreen();
-        } catch {
-          // Ignore fullscreen exit errors.
-        }
-      }
-    };
-
-    timeoutHandler();
-  }, [discardCurrentInterview, isInterviewActive, sessionId, timeLeftSec]);
-
-  useEffect(() => {
     return () => {
       if (interviewActiveRef.current && activeSessionIdRef.current) {
         interviewAPI.discardInterview(activeSessionIdRef.current).catch((err) => {
+          if (isIgnorableDiscardError(err)) {
+            return;
+          }
           console.error("Failed to discard interview on exit:", err);
         });
       }
@@ -293,6 +377,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   }, []);
 
   const resetInterviewState = () => {
+    loadingRef.current = false;
+    roundFeedbackRef.current = null;
+    questionRef.current = "";
     setQuestion("");
     setAnswer("");
     setFeedback("");
@@ -307,12 +394,13 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setTotalRounds(0);
     setDifficultyLevel("");
     setRoundTransitionMessage("");
-    setTimeLeftSec(0);
     setRoundFeedbackView(null);
   };
 
   const handleResumeInterview = () => {
     if (!resumeSession) return;
+    loadingRef.current = false;
+    roundFeedbackRef.current = null;
     setSessionId(resumeSession.sessionId || "");
     setQuestion(resumeSession.question || "");
     setStatus(resumeSession.status || "in_progress");
@@ -324,11 +412,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setDifficultyLevel(resumeSession.difficultyLevel || "");
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
-    const resumeDifficulty = (resumeSession.difficultyLevel || "medium").toLowerCase();
-    setTimeLeftSec(
-      TIME_BY_DIFFICULTY_SECONDS[resumeDifficulty] ||
-        TIME_BY_DIFFICULTY_SECONDS.medium
-    );
     setError("");
     enterFullscreen();
   };
@@ -339,6 +422,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       return;
     }
 
+    loadingRef.current = true;
+    roundFeedbackRef.current = null;
     setLoading(true);
     setError("");
     setFeedback("");
@@ -363,11 +448,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       setTotalRounds(Number(data.totalRounds) || 0);
       setDifficultyLevel(data.difficultyLevel || "");
       setRoundTransitionMessage("");
-      const startDifficulty = (data.difficultyLevel || "medium").toLowerCase();
-      setTimeLeftSec(
-        TIME_BY_DIFFICULTY_SECONDS[startDifficulty] ||
-          TIME_BY_DIFFICULTY_SECONDS.medium
-      );
       setAnswer("");
       await enterFullscreen();
       if (data?.resumed) {
@@ -389,6 +469,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       console.error("Failed to start AI interview:", err);
       setError(err?.response?.data?.error || "Failed to start interview.");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -396,6 +477,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const handleSubmitAnswer = async () => {
     if (!canSubmitAnswer) return;
 
+    loadingRef.current = true;
+    roundFeedbackRef.current = null;
     setLoading(true);
     setError("");
 
@@ -419,6 +502,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       setRoundTransitionMessage(data?.roundTransition?.message || "");
       setAnswer("");
       if (data.roundCompleted) {
+        roundCompletedAtRef.current = Date.now();
         setRoundFeedbackView({
           score:
             typeof data?.roundFeedback?.score === "number"
@@ -429,19 +513,27 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           summary: data?.roundFeedback?.summary || "",
           nextRoundAvailable: Boolean(data?.nextRoundAvailable),
         });
+        roundFeedbackRef.current = {
+          nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+        };
         setQuestion("");
-        setTimeLeftSec(0);
+        questionRef.current = "";
       } else {
+        roundFeedbackRef.current = null;
         setRoundFeedbackView(null);
       }
       if (data.status === "completed") {
         setResumeSession(null);
-        setTimeLeftSec(0);
         if (document.fullscreenElement && document.exitFullscreen) {
           try {
+            suppressFullscreenExitPromptRef.current = true;
             await document.exitFullscreen();
           } catch {
             // Ignore fullscreen exit errors.
+          } finally {
+            window.setTimeout(() => {
+              suppressFullscreenExitPromptRef.current = false;
+            }, 300);
           }
         }
       }
@@ -449,12 +541,14 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       console.error("Failed to submit interview answer:", err);
       setError(err?.response?.data?.error || "Failed to submit answer.");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleStartNextRound = async () => {
     if (!sessionId || loading || !roundFeedbackView?.nextRoundAvailable) return;
+    loadingRef.current = true;
     setLoading(true);
     setError("");
     try {
@@ -463,18 +557,15 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       setStatus(data.status || "in_progress");
       setCurrentRound(data.currentRound || "");
       setCurrentRoundIndex(Math.max(0, (Number(data.currentRound) || 1) - 1));
-      const nextDifficulty = (data.difficulty || "medium").toLowerCase();
       setDifficultyLevel(data.difficulty || "");
-      setTimeLeftSec(
-        TIME_BY_DIFFICULTY_SECONDS[nextDifficulty] ||
-          TIME_BY_DIFFICULTY_SECONDS.medium
-      );
+      roundFeedbackRef.current = null;
       setRoundFeedbackView(null);
       await enterFullscreen();
     } catch (err) {
       console.error("Failed to start next round:", err);
       setError(err?.response?.data?.error || "Failed to start next round.");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -537,13 +628,14 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                   {previewPlan.totalRounds || (previewPlan.roundsPlan || []).length || 0}
                 </span>
               </p>
-              {Array.isArray(previewPlan.roundsDetails) &&
-              previewPlan.roundsDetails.length > 0 ? (
+              {previewRoundItems.length > 0 ? (
                 <ul className="list-disc pl-5 text-theme-secondary">
-                  {previewPlan.roundsDetails.map((item, idx) => (
-                    <li key={`preview-round-${idx}`}>
-                      <span className="text-theme-primary font-semibold">{item.round}:</span>{" "}
-                      {item.questionType}
+                  {previewRoundItems.map((item, idx) => (
+                    <li key={`preview-round-about-${idx}`}>
+                      <span className="text-theme-primary font-semibold">
+                        Round {item.roundNumber || idx + 1}:
+                      </span>{" "}
+                      {item.about || "General Interview"}
                     </li>
                   ))}
                 </ul>
@@ -572,9 +664,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           <p className="text-sm text-theme-primary">
             Interview mode is active. Press <span className="font-semibold">Esc</span> to exit (progress will be lost).
           </p>
-          <span className="text-sm font-semibold text-amber-300 whitespace-nowrap">
-            Time Left: {formatTime(timeLeftSec)}
-          </span>
         </div>
       )}
 

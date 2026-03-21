@@ -3,7 +3,7 @@ import { FaEnvelope, FaExternalLinkAlt, FaUniversity } from "react-icons/fa";
 
 function Contact() {
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
+    <div className="contact-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-12">
