@@ -2,6 +2,30 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 
+const toSafeString = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const getRoundQuestionEntries = (session) => {
+  if (!Array.isArray(session?.rounds)) return [];
+
+  return session.rounds
+    .map((round, roundIndex) => {
+      const questions = Array.isArray(round?.questions) ? round.questions : [];
+      const answeredQuestions = questions.filter(
+        (item) => toSafeString(item?.question) || toSafeString(item?.answer)
+      );
+
+      return {
+        key: `${session?._id || "session"}-round-${roundIndex + 1}`,
+        roundLabel: round?.roundNumber || roundIndex + 1,
+        roundType: round?.type || "General",
+        difficulty: round?.difficulty || "N/A",
+        items: answeredQuestions,
+      };
+    })
+    .filter((roundEntry) => roundEntry.items.length > 0);
+};
+
 function AIInterviews() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
@@ -114,6 +138,10 @@ function AIInterviews() {
 }
 
 function InterviewSessionCard({ session }) {
+  const roundEntries = getRoundQuestionEntries(session);
+  const hasRoundQuestions = roundEntries.length > 0;
+  const hasHistory = Array.isArray(session.history) && session.history.length > 0;
+
   return (
     <details className="rounded-lg border border-theme p-3 bg-theme-input">
       <summary className="cursor-pointer text-sm font-semibold text-theme-primary">
@@ -137,7 +165,49 @@ function InterviewSessionCard({ session }) {
           </p>
         )}
 
-        {Array.isArray(session.history) && session.history.length > 0 ? (
+        {hasRoundQuestions ? (
+          <div className="space-y-3">
+            {roundEntries.map((roundEntry) => (
+              <div
+                key={roundEntry.key}
+                className="p-3 rounded-md border border-theme bg-theme-card"
+              >
+                <p className="text-theme-primary font-semibold">
+                  Round {roundEntry.roundLabel}: {roundEntry.roundType}
+                </p>
+                <p className="text-theme-secondary text-xs mt-1">
+                  Difficulty: {roundEntry.difficulty}
+                </p>
+
+                <div className="space-y-2 mt-3">
+                  {roundEntry.items.map((item, idx) => (
+                    <div
+                      key={`${roundEntry.key}-q-${idx}`}
+                      className="p-3 rounded-md border border-theme bg-theme-input"
+                    >
+                      <p className="text-theme-primary">
+                        <span className="font-semibold">Q{idx + 1}:</span>{" "}
+                        {item?.question || "N/A"}
+                      </p>
+                      <p className="text-theme-secondary mt-1">
+                        <span className="font-semibold text-theme-primary">A:</span>{" "}
+                        {item?.answer || "N/A"}
+                      </p>
+                      <p className="text-theme-secondary mt-1">
+                        <span className="font-semibold text-theme-primary">Feedback:</span>{" "}
+                        {item?.feedback || "N/A"}
+                      </p>
+                      <p className="text-theme-secondary mt-1">
+                        <span className="font-semibold text-theme-primary">Score:</span>{" "}
+                        {typeof item?.score === "number" ? `${item.score}/10` : "N/A"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : hasHistory ? (
           <div className="space-y-2">
             {session.history.map((item, idx) => (
               <div
