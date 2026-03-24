@@ -1,6 +1,7 @@
 /**
  * IndexedDB layer for RV Placements app.
- * Stores companies list and per-company details for cache-first loading.
+ * Company list: still cache-first for fast list views.
+ * Company details: network-first in api.js; IndexedDB is offline / failed-request fallback.
  */
 
 const DB_NAME = "RVPlacementsDB";
@@ -153,6 +154,46 @@ export function setCachedCompanyDetails(id, data) {
         tx.onerror = () => {
           db.close();
           reject(tx.error);
+        };
+      })
+      .catch(reject);
+  });
+}
+
+/** @param {string} id Company _id @param {object} data Company payload */
+export function saveToIndexedDB(id, data) {
+  return setCachedCompanyDetails(id, data);
+}
+
+/** Returns cached company data or null (no TTL — for explicit offline reads). */
+export function getFromIndexedDB(id) {
+  return getCachedCompanyDetails(id, undefined);
+}
+
+/**
+ * Read company details record for offline fallback (includes updatedAt for staleness).
+ * @param {string} id Company _id
+ * @returns {Promise<{ data: object, updatedAt: number } | null>}
+ */
+export function getCompanyDetailsOfflineEntry(id) {
+  return new Promise((resolve, reject) => {
+    openDB()
+      .then((db) => {
+        const tx = db.transaction(STORE_DETAILS, "readonly");
+        const store = tx.objectStore(STORE_DETAILS);
+        const req = store.get(id);
+        req.onsuccess = () => {
+          db.close();
+          const record = req.result;
+          if (!record || !record.data) {
+            resolve(null);
+            return;
+          }
+          resolve({ data: record.data, updatedAt: record.updatedAt });
+        };
+        req.onerror = () => {
+          db.close();
+          reject(req.error);
         };
       })
       .catch(reject);
@@ -321,6 +362,9 @@ export default {
   setCachedCompaniesList,
   getCachedCompanyDetails,
   setCachedCompanyDetails,
+  saveToIndexedDB,
+  getFromIndexedDB,
+  getCompanyDetailsOfflineEntry,
   getCachedYearStats,
   setCachedYearStats,
   updateCachedHelpfulCount,

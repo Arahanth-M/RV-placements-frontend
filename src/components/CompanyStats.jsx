@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import YearStatsTable from "../components/YearStatsTable";
+import { YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
 import { FaFilter, FaCalendarAlt, FaArrowLeft } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
@@ -313,10 +314,7 @@ function CompanyStats() {
       <div className="p-4 sm:p-6 min-h-screen bg-theme-app">
         <div className="max-w-7xl mx-auto">
           {loadingYearStats ? (
-            <div className="bg-theme-card border border-theme rounded-xl shadow-lg p-8 sm:p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-theme-accent mx-auto mb-4"></div>
-              <p className="text-theme-secondary">Loading {selectedYear} statistics...</p>
-            </div>
+            <YearStatsTableShimmer yearLabel={String(selectedYear)} />
           ) : (
             <YearStatsTable
               year={selectedYear}

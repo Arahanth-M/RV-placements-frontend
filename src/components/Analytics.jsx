@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { yearStatsAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
+import { AnalyticsGridShimmer } from "./StatsLoadingShimmer";
 
 function Analytics({ year = null, embedded = false }) {
   const [data2024, setData2024] = useState([]);
@@ -208,10 +209,13 @@ function Analytics({ year = null, embedded = false }) {
     return `${lpa.toFixed(2)} LPA`;
   };
 
+  const cardClass =
+    "bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg p-6 hover:shadow-md transition-shadow";
+
   const content = (
     <>
       {!embedded && (
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-8 text-center">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-theme-primary mb-8 text-center">
           Placement Analytics
         </h1>
       )}
@@ -220,42 +224,39 @@ function Analytics({ year = null, embedded = false }) {
       {show2024 && (
         <div className="mb-12">
           {!embedded && (
-            <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-400 mb-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--primary)] mb-6 text-center">
               2024 Placement Statistics
             </h2>
           )}
-            {branches2024.length === 0 ? (
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-lg shadow-md p-6 text-center">
-              <p className="text-slate-400">No branch data available for 2024</p>
+          {branches2024.length === 0 ? (
+            <div className="bg-theme-card backdrop-blur border border-theme rounded-lg shadow-md p-6 text-center">
+              <p className="text-theme-muted">No branch data available for 2024</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {branches2024.map((branch) => {
                 const stats = calculateBranchStats(data2024, branch);
                 return (
-                  <div
-                    key={`2024-${branch}`}
-                    className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
-                  >
-                    <h3 className="text-xl font-semibold text-indigo-400 mb-4 pb-2 border-b border-slate-700">
+                  <div key={`2024-${branch}`} className={cardClass}>
+                    <h3 className="text-xl font-semibold text-[var(--primary)] mb-4 pb-2 border-b border-theme">
                       {branch}
                     </h3>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Average CTC:</span>
-                        <span className="font-semibold text-white">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-theme-muted">Average CTC:</span>
+                        <span className="font-semibold text-theme-primary">
                           {formatCurrency(stats.avgCTC)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Highest CTC:</span>
-                        <span className="font-semibold text-green-400">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-theme-muted">Highest CTC:</span>
+                        <span className="font-semibold text-[var(--green)]">
                           {formatCurrency(stats.highestCTC)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Median CTC:</span>
-                        <span className="font-semibold text-indigo-400">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-theme-muted">Median CTC:</span>
+                        <span className="font-semibold text-[var(--primary)]">
                           {formatCurrency(stats.medianCTC)}
                         </span>
                       </div>
@@ -265,49 +266,46 @@ function Analytics({ year = null, embedded = false }) {
               })}
             </div>
           )}
-          </div>
-        )}
+        </div>
+      )}
 
       {/* Year 2025 Section */}
       {show2025 && (
         <div className="mb-12">
           {!embedded && (
-            <h2 className="text-2xl sm:text-3xl font-semibold text-indigo-400 mb-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--primary)] mb-6 text-center">
               2025 Placement Statistics
             </h2>
           )}
-            {branches2025.length === 0 ? (
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-lg shadow-md p-6 text-center">
-              <p className="text-slate-400">No branch data available for 2025</p>
+          {branches2025.length === 0 ? (
+            <div className="bg-theme-card backdrop-blur border border-theme rounded-lg shadow-md p-6 text-center">
+              <p className="text-theme-muted">No branch data available for 2025</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {branches2025.map((branch) => {
                 const stats = calculateBranchStats(data2025, branch);
                 return (
-                  <div
-                    key={`2025-${branch}`}
-                    className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
-                  >
-                    <h3 className="text-xl font-semibold text-indigo-400 mb-4 pb-2 border-b border-slate-700">
+                  <div key={`2025-${branch}`} className={cardClass}>
+                    <h3 className="text-xl font-semibold text-[var(--primary)] mb-4 pb-2 border-b border-theme">
                       {branch}
                     </h3>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Average CTC:</span>
-                        <span className="font-semibold text-white">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-theme-muted">Average CTC:</span>
+                        <span className="font-semibold text-theme-primary">
                           {formatCurrency(stats.avgCTC)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Highest CTC:</span>
-                        <span className="font-semibold text-green-400">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-theme-muted">Highest CTC:</span>
+                        <span className="font-semibold text-[var(--green)]">
                           {formatCurrency(stats.highestCTC)}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Median CTC:</span>
-                        <span className="font-semibold text-indigo-400">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-theme-muted">Median CTC:</span>
+                        <span className="font-semibold text-[var(--primary)]">
                           {formatCurrency(stats.medianCTC)}
                         </span>
                       </div>
@@ -322,38 +320,27 @@ function Analytics({ year = null, embedded = false }) {
     </>
   );
 
+  const pageShell = (inner) => (
+    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app">
+      <div className="max-w-7xl mx-auto">{inner}</div>
+    </div>
+  );
+
   if (loading) {
-    const loadingContent = (
-      <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-400"></div>
-        <p className="mt-4 text-slate-400">Loading analytics data...</p>
-      </div>
-    );
-    return embedded ? loadingContent : (
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
-        <div className="max-w-7xl mx-auto">{loadingContent}</div>
-      </div>
-    );
+    const loadingContent = <AnalyticsGridShimmer embedded={embedded} year={year} />;
+    return embedded ? loadingContent : pageShell(loadingContent);
   }
 
   if (error) {
     const errorContent = (
-      <div className="bg-red-900/30 border border-red-700 rounded-lg p-6 text-center">
-        <p className="text-red-300">{error}</p>
+      <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-6 text-center">
+        <p className="text-red-600 analytics-error-text">{error}</p>
       </div>
     );
-    return embedded ? errorContent : (
-      <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
-        <div className="max-w-7xl mx-auto">{errorContent}</div>
-      </div>
-    );
+    return embedded ? errorContent : pageShell(errorContent);
   }
 
-  return embedded ? content : (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
-      <div className="max-w-7xl mx-auto">{content}</div>
-    </div>
-  );
+  return embedded ? content : pageShell(content);
 }
 
 export default Analytics;

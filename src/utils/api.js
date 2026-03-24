@@ -3,14 +3,30 @@ import { BASE_URL } from './constants';
 import {
   getCachedCompaniesList,
   setCachedCompaniesList,
-  getCachedCompanyDetails,
-  setCachedCompanyDetails,
+  saveToIndexedDB,
+  getCompanyDetailsOfflineEntry,
   getCachedYearStats,
   setCachedYearStats,
   updateCachedHelpfulCount,
   clearCompaniesListCache,
   clearCompanyDetailsCache,
 } from './companyCacheDB';
+
+const COMPANY_DETAILS_OFFLINE_STALE_MS = 60 * 60 * 1000;
+
+function shouldUseIndexedDBFallback(error) {
+  if (!error) return false;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
+  const noResponse = error.response == null;
+  if (!noResponse) return false;
+  const code = error.code;
+  const msg = error.message || '';
+  return (
+    code === 'ERR_NETWORK' ||
+    msg === 'Network Error' ||
+    (error.request != null && msg !== 'Request aborted')
+  );
+}
 
 const API = axios.create({
   baseURL: BASE_URL,
@@ -31,7 +47,7 @@ export const authAPI = {
   isAdmin: () => API.get('/api/auth/is_admin'),
 };
 
-// Cache-first company API: always prefer IndexedDB; hit backend only on cache miss
+// Company list: cache-first (IndexedDB). Company details: network-first; IndexedDB offline fallback.
 export const companyAPI = {
   async getAllCompanies() {
     // If offline, always try to use cached list without TTL
@@ -81,46 +97,54 @@ export const companyAPI = {
   async getCompany(id) {
     if (!id) return Promise.reject(new Error('Company id is required'));
 
-    // If offline, always try to use cached details without TTL
+    const loadOfflineFallback = async () => {
+      const entry = await getCompanyDetailsOfflineEntry(id);
+      if (!entry?.data || !(entry.data._id || entry.data.name)) {
+        throw new Error('Offline and no cached company available');
+      }
+      console.log('📦 Loaded from IndexedDB (offline fallback)');
+      if (
+        entry.updatedAt != null &&
+        Date.now() - entry.updatedAt > COMPANY_DETAILS_OFFLINE_STALE_MS
+      ) {
+        console.log(
+          '(IndexedDB: data older than 1 hour — still using for offline / fallback)'
+        );
+      }
+      return { data: entry.data };
+    };
+
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       try {
-        const cached = await getCachedCompanyDetails(id, undefined);
-        if (cached != null && typeof cached === 'object' && (cached._id || cached.name)) {
-          return { data: cached };
-        }
+        return await loadOfflineFallback();
       } catch (e) {
-        console.warn('IndexedDB get company details (offline) failed', e);
+        return Promise.reject(e);
       }
-      return Promise.reject(new Error('Offline and no cached company available'));
     }
 
-    // 1. Try IndexedDB first (within TTL) – but only use cache if it has full detail shape (e.g. onlineQuestions)
-    try {
-      const cached = await getCachedCompanyDetails(id, CACHE_TTL_MS);
-      if (cached != null && typeof cached === 'object' && (cached._id || cached.name)) {
-        // If cache looks like a list item (has focusTags but no onlineQuestions), it's incomplete – refetch
-        const hasListShape = 'focusTags' in cached && !Array.isArray(cached.onlineQuestions);
-        if (!hasListShape) {
-          return { data: cached };
-        }
-      }
-    } catch (e) {
-      console.warn('IndexedDB get company details failed, falling back to API', e);
-    }
-
-    // 2. Cache miss or incomplete: fetch and store (deduped)
     if (!companyDetailsPromises.has(id)) {
       companyDetailsPromises.set(
         id,
         (async () => {
           try {
+            console.log('🌐 Fetching from API');
             const res = await API.get(`/api/companies/${id}`);
+            console.log('💾 Saving to IndexedDB');
             try {
-              await setCachedCompanyDetails(id, res.data);
+              await saveToIndexedDB(id, res.data);
             } catch (e) {
-              console.warn('IndexedDB set company details failed', e);
+              console.warn('IndexedDB save failed', e);
             }
             return res;
+          } catch (err) {
+            if (shouldUseIndexedDBFallback(err)) {
+              try {
+                return await loadOfflineFallback();
+              } catch {
+                throw err;
+              }
+            }
+            throw err;
           } finally {
             companyDetailsPromises.delete(id);
           }
@@ -130,19 +154,9 @@ export const companyAPI = {
     return companyDetailsPromises.get(id);
   },
 
-  /** Warm detail cache ahead of navigation to reduce first-open latency. */
+  /** Warm detail cache ahead of navigation (network-first — hits API when online). */
   async prefetchCompany(id) {
     if (!id) return;
-    try {
-      const cached = await getCachedCompanyDetails(id, CACHE_TTL_MS);
-      if (cached != null && typeof cached === 'object' && (cached._id || cached.name)) {
-        const hasListShape = 'focusTags' in cached && !Array.isArray(cached.onlineQuestions);
-        if (!hasListShape) return;
-      }
-    } catch {
-      // Ignore cache read errors and continue with a best-effort prefetch.
-    }
-
     try {
       await companyAPI.getCompany(id);
     } catch {
@@ -150,7 +164,7 @@ export const companyAPI = {
     }
   },
 
-  /** Force refetch company from API (clears cache for this company). Use to see network request or get latest data. */
+  /** Force refetch company from API (clears IndexedDB entry for this company first). */
   async refreshCompany(id) {
     if (!id) return Promise.reject(new Error('Company id is required'));
     try {
@@ -158,9 +172,11 @@ export const companyAPI = {
     } catch (e) {
       console.warn('IndexedDB clear company details failed', e);
     }
+    console.log('🌐 Fetching from API');
     const res = await API.get(`/api/companies/${id}`);
+    console.log('💾 Saving to IndexedDB');
     try {
-      await setCachedCompanyDetails(id, res.data);
+      await saveToIndexedDB(id, res.data);
     } catch (e) {
       console.warn('IndexedDB set company details failed', e);
     }
