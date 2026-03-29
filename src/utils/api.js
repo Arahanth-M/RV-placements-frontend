@@ -302,13 +302,17 @@ export const interviewAPI = {
   startInterview: ({ userId, companyId }) =>
     API.post('/api/interview/start-interview', { userId, companyId }),
   submitAnswer: ({ sessionId, answer }) =>
-    API.post('/api/interview/submit-answer', { sessionId, answer }),
+    API.post('/api/interview/submit-answer', { sessionId, answer }, { timeout: 30000 }),
   moveToNextRound: ({ sessionId }) =>
     API.post('/api/interview/move-to-next-round', { sessionId }),
   discardInterview: (sessionId) =>
     API.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`),
   getResumableInterview: ({ userId, companyId }) =>
     API.get('/api/interview/resume-interview', { params: { userId, companyId } }),
+  getInterviewStatus: (sessionId) =>
+    API.get(`/api/interview/interview-status/${encodeURIComponent(sessionId)}`, {
+      timeout: 15000,
+    }),
   getUserInterviewSessions: (userId) =>
     API.get(`/api/interview/sessions/${encodeURIComponent(userId)}`),
 };

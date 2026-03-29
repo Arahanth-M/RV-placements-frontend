@@ -69,6 +69,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const [previewLoading, setPreviewLoading] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [tips, setTips] = useState([]);
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [isInFullscreen, setIsInFullscreen] = useState(
     Boolean(document.fullscreenElement)
   );
@@ -81,6 +84,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const loadingRef = useRef(false);
   const roundFeedbackRef = useRef(null);
   const questionRef = useRef("");
+  /** Abort in-flight answer-evaluation polling when the tab unmounts or user navigates away. */
+  const interviewAnswerPollAbortedRef = useRef(false);
+  const tipsRef = useRef([]);
+  tipsRef.current = tips;
 
   const canStart = useMemo(() => {
     return Boolean(user?.userId && company?._id) && !loading;
@@ -93,9 +100,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       Boolean(answer.trim()) &&
       status === "in_progress" &&
       !roundFeedbackView &&
-      !loading
+      !loading &&
+      !isProcessing
     );
-  }, [sessionId, question, answer, status, roundFeedbackView, loading]);
+  }, [sessionId, question, answer, status, roundFeedbackView, loading, isProcessing]);
 
   const isInterviewActive = useMemo(() => {
     return Boolean(sessionId) && status === "in_progress";
@@ -153,6 +161,31 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     roundFeedbackRef.current = roundFeedbackView;
     questionRef.current = question || "";
   }, [loading, question, roundFeedbackView]);
+
+  useEffect(() => {
+    return () => {
+      interviewAnswerPollAbortedRef.current = true;
+      setIsProcessing(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isProcessing) {
+      return undefined;
+    }
+    const id = window.setInterval(() => {
+      const list = tipsRef.current;
+      if (!list.length) return;
+      setCurrentTipIndex((prev) => (prev + 1) % list.length);
+    }, 2500);
+    return () => clearInterval(id);
+  }, [isProcessing]);
+
+  useEffect(() => {
+    if (isProcessing) {
+      setCurrentTipIndex(0);
+    }
+  }, [isProcessing]);
 
   const fetchResumableInterview = useCallback(async () => {
     if (!user?.userId || !company?._id) {
@@ -395,6 +428,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setDifficultyLevel("");
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
+    setIsProcessing(false);
+    setTips([]);
+    setCurrentTipIndex(0);
   };
 
   const handleResumeInterview = () => {
@@ -474,6 +510,71 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     }
   };
 
+  const applyInterviewStatusPayload = useCallback((st) => {
+    const incomingQ = (st.currentQuestion ?? "").trim();
+    console.info("[AIInterviewTab] applyInterviewStatusPayload", {
+      lifecycle: st.status,
+      roundCompleted: Boolean(st.roundCompleted),
+      incomingQLen: incomingQ.length,
+      currentQuestionIndex: st.currentQuestionIndex,
+    });
+
+    setFeedback(st.lastFeedback || "");
+    setScore(typeof st.lastScore === "number" ? st.lastScore : null);
+    setStatus(st.status || "in_progress");
+    setReport(st.report || null);
+    setCurrentRound(st.currentRound ?? "");
+    setCurrentRoundIndex(Math.max(0, (Number(st.currentRound) || 1) - 1));
+    if (st.totalRounds != null) {
+      setTotalRounds(Number(st.totalRounds) || 0);
+    }
+
+    if (st.roundCompleted) {
+      roundCompletedAtRef.current = Date.now();
+      setRoundFeedbackView({
+        score:
+          typeof st?.roundFeedback?.score === "number"
+            ? st.roundFeedback.score
+            : null,
+        strengths: st?.roundFeedback?.strengths || [],
+        weaknesses: st?.roundFeedback?.weaknesses || [],
+        summary: st?.roundFeedback?.summary || "",
+        nextRoundAvailable: Boolean(st?.nextRoundAvailable),
+      });
+      roundFeedbackRef.current = {
+        nextRoundAvailable: Boolean(st?.nextRoundAvailable),
+      };
+      setQuestion("");
+      questionRef.current = "";
+    } else {
+      roundFeedbackRef.current = null;
+      setRoundFeedbackView(null);
+      if (st.status === "completed") {
+        setQuestion("");
+        questionRef.current = "";
+      } else if (incomingQ) {
+        setQuestion(incomingQ);
+        questionRef.current = incomingQ;
+      }
+    }
+
+    if (st.status === "completed") {
+      setResumeSession(null);
+      if (document.fullscreenElement && document.exitFullscreen) {
+        try {
+          suppressFullscreenExitPromptRef.current = true;
+          document.exitFullscreen();
+        } catch {
+          // Ignore fullscreen exit errors.
+        } finally {
+          window.setTimeout(() => {
+            suppressFullscreenExitPromptRef.current = false;
+          }, 300);
+        }
+      }
+    }
+  }, []);
+
   const handleSubmitAnswer = async () => {
     if (!canSubmitAnswer) return;
 
@@ -482,67 +583,301 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setLoading(true);
     setError("");
 
+    const toQuestionIndex = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    /** Snapshot before submit so we detect any server-side update after the worker runs. */
+    let snap = {
+      idx: null,
+      questionText: (question || "").trim(),
+      lastFeedback: "",
+      lastScore: null,
+    };
+    let preTips = [];
+    try {
+      const { data: pre } = await interviewAPI.getInterviewStatus(sessionId);
+      preTips = Array.isArray(pre.tips) ? pre.tips : [];
+      snap = {
+        idx: toQuestionIndex(pre.currentQuestionIndex),
+        questionText: (pre.currentQuestion ?? "").trim() || (question || "").trim(),
+        lastFeedback: pre.lastFeedback ?? "",
+        lastScore: pre.lastScore ?? null,
+      };
+      setTips(preTips);
+      console.info("[AIInterviewTab] pre-submit status ok", {
+        sessionId,
+        snapIdx: snap.idx,
+        questionLen: snap.questionText.length,
+        tipsCount: preTips.length,
+      });
+    } catch (preErr) {
+      console.warn("[AIInterviewTab] pre-submit getInterviewStatus failed", {
+        sessionId,
+        message: preErr?.message,
+      });
+      setTips([]);
+    }
+
     try {
       const { data } = await interviewAPI.submitAnswer({
         sessionId,
         answer: answer.trim(),
       });
 
-      setQuestion(data.question || "");
-      setFeedback(data.feedback || "");
-      setScore(typeof data.score === "number" ? data.score : null);
-      setStatus(data.status || "in_progress");
-      setReport(data.report || null);
-      setCurrentRound(data.currentRound || "");
-      setRoundsPlan(Array.isArray(data.roundsPlan) ? data.roundsPlan : []);
-      setRoundsDetails(Array.isArray(data.roundsDetails) ? data.roundsDetails : []);
-      setCurrentRoundIndex(Number(data.currentRoundIndex) || 0);
-      setTotalRounds(Number(data.totalRounds) || 0);
-      setDifficultyLevel(data.difficultyLevel || "");
-      setRoundTransitionMessage(data?.roundTransition?.message || "");
-      setAnswer("");
-      if (data.roundCompleted) {
-        roundCompletedAtRef.current = Date.now();
-        setRoundFeedbackView({
-          score:
-            typeof data?.roundFeedback?.score === "number"
-              ? data.roundFeedback.score
-              : null,
-          strengths: data?.roundFeedback?.strengths || [],
-          weaknesses: data?.roundFeedback?.weaknesses || [],
-          summary: data?.roundFeedback?.summary || "",
-          nextRoundAvailable: Boolean(data?.nextRoundAvailable),
-        });
-        roundFeedbackRef.current = {
-          nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+      console.info("[AIInterviewTab] submitAnswer response", {
+        sessionId,
+        status: data?.status,
+        hasSessionId: Boolean(data?.sessionId),
+      });
+
+      if (data.status === "processing") {
+        setAnswer("");
+        const sid = String(data.sessionId || sessionId);
+        interviewAnswerPollAbortedRef.current = false;
+        setIsProcessing(true);
+        setCurrentTipIndex(0);
+
+        const pollMs = 1500;
+        const deadline = Date.now() + 90000;
+        let settled = false;
+        let pollCount = 0;
+        /** Prefer pre-submit index; else lock first response that still shows the same question text. */
+        let dynamicBaselineIdx = snap.idx;
+
+        const trySettle = (st, reason) => {
+          console.info("[AIInterviewTab] settle apply", {
+            sessionId: sid,
+            pollCount,
+            reason,
+            apiIdx: st.currentQuestionIndex,
+            cqLen: (st.currentQuestion ?? "").trim().length,
+            roundCompleted: Boolean(st.roundCompleted),
+            lifecycle: st.status,
+            serverIsProcessing: st.isProcessing,
+          });
+          applyInterviewStatusPayload(st);
+          settled = true;
         };
-        setQuestion("");
-        questionRef.current = "";
-      } else {
-        roundFeedbackRef.current = null;
-        setRoundFeedbackView(null);
-      }
-      if (data.status === "completed") {
-        setResumeSession(null);
-        if (document.fullscreenElement && document.exitFullscreen) {
+
+        const shouldSettle = (st) => {
+          if (st.status === "completed" || st.roundCompleted) {
+            return { ok: true, reason: "completed-or-roundDone" };
+          }
+          const idx = toQuestionIndex(st.currentQuestionIndex);
+          const cq = (st.currentQuestion ?? "").trim();
+          if (idx === null) {
+            return { ok: false, reason: "no-question-index" };
+          }
+          if (cq.length === 0) {
+            return { ok: false, reason: "empty-currentQuestion" };
+          }
+          if (dynamicBaselineIdx !== null) {
+            if (idx > dynamicBaselineIdx) {
+              return { ok: true, reason: `index-advanced ${dynamicBaselineIdx}->${idx}` };
+            }
+            if (idx === dynamicBaselineIdx && cq !== snap.questionText) {
+              return { ok: true, reason: "same-index-new-question-text" };
+            }
+            return { ok: false, reason: "waiting-index-or-text" };
+          }
+          if (cq !== snap.questionText) {
+            return { ok: true, reason: "new-text-no-baseline-idx" };
+          }
+          return { ok: false, reason: "no-baseline-still-same-text" };
+        };
+
+        const pollOnce = async () => {
+          if (interviewAnswerPollAbortedRef.current) {
+            return false;
+          }
+          pollCount += 1;
+          const { data: st } = await interviewAPI.getInterviewStatus(sid);
+          if (interviewAnswerPollAbortedRef.current) {
+            return false;
+          }
+          if (Array.isArray(st.tips)) {
+            setTips(st.tips);
+          }
+          const idx = toQuestionIndex(st.currentQuestionIndex);
+          const cq = (st.currentQuestion ?? "").trim();
+
+          if (
+            dynamicBaselineIdx === null &&
+            idx !== null &&
+            snap.questionText &&
+            cq === snap.questionText
+          ) {
+            dynamicBaselineIdx = idx;
+            console.info("[AIInterviewTab] locked dynamic baseline idx (same Q text)", {
+              sessionId: sid,
+              dynamicBaselineIdx,
+              pollCount,
+            });
+          }
+
+          console.info("[AIInterviewTab] poll tick", {
+            sessionId: sid,
+            pollCount,
+            idx,
+            cqLen: cq.length,
+            dynamicBaselineIdx,
+            snapIdx: snap.idx,
+            roundCompleted: Boolean(st.roundCompleted),
+            lifecycle: st.status,
+            lastFeedbackLen: String(st.lastFeedback ?? "").length,
+          });
+
+          if (st.status === "completed" || st.roundCompleted) {
+            trySettle(st, "terminal-state");
+            return true;
+          }
+
+          const decision = shouldSettle(st);
+          if (decision.ok) {
+            trySettle(st, decision.reason);
+            return true;
+          }
+
+          console.info("[AIInterviewTab] poll continue", {
+            sessionId: sid,
+            pollCount,
+            why: decision.reason,
+          });
+          return false;
+        };
+
+        try {
+          await new Promise((r) => setTimeout(r, 300));
+          if (!interviewAnswerPollAbortedRef.current) {
+            await pollOnce();
+          }
+        } catch (pollErr) {
+          console.warn("[AIInterviewTab] poll error (initial)", pollErr?.message || pollErr);
+        }
+
+        while (
+          !settled &&
+          Date.now() < deadline &&
+          !interviewAnswerPollAbortedRef.current
+        ) {
+          await new Promise((r) => setTimeout(r, pollMs));
           try {
-            suppressFullscreenExitPromptRef.current = true;
-            await document.exitFullscreen();
-          } catch {
-            // Ignore fullscreen exit errors.
-          } finally {
-            window.setTimeout(() => {
-              suppressFullscreenExitPromptRef.current = false;
-            }, 300);
+            await pollOnce();
+          } catch (pollErr) {
+            console.warn("[AIInterviewTab] poll error (loop)", pollErr?.message || pollErr);
+          }
+        }
+
+        if (interviewAnswerPollAbortedRef.current && !settled) {
+          setIsProcessing(false);
+        }
+
+        if (!settled) {
+          console.warn("[AIInterviewTab] polling timed out without settle", {
+            sessionId: sid,
+            pollCount,
+            dynamicBaselineIdx,
+            snap,
+          });
+          try {
+            const { data: st } = await interviewAPI.getInterviewStatus(sid);
+            const idxT = toQuestionIndex(st.currentQuestionIndex);
+            const cqT = (st.currentQuestion ?? "").trim();
+            if (
+              dynamicBaselineIdx === null &&
+              idxT !== null &&
+              snap.questionText &&
+              cqT === snap.questionText
+            ) {
+              dynamicBaselineIdx = idxT;
+            }
+            const decision = shouldSettle(st);
+            console.info("[AIInterviewTab] timeout final fetch", {
+              decision,
+              apiIdx: st.currentQuestionIndex,
+              cqLen: (st.currentQuestion ?? "").trim().length,
+            });
+            if (decision.ok) {
+              trySettle(st, `timeout:${decision.reason}`);
+            } else {
+              setIsProcessing(false);
+              setError(
+                "Your answer is still processing or the interview worker is not running. Start `node workers/interviewWorker.js` (with Redis), then try again or refresh the page."
+              );
+            }
+          } catch (finalErr) {
+            console.warn("[AIInterviewTab] timeout final fetch failed", finalErr?.message || finalErr);
+            setIsProcessing(false);
+            setError(
+              "Could not reach the server for interview status. Check your connection and that the interview worker is running with Redis."
+            );
+          }
+        }
+      } else {
+        console.info("[AIInterviewTab] submit non-processing path", {
+          status: data?.status,
+          hasQuestion: Boolean(data?.question),
+        });
+        setQuestion(data.question || "");
+        setFeedback(data.feedback || "");
+        setScore(typeof data.score === "number" ? data.score : null);
+        setStatus(data.status || "in_progress");
+        setReport(data.report || null);
+        setCurrentRound(data.currentRound || "");
+        setRoundsPlan(Array.isArray(data.roundsPlan) ? data.roundsPlan : []);
+        setRoundsDetails(Array.isArray(data.roundsDetails) ? data.roundsDetails : []);
+        setCurrentRoundIndex(Number(data.currentRoundIndex) || 0);
+        setTotalRounds(Number(data.totalRounds) || 0);
+        setDifficultyLevel(data.difficultyLevel || "");
+        setRoundTransitionMessage(data?.roundTransition?.message || "");
+        setAnswer("");
+        if (data.roundCompleted) {
+          roundCompletedAtRef.current = Date.now();
+          setRoundFeedbackView({
+            score:
+              typeof data?.roundFeedback?.score === "number"
+                ? data.roundFeedback.score
+                : null,
+            strengths: data?.roundFeedback?.strengths || [],
+            weaknesses: data?.roundFeedback?.weaknesses || [],
+            summary: data?.roundFeedback?.summary || "",
+            nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+          });
+          roundFeedbackRef.current = {
+            nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+          };
+          setQuestion("");
+          questionRef.current = "";
+        } else {
+          roundFeedbackRef.current = null;
+          setRoundFeedbackView(null);
+        }
+        if (data.status === "completed") {
+          setResumeSession(null);
+          if (document.fullscreenElement && document.exitFullscreen) {
+            try {
+              suppressFullscreenExitPromptRef.current = true;
+              await document.exitFullscreen();
+            } catch {
+              // Ignore fullscreen exit errors.
+            } finally {
+              window.setTimeout(() => {
+                suppressFullscreenExitPromptRef.current = false;
+              }, 300);
+            }
           }
         }
       }
     } catch (err) {
       console.error("Failed to submit interview answer:", err);
       setError(err?.response?.data?.error || "Failed to submit answer.");
+      setIsProcessing(false);
     } finally {
       loadingRef.current = false;
       setLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -688,7 +1023,34 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         </div>
       )}
 
-      {question && (
+      {isProcessing && status === "in_progress" && sessionId && (
+        <div
+          className="mb-4 p-4 rounded-lg border border-amber-500/35 bg-theme-input/90"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <p className="text-sm font-semibold text-theme-primary mb-2">
+            Evaluating your answer...
+          </p>
+          {tips.length > 0 ? (
+            <p
+              key={currentTipIndex % tips.length}
+              className="text-sm text-theme-secondary transition-opacity duration-300 ease-in-out"
+            >
+              <span className="font-medium text-amber-500/90">💡 Tip:</span>{" "}
+              <span className="whitespace-pre-wrap">
+                {tips[currentTipIndex % tips.length]}
+              </span>
+            </p>
+          ) : (
+            <p className="text-sm text-theme-secondary">
+              Hang tight — this usually takes a few seconds.
+            </p>
+          )}
+        </div>
+      )}
+
+      {question && !isProcessing && (
         <div className="mb-4">
           <div className="mb-2 flex flex-wrap gap-2 text-xs">
             {currentRound && (
@@ -734,7 +1096,11 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         </div>
       )}
 
-      {status === "in_progress" && sessionId && question && !roundFeedbackView && (
+      {status === "in_progress" &&
+        sessionId &&
+        question &&
+        !roundFeedbackView &&
+        !isProcessing && (
         <div className="space-y-3">
           <label className="block">
             <span className="text-sm text-theme-secondary">Your Answer</span>
@@ -762,7 +1128,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         </div>
       )}
 
-      {(feedback || score !== null) && (
+      {(feedback || score !== null) && !isProcessing && (
         <div className="mt-5 p-4 rounded-lg border border-theme bg-theme-input">
           <p className="text-sm font-semibold text-theme-primary mb-1">
             Feedback
@@ -778,7 +1144,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         </div>
       )}
 
-      {roundFeedbackView && status === "in_progress" && (
+      {roundFeedbackView && !interviewCompleted && (
         <div className="mt-5 p-4 rounded-lg border border-indigo-500/40 bg-indigo-500/10">
           <h3 className="text-lg font-semibold text-theme-primary mb-2">
             Round Completed
