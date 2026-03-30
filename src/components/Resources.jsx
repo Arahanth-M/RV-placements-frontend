@@ -5,11 +5,11 @@ const Resources = () => {
   // Get icon component dynamically
   const getIcon = (iconName) => {
     const IconComponent = iconMap[iconName];
-    return IconComponent ? <IconComponent className="text-3xl text-white" /> : null;
+    return IconComponent ? <IconComponent className="text-3xl text-theme-primary" /> : null;
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
+    <div className="content-cards-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-12">

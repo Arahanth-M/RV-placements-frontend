@@ -72,6 +72,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const [isProcessing, setIsProcessing] = useState(false);
   const [tips, setTips] = useState([]);
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  /** After each answer: full-screen feedback until user taps "Next question". */
+  const [pendingQuestionFeedback, setPendingQuestionFeedback] = useState(null);
   const [isInFullscreen, setIsInFullscreen] = useState(
     Boolean(document.fullscreenElement)
   );
@@ -88,6 +90,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const interviewAnswerPollAbortedRef = useRef(false);
   const tipsRef = useRef([]);
   tipsRef.current = tips;
+  const pendingQuestionFeedbackRef = useRef(null);
+  pendingQuestionFeedbackRef.current = pendingQuestionFeedback;
 
   const canStart = useMemo(() => {
     return Boolean(user?.userId && company?._id) && !loading;
@@ -100,10 +104,20 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       Boolean(answer.trim()) &&
       status === "in_progress" &&
       !roundFeedbackView &&
+      !pendingQuestionFeedback &&
       !loading &&
       !isProcessing
     );
-  }, [sessionId, question, answer, status, roundFeedbackView, loading, isProcessing]);
+  }, [
+    sessionId,
+    question,
+    answer,
+    status,
+    roundFeedbackView,
+    pendingQuestionFeedback,
+    loading,
+    isProcessing,
+  ]);
 
   const isInterviewActive = useMemo(() => {
     return Boolean(sessionId) && status === "in_progress";
@@ -362,7 +376,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       if (document.fullscreenElement) return;
       if (processingFullscreenExitRef.current) return;
       if (suppressFullscreenExitPromptRef.current) return;
-      if (roundFeedbackRef.current || loadingRef.current) return;
+      if (roundFeedbackRef.current || loadingRef.current || pendingQuestionFeedbackRef.current)
+        return;
 
       // User exited fullscreen (usually with ESC) before completion.
       if (status === "in_progress" && activeSessionId) {
@@ -431,6 +446,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setIsProcessing(false);
     setTips([]);
     setCurrentTipIndex(0);
+    setPendingQuestionFeedback(null);
   };
 
   const handleResumeInterview = () => {
@@ -448,6 +464,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setDifficultyLevel(resumeSession.difficultyLevel || "");
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
+    setPendingQuestionFeedback(null);
     setError("");
     enterFullscreen();
   };
@@ -467,6 +484,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setReport(null);
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
+    setPendingQuestionFeedback(null);
 
     try {
       const { data } = await interviewAPI.startInterview({
@@ -519,8 +537,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       currentQuestionIndex: st.currentQuestionIndex,
     });
 
-    setFeedback(st.lastFeedback || "");
-    setScore(typeof st.lastScore === "number" ? st.lastScore : null);
     setStatus(st.status || "in_progress");
     setReport(st.report || null);
     setCurrentRound(st.currentRound ?? "");
@@ -530,6 +546,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     }
 
     if (st.roundCompleted) {
+      setPendingQuestionFeedback(null);
+      setFeedback(st.lastFeedback || "");
+      setScore(typeof st.lastScore === "number" ? st.lastScore : null);
       roundCompletedAtRef.current = Date.now();
       setRoundFeedbackView({
         score:
@@ -539,6 +558,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         strengths: st?.roundFeedback?.strengths || [],
         weaknesses: st?.roundFeedback?.weaknesses || [],
         summary: st?.roundFeedback?.summary || "",
+        improvementTips: st?.roundFeedback?.improvementTips || [],
         nextRoundAvailable: Boolean(st?.nextRoundAvailable),
       });
       roundFeedbackRef.current = {
@@ -550,11 +570,34 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       roundFeedbackRef.current = null;
       setRoundFeedbackView(null);
       if (st.status === "completed") {
+        setPendingQuestionFeedback(null);
+        setFeedback(st.lastFeedback || "");
+        setScore(typeof st.lastScore === "number" ? st.lastScore : null);
         setQuestion("");
         questionRef.current = "";
+      } else if (
+        incomingQ &&
+        (String(st.lastFeedback || "").trim() || typeof st.lastScore === "number")
+      ) {
+        setPendingQuestionFeedback({
+          feedback: st.lastFeedback || "",
+          score: typeof st.lastScore === "number" ? st.lastScore : null,
+          nextQuestion: incomingQ,
+        });
+        setQuestion("");
+        questionRef.current = "";
+        setFeedback("");
+        setScore(null);
       } else if (incomingQ) {
+        setPendingQuestionFeedback(null);
+        setFeedback(st.lastFeedback || "");
+        setScore(typeof st.lastScore === "number" ? st.lastScore : null);
         setQuestion(incomingQ);
         questionRef.current = incomingQ;
+      } else {
+        setPendingQuestionFeedback(null);
+        setFeedback(st.lastFeedback || "");
+        setScore(typeof st.lastScore === "number" ? st.lastScore : null);
       }
     }
 
@@ -820,9 +863,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           status: data?.status,
           hasQuestion: Boolean(data?.question),
         });
-        setQuestion(data.question || "");
-        setFeedback(data.feedback || "");
-        setScore(typeof data.score === "number" ? data.score : null);
+        const nextQ = (data.question || "").trim();
         setStatus(data.status || "in_progress");
         setReport(data.report || null);
         setCurrentRound(data.currentRound || "");
@@ -834,6 +875,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         setRoundTransitionMessage(data?.roundTransition?.message || "");
         setAnswer("");
         if (data.roundCompleted) {
+          setPendingQuestionFeedback(null);
+          setFeedback(data.feedback || "");
+          setScore(typeof data.score === "number" ? data.score : null);
           roundCompletedAtRef.current = Date.now();
           setRoundFeedbackView({
             score:
@@ -843,6 +887,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             strengths: data?.roundFeedback?.strengths || [],
             weaknesses: data?.roundFeedback?.weaknesses || [],
             summary: data?.roundFeedback?.summary || "",
+            improvementTips: data?.roundFeedback?.improvementTips || [],
             nextRoundAvailable: Boolean(data?.nextRoundAvailable),
           });
           roundFeedbackRef.current = {
@@ -853,6 +898,26 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         } else {
           roundFeedbackRef.current = null;
           setRoundFeedbackView(null);
+          if (
+            nextQ &&
+            (String(data.feedback || "").trim() || typeof data.score === "number")
+          ) {
+            setPendingQuestionFeedback({
+              feedback: data.feedback || "",
+              score: typeof data.score === "number" ? data.score : null,
+              nextQuestion: nextQ,
+            });
+            setQuestion("");
+            questionRef.current = "";
+            setFeedback("");
+            setScore(null);
+          } else {
+            setPendingQuestionFeedback(null);
+            setQuestion(data.question || "");
+            questionRef.current = data.question || "";
+            setFeedback(data.feedback || "");
+            setScore(typeof data.score === "number" ? data.score : null);
+          }
         }
         if (data.status === "completed") {
           setResumeSession(null);
@@ -881,11 +946,26 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     }
   };
 
+  const handleContinueToNextQuestion = useCallback(() => {
+    const ctx = pendingQuestionFeedbackRef.current;
+    if (!ctx?.nextQuestion) {
+      setPendingQuestionFeedback(null);
+      return;
+    }
+    setQuestion(ctx.nextQuestion);
+    questionRef.current = ctx.nextQuestion;
+    setPendingQuestionFeedback(null);
+    setFeedback("");
+    setScore(null);
+    setAnswer("");
+  }, []);
+
   const handleStartNextRound = async () => {
     if (!sessionId || loading || !roundFeedbackView?.nextRoundAvailable) return;
     loadingRef.current = true;
     setLoading(true);
     setError("");
+    setPendingQuestionFeedback(null);
     try {
       const { data } = await interviewAPI.moveToNextRound({ sessionId });
       setQuestion(data.question || "");
@@ -911,7 +991,142 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     Boolean(resumeSession?.sessionId) && resumeSession?.status === "in_progress";
 
   return (
-    <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+    <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 relative">
+      {pendingQuestionFeedback && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-md"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="question-feedback-title"
+        >
+          <div className="w-full max-w-2xl max-h-[min(92vh,880px)] overflow-y-auto rounded-2xl border border-emerald-500/35 bg-theme-card shadow-2xl shadow-emerald-950/20 p-6 sm:p-10 flex flex-col gap-6">
+            <div>
+              <p
+                id="question-feedback-title"
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500/90 mb-2"
+              >
+                Answer feedback
+              </p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary leading-tight">
+                Here&apos;s how you did
+              </h3>
+              {pendingQuestionFeedback.score !== null && (
+                <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme px-4 py-3">
+                  <span className="text-sm text-theme-secondary">Score</span>
+                  <span className="text-3xl font-bold tabular-nums text-emerald-500">
+                    {pendingQuestionFeedback.score}
+                    <span className="text-lg font-semibold text-theme-secondary">/10</span>
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="rounded-xl border border-theme bg-theme-input/80 p-5 sm:p-6">
+              <p className="text-sm font-semibold text-theme-primary mb-2">Feedback</p>
+              <p className="text-theme-secondary text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+                {pendingQuestionFeedback.feedback || "No detailed feedback for this response."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleContinueToNextQuestion}
+              className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-semibold shadow-lg shadow-emerald-900/30 transition-colors"
+            >
+              Next question
+            </button>
+          </div>
+        </div>
+      )}
+
+      {roundFeedbackView && !interviewCompleted && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-md"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="round-summary-title"
+        >
+          <div className="w-full max-w-3xl max-h-[min(92vh,900px)] overflow-y-auto rounded-2xl border border-indigo-500/40 bg-gradient-to-b from-indigo-950/40 to-theme-card shadow-2xl p-6 sm:p-10 flex flex-col gap-6">
+            <div>
+              <p
+                id="round-summary-title"
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-400 mb-2"
+              >
+                Round complete
+              </p>
+              <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary">
+                Round summary
+              </h3>
+              {roundFeedbackView.summary && (
+                <p className="mt-4 text-theme-secondary text-sm sm:text-base leading-relaxed">
+                  {roundFeedbackView.summary}
+                </p>
+              )}
+              {roundFeedbackView.score !== null && (
+                <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-indigo-500/25 px-4 py-3">
+                  <span className="text-sm text-theme-secondary">Round score</span>
+                  <span className="text-3xl font-bold tabular-nums text-indigo-400">
+                    {roundFeedbackView.score}
+                    <span className="text-lg font-semibold text-theme-secondary">/10</span>
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-emerald-500/95 mb-2">Strengths</p>
+                <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
+                  {(roundFeedbackView.strengths || []).length ? (
+                    (roundFeedbackView.strengths || []).map((item, idx) => (
+                      <li key={`rf-s-${idx}`}>{item}</li>
+                    ))
+                  ) : (
+                    <li className="list-none pl-0 text-theme-muted">—</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-4 sm:p-5">
+                <p className="text-sm font-semibold text-rose-400/95 mb-2">Areas to improve</p>
+                <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
+                  {(roundFeedbackView.weaknesses || []).length ? (
+                    (roundFeedbackView.weaknesses || []).map((item, idx) => (
+                      <li key={`rf-w-${idx}`}>{item}</li>
+                    ))
+                  ) : (
+                    <li className="list-none pl-0 text-theme-muted">—</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            {Array.isArray(roundFeedbackView.improvementTips) &&
+              (
+                roundFeedbackView.improvementTips
+              ).length > 0 && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+                  <p className="text-sm font-semibold text-amber-500/90 mb-2">Tips for next time</p>
+                  <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
+                    {roundFeedbackView.improvementTips.map((item, idx) => (
+                      <li key={`rf-tip-${idx}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            {roundFeedbackView.nextRoundAvailable ? (
+              <button
+                type="button"
+                onClick={handleStartNextRound}
+                disabled={loading}
+                className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-base font-semibold disabled:opacity-60 shadow-lg shadow-indigo-950/30 transition-colors"
+              >
+                Next round
+              </button>
+            ) : (
+              <p className="text-center text-sm text-theme-secondary">
+                Final round completed. Generating final interview summary…
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
         <button
@@ -1025,32 +1240,74 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
       {isProcessing && status === "in_progress" && sessionId && (
         <div
-          className="mb-4 p-4 rounded-lg border border-amber-500/35 bg-theme-input/90"
+          className="fixed inset-0 z-[190] flex items-center justify-center p-4 sm:p-6 bg-black/45 backdrop-blur-sm"
           aria-live="polite"
           aria-busy="true"
         >
-          <p className="text-sm font-semibold text-theme-primary mb-2">
-            Evaluating your answer...
-          </p>
-          {tips.length > 0 ? (
-            <p
-              key={currentTipIndex % tips.length}
-              className="text-sm text-theme-secondary transition-opacity duration-300 ease-in-out"
-            >
-              <span className="font-medium text-amber-500/90">💡 Tip:</span>{" "}
-              <span className="whitespace-pre-wrap">
-                {tips[currentTipIndex % tips.length]}
-              </span>
-            </p>
-          ) : (
-            <p className="text-sm text-theme-secondary">
-              Hang tight — this usually takes a few seconds.
-            </p>
-          )}
+          <div className="w-full max-w-lg rounded-2xl border border-amber-500/35 bg-theme-card shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/5 to-transparent px-6 pt-6 pb-4 border-b border-amber-500/20">
+              <div className="flex items-center gap-3 mb-1">
+                <span
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/25 text-lg"
+                  aria-hidden
+                >
+                  ✦
+                </span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">
+                    While you wait
+                  </p>
+                  <p className="text-lg font-bold text-theme-primary">
+                    Evaluating your answer
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-theme-secondary ml-[52px]">
+                This usually takes a few seconds. Take a breath and skim a tip below.
+              </p>
+            </div>
+            <div className="px-6 py-6 min-h-[140px] flex flex-col justify-center">
+              {tips.length > 0 ? (
+                <>
+                  <div
+                    key={currentTipIndex % tips.length}
+                    className="rounded-xl border border-theme bg-theme-input/90 p-4 sm:p-5 transition-all duration-300"
+                  >
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Interview tip
+                    </p>
+                    <p className="text-sm sm:text-base text-theme-primary leading-relaxed whitespace-pre-wrap">
+                      {tips[currentTipIndex % tips.length]}
+                    </p>
+                  </div>
+                  <div className="flex justify-center gap-1.5 mt-4" aria-hidden>
+                    {tips.map((_, i) => (
+                      <span
+                        key={`tip-dot-${i}`}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          i === currentTipIndex % tips.length
+                            ? "w-6 bg-amber-500"
+                            : "w-1.5 bg-theme-muted/40"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-4">
+                  <div className="h-9 w-9 rounded-full border-2 border-amber-500/40 border-t-amber-500 animate-spin" />
+                  <p className="text-sm text-theme-secondary text-center">
+                    Hang tight — scoring your response.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {question && !isProcessing && (
+      {question && !isProcessing && !pendingQuestionFeedback && (
         <div className="mb-4">
           <div className="mb-2 flex flex-wrap gap-2 text-xs">
             {currentRound && (
@@ -1100,6 +1357,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         sessionId &&
         question &&
         !roundFeedbackView &&
+        !pendingQuestionFeedback &&
         !isProcessing && (
         <div className="space-y-3">
           <label className="block">
@@ -1125,69 +1383,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           >
             {loading ? "Submitting..." : "Submit Answer"}
           </button>
-        </div>
-      )}
-
-      {(feedback || score !== null) && !isProcessing && (
-        <div className="mt-5 p-4 rounded-lg border border-theme bg-theme-input">
-          <p className="text-sm font-semibold text-theme-primary mb-1">
-            Feedback
-          </p>
-          <p className="text-theme-secondary text-sm whitespace-pre-wrap">
-            {feedback || "No feedback yet."}
-          </p>
-          {score !== null && (
-            <p className="mt-2 text-sm font-medium text-theme-primary">
-              Score: {score}/10
-            </p>
-          )}
-        </div>
-      )}
-
-      {roundFeedbackView && !interviewCompleted && (
-        <div className="mt-5 p-4 rounded-lg border border-indigo-500/40 bg-indigo-500/10">
-          <h3 className="text-lg font-semibold text-theme-primary mb-2">
-            Round Completed
-          </h3>
-          {roundFeedbackView.summary && (
-            <p className="text-sm text-theme-secondary mb-3">
-              {roundFeedbackView.summary}
-            </p>
-          )}
-          <p className="text-theme-primary text-sm mb-2">
-            <span className="font-semibold">Score:</span>{" "}
-            {roundFeedbackView.score !== null ? `${roundFeedbackView.score}/10` : "N/A"}
-          </p>
-          <div className="mb-2">
-            <p className="font-semibold text-theme-primary text-sm">Strengths</p>
-            <ul className="list-disc pl-5 text-theme-secondary text-sm">
-              {(roundFeedbackView.strengths || []).map((item, idx) => (
-                <li key={`rf-s-${idx}`}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="mb-4">
-            <p className="font-semibold text-theme-primary text-sm">Weaknesses</p>
-            <ul className="list-disc pl-5 text-theme-secondary text-sm">
-              {(roundFeedbackView.weaknesses || []).map((item, idx) => (
-                <li key={`rf-w-${idx}`}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          {roundFeedbackView.nextRoundAvailable ? (
-            <button
-              type="button"
-              onClick={handleStartNextRound}
-              disabled={loading}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-60"
-            >
-              Start Next Round
-            </button>
-          ) : (
-            <p className="text-sm text-theme-secondary">
-              Final round completed. Generating final interview summary...
-            </p>
-          )}
         </div>
       )}
 

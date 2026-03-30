@@ -645,9 +645,10 @@ body {
   flex-wrap: wrap;
 }
 
-/* Admin dashboard + events: reuse app light/dark theme tokens */
+/* Admin dashboard + events + leaderboard/resources/feedback: reuse app light/dark theme tokens */
 [data-theme="light"] .admin-dashboard-theme,
-[data-theme="light"] .events-page-theme {
+[data-theme="light"] .events-page-theme,
+[data-theme="light"] .content-cards-page-theme {
   color: var(--text-primary);
 }
 
@@ -658,7 +659,11 @@ body {
 [data-theme="light"] .events-page-theme .text-white,
 [data-theme="light"] .events-page-theme .text-slate-200,
 [data-theme="light"] .events-page-theme .text-slate-100,
-[data-theme="light"] .events-page-theme .text-gray-900 {
+[data-theme="light"] .events-page-theme .text-gray-900,
+[data-theme="light"] .content-cards-page-theme .text-white,
+[data-theme="light"] .content-cards-page-theme .text-slate-200,
+[data-theme="light"] .content-cards-page-theme .text-slate-100,
+[data-theme="light"] .content-cards-page-theme .text-gray-900 {
   color: var(--text-primary) !important;
 }
 
@@ -669,7 +674,11 @@ body {
 [data-theme="light"] .events-page-theme .text-slate-300,
 [data-theme="light"] .events-page-theme .text-slate-400,
 [data-theme="light"] .events-page-theme .text-gray-500,
-[data-theme="light"] .events-page-theme .text-gray-600 {
+[data-theme="light"] .events-page-theme .text-gray-600,
+[data-theme="light"] .content-cards-page-theme .text-slate-300,
+[data-theme="light"] .content-cards-page-theme .text-slate-400,
+[data-theme="light"] .content-cards-page-theme .text-gray-500,
+[data-theme="light"] .content-cards-page-theme .text-gray-600 {
   color: var(--text-secondary) !important;
 }
 
@@ -684,7 +693,13 @@ body {
 [data-theme="light"] .events-page-theme .bg-slate-800\/60,
 [data-theme="light"] .events-page-theme .bg-slate-800\/40,
 [data-theme="light"] .events-page-theme .bg-slate-900,
-[data-theme="light"] .events-page-theme .bg-slate-800 {
+[data-theme="light"] .events-page-theme .bg-slate-800,
+[data-theme="light"] .content-cards-page-theme .bg-slate-900\/70,
+[data-theme="light"] .content-cards-page-theme .bg-slate-800\/80,
+[data-theme="light"] .content-cards-page-theme .bg-slate-800\/60,
+[data-theme="light"] .content-cards-page-theme .bg-slate-800\/40,
+[data-theme="light"] .content-cards-page-theme .bg-slate-900,
+[data-theme="light"] .content-cards-page-theme .bg-slate-800 {
   background: var(--bg-card) !important;
 }
 
@@ -697,7 +712,13 @@ body {
 [data-theme="light"] .events-page-theme .bg-slate-600,
 [data-theme="light"] .events-page-theme .hover\:bg-slate-700:hover,
 [data-theme="light"] .events-page-theme .hover\:bg-slate-700\/50:hover,
-[data-theme="light"] .events-page-theme .hover\:bg-slate-800:hover {
+[data-theme="light"] .events-page-theme .hover\:bg-slate-800:hover,
+[data-theme="light"] .content-cards-page-theme .bg-slate-700,
+[data-theme="light"] .content-cards-page-theme .bg-slate-600,
+[data-theme="light"] .content-cards-page-theme .hover\:bg-slate-700:hover,
+[data-theme="light"] .content-cards-page-theme .hover\:bg-slate-700\/50:hover,
+[data-theme="light"] .content-cards-page-theme .hover\:bg-slate-800:hover,
+[data-theme="light"] .content-cards-page-theme .hover\:bg-slate-800\/50:hover {
   background: var(--nav-hover) !important;
 }
 
@@ -708,30 +729,54 @@ body {
 [data-theme="light"] .events-page-theme .border-slate-800,
 [data-theme="light"] .events-page-theme .border-slate-700,
 [data-theme="light"] .events-page-theme .border-slate-600,
-[data-theme="light"] .events-page-theme .divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
+[data-theme="light"] .events-page-theme .divide-slate-700 > :not([hidden]) ~ :not([hidden]),
+[data-theme="light"] .content-cards-page-theme .border-slate-800,
+[data-theme="light"] .content-cards-page-theme .border-slate-700,
+[data-theme="light"] .content-cards-page-theme .border-slate-600,
+[data-theme="light"] .content-cards-page-theme .divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--border-light) !important;
 }
 
 [data-theme="light"] .admin-dashboard-theme .text-indigo-400,
-[data-theme="light"] .events-page-theme .text-indigo-400 {
+[data-theme="light"] .events-page-theme .text-indigo-400,
+[data-theme="light"] .content-cards-page-theme .text-indigo-400 {
   color: var(--accent) !important;
 }
 
 [data-theme="light"] .admin-dashboard-theme .bg-indigo-600,
-[data-theme="light"] .events-page-theme .bg-indigo-600 {
+[data-theme="light"] .events-page-theme .bg-indigo-600,
+[data-theme="light"] .content-cards-page-theme .bg-indigo-600 {
   background: var(--accent) !important;
   color: #fff !important;
 }
 
 [data-theme="light"] .admin-dashboard-theme .hover\:bg-indigo-700:hover,
-[data-theme="light"] .events-page-theme .hover\:bg-indigo-700:hover {
+[data-theme="light"] .events-page-theme .hover\:bg-indigo-700:hover,
+[data-theme="light"] .content-cards-page-theme .hover\:bg-indigo-700:hover {
   background: var(--accent-hover) !important;
   color: #fff !important;
 }
 
 [data-theme="light"] .admin-dashboard-theme .focus\:ring-indigo-500:focus,
-[data-theme="light"] .events-page-theme .focus\:ring-indigo-500:focus {
+[data-theme="light"] .events-page-theme .focus\:ring-indigo-500:focus,
+[data-theme="light"] .content-cards-page-theme .focus\:ring-indigo-500:focus {
   box-shadow: 0 0 0 2px var(--accent) !important;
+}
+
+[data-theme="light"] .content-cards-page-theme .bg-indigo-900\/20 {
+  background: var(--primary-soft) !important;
+}
+
+[data-theme="light"] .content-cards-page-theme .bg-indigo-900\/30 {
+  background: var(--primary-soft) !important;
+}
+
+[data-theme="light"] .content-cards-page-theme .border-indigo-700 {
+  border-color: var(--border) !important;
+}
+
+[data-theme="light"] .content-cards-page-theme .border-indigo-500 {
+  border-color: var(--primary) !important;
 }
 
 /* Contact page: reuse app light/dark theme tokens */
@@ -1020,5 +1065,71 @@ html, body, #root {
     color 220ms ease,
     border-color 220ms ease,
     box-shadow 220ms ease;
+}
+
+/* “Explore AI interview” pill (design token --clr, default #7808d0); use .ai-interview-explore-scope on an ancestor */
+.ai-interview-explore-scope .ai-interview-explore-btn {
+  line-height: 1;
+  text-decoration: none;
+  display: inline-flex;
+  border: none;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: var(--clr, #7808d0);
+  color: #fff;
+  border-radius: 10rem;
+  font-weight: 600;
+  padding: 0.65rem 1.1rem;
+  padding-left: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.3s;
+  max-width: min(100%, 14.5rem);
+  font-family: inherit;
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 640px) {
+  .ai-interview-explore-scope .ai-interview-explore-btn {
+    font-size: 0.875rem;
+  }
+}
+
+.ai-interview-explore-scope .ai-interview-explore-btn__icon-wrapper {
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  position: relative;
+  color: var(--clr, #7808d0);
+  background-color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.ai-interview-explore-scope .ai-interview-explore-btn:hover {
+  background-color: #000;
+}
+
+.ai-interview-explore-scope .ai-interview-explore-btn:hover .ai-interview-explore-btn__icon-wrapper {
+  color: #000;
+}
+
+.ai-interview-explore-scope .ai-interview-explore-btn__icon-svg--copy {
+  position: absolute;
+  transform: translate(-150%, 150%);
+}
+
+.ai-interview-explore-scope .ai-interview-explore-btn:hover .ai-interview-explore-btn__icon-svg:first-child {
+  transition: transform 0.3s ease-in-out;
+  transform: translate(150%, -150%);
+}
+
+.ai-interview-explore-scope .ai-interview-explore-btn:hover .ai-interview-explore-btn__icon-svg--copy {
+  transition: transform 0.3s ease-in-out 0.1s;
+  transform: translate(0);
 }
   

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI } from "../utils/api";
 import CompanyLogo from "./CompanyLogo";
@@ -13,10 +13,12 @@ import VideoTab from "./CompanyTabs/VideoTab";
 import CommentsTab from "./CompanyTabs/CommentsTab";
 import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
+import AiInterviewExploreButton from "./AiInterviewExploreButton";
 
 function CompanyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAdmin } = useAuth();
   const [company, setCompany] = useState(null);
   const [activeTab, setActiveTab] = useState("general");
@@ -50,6 +52,15 @@ function CompanyDetails() {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  const openTabFromNav = location.state?.openTab;
+
+  useEffect(() => {
+    if (!company || !id) return;
+    if (openTabFromNav !== "aiinterview") return;
+    setActiveTab("aiinterview");
+    navigate(`/companies/${id}`, { replace: true, state: {} });
+  }, [company, id, openTabFromNav, navigate]);
 
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
@@ -194,6 +205,7 @@ function CompanyDetails() {
   };
 
   return (
+    <>
     <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
       {/* Back Button */}
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
@@ -231,7 +243,7 @@ function CompanyDetails() {
         </div>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "coding", "interview", "aiinterview", "mustdo", "comments"].map((tab) => (
+        {["general", "oa", "coding", "interview", "mustdo", "comments"].map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -249,8 +261,6 @@ function CompanyDetails() {
               ? "Coding"
               : tab === "interview"
               ? "Interview Experience"
-              : tab === "aiinterview"
-              ? "AI Interview"
               : tab === "mustdo"
               ? "Must Do Topics"
               : "Comments"}
@@ -305,6 +315,22 @@ function CompanyDetails() {
         {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
       </div>
     </div>
+
+    {activeTab !== "aiinterview" && (
+      <div
+        className="ai-interview-explore-scope fixed z-[45] pointer-events-none flex flex-col items-end gap-2"
+        style={{
+          bottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
+          right: "max(1rem, env(safe-area-inset-right, 0px))",
+        }}
+      >
+        <AiInterviewExploreButton
+          className="pointer-events-auto shadow-lg"
+          onClick={() => handleTabChange("aiinterview")}
+        />
+      </div>
+    )}
+    </>
   );
 }
 
