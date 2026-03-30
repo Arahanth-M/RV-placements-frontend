@@ -77,6 +77,8 @@ const AuthCallback = () => {
         const reason = urlParams.get('reason');
         if (reason === 'domain') {
           alert('Please login using your official college email (rvce.edu.in).');
+        } else if (reason === 'not_allowed') {
+          alert('Sign-in is restricted. This account is not authorized to use the app right now.');
         } else if (reason === 'not_admin') {
           alert('Access denied. Only admin can access this area.');
         } else {

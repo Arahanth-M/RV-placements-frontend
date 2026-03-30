@@ -237,19 +237,51 @@ function InterviewSessionCard({ session }) {
         )}
 
         {session.finalReport && (
-          <div className="p-3 rounded-md border border-emerald-500/30 bg-emerald-500/10">
-            <p className="text-theme-primary font-semibold mb-1">Final Report</p>
+          <div className="p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 space-y-3 text-sm">
+            <p className="text-theme-primary font-semibold">Final summary</p>
             <p className="text-theme-secondary">
-              Overall Score: {session.finalReport.overallScore ?? 0}/10
+              <span className="font-semibold text-theme-primary">Score:</span>{" "}
+              {session.finalReport.overallScore ?? 0}/10
             </p>
-            <p className="text-theme-secondary mt-1">
-              Strengths: {(session.finalReport.strengths || []).join(", ") || "N/A"}
+            {(session.finalReport.overallStrength || session.finalReport.strengths?.[0]) && (
+              <p className="text-theme-secondary">
+                <span className="font-semibold text-theme-primary">Overall strength:</span>{" "}
+                {session.finalReport.overallStrength || session.finalReport.strengths?.[0]}
+              </p>
+            )}
+            {(session.finalReport.overallWeakness || session.finalReport.weaknesses?.[0]) && (
+              <p className="text-theme-secondary">
+                <span className="font-semibold text-theme-primary">Overall weakness:</span>{" "}
+                {session.finalReport.overallWeakness || session.finalReport.weaknesses?.[0]}
+              </p>
+            )}
+            {session.finalReport.summaryFeedback?.trim() ? (
+              <p className="text-theme-secondary whitespace-pre-wrap">
+                <span className="font-semibold text-theme-primary">Feedback:</span>{" "}
+                {session.finalReport.summaryFeedback}
+              </p>
+            ) : null}
+            {(session.finalReport.companyRoadmap || []).length > 0 ? (
+              <div>
+                <p className="font-semibold text-theme-primary mb-1">Company interview roadmap</p>
+                <ol className="list-decimal pl-5 text-theme-secondary space-y-1">
+                  {(session.finalReport.companyRoadmap || []).map((step, i) => (
+                    <li key={`fr-road-${i}`}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+            <p className="text-theme-secondary">
+              <span className="font-semibold text-theme-primary">Strengths (detail):</span>{" "}
+              {(session.finalReport.strengths || []).join("; ") || "N/A"}
             </p>
-            <p className="text-theme-secondary mt-1">
-              Weaknesses: {(session.finalReport.weaknesses || []).join(", ") || "N/A"}
+            <p className="text-theme-secondary">
+              <span className="font-semibold text-theme-primary">Weaknesses (detail):</span>{" "}
+              {(session.finalReport.weaknesses || []).join("; ") || "N/A"}
             </p>
-            <p className="text-theme-secondary mt-1">
-              Improvement Plan: {(session.finalReport.improvementPlan || []).join(", ") || "N/A"}
+            <p className="text-theme-secondary">
+              <span className="font-semibold text-theme-primary">Improvement plan:</span>{" "}
+              {(session.finalReport.improvementPlan || []).join("; ") || "N/A"}
             </p>
           </div>
         )}

@@ -546,11 +546,11 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     }
 
     if (st.roundCompleted) {
-      setPendingQuestionFeedback(null);
-      setFeedback(st.lastFeedback || "");
-      setScore(typeof st.lastScore === "number" ? st.lastScore : null);
       roundCompletedAtRef.current = Date.now();
-      setRoundFeedbackView({
+      setQuestion("");
+      questionRef.current = "";
+
+      const deferredRoundSummary = {
         score:
           typeof st?.roundFeedback?.score === "number"
             ? st.roundFeedback.score
@@ -560,12 +560,31 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         summary: st?.roundFeedback?.summary || "",
         improvementTips: st?.roundFeedback?.improvementTips || [],
         nextRoundAvailable: Boolean(st?.nextRoundAvailable),
-      });
-      roundFeedbackRef.current = {
-        nextRoundAvailable: Boolean(st?.nextRoundAvailable),
       };
-      setQuestion("");
-      questionRef.current = "";
+      const hasLastAnswerFeedback =
+        String(st.lastFeedback || "").trim().length > 0 ||
+        typeof st.lastScore === "number";
+
+      if (hasLastAnswerFeedback) {
+        setPendingQuestionFeedback({
+          feedback: st.lastFeedback || "",
+          score: typeof st.lastScore === "number" ? st.lastScore : null,
+          nextQuestion: "",
+          deferredRoundSummary,
+        });
+        setRoundFeedbackView(null);
+        roundFeedbackRef.current = null;
+        setFeedback("");
+        setScore(null);
+      } else {
+        setPendingQuestionFeedback(null);
+        setFeedback(st.lastFeedback || "");
+        setScore(typeof st.lastScore === "number" ? st.lastScore : null);
+        setRoundFeedbackView(deferredRoundSummary);
+        roundFeedbackRef.current = {
+          nextRoundAvailable: Boolean(st?.nextRoundAvailable),
+        };
+      }
     } else {
       roundFeedbackRef.current = null;
       setRoundFeedbackView(null);
@@ -583,6 +602,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           feedback: st.lastFeedback || "",
           score: typeof st.lastScore === "number" ? st.lastScore : null,
           nextQuestion: incomingQ,
+          deferredRoundSummary: null,
         });
         setQuestion("");
         questionRef.current = "";
@@ -875,11 +895,11 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         setRoundTransitionMessage(data?.roundTransition?.message || "");
         setAnswer("");
         if (data.roundCompleted) {
-          setPendingQuestionFeedback(null);
-          setFeedback(data.feedback || "");
-          setScore(typeof data.score === "number" ? data.score : null);
           roundCompletedAtRef.current = Date.now();
-          setRoundFeedbackView({
+          setQuestion("");
+          questionRef.current = "";
+
+          const deferredRoundSummary = {
             score:
               typeof data?.roundFeedback?.score === "number"
                 ? data.roundFeedback.score
@@ -889,12 +909,31 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             summary: data?.roundFeedback?.summary || "",
             improvementTips: data?.roundFeedback?.improvementTips || [],
             nextRoundAvailable: Boolean(data?.nextRoundAvailable),
-          });
-          roundFeedbackRef.current = {
-            nextRoundAvailable: Boolean(data?.nextRoundAvailable),
           };
-          setQuestion("");
-          questionRef.current = "";
+          const hasLastAnswerFeedback =
+            String(data.feedback || "").trim().length > 0 ||
+            typeof data.score === "number";
+
+          if (hasLastAnswerFeedback) {
+            setPendingQuestionFeedback({
+              feedback: data.feedback || "",
+              score: typeof data.score === "number" ? data.score : null,
+              nextQuestion: "",
+              deferredRoundSummary,
+            });
+            setRoundFeedbackView(null);
+            roundFeedbackRef.current = null;
+            setFeedback("");
+            setScore(null);
+          } else {
+            setPendingQuestionFeedback(null);
+            setFeedback(data.feedback || "");
+            setScore(typeof data.score === "number" ? data.score : null);
+            setRoundFeedbackView(deferredRoundSummary);
+            roundFeedbackRef.current = {
+              nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+            };
+          }
         } else {
           roundFeedbackRef.current = null;
           setRoundFeedbackView(null);
@@ -906,6 +945,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
               feedback: data.feedback || "",
               score: typeof data.score === "number" ? data.score : null,
               nextQuestion: nextQ,
+              deferredRoundSummary: null,
             });
             setQuestion("");
             questionRef.current = "";
@@ -948,7 +988,22 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   const handleContinueToNextQuestion = useCallback(() => {
     const ctx = pendingQuestionFeedbackRef.current;
-    if (!ctx?.nextQuestion) {
+    if (!ctx) return;
+
+    if (ctx.deferredRoundSummary) {
+      const d = ctx.deferredRoundSummary;
+      setPendingQuestionFeedback(null);
+      setFeedback("");
+      setScore(null);
+      setAnswer("");
+      setRoundFeedbackView(d);
+      roundFeedbackRef.current = {
+        nextRoundAvailable: Boolean(d.nextRoundAvailable),
+      };
+      return;
+    }
+
+    if (!ctx.nextQuestion) {
       setPendingQuestionFeedback(null);
       return;
     }
@@ -1031,7 +1086,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
               onClick={handleContinueToNextQuestion}
               className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-semibold shadow-lg shadow-emerald-900/30 transition-colors"
             >
-              Next question
+              {pendingQuestionFeedback?.deferredRoundSummary
+                ? "View round summary"
+                : "Next question"}
             </button>
           </div>
         </div>
@@ -1387,43 +1444,122 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       )}
 
       {interviewCompleted && (
-        <div className="mt-5 p-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10">
-          <h3 className="text-lg font-semibold text-theme-primary mb-3">
-            Interview Completed
-          </h3>
+        <div className="mt-5 rounded-2xl border border-emerald-500/35 bg-gradient-to-b from-emerald-950/25 to-theme-card overflow-hidden shadow-lg shadow-emerald-950/10">
+          <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-emerald-500/20 bg-emerald-500/10">
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500/95">
+              Interview complete
+            </p>
+            <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mt-1">
+              Final summary
+              {company?.name ? (
+                <span className="text-theme-secondary font-medium"> — {company.name}</span>
+              ) : null}
+            </h3>
+          </div>
           {report ? (
-            <div className="space-y-3 text-sm">
-              <p className="text-theme-primary">
-                <span className="font-semibold">Overall Score:</span>{" "}
-                {report.overallScore ?? 0}/10
-              </p>
-              <div>
-                <p className="font-semibold text-theme-primary">Strengths</p>
-                <ul className="list-disc pl-5 text-theme-secondary">
-                  {(report.strengths || []).map((item, index) => (
-                    <li key={`strength-${index}`}>{item}</li>
-                  ))}
-                </ul>
+            <div className="p-5 sm:p-8 space-y-8 text-sm">
+              <div className="flex flex-wrap items-end gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-1">
+                    Overall score
+                  </p>
+                  <p className="text-4xl sm:text-5xl font-bold tabular-nums text-emerald-500">
+                    {report.overallScore ?? 0}
+                    <span className="text-xl sm:text-2xl font-semibold text-theme-secondary">
+                      /10
+                    </span>
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-theme-primary">Weaknesses</p>
-                <ul className="list-disc pl-5 text-theme-secondary">
-                  {(report.weaknesses || []).map((item, index) => (
-                    <li key={`weakness-${index}`}>{item}</li>
-                  ))}
-                </ul>
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-2">
+                    Overall strength
+                  </p>
+                  <p className="text-theme-primary leading-relaxed">
+                    {report.overallStrength ||
+                      (report.strengths && report.strengths[0]) ||
+                      "Not enough signal to highlight a primary strength."}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-500/90 mb-2">
+                    Overall weakness
+                  </p>
+                  <p className="text-theme-primary leading-relaxed">
+                    {report.overallWeakness ||
+                      (report.weaknesses && report.weaknesses[0]) ||
+                      "No major weakness called out—review detailed notes below."}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-theme-primary">Improvement Plan</p>
-                <ul className="list-disc pl-5 text-theme-secondary">
-                  {(report.improvementPlan || []).map((item, index) => (
-                    <li key={`plan-${index}`}>{item}</li>
-                  ))}
-                </ul>
+
+              {(report.summaryFeedback || "").trim() ? (
+                <div className="rounded-xl border border-theme bg-theme-input/80 p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-2">
+                    Feedback
+                  </p>
+                  <p className="text-theme-primary leading-relaxed whitespace-pre-wrap">
+                    {report.summaryFeedback}
+                  </p>
+                </div>
+              ) : null}
+
+              {(report.companyRoadmap || []).length > 0 ? (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-3">
+                    Roadmap for this company&apos;s interview
+                  </p>
+                  <ol className="list-decimal pl-5 space-y-2 text-theme-secondary">
+                    {(report.companyRoadmap || []).map((step, index) => (
+                      <li key={`roadmap-${index}`} className="leading-relaxed text-theme-primary">
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+
+              <div className="grid sm:grid-cols-2 gap-6 pt-2 border-t border-theme">
+                <div>
+                  <p className="font-semibold text-theme-primary text-sm mb-2">Strengths (detail)</p>
+                  <ul className="list-disc pl-5 text-theme-secondary space-y-1">
+                    {(report.strengths || []).length ? (
+                      (report.strengths || []).map((item, index) => (
+                        <li key={`strength-${index}`}>{item}</li>
+                      ))
+                    ) : (
+                      <li className="list-none pl-0 text-theme-muted">—</li>
+                    )}
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold text-theme-primary text-sm mb-2">Weaknesses (detail)</p>
+                  <ul className="list-disc pl-5 text-theme-secondary space-y-1">
+                    {(report.weaknesses || []).length ? (
+                      (report.weaknesses || []).map((item, index) => (
+                        <li key={`weakness-${index}`}>{item}</li>
+                      ))
+                    ) : (
+                      <li className="list-none pl-0 text-theme-muted">—</li>
+                    )}
+                  </ul>
+                </div>
               </div>
+              {(report.improvementPlan || []).length > 0 ? (
+                <div>
+                  <p className="font-semibold text-theme-primary text-sm mb-2">Improvement plan</p>
+                  <ul className="list-disc pl-5 text-theme-secondary space-y-1">
+                    {(report.improvementPlan || []).map((item, index) => (
+                      <li key={`plan-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : (
-            <p className="text-sm text-theme-secondary">
+            <p className="p-6 text-sm text-theme-secondary">
               Final report is not available.
             </p>
           )}
