@@ -46,10 +46,11 @@ body {
   /* Recharts (Interview analytics): readable in light mode */
   --chart-grid: var(--border);
   --chart-bar: var(--primary);
-  --chart-line: var(--accent);
-  --chart-line-dot: var(--accent);
+  --chart-line: #32cd32;
+  --chart-line-dot: #32cd32;
   --chart-axis-tick: var(--text-secondary);
   --chart-axis-line: var(--border);
+  --chart-cursor: rgba(0, 0, 0, 0.05);
 }
 
 .bg-theme-input { background-color: var(--input-bg); }
@@ -81,10 +82,11 @@ body {
   /* Recharts: higher-contrast on dark card backgrounds */
   --chart-grid: rgba(148, 163, 184, 0.2);
   --chart-bar: #9b94f5;
-  --chart-line: #4be04b;
-  --chart-line-dot: #5fe05f;
+  --chart-line: #4f46e5;
+  --chart-line-dot: #4f46e5;
   --chart-axis-tick: var(--text-secondary);
   --chart-axis-line: rgba(148, 163, 184, 0.35);
+  --chart-cursor: rgba(255, 255, 255, 0.04);
 }
 
 /* Theme-aware utility classes */
