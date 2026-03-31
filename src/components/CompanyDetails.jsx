@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI } from "../utils/api";
+import {
+  companystatsTierListUrl,
+  isPlacementTierParam,
+} from "../constants/placementTiers.js";
 import CompanyLogo from "./CompanyLogo";
 
 import GeneralTab from "./CompanyTabs/GeneralTab";
@@ -165,21 +169,28 @@ function CompanyDetails() {
     
     const fromCompanyCards = sessionStorage.getItem(storageKey);
     if (fromCompanyCards === 'true') {
-      // Get the stored selectedYear (could be 2024, 2025, 2026, or null for year selection)
+      const placementTierKey =
+        user && user.userId
+          ? `companystats_placement_tier_${user.userId}`
+          : "companystats_placement_tier";
+      const storedTier = sessionStorage.getItem(placementTierKey);
+
+      if (isPlacementTierParam(storedTier)) {
+        navigate(companystatsTierListUrl(storedTier));
+        return;
+      }
+
       const storedYear = sessionStorage.getItem(selectedYearKey);
       let yearToRestore = null;
-      
-      if (storedYear && storedYear !== '') {
-        const parsedYear = parseInt(storedYear);
-        if (!isNaN(parsedYear)) {
+
+      if (storedYear && storedYear !== "") {
+        const parsedYear = parseInt(storedYear, 10);
+        if (!Number.isNaN(parsedYear)) {
           yearToRestore = parsedYear;
         }
       }
-      // If storedYear is empty string or null, yearToRestore stays null (year selection screen)
-      
-      // Navigate to company stats with the restored year (or null for year selection)
-      navigate('/companystats', { state: { selectedYear: yearToRestore } });
-      sessionStorage.removeItem(storageKey);
+
+      navigate("/companystats", { state: { selectedYear: yearToRestore } });
     } else {
       // Default back navigation
       navigate(-1);

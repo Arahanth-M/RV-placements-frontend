@@ -46,9 +46,9 @@ function Home() {
                 Welcome to RVCE Placement Dashboard
               </h1>
               <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-theme-secondary leading-relaxed">
-                Your ultimate destination for placement preparation. Gain access to 
-                company insights, interview experiences, curated resources, and 
-                guidance from seniors: Everything you need to land your dream 
+                Your ultimate destination for placement preparation. Gain access to
+                company insights, interview experiences, curated resources, and
+                guidance from seniors: Everything you need to land your dream
                 job or internship with confidence.
               </p>
             </div>
@@ -144,8 +144,8 @@ function Home() {
             {[
               {
                 icon: "📝",
-                title: "Curated Questions",
-                text: "Company-wise placement questions (OA + Interviews).",
+                title: "AI mock Interviews",
+                text: "Company specific mock interviews fully powered by AI",
               },
               {
                 icon: "🔍",
@@ -161,11 +161,6 @@ function Home() {
                 icon: "🤖",
                 title: "AI Chatbot",
                 text: "A chatbot to ask specific questions related to placement stats.",
-              },
-              {
-                icon: "💡",
-                title: "Internship Experiences",
-                text: "Internship experiences of students who recently completed their internships in the corporate world.",
               },
               {
                 icon: "➕",
@@ -265,7 +260,7 @@ function Home() {
         </div>
       </div>
 
-      
+
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
+import { isPlacementTierParam } from '../constants/placementTiers.js';
 
 const GlobalChatbot = () => {
   const { user } = useAuth();
@@ -72,8 +73,11 @@ const GlobalChatbot = () => {
     // Check localStorage for selected year
     const checkSelectedYear = () => {
       const selectedYear = localStorage.getItem('companystats_selectedYear');
-      const isOnCompanystatsPage = location.pathname === '/companystats';
-      const shouldShow = isOnCompanystatsPage && selectedYear === '2026';
+      const params = new URLSearchParams(location.search);
+      const tier = params.get('tier');
+      const isTierCompanyList =
+        location.pathname === '/companystats' && isPlacementTierParam(tier);
+      const shouldShow = isTierCompanyList && selectedYear === '2026';
       setShouldShowChatbot(shouldShow);
       
       // If we're not on the right page or year, cleanup chatbot
@@ -100,7 +104,7 @@ const GlobalChatbot = () => {
       // Cleanup when navigating away
       cleanupChatbot();
     };
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     // Only load chatbot for authenticated users and only on 2026 stats page

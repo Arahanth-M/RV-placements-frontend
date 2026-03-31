@@ -18,6 +18,13 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
     }))
   );
 
+  // General info edit state
+  const [isEditingGeneral, setIsEditingGeneral] = useState(false);
+  const [savingGeneral, setSavingGeneral] = useState(false);
+  const [editEligibility, setEditEligibility] = useState(company.eligibility || "");
+  const [editBusinessModel, setEditBusinessModel] = useState(company.business_model || "");
+
+
   const formatCTCValue = (value) => {
     if (value === null || value === undefined) return "N/A";
     if (typeof value === "number") return `₹ ${value.toLocaleString("en-IN")}`;
@@ -92,26 +99,116 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
 
       {/* GENERAL INFO */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold text-indigo-400 mb-4">
-          General Information
-        </h2>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="bg-slate-800/60 rounded-lg p-4">
-            <p className="text-slate-400 text-sm">Eligibility</p>
-            <p className="text-slate-200 mt-1">
-              {company.eligibility ?? "Not provided"}
-            </p>
-          </div>
-
-          <div className="bg-slate-800/60 rounded-lg p-4">
-            <p className="text-slate-400 text-sm">Business Model</p>
-            <p className="text-slate-200 mt-1">
-              {company.business_model ?? "Not provided"}
-            </p>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-indigo-400">
+            General Information
+          </h2>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!isEditingGeneral) {
+                  setEditEligibility(company.eligibility || "");
+                  setEditBusinessModel(company.business_model || "");
+                }
+                setIsEditingGeneral((prev) => !prev);
+              }}
+              className="px-3 py-1 text-sm rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-600"
+            >
+              {isEditingGeneral ? "Cancel" : "Edit general info"}
+            </button>
+          )}
         </div>
-      </div>
+
+        {!isEditingGeneral ? (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="bg-slate-800/60 rounded-lg p-4">
+              <p className="text-slate-400 text-sm">Eligibility</p>
+              <p className="text-slate-200 mt-1">
+                {company.eligibility ?? "Not provided"}
+              </p>
+            </div>
+
+            <div className="bg-slate-800/60 rounded-lg p-4">
+              <p className="text-slate-400 text-sm">Business Model</p>
+              <p className="text-slate-200 mt-1">
+                {company.business_model ?? "Not provided"}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                setSavingGeneral(true);
+                await adminAPI.updateCompanyGeneralInfo(company._id, {
+                  eligibility: editEligibility,
+                  business_model: editBusinessModel,
+                });
+                if (typeof onRolesUpdated === "function") {
+                  await onRolesUpdated();
+                }
+                setIsEditingGeneral(false);
+              } catch (err) {
+                console.error("Error updating general info:", err);
+                alert(
+                  err.response?.data?.details?.eligibility?.message ||
+                    err.response?.data?.details?.business_model?.message ||
+                    err.response?.data?.error ||
+                    "Failed to update general info. Please try again."
+                );
+              } finally {
+                setSavingGeneral(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-300 text-sm mb-1">
+                  Eligibility
+                </label>
+                <textarea
+                  value={editEligibility}
+                  onChange={(e) => setEditEligibility(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]"
+                  placeholder="e.g. 7.5 CGPA, CSE/ECE/EEE..."
+                />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm mb-1">
+                  Business Model
+                </label>
+                <input
+                  type="text"
+                  value={editBusinessModel}
+                  onChange={(e) => setEditBusinessModel(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. Product-based, Fintech..."
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={savingGeneral}
+                className="px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
+              >
+                {savingGeneral ? "Saving…" : "Save general info"}
+              </button>
+              <button
+                type="button"
+                disabled={savingGeneral}
+                onClick={() => setIsEditingGeneral(false)}
+                className="px-3 py-2 rounded-md border border-slate-600 text-slate-200 text-sm hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div> (LANGUAGE_JAVASCRIPT)
 
       {/* ROLES */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">

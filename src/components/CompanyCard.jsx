@@ -160,99 +160,107 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
   return (
     <div
-      className="rounded-2xl shadow-md p-6 company-card h-full flex flex-col
-                 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 ease-in-out bg-theme-card border-2 border-theme-accent"
+      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full flex flex-col overflow-hidden bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl hover:scale-[1.02]"
       data-testid="company-card"
     >
-      {/* Company Logo/Header Section */}
-      <div className="company-header flex items-center gap-3 mb-4">
-        {/* Company Logo */}
+      {/* Top Section: Header + Logo */}
+      <div className="company-header flex items-center gap-3 mb-4 flex-shrink-0">
         <div 
-          className="company-logo w-14 h-14 sm:w-16 sm:h-16 rounded-lg shadow-md border-2 border-theme flex-shrink-0 bg-theme-card flex items-center justify-center overflow-hidden"
+          className="company-logo w-14 h-14 sm:w-16 sm:h-16 rounded-xl shadow-sm border border-theme flex-shrink-0 bg-theme-card flex items-center justify-center overflow-hidden"
           data-testid="company-logo"
         >
           <CompanyLogo
             company={company}
-            className="w-full h-full object-contain p-1"
-            alt={company.name || "Company logo"}
+            className="w-full h-full object-contain p-1.5"
+            alt={company.name || "Company"}
           />
         </div>
-        {/* Company Name and Type */}
         <div className="flex-1 min-w-0">
-          <h2 className="company-name text-xl sm:text-2xl font-extrabold text-theme-primary tracking-tight truncate">
-            {company.name}
+          <h2 className="company-name text-lg sm:text-xl font-bold text-theme-primary tracking-tight truncate">
+            {company.name || "Unknown Company"}
           </h2>
-          <p className="company-role text-sm text-theme-secondary italic truncate">{company.type}</p>
+          <p className="company-role text-xs sm:text-sm text-theme-secondary italic truncate">
+            {company.type || "Placement Drive"}
+          </p>
         </div>
       </div>
 
-      <div className="company-info mb-3">
-        <span className="font-semibold text-theme-secondary">Date of interview: </span>
-        <span className="text-theme-muted">{company.date_of_visit}</span>
-      </div>
-
-      <div className="company-info mb-3">
-        <span className="font-semibold text-theme-secondary">Business Model: </span>
-        <span className="text-theme-muted">{company.business_model}</span>
-      </div>
-
-      {/* Focus tags: DSA, CS Fundamentals, ML/AI based on interview process, questions & must-do topics */}
-      {company.focusTags && company.focusTags.length > 0 && (
-        <div className="mb-3">
-          <span className="font-semibold text-theme-secondary block mb-1.5">Focus areas</span>
-          <div className="flex flex-wrap gap-1.5">
-            {company.focusTags.map((tag) => (
-              <span
-                key={tag}
-                className="tag inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-theme-card border border-theme-accent text-theme-accent"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+      {/* Middle Section: Main info - Flex grow to push footer down */}
+      <div className="flex-1 flex flex-col min-w-0 gap-3">
+        <div className="company-info text-sm line-clamp-1 flex-shrink-0">
+          <span className="font-semibold text-theme-secondary">Date of visit: </span>
+          <span className="text-theme-muted">{company.date_of_visit || "TBA"}</span>
         </div>
-      )}
 
-      <div className="mt-4 mb-3">
+        <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
+          <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
+          <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed">
+            {company.business_model || "Innovative solutions and high-quality services."}
+          </span>
+        </div>
+
+        <div className="mt-1 flex flex-col gap-2 min-h-[4rem]">
+          {company.focusTags && company.focusTags.length > 0 ? (
+            <>
+              <span className="font-semibold text-theme-secondary text-[10px] uppercase tracking-wider">Top focus areas</span>
+              <div className="flex flex-wrap gap-1.5 line-clamp-2 overflow-hidden">
+                {company.focusTags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag}
+                    className="tag inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-theme-accent bg-opacity-10 border border-theme-accent text-theme-accent uppercase tracking-tight whitespace-nowrap"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="h-full flex items-center">
+              <span className="text-[10px] text-theme-muted italic uppercase tracking-widest">General placement prep</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Section: Action + Footer */}
+      <div className="mt-4 flex-shrink-0">
         <button
           onClick={handleViewDetailsClick}
           onMouseEnter={prefetchDetails}
           onTouchStart={prefetchDetails}
-          className="full-details-btn w-full px-4 py-2.5 rounded-xl font-semibold text-sm sm:text-base bg-theme-accent hover:bg-theme-accent text-white transition-colors duration-200"
+          className="full-details-btn w-full px-4 py-2.5 rounded-xl font-bold text-sm bg-theme-accent hover:brightness-110 text-white transition-all shadow-md active:scale-[0.98]"
         >
-          Click to View Full Details
+          View Full Details
         </button>
-      </div>
 
-      {/* Helpful Count Section */}
-      <div className="card-divider mt-4 pt-3 border-t border-theme" aria-hidden="true" />
-      <div className="card-footer flex items-center justify-between flex-wrap gap-2 mt-auto pt-3">
-        <div className="stats-label flex items-center gap-2">
+        <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
+
+        <div className="card-footer flex items-center justify-between gap-2 overflow-hidden">
           <button
             onClick={handleStatsClick}
-            className="stats-btn flex items-center gap-2 px-3 py-1.5 rounded-lg bg-theme-card-hover hover:bg-theme-nav text-theme-primary text-sm font-semibold transition-colors"
-            title="View stats"
+            className="stats-btn flex items-center gap-2 px-3 py-1.5 rounded-lg bg-theme-card-hover hover:bg-theme-nav text-theme-primary text-xs font-bold transition-all border border-theme"
+            title="View statistics"
           >
-            <FaChartBar className="w-4 h-4" />
+            <FaChartBar className="w-3.5 h-3.5" />
             <span>Stats</span>
           </button>
-          <span className="text-sm text-theme-secondary">Was this helpful?</span>
+          
+          <button
+            onClick={handleThumbsUp}
+            disabled={isUpdating || hasUpvoted || isCheckingStatus}
+            className={`helpful-btn flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-bold ${
+              hasUpvoted
+                ? "bg-green-500 text-white cursor-not-allowed shadow-inner"
+                : isUpdating || isCheckingStatus
+                ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
+                : "bg-theme-accent hover:brightness-110 text-white shadow-sm"
+            }`}
+            title={hasUpvoted ? "Already upvoted" : "Mark as helpful"}
+          >
+            <FaThumbsUp className={`w-3.5 h-3.5 ${isUpdating ? 'animate-bounce' : ''}`} />
+            <span>{helpfulCount}</span>
+          </button>
         </div>
-        <button
-          onClick={handleThumbsUp}
-          disabled={isUpdating || hasUpvoted || isCheckingStatus}
-          className={`helpful-btn like-btn flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold ${hasUpvoted ? 'helpful-btn--active active' : ''} ${
-            hasUpvoted
-              ? "bg-green-600 text-white cursor-not-allowed"
-              : isUpdating || isCheckingStatus
-              ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
-              : "bg-theme-accent hover:bg-theme-accent text-white"
-          }`}
-          title={hasUpvoted ? "You have already upvoted this company" : "Mark as helpful"}
-        >
-          <FaThumbsUp className="w-4 h-4" />
-          <span>{helpfulCount}</span>
-        </button>
       </div>
 
       {/* Stats modal */}

@@ -408,17 +408,6 @@ const Sidebar = () => {
                     Resources
                   </Link>
                   <Link
-                    to="/leetcode"
-                    onClick={() => {
-                      setShowStudentsCornerMenu(false);
-                      setIsVisible(false);
-                    }}
-                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
-                  >
-                    <FaCode className="w-4 h-4 mr-2" />
-                    Leetcode
-                  </Link>
-                  <Link
                     to="/interviews"
                     onClick={() => {
                       setShowStudentsCornerMenu(false);
@@ -439,17 +428,6 @@ const Sidebar = () => {
                   >
                     <FaComments className="w-4 h-4 mr-2" />
                     Feedback
-                  </Link>
-                  <Link
-                    to="/internshipExperience"
-                    onClick={() => {
-                      setShowStudentsCornerMenu(false);
-                      setIsVisible(false);
-                    }}
-                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
-                  >
-                    <FaBriefcase className="w-4 h-4 mr-2" />
-                    Experiences
                   </Link>
                 </div>
               )}

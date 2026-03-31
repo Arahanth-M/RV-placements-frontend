@@ -42,6 +42,14 @@ body {
   --space-2: 0.75rem;
   --space-3: 1rem;
   --space-4: 1.25rem;
+
+  /* Recharts (Interview analytics): readable in light mode */
+  --chart-grid: var(--border);
+  --chart-bar: var(--primary);
+  --chart-line: var(--accent);
+  --chart-line-dot: var(--accent);
+  --chart-axis-tick: var(--text-secondary);
+  --chart-axis-line: var(--border);
 }
 
 .bg-theme-input { background-color: var(--input-bg); }
@@ -68,6 +76,15 @@ body {
   --input-border: rgba(148, 163, 184, 0.25);
   --nav-hover: #202533;
   --nav-active: rgba(52, 211, 153, 0.18);
+  --shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* Recharts: higher-contrast on dark card backgrounds */
+  --chart-grid: rgba(148, 163, 184, 0.2);
+  --chart-bar: #9b94f5;
+  --chart-line: #4be04b;
+  --chart-line-dot: #5fe05f;
+  --chart-axis-tick: var(--text-secondary);
+  --chart-axis-line: rgba(148, 163, 184, 0.35);
 }
 
 /* Theme-aware utility classes */
@@ -89,6 +106,22 @@ body {
 .hover\:text-theme-accent:hover { color: var(--accent); }
 .hover\:bg-theme-nav:hover { background-color: var(--nav-hover); }
 .nav-active-theme { background-color: var(--nav-active); }
+.border-theme-app { border-color: var(--bg-app); }
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
 
 /* Skeleton / shimmer loading (theme-aware) */
 @keyframes stats-shimmer {
@@ -1022,18 +1055,8 @@ html, body, #root {
 }
 
 .company-card {
-  min-height: 320px;
-  height: auto;
-  padding: 22px !important;
-  border-radius: 16px !important;
-}
-
-.company-card .company-logo {
-  width: 48px !important;
-  height: 48px !important;
-  min-width: 48px !important;
-  min-height: 48px !important;
-  border-radius: 12px !important;
+  min-height: 340px;
+  height: 100%;
 }
 
 .filter-fab,
@@ -1058,8 +1081,10 @@ html, body, #root {
 .text-theme-primary,
 .text-theme-secondary,
 .text-theme-muted,
+.text-theme-accent,
 .border-theme,
-.border-theme-input {
+.border-theme-input,
+.border-theme-app {
   transition:
     background-color 220ms ease,
     color 220ms ease,

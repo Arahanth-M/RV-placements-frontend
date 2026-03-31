@@ -1,11 +1,21 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
+import CompanyLogo from "../components/CompanyLogo";
+import AnimatedLogoGrid from "../components/AnimatedLogoGrid";
 import YearStatsTable from "../components/YearStatsTable";
 import { YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
-import { FaFilter, FaCalendarAlt, FaArrowLeft } from "react-icons/fa";
+import { FaFilter, FaCalendarAlt, FaArrowLeft, FaRegStar, FaMedal, FaChevronRight } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
+import {
+  PLACEMENT_TIER_DREAM,
+  PLACEMENT_TIER_OPEN_DREAM,
+  PATH_COMPANY_CATEGORY,
+  PATH_COMPANY_STATS,
+  companystatsTierListUrl,
+  isPlacementTierParam,
+} from "../constants/placementTiers.js";
 
 function CompanyStats() {
   // Year selection state
@@ -18,13 +28,18 @@ function CompanyStats() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [cluster, setCluster] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [dreamPage, setDreamPage] = useState(1);
+  const [openDreamPage, setOpenDreamPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   const [showClusterFilter, setShowClusterFilter] = useState(false);
+  /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
+  const [placementTier, setPlacementTier] = useState(null);
 
   const companiesPerPage = 9;
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const tierQuery = searchParams.get("tier");
   const { user, isAdmin } = useAuth();
   const clusterFilterRef = useRef(null);
 
@@ -43,6 +58,9 @@ function CompanyStats() {
         'companystats_search',
         'companystats_category',
         'companystats_cluster',
+        'companystats_dream_page',
+        'companystats_open_dream_page',
+        'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
       ];
@@ -60,6 +78,9 @@ function CompanyStats() {
         'companystats_search',
         'companystats_category',
         'companystats_cluster',
+        'companystats_dream_page',
+        'companystats_open_dream_page',
+        'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
       ];
@@ -74,44 +95,102 @@ function CompanyStats() {
     }
   }, [user]);
 
-  // Check for navigation state or sessionStorage to restore selectedYear and company cards state
+  // URL is source of truth for 2026 flow: /category (picker) vs /companystats?tier=… (list)
   useEffect(() => {
-    if (!user) return;
+    if (location.pathname === PATH_COMPANY_CATEGORY) {
+      setSelectedYear(2026);
+      setPlacementTier(null);
+      return;
+    }
+    if (location.pathname === PATH_COMPANY_STATS && isPlacementTierParam(tierQuery)) {
+      setSelectedYear(2026);
+      setPlacementTier(tierQuery);
+    }
+  }, [location.pathname, tierQuery]);
 
-    // Check if state was passed from navigation
+  // Check for navigation state or sessionStorage to restore selectedYear (non-2026 only on hub)
+  useEffect(() => {
+    if (location.pathname !== PATH_COMPANY_STATS || isPlacementTierParam(tierQuery)) return;
+
     if (location.state?.selectedYear !== undefined) {
       const yearToSet = location.state.selectedYear;
-      setSelectedYear(yearToSet);
-      // Store the selectedYear in sessionStorage
-      if (yearToSet !== null) {
-        sessionStorage.setItem(getStorageKey('companystats_selectedYear'), String(yearToSet));
-      } else {
-        sessionStorage.setItem(getStorageKey('companystats_selectedYear'), '');
+      if (yearToSet === 2026) {
+        navigate(PATH_COMPANY_CATEGORY, { replace: true });
+        return;
       }
-    } else if (sessionStorage.getItem(getStorageKey('companystats_selectedYear'))) {
-      // Check sessionStorage for selectedYear (user-specific)
-      const storedYear = sessionStorage.getItem(getStorageKey('companystats_selectedYear'));
-      if (storedYear === '') {
-        // Empty string means year selection screen (null)
-        setSelectedYear(null);
+      if (!user) return;
+      setSelectedYear(yearToSet);
+      if (yearToSet !== null) {
+        sessionStorage.setItem(getStorageKey("companystats_selectedYear"), String(yearToSet));
       } else {
-        const parsedYear = parseInt(storedYear);
-        if (!isNaN(parsedYear)) {
+        sessionStorage.setItem(getStorageKey("companystats_selectedYear"), "");
+      }
+      return;
+    }
+
+    if (!user) return;
+    if (!sessionStorage.getItem(getStorageKey("companystats_selectedYear"))) return;
+
+    const storedYear = sessionStorage.getItem(getStorageKey("companystats_selectedYear"));
+    if (storedYear === "") {
+      setSelectedYear(null);
+    } else {
+      const parsedYear = parseInt(storedYear, 10);
+      if (!Number.isNaN(parsedYear)) {
+        if (parsedYear === 2026) {
+          navigate(PATH_COMPANY_CATEGORY, { replace: true });
+        } else {
           setSelectedYear(parsedYear);
         }
       }
     }
-  }, [location.state, user]);
+  }, [location.state, location.pathname, tierQuery, user, navigate]);
 
-  // Store selectedYear in sessionStorage whenever it changes (but not on initial mount)
+  // Persist hub year (2024/2025 only). 2026 flow uses /category and ?tier= URLs only.
   useEffect(() => {
-    if (user && user.userId && selectedYear !== null) {
-      sessionStorage.setItem(getStorageKey('companystats_selectedYear'), String(selectedYear));
-    } else if (user && user.userId && selectedYear === null) {
-      // Store null as empty string to indicate year selection screen
-      sessionStorage.setItem(getStorageKey('companystats_selectedYear'), '');
+    if (!user?.userId) return;
+    if (selectedYear === null || selectedYear === 2026) {
+      sessionStorage.setItem(getStorageKey("companystats_selectedYear"), "");
+    } else {
+      sessionStorage.setItem(getStorageKey("companystats_selectedYear"), String(selectedYear));
     }
   }, [selectedYear, user]);
+
+  useEffect(() => {
+    if (selectedYear !== 2026 || !placementTier) return;
+    if (location.pathname !== PATH_COMPANY_STATS) return;
+    if (tierQuery !== placementTier) {
+      navigate(companystatsTierListUrl(placementTier), { replace: true });
+    }
+  }, [selectedYear, placementTier, location.pathname, tierQuery, navigate]);
+
+  useEffect(() => {
+    if (location.pathname !== PATH_COMPANY_STATS) return;
+    if (isPlacementTierParam(tierQuery)) return;
+    if (selectedYear === 2026 && placementTier === null) {
+      navigate(PATH_COMPANY_CATEGORY, { replace: true });
+    }
+  }, [location.pathname, tierQuery, selectedYear, placementTier, navigate]);
+
+  // Only clear tier when leaving 2026 for a concrete other year — not when selectedYear is still null on first paint
+  // (otherwise this runs before URL sync and wipes tier after /companystats?tier= navigation → infinite "Loading…").
+  useEffect(() => {
+    if (selectedYear == null) return;
+    if (selectedYear !== 2026) setPlacementTier(null);
+  }, [selectedYear]);
+
+  useEffect(() => {
+    const key = getStorageKey("companystats_placement_tier");
+    if (selectedYear === 2026) {
+      const v =
+        placementTier === PLACEMENT_TIER_DREAM || placementTier === PLACEMENT_TIER_OPEN_DREAM
+          ? placementTier
+          : "";
+      sessionStorage.setItem(key, v);
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  }, [selectedYear, placementTier, user]);
 
   // Restore company cards state if coming back from company details
   useEffect(() => {
@@ -121,12 +200,24 @@ function CompanyStats() {
       const storedSearch = sessionStorage.getItem(getStorageKey('companystats_search'));
       const storedCategory = sessionStorage.getItem(getStorageKey('companystats_category'));
       const storedCluster = sessionStorage.getItem(getStorageKey('companystats_cluster'));
-      const storedPage = sessionStorage.getItem(getStorageKey('companystats_page'));
-      
+      const storedDreamPage = sessionStorage.getItem(getStorageKey('companystats_dream_page'));
+      const storedOpenDreamPage = sessionStorage.getItem(getStorageKey('companystats_open_dream_page'));
+      const legacyPage = sessionStorage.getItem(getStorageKey('companystats_page'));
+      const parsedLegacy = legacyPage != null ? parseInt(legacyPage, 10) : NaN;
+      const fallbackPage = Number.isFinite(parsedLegacy) && parsedLegacy > 0 ? parsedLegacy : 1;
+
       if (storedSearch !== null) setSearch(storedSearch);
       if (storedCategory !== null) setCategory(storedCategory);
       if (storedCluster !== null) setCluster(storedCluster);
-      if (storedPage !== null) setCurrentPage(parseInt(storedPage) || 1);
+      if (storedDreamPage !== null) setDreamPage(parseInt(storedDreamPage, 10) || 1);
+      else setDreamPage(fallbackPage);
+      if (storedOpenDreamPage !== null) setOpenDreamPage(parseInt(storedOpenDreamPage, 10) || 1);
+      else setOpenDreamPage(fallbackPage);
+
+      const storedTier = sessionStorage.getItem(getStorageKey("companystats_placement_tier"));
+      if (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM) {
+        setPlacementTier(storedTier);
+      }
       
       // Clear the flag after restoring
       sessionStorage.removeItem(getStorageKey('fromCompanyCards'));
@@ -139,9 +230,10 @@ function CompanyStats() {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
       sessionStorage.setItem(getStorageKey('companystats_category'), category);
       sessionStorage.setItem(getStorageKey('companystats_cluster'), cluster);
-      sessionStorage.setItem(getStorageKey('companystats_page'), String(currentPage));
+      sessionStorage.setItem(getStorageKey('companystats_dream_page'), String(dreamPage));
+      sessionStorage.setItem(getStorageKey('companystats_open_dream_page'), String(openDreamPage));
     }
-  }, [selectedYear, search, category, cluster, currentPage, user]);
+  }, [selectedYear, search, category, cluster, dreamPage, openDreamPage, user]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
@@ -237,19 +329,86 @@ function CompanyStats() {
       return companyCluster === selectedCluster;
     });
 
-  const indexOfLastCompany = currentPage * companiesPerPage;
-  const indexOfFirstCompany = indexOfLastCompany - companiesPerPage;
-  const currentCompanies = filteredCompanies.slice(
-    indexOfFirstCompany,
-    indexOfLastCompany
+  const dreamCompanies = filteredCompanies.filter((c) => c.category !== "open dream");
+  const openDreamCompanies = filteredCompanies.filter((c) => c.category === "open dream");
+
+  const dreamSlice = dreamCompanies.slice(
+    (dreamPage - 1) * companiesPerPage,
+    dreamPage * companiesPerPage
   );
-  const totalPages = Math.ceil(filteredCompanies.length / companiesPerPage);
+  const openDreamSlice = openDreamCompanies.slice(
+    (openDreamPage - 1) * companiesPerPage,
+    openDreamPage * companiesPerPage
+  );
 
-  // Statistics for 2026 were previously calculated here for UI cards (total companies, FTE, etc.).
-  // That summary UI has been removed as per requirements, so we no longer compute those aggregates.
+  const renderTierPagination = (totalItems, page, setPage) => {
+    const totalPages = Math.ceil(totalItems / companiesPerPage);
+    if (totalItems <= companiesPerPage) return null;
+    return (
+      <div className="pagination flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
+        <button
+          type="button"
+          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+          disabled={page === 1}
+          className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
+        >
+          Prev
+        </button>
+        <div className="flex items-center gap-1">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+            const shouldShow =
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              Math.abs(pageNum - page) <= 1 ||
+              (page <= 3 && pageNum <= 4) ||
+              (page >= totalPages - 2 && pageNum >= totalPages - 3);
 
-  // Year selection view
-  if (selectedYear === null) {
+            if (!shouldShow) {
+              if (pageNum === 2 && page > 4) {
+                return <span key={`ellipsis-${pageNum}`} className="px-2 text-theme-muted">...</span>;
+              }
+              if (pageNum === totalPages - 1 && page < totalPages - 3) {
+                return <span key={`ellipsis-2-${pageNum}`} className="px-2 text-theme-muted">...</span>;
+              }
+              return null;
+            }
+
+            return (
+              <button
+                type="button"
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                data-active={pageNum === page ? "true" : undefined}
+                className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition duration-200 text-sm sm:text-base ${pageNum === page ? "active bg-theme-accent text-white" : "bg-theme-card border border-theme text-theme-secondary hover:bg-theme-nav"}`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={page === totalPages}
+          className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
+
+  const resetListPages = () => {
+    setDreamPage(1);
+    setOpenDreamPage(1);
+  };
+
+  // Year selection view (hub only, not ?tier= and not /category)
+  if (
+    selectedYear === null &&
+    location.pathname === PATH_COMPANY_STATS &&
+    !isPlacementTierParam(tierQuery)
+  ) {
     return (
       <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
         <div className="max-w-7xl mx-auto">
@@ -267,6 +426,11 @@ function CompanyStats() {
                   onClick={() => {
                     if (requiresAuth && !user) {
                       alert("You must be logged in to view 2024 and 2025 statistics.");
+                      return;
+                    }
+                    if (year === 2026) {
+                      sessionStorage.setItem(getStorageKey("companystats_placement_tier"), "");
+                      navigate(PATH_COMPANY_CATEGORY);
                       return;
                     }
                     setSelectedYear(year);
@@ -320,6 +484,7 @@ function CompanyStats() {
               year={selectedYear}
               data={yearStatsData}
               onBack={() => {
+                navigate(PATH_COMPANY_STATS, { replace: true });
                 setSelectedYear(null);
                 setYearStatsData([]);
               }}
@@ -330,23 +495,132 @@ function CompanyStats() {
     );
   }
 
-  // Company cards view (2026)
+  // 2026: choose Dream vs Open dream (two cards) — /category only
+  if (
+    selectedYear === 2026 &&
+    placementTier === null &&
+    location.pathname === PATH_COMPANY_CATEGORY
+  ) {
+    const dreamLogoPreview = dreamCompanies.slice(0, 5);
+    const openDreamLogoPreview = openDreamCompanies.slice(0, 5);
+
+    return (
+      <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
+        <div className="max-w-7xl mx-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setCompanies([]);
+              setSearch("");
+              setCategory("all");
+              setCluster("all");
+              resetListPages();
+              setPlacementTier(null);
+              setSelectedYear(null);
+              navigate(PATH_COMPANY_STATS, { replace: true });
+            }}
+            className="mb-6 flex items-center back-link-theme text-sm sm:text-base ml-0 sm:ml-2"
+          >
+            <FaArrowLeft className="mr-2" />
+            Back to Year Selection
+          </button>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
+            <p className="text-theme-secondary text-sm sm:text-base max-w-2xl">
+              Choose Dream or Open dream to browse company cards for 2026.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
+            <button
+              type="button"
+              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_DREAM))}
+              className="rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex flex-col h-full">
+
+                <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mb-3 flex-shrink-0">
+                  Dream companies
+                </h3>
+                <div className="flex-1 flex items-center justify-center mb-4 min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={dreamCompanies}
+                    gridSize={5}
+                    interval={3500}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{dreamCompanies.length} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_OPEN_DREAM))}
+              className="rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex flex-col h-full">
+
+                <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mb-3 flex-shrink-0">
+                  Open dream companies
+                </h3>
+                <div className="flex-1 flex items-center justify-center mb-4 min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={openDreamCompanies}
+                    gridSize={5}
+                    interval={2800}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{openDreamCompanies.length} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Company cards list: /companystats?tier=dream|open_dream
+  if (
+    !(
+      selectedYear === 2026 &&
+      placementTier &&
+      location.pathname === PATH_COMPANY_STATS &&
+      tierQuery === placementTier
+    )
+  ) {
+    return (
+      <div className="p-6 min-h-screen bg-theme-app flex items-center justify-center">
+        <p className="text-theme-secondary text-sm">Loading…</p>
+      </div>
+    );
+  }
+
+  const tierListSlice =
+    placementTier === PLACEMENT_TIER_DREAM ? dreamSlice : openDreamSlice;
+  const tierListPool =
+    placementTier === PLACEMENT_TIER_DREAM ? dreamCompanies : openDreamCompanies;
+  const tierListPage =
+    placementTier === PLACEMENT_TIER_DREAM ? dreamPage : openDreamPage;
+  const setTierListPage =
+    placementTier === PLACEMENT_TIER_DREAM ? setDreamPage : setOpenDreamPage;
+
   return (
     <div className="page-container p-4 sm:p-6 min-h-screen relative bg-theme-app">
       <div className="mb-4 sm:mb-6">
         <button
+          type="button"
           onClick={() => {
-            setSelectedYear(null);
-            setCompanies([]);
-            setSearch("");
-            setCategory("all");
-            setCluster("all");
-            setCurrentPage(1);
+            resetListPages();
+            navigate(PATH_COMPANY_CATEGORY);
           }}
-          className="mb-4 flex items-center back-link-theme text-sm sm:text-base ml-16 sm:ml-20"
+          className="mb-6 flex items-center back-link-theme text-sm sm:text-base ml-16 sm:ml-20"
         >
           <FaArrowLeft className="mr-2" />
-          Back to Year Selection
+          Back
         </button>
         <div className="top-bar flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <div className="w-full sm:w-auto sm:max-w-md">
@@ -356,7 +630,7 @@ function CompanyStats() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setCurrentPage(1);
+              resetListPages();
             }}
               className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
           />
@@ -393,7 +667,7 @@ function CompanyStats() {
                   onClick={() => {
                     setCluster("all");
                     setShowClusterFilter(false);
-                    setCurrentPage(1);
+                    resetListPages();
                   }}
                   className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                     cluster === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -405,7 +679,7 @@ function CompanyStats() {
                   onClick={() => {
                     setCluster("Computer Science and Engineering");
                     setShowClusterFilter(false);
-                    setCurrentPage(1);
+                    resetListPages();
                   }}
                   className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                     cluster === "Computer Science and Engineering" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -417,7 +691,7 @@ function CompanyStats() {
                   onClick={() => {
                     setCluster("Electronics and Communication");
                     setShowClusterFilter(false);
-                    setCurrentPage(1);
+                    resetListPages();
                   }}
                   className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                     cluster === "Electronics and Communication" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -429,7 +703,7 @@ function CompanyStats() {
                   onClick={() => {
                     setCluster("Mechanical Engineering");
                     setShowClusterFilter(false);
-                    setCurrentPage(1);
+                    resetListPages();
                   }}
                   className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                     cluster === "Mechanical Engineering" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -443,81 +717,27 @@ function CompanyStats() {
         </div>
       </div>
 
-      <div className="company-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-        {currentCompanies.length > 0 ? (
-          currentCompanies.map((c) => (
-            <CompanyCard
-              key={c._id}
-              company={c}
-              isAdmin={isAdmin}
-              onStatsUpdated={() => companyAPI.getAllCompanies().then((res) => setCompanies(res.data))}
-            />
-          ))
-        ) : (
-          <p className="text-gray-400 col-span-full text-center">
-            {cluster !== "all" 
-              ? `No companies in ${cluster} cluster is available.`
-              : "No companies found."}
-          </p>
-        )}
-      </div>
-
-      {filteredCompanies.length > companiesPerPage && (
-        <div className="pagination flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
-          >
-            Prev
-          </button>
-
-          {/* Page Numbers */}
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-              // Show first page, last page, current page, and pages around current page
-              const shouldShow = 
-                pageNum === 1 || 
-                pageNum === totalPages || 
-                Math.abs(pageNum - currentPage) <= 1 ||
-                (currentPage <= 3 && pageNum <= 4) ||
-                (currentPage >= totalPages - 2 && pageNum >= totalPages - 3);
-
-              if (!shouldShow) {
-                // Show ellipsis for gaps
-                if (pageNum === 2 && currentPage > 4) {
-                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-theme-muted">...</span>;
-                }
-                if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
-                  return <span key={`ellipsis-${pageNum}`} className="px-2 text-theme-muted">...</span>;
-                }
-                return null;
-              }
-
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  data-active={pageNum === currentPage ? "true" : undefined}
-                  className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition duration-200 text-sm sm:text-base ${pageNum === currentPage ? "active bg-theme-accent text-white" : "bg-theme-card border border-theme text-theme-secondary hover:bg-theme-nav"}`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
-          >
-            Next
-          </button>
+      <section className="mb-6 sm:mb-10 w-full overflow-hidden">
+        <div className="company-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch auto-rows-fr">
+          {tierListSlice.length > 0 ? (
+            tierListSlice.map((c) => (
+              <CompanyCard
+                key={c._id}
+                company={c}
+                isAdmin={isAdmin}
+                onStatsUpdated={() => companyAPI.getAllCompanies().then((res) => setCompanies(res.data))}
+              />
+            ))
+          ) : (
+            <p className="text-theme-muted col-span-full text-center py-8">
+              {cluster !== "all"
+                ? "No companies match this cluster and search."
+                : "No companies match your search or filters."}
+            </p>
+          )}
         </div>
-      )}
+        {renderTierPagination(tierListPool.length, tierListPage, setTierListPage)}
+      </section>
 
       <div className="fixed bottom-40 sm:bottom-44 right-16 sm:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end">
         <button
@@ -534,7 +754,7 @@ function CompanyStats() {
               onClick={() => {
                 setCategory("all");
                 setShowFilter(false);
-                setCurrentPage(1);
+                resetListPages();
               }}
               className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                 category === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -546,7 +766,7 @@ function CompanyStats() {
               onClick={() => {
                 setCategory("fte");
                 setShowFilter(false);
-                setCurrentPage(1);
+                resetListPages();
               }}
               className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                 category === "fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -558,7 +778,7 @@ function CompanyStats() {
               onClick={() => {
                 setCategory("internship + fte");
                 setShowFilter(false);
-                setCurrentPage(1);
+                resetListPages();
               }}
               className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                 category === "internship + fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
@@ -570,7 +790,7 @@ function CompanyStats() {
               onClick={() => {
                 setCategory("only internship(6 months)");
                 setShowFilter(false);
-                setCurrentPage(1);
+                resetListPages();
               }}
               className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
                 category === "only internship(6 months)" ? "font-semibold nav-active-theme text-theme-primary" : ""

@@ -234,6 +234,7 @@ export const adminAPI = {
   deleteInterviewProcess: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/interview-process/${index}`),
   updateCompanyStats: (companyId, data) => API.put(`/api/admin/companies/${companyId}/stats`, data),
   updateCompanyRoles: (companyId, roles) => API.put(`/api/admin/companies/${companyId}/roles`, { roles }),
+  updateCompanyGeneralInfo: (companyId, data) => API.put(`/api/admin/companies/${companyId}/general`, data),
 };
 
 export const eventAPI = {
@@ -315,6 +316,8 @@ export const interviewAPI = {
     }),
   getUserInterviewSessions: (userId) =>
     API.get(`/api/interview/sessions/${encodeURIComponent(userId)}`),
+  getUserAnalytics: (userId) =>
+    API.get(`/api/interview/analytics/${encodeURIComponent(userId)}`),
 };
 
 export default API;

@@ -193,25 +193,25 @@ function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleBellClick}
-        className="relative p-2 text-slate-300 hover:text-white transition-colors"
+        className="relative p-2 text-theme-secondary hover:text-theme-primary transition-colors focus:outline-none"
         title="Notifications"
       >
         <FaBell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-theme-app">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-slate-900/95 backdrop-blur rounded-lg shadow-xl border border-slate-800 z-50 max-h-96 overflow-hidden flex flex-col">
-          <div className="bg-slate-800 border-b border-slate-700 text-white px-4 py-3 flex justify-between items-center">
-            <h3 className="font-semibold text-lg text-indigo-400">Notifications</h3>
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-theme-card backdrop-blur-md rounded-xl shadow-2xl border border-theme z-50 max-h-[32rem] overflow-hidden flex flex-col transition-all duration-200 ease-out transform origin-top-right">
+          <div className="bg-theme-card border-b border-theme px-4 py-3 flex justify-between items-center bg-opacity-50">
+            <h3 className="font-bold text-lg text-theme-accent">Notifications</h3>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleRefresh}
-                className="text-sm text-slate-300 hover:text-white transition-transform hover:rotate-180"
+                className="text-sm text-theme-secondary hover:text-theme-primary transition-all duration-300 hover:rotate-180 p-1 rounded-full hover:bg-theme-card-hover"
                 title="Refresh notifications"
               >
                 <FaSync className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -219,7 +219,7 @@ function NotificationBell() {
               {notifications.length > 0 && (
                 <button
                   onClick={handleClearAll}
-                  className="text-sm text-slate-300 hover:text-white underline flex items-center gap-1"
+                  className="text-xs text-theme-secondary hover:text-red-500 transition-colors flex items-center gap-1 font-medium"
                   title="Clear all notifications"
                 >
                   <FaTrash className="w-3 h-3" />
@@ -229,7 +229,7 @@ function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsSeen}
-                  className="text-sm text-slate-300 hover:text-white underline"
+                  className="text-xs text-theme-accent hover:text-theme-accent-hover font-medium underline-offset-2 hover:underline"
                 >
                   Mark all as read
                 </button>
@@ -237,64 +237,74 @@ function NotificationBell() {
             </div>
           </div>
 
-          <div className="overflow-y-auto max-h-80">
+          <div className="overflow-y-auto custom-scrollbar">
             {loading ? (
-              <div className="p-4 text-center text-slate-400">Loading...</div>
+              <div className="p-8 flex flex-col items-center justify-center text-theme-muted">
+                <FaSync className="w-8 h-8 animate-spin mb-2 opacity-20" />
+                <p className="text-sm font-medium">Loading notifications...</p>
+              </div>
             ) : notifications.length === 0 ? (
-              <div className="p-4 text-center text-slate-400">
-                No notifications yet
+              <div className="p-12 flex flex-col items-center justify-center text-theme-muted">
+                <FaBell className="w-12 h-12 mb-4 opacity-10" />
+                <p className="font-medium">No notifications yet</p>
+                <p className="text-xs mt-1">We'll notify you when something happens</p>
               </div>
             ) : (
-              notifications.map((notification) => (
-                <div
-                  key={notification._id}
-                  className={`px-4 py-3 border-b border-slate-700 hover:bg-slate-800/60 transition-colors ${
-                    !notification.isSeen ? "bg-slate-800/40" : ""
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
-                        !notification.isSeen ? "bg-indigo-500" : "bg-transparent"
-                      }`}
-                    />
-                    <div 
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <p className="font-semibold text-white text-sm">
-                        {notification.title}
-                      </p>
-                      <p className="text-slate-300 text-sm mt-1">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {new Date(notification.createdAt).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )}
-                      </p>
+              <div className="divide-y divide-theme">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification._id}
+                    className={`px-4 py-4 hover:bg-theme-card-hover transition-colors cursor-pointer group ${
+                      !notification.isSeen ? "bg-theme-accent bg-opacity-[0.03] border-l-2 border-theme-accent" : ""
+                    }`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`flex-shrink-0 w-2 h-2 rounded-full mt-1.5 transition-all duration-300 ${
+                          !notification.isSeen ? "bg-theme-accent scale-110 shadow-[0_0_8px_rgba(50,205,50,0.5)]" : "bg-transparent"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start gap-2">
+                          <p className={`font-semibold text-sm leading-tight transition-colors ${
+                            !notification.isSeen ? "text-theme-primary" : "text-theme-secondary"
+                          }`}>
+                            {notification.title}
+                          </p>
+                          <button
+                            onClick={(e) => handleDeleteNotification(notification._id, e)}
+                            className="flex-shrink-0 text-theme-muted hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100"
+                            title="Delete notification"
+                          >
+                            <FaTimes className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <p className="text-theme-secondary text-sm mt-1 leading-relaxed">
+                          {notification.message}
+                        </p>
+                        <p className="text-[10px] text-theme-muted mt-2 font-medium uppercase tracking-wider">
+                          {new Date(notification.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      onClick={(e) => handleDeleteNotification(notification._id, e)}
-                      className="flex-shrink-0 text-slate-400 hover:text-red-400 transition-colors p-1"
-                      title="Delete notification"
-                    >
-                      <FaTimes className="w-4 h-4" />
-                    </button>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>
       )}
     </div>
+
   );
 }
 

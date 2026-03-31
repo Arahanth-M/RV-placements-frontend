@@ -203,6 +203,10 @@ export const AuthProvider = ({ children }) => {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
+        'companystats_cluster',
+        'companystats_dream_page',
+        'companystats_open_dream_page',
+        'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
       ];
@@ -237,6 +241,10 @@ export const AuthProvider = ({ children }) => {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
+        'companystats_cluster',
+        'companystats_dream_page',
+        'companystats_open_dream_page',
+        'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
       ];

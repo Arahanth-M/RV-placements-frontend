@@ -11,13 +11,11 @@ import AuthCallback from "./components/AuthCallback";
 import CompanyStats from "./components/CompanyStats";
 import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
-import InternshipExperience from "./components/InternshipExperience";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
 // import Premium from "./components/Premium";
 import Resources from "./components/Resources";
-import Leetcode from "./components/Leetcode";
 import Feedback from "./components/Feedback";
 import AdminDashboard from "./components/AdminDashboard";
 import Events from "./components/Events";
@@ -49,6 +47,7 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/companystats" element={<CompanyStats />} />
+                  <Route path="/category" element={<CompanyStats />} />
                   <Route
                     path="/leaderboard"
                     element={
@@ -65,14 +64,6 @@ function App() {
                       </ProtectedRoute>
                     } 
                   />
-                  <Route 
-                    path="/internshipExperience" 
-                    element={
-                      <ProtectedRoute>
-                        <InternshipExperience />
-                      </ProtectedRoute>
-                    } 
-                  />
                   <Route path="/contact" element={<Contact />} />
                   {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
                   {/* <Route path="/premium" element={<Premium />} /> */}
@@ -81,14 +72,6 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Resources />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/leetcode" 
-                    element={
-                      <ProtectedRoute>
-                        <Leetcode />
                       </ProtectedRoute>
                     } 
                   />

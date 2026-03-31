@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
+import InterviewAnalytics from "./InterviewAnalytics";
 
 const toSafeString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -80,6 +81,10 @@ function AIInterviews() {
         <p className="mt-2 text-sm text-theme-secondary">
           View all your AI mock interviews, including questions, answers, feedback, and final reports.
         </p>
+      </div>
+
+      <div className="mb-4">
+        <InterviewAnalytics />
       </div>
 
       {loading && (

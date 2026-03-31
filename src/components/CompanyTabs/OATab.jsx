@@ -525,6 +525,62 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+      {/* MCQ Questions Section */}
+      {safeCompany.mcqQuestions && safeCompany.mcqQuestions.length > 0 && (
+        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+          <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Multiple Choice Questions (MCQs)
+          </h2>
+          <div className="space-y-6">
+            {safeCompany.mcqQuestions.map((q, qIndex) => (
+              <div 
+                key={qIndex} 
+                className="border border-slate-700/50 rounded-lg bg-slate-800/40 p-5 hover:border-slate-600 transition-colors"
+                data-testid={`mcq-question-${qIndex}`}
+              >
+                <div className="flex gap-3 mb-4">
+                  <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-indigo-900/50 text-indigo-300 text-sm font-bold border border-indigo-700/50">
+                    {qIndex + 1}
+                  </span>
+                  <p className="text-slate-200 font-medium text-lg leading-snug">
+                    {q.question}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 ml-10">
+                  {[
+                    { label: 'A', value: q.optionA },
+                    { label: 'B', value: q.optionB },
+                    { label: 'C', value: q.optionC },
+                    { label: 'D', value: q.optionD }
+                  ].map((opt) => opt.value && (
+                    <div 
+                      key={opt.label}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-slate-900/50 border border-slate-700/30 text-slate-400"
+                    >
+                      <span className="font-bold text-indigo-500/80">{opt.label}.</span>
+                      <span className="text-sm">{opt.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {q.answer && (
+                  <div className="mt-4 ml-10 flex items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-2 rounded-lg border border-emerald-500/20 w-fit">
+                    <FaCheck className="w-3.5 h-3.5" />
+                    <span className="text-sm font-semibold tracking-wide">
+                      Correct Answer: <span className="text-emerald-300 ml-1">{q.answer}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
           Online Assessment Questions
