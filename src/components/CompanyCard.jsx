@@ -160,7 +160,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
   return (
     <div
-      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full flex flex-col bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl hover:scale-[1.05] relative z-0 hover:z-10"
+      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full flex flex-col bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl relative z-0 hover:z-10"
       data-testid="company-card"
     >
       {/* Top Section: Header + Logo */}

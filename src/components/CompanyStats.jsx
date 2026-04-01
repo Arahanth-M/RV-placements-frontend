@@ -717,7 +717,7 @@ function CompanyStats() {
         </div>
       </div>
 
-      <section className="mb-6 sm:mb-10 w-full overflow-hidden">
+      <section className="mb-6 sm:mb-10 w-full">
         <div className="company-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch auto-rows-fr">
           {tierListSlice.length > 0 ? (
             tierListSlice.map((c) => (

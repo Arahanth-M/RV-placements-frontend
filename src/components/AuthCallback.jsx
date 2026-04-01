@@ -79,6 +79,8 @@ const AuthCallback = () => {
           alert('Please login using your official college email (rvce.edu.in).');
         } else if (reason === 'not_allowed') {
           alert('Sign-in is restricted. This account is not authorized to use the app right now.');
+        } else if (reason === 'not_found') {
+          alert('User not found. You do not exist in the student database.');
         } else if (reason === 'not_admin') {
           alert('Access denied. Only admin can access this area.');
         } else {
@@ -128,11 +130,6 @@ const AuthCallback = () => {
   };
 
   const handleLoginComplete = (user, signup, admin) => {
-    // Show success message
-    if (signup) {
-      alert('Welcome! Your account has been created successfully.');
-    }
-    
     // Redirect admin to admin dashboard
     if (admin) {
       navigate('/admin/dashboard', { replace: true });

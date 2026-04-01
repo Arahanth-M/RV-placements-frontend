@@ -287,6 +287,7 @@ export const notificationAPI = {
 export const studentAPI = {
   getStudentByUSN: (usn) => API.get(`/api/students/student-data/${usn}`),
   getStudentByName: (username) => API.get(`/api/students/student-data-by-name/${encodeURIComponent(username)}`),
+  getProfile: () => API.get("/api/students/profile"),
 };
 
 export const placementAPI = {

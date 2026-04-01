@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon } from "react-icons/fa";
+import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser } from "react-icons/fa";
 import { useTheme } from "../utils/ThemeContext";
 import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.png";
@@ -357,6 +357,8 @@ const Sidebar = () => {
               )}
             </Link>
 
+
+
             {/* Students Corner */}
             <div className="relative" ref={studentsCornerMenuRef}>
               <button
@@ -537,25 +539,12 @@ const Sidebar = () => {
                           className="px-4 py-2 text-sm text-theme-secondary border-b border-theme break-words cursor-pointer hover:text-theme-accent hover:bg-theme-nav transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (studentData) {
-                              setShowAccountMenu(false);
-                              navigate('/profile');
-                            }
+                            setShowAccountMenu(false);
+                            navigate('/profile');
                           }}
                         >
                           {user.email}
                         </div>
-                        {studentData && (
-                          <button
-                            onClick={() => {
-                              setShowAccountMenu(false);
-                              navigate('/profile');
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
-                          >
-                            View Profile
-                          </button>
-                        )}
                         <button
                           onClick={() => {
                             setShowAccountMenu(false);
@@ -564,6 +553,15 @@ const Sidebar = () => {
                           className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
                         >
                           Switch Account
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAccountMenu(false);
+                            navigate('/profile');
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
+                        >
+                          View Profile
                         </button>
                         <button
                           onClick={() => {
