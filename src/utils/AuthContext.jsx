@@ -69,21 +69,16 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       const userId = user.userId || user._id;
-      const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
-      const storedStudentData = localStorage.getItem(studentDataKey) || localStorage.getItem('studentData');
+      const studentDataKey = userId ? `studentData_${userId}` : null;
+      const storedStudentData = studentDataKey ? localStorage.getItem(studentDataKey) : null;
       
       if (storedStudentData) {
         try {
           const parsedData = JSON.parse(storedStudentData);
           setStudentData(parsedData);
-          // Also store in user-specific key if using generic key
-          if (userId && !localStorage.getItem(studentDataKey)) {
-            localStorage.setItem(studentDataKey, storedStudentData);
-          }
         } catch (err) {
           console.error('Error parsing stored student data:', err);
-          localStorage.removeItem(studentDataKey);
-          localStorage.removeItem('studentData');
+          if (studentDataKey) localStorage.removeItem(studentDataKey);
         }
       } else {
         // Clear student data if user changes and no data found
@@ -220,13 +215,12 @@ export const AuthProvider = ({ children }) => {
         });
       });
       
-      // Clear student data (both user-specific and generic)
-      if (user) {
-        const userId = user.userId || user._id;
-        const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
-        localStorage.removeItem(studentDataKey);
-      }
-      localStorage.removeItem('studentData');
+      // Clear ALL student data keys from localStorage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('studentData')) {
+          localStorage.removeItem(key);
+        }
+      });
       setStudentData(null);
       setUser(null);
       setIsAdmin(false);
@@ -257,13 +251,12 @@ export const AuthProvider = ({ children }) => {
         });
       });
       
-      // Clear student data (both user-specific and generic)
-      if (user) {
-        const userId = user.userId || user._id;
-        const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
-        localStorage.removeItem(studentDataKey);
-      }
-      localStorage.removeItem('studentData');
+      // Clear ALL student data keys from localStorage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('studentData')) {
+          localStorage.removeItem(key);
+        }
+      });
       setStudentData(null);
       setUser(null);
       setIsAdmin(false);

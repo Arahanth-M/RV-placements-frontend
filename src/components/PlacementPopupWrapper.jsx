@@ -5,6 +5,23 @@ import { useAuth } from '../utils/AuthContext';
 import PlacementForm from './PlacementForm';
 import { companyAPI } from '../utils/api';
 
+/** Placement flow must resolve the company by ID only (users_2026.companyId / JWT), never by name. */
+function normalizeCompanyId(raw) {
+  if (raw == null || raw === '') return null;
+  if (typeof raw === 'object' && raw !== null && '$oid' in raw && raw.$oid) {
+    return String(raw.$oid);
+  }
+  return String(raw);
+}
+
+function resolvePlacementCompanyId(studentData, authUser) {
+  return (
+    normalizeCompanyId(studentData?.companyId) ??
+    normalizeCompanyId(authUser?.companyId) ??
+    null
+  );
+}
+
 const PlacementPopupWrapper = () => {
   const { user, studentData, refreshUser } = useAuth();
   const location = useLocation();
@@ -13,6 +30,17 @@ const PlacementPopupWrapper = () => {
   const [companyId, setCompanyId] = useState(null);
   const [companyName, setCompanyName] = useState('');
   const hasCheckedRef = useRef(false);
+  const lastResolvedCompanyIdRef = useRef(null);
+
+  const resolvedStudentCompanyId = resolvePlacementCompanyId(studentData, user);
+
+  // Allow re-check when companyId appears or changes (e.g. profile loaded after user, or DB migration).
+  useEffect(() => {
+    if (resolvedStudentCompanyId !== lastResolvedCompanyIdRef.current) {
+      hasCheckedRef.current = false;
+      lastResolvedCompanyIdRef.current = resolvedStudentCompanyId;
+    }
+  }, [resolvedStudentCompanyId]);
   
   // Check if user needs to fill form - PRIMARY CONDITION: fillForm === false
   useEffect(() => {
@@ -46,40 +74,36 @@ const PlacementPopupWrapper = () => {
       // Mark as checked to prevent duplicate checks
       hasCheckedRef.current = true;
       
-      // Get placed company from student data
-      const placedCompanyField = studentData.Company || 
-                                 studentData['Placed Company'] || 
-                                 studentData['Company Name'] ||
-                                 studentData.company ||
-                                 studentData.placedCompany ||
-                                 studentData.PlacedCompany;
+      const studentCompanyId = resolvePlacementCompanyId(studentData, user);
 
-      if (!placedCompanyField) {
+      if (!studentCompanyId) {
+        console.warn(
+          '📋 [PlacementPopup] No companyId on student profile or session; popup requires users_2026.companyId (name is not used).'
+        );
         return;
       }
 
-      try {
-        // Fetch companies to find the one matching the placed company
-        const companiesRes = await companyAPI.getAllCompanies();
-        const companies = companiesRes.data || [];
-        
-        // Find company by name (case-insensitive)
-        const company = companies.find(c => 
-          c.name && c.name.toLowerCase().trim() === placedCompanyField.toString().toLowerCase().trim()
-        );
+      console.log(`📋 [PlacementPopup] Resolved companyId: ${studentCompanyId}`);
 
-        if (company) {
+      try {
+        const companyRes = await companyAPI.getCompany(studentCompanyId);
+        const company = companyRes.data;
+
+        if (company && company._id) {
+          console.log(`🎯 [PlacementPopup] Company loaded by ID: ${company._id} (${company.name})`);
           setCompanyId(company._id);
           setCompanyName(company.name);
           setShowPopup(true);
+        } else {
+          console.warn(`❌ [PlacementPopup] No company found for ID: ${studentCompanyId}`);
         }
       } catch (err) {
-        console.error('PlacementPopupWrapper: Error checking placement form:', err);
+        console.error('PlacementPopupWrapper: Error fetching company by ID:', err);
       }
     };
 
     checkPlacementForm();
-  }, [user, studentData, location.pathname]);
+  }, [user, studentData, location.pathname, resolvedStudentCompanyId]);
   
   // Reset check flag when user changes (new login)
   useEffect(() => {

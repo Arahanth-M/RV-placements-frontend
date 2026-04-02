@@ -85,16 +85,12 @@
 
 // export default InterviewTab;
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
 
 function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState("");
-  const [content, setContent] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -104,57 +100,6 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   const [editIPIndex, setEditIPIndex] = useState(null);
   const [editIPContent, setEditIPContent] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [newIQQuestion, setNewIQQuestion] = useState("");
-  const [newIQSolution, setNewIQSolution] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      let payloadContent = content;
-      let payloadIsAnonymous = false;
-
-      if (modalType === "interviewQ") {
-        if (!newIQQuestion.trim()) {
-          alert("Please enter a question.");
-          return;
-        }
-        payloadContent = JSON.stringify({
-          question: newIQQuestion,
-          solution: newIQSolution,
-        });
-      } else {
-        payloadIsAnonymous = isAnonymous;
-      }
-
-      const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          companyId: company._id,
-          type:
-            modalType === "interviewQ"
-              ? "interviewQuestions"
-              : "interviewProcess",
-          content: payloadContent,
-          isAnonymous: payloadIsAnonymous,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to submit");
-      const data = await res.json();
-      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
-
-      setContent("");
-      setNewIQQuestion("");
-      setNewIQSolution("");
-      setIsAnonymous(false);
-      setShowModal(false);
-    } catch (err) {
-      console.error(err);
-      alert(MESSAGES.SUBMISSION_ERROR);
-    }
-  };
 
   // Normalize interview questions
   const interviewQuestions = Array.isArray(company.interviewQuestions)
@@ -521,18 +466,6 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <h2 className="text-xl font-semibold text-indigo-400 mb-4 flex justify-between items-center">
           Interview Questions
-          <button
-            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
-            onClick={() => {
-              setModalType("interviewQ");
-              setShowModal(true);
-            }}
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Add Question</span>
-          </button>
         </h2>
 
         {interviewQuestions.length > 0 ? (
@@ -643,18 +576,6 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <h2 className="text-xl font-semibold text-indigo-400 mb-4 flex justify-between items-center">
           Interview Process
-          <button
-            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
-            onClick={() => {
-              setModalType("process");
-              setShowModal(true);
-            }}
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Add Process</span>
-          </button>
         </h2>
 
         {interviewProcess.length > 0 ? (
@@ -711,82 +632,6 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
           <p className="text-slate-400">No interview process info yet.</p>
         )}
       </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <h3 className="text-lg font-semibold mb-4 text-indigo-400">
-              {modalType === "interviewQ"
-                ? "Add Interview Question & Solution"
-                : "Add Interview Process"}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {modalType === "interviewQ" ? (
-                <>
-                  <textarea
-                    value={newIQQuestion}
-                    onChange={(e) => setNewIQQuestion(e.target.value)}
-                    placeholder="Enter interview question..."
-                    className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                  <textarea
-                    value={newIQSolution}
-                    onChange={(e) => setNewIQSolution(e.target.value)}
-                    placeholder="Enter solution (optional, but highly helpful for juniors)..."
-                    className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    rows={4}
-                  />
-                </>
-              ) : (
-                <>
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Describe the interview process..."
-                    className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isAnonymous"
-                      checked={isAnonymous}
-                      onChange={(e) => setIsAnonymous(e.target.checked)}
-                      className="w-4 h-4 text-indigo-600 border-slate-600 rounded focus:ring-indigo-500 bg-slate-900"
-                    />
-                    <label htmlFor="isAnonymous" className="text-sm text-slate-300">
-                      Submit anonymously
-                    </label>
-                  </div>
-                </>
-              )}
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
-                  onClick={() => {
-                    setShowModal(false);
-                    setContent("");
-                    setNewIQQuestion("");
-                    setNewIQSolution("");
-                    setIsAnonymous(false);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Edit Interview Question modal (admin) */}
       {editIQIndex !== null && (

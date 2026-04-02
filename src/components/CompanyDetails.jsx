@@ -312,7 +312,13 @@ function CompanyDetails() {
         )}
         {activeTab === "oa" && <OATab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
         {activeTab === "coding" && <CodingTab company={company} />}
-        {activeTab === "interview" && <InterviewTab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
+        {activeTab === "interview" && (
+          <InterviewTab 
+            company={company} 
+            isAdmin={isAdmin} 
+            onCompanyUpdate={handleRefresh} 
+          />
+        )}
         {activeTab === "aiinterview" && (
           <AIInterviewTab
             company={company}

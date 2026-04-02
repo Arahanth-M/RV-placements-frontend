@@ -30,39 +30,14 @@ const AuthCallback = () => {
             
             console.log(`${signupFlag ? 'Signup' : 'Login'} successful, user data:`, fetchedUserData);
             
-            // Skip USN entry for admin users
+            // Skip student data fetch for admin users
             if (adminFlag) {
               handleLoginComplete(fetchedUserData, signupFlag, adminFlag);
               return;
             }
             
-            // Try to fetch student data using Google username
-            const googleUsername = fetchedUserData.username || fetchedUserData.displayName || '';
-            const userId = fetchedUserData.userId || fetchedUserData._id;
-            const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
-            const storedStudentData = localStorage.getItem(studentDataKey);
-            
-            if (storedStudentData) {
-              // User already has student data stored, load it
-              try {
-                const parsedData = JSON.parse(storedStudentData);
-                if (setStudentData) {
-                  setStudentData(parsedData);
-                }
-                localStorage.setItem('studentData', storedStudentData);
-                handleLoginComplete(fetchedUserData, signupFlag, adminFlag);
-              } catch (err) {
-                console.error('Error parsing stored student data:', err);
-                // If parsing fails, try to fetch by username
-                await fetchStudentDataByUsername(googleUsername, fetchedUserData, signupFlag, adminFlag);
-              }
-            } else if (googleUsername) {
-              // No stored data, try to fetch by Google username
-              await fetchStudentDataByUsername(googleUsername, fetchedUserData, signupFlag, adminFlag);
-            } else {
-              // No username available, proceed without student data
-              handleLoginComplete(fetchedUserData, signupFlag, adminFlag);
-            }
+            // Fetch student profile strictly by authenticated email
+            await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag);
           } else {
             console.error('No user data received after authentication');
             navigate('/login', { replace: true });
@@ -99,38 +74,37 @@ const AuthCallback = () => {
     handleCallback();
   }, [navigate, refreshUser]);
 
-  const fetchStudentDataByUsername = async (username, user, signup, admin) => {
+  // Strictly email-based profile fetch — no name matching
+  const fetchStudentProfileByEmail = async (user, signup, admin) => {
     try {
-      const response = await studentAPI.getStudentByName(username);
-      if (response.data) {
-        // Store student data in localStorage (user-specific) and context
-        const userId = user?.userId || user?._id;
-        const studentDataKey = userId ? `studentData_${userId}` : 'studentData';
-        const studentDataString = JSON.stringify(response.data);
+      const userId = user?.userId || user?._id;
+      console.log(`📡 [AuthCallback] Fetching profile by email for user: ${user?.email}`);
+      
+      const profileRes = await studentAPI.getProfile();
+      
+      if (profileRes.data) {
+        console.log(`✅ [AuthCallback] Profile loaded: ${profileRes.data.Name} -> ${profileRes.data.Company}`);
         
-        // Store in user-specific key
-        localStorage.setItem(studentDataKey, studentDataString);
-        // Also store in generic key for backward compatibility
-        localStorage.setItem('studentData', studentDataString);
-        
-        if (setStudentData) {
-          setStudentData(response.data);
+        // Store strictly with user-specific key
+        if (userId) {
+          localStorage.setItem(`studentData_${userId}`, JSON.stringify(profileRes.data));
         }
         
-        handleLoginComplete(user, signup, admin);
+        if (setStudentData) {
+          setStudentData(profileRes.data);
+        }
       } else {
-        // Student data not found, proceed without it
-        handleLoginComplete(user, signup, admin);
+        console.warn('⚠️ [AuthCallback] No profile data returned');
       }
     } catch (err) {
-      console.error('Error fetching student data by username:', err);
-      // If fetch fails, proceed without student data
-      handleLoginComplete(user, signup, admin);
+      console.error('❌ [AuthCallback] Profile fetch failed:', err.message);
+      // Proceed without student data — user can still use other features
     }
+    
+    handleLoginComplete(user, signup, admin);
   };
 
   const handleLoginComplete = (user, signup, admin) => {
-    // Redirect admin to admin dashboard
     if (admin) {
       navigate('/admin/dashboard', { replace: true });
     } else {
