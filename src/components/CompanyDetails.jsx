@@ -18,6 +18,7 @@ import CommentsTab from "./CompanyTabs/CommentsTab";
 import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
+import InternshipTab from "./CompanyTabs/InternshipTab";
 
 function CompanyDetails() {
   const { id } = useParams();
@@ -254,7 +255,7 @@ function CompanyDetails() {
         </div>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "coding", "interview", "mustdo", "comments"].map((tab) => (
+        {["general", "oa", "coding", "interview", "internship", "mustdo", "comments"].map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -272,6 +273,8 @@ function CompanyDetails() {
               ? "Coding"
               : tab === "interview"
               ? "Interview Experience"
+              : tab === "internship"
+              ? "Internship Experience"
               : tab === "mustdo"
               ? "Must Do Topics"
               : "Comments"}
@@ -319,6 +322,7 @@ function CompanyDetails() {
             onCompanyUpdate={handleRefresh} 
           />
         )}
+        {activeTab === "internship" && <InternshipTab company={company} />}
         {activeTab === "aiinterview" && (
           <AIInterviewTab
             company={company}
