@@ -62,21 +62,16 @@ const PlacementPopupWrapper = () => {
         return;
       }
       
-      // Prevent multiple checks on the same render cycle
+      // Prevent duplicate fetch/show cycles for the same resolved company id
       if (hasCheckedRef.current) {
         return;
       }
-      
-      // If fillForm is false or undefined, proceed to show popup
-      // Wait 10 seconds after login before showing popup
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      
-      // Mark as checked to prevent duplicate checks
       hasCheckedRef.current = true;
       
       const studentCompanyId = resolvePlacementCompanyId(studentData, user);
 
       if (!studentCompanyId) {
+        hasCheckedRef.current = false;
         console.warn(
           '📋 [PlacementPopup] No companyId on student profile or session; popup requires users_2026.companyId (name is not used).'
         );
@@ -95,9 +90,11 @@ const PlacementPopupWrapper = () => {
           setCompanyName(company.name);
           setShowPopup(true);
         } else {
+          hasCheckedRef.current = false;
           console.warn(`❌ [PlacementPopup] No company found for ID: ${studentCompanyId}`);
         }
       } catch (err) {
+        hasCheckedRef.current = false;
         console.error('PlacementPopupWrapper: Error fetching company by ID:', err);
       }
     };
@@ -151,39 +148,46 @@ const PlacementPopupWrapper = () => {
     <>
       {/* Congratulations Popup from top right */}
       {showPopup && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-in-right max-w-md">
-          <div className="bg-slate-900/95 backdrop-blur border border-slate-800 rounded-xl shadow-2xl p-4 sm:p-6">
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right max-w-md px-2 sm:px-0">
+          <div
+            className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 backdrop-blur-md"
+            style={{ boxShadow: 'var(--shadow-soft)' }}
+          >
             <div className="flex items-start gap-3">
-              <div className="bg-green-600 rounded-full p-2 flex-shrink-0">
-                <FaTrophy className="w-5 h-5 text-white" />
+              <div className="bg-theme-accent rounded-full p-2 flex-shrink-0 shadow-sm">
+                <FaTrophy className="w-5 h-5 text-[var(--success-foreground)]" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-bold text-green-400 mb-2 flex items-center gap-2">
-                  <FaCheckCircle />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-theme-primary mb-2 flex items-center gap-2">
+                  <FaCheckCircle className="text-theme-accent flex-shrink-0" aria-hidden />
                   Congratulations!
                 </h3>
-                <p className="text-slate-300 text-sm mb-3">
-                  Congrats on getting placed in <span className="font-semibold text-indigo-400">{companyName}</span>! 
-                  Fill out a short form to get access to the alumni network in your company and get recognised in the leaderboard.
+                <p className="text-theme-secondary text-sm mb-3 leading-relaxed">
+                  Congrats on getting placed in{' '}
+                  <span className="font-semibold text-theme-accent">{companyName}</span>! Fill out a short form to get
+                  access to the alumni network in your company and get recognised in the leaderboard.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
+                    type="button"
                     onClick={handleFillForm}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-colors text-sm"
+                    className="px-4 py-2 bg-theme-accent text-[var(--success-foreground)] font-semibold rounded-lg transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-theme-accent"
                   >
                     Fill Form
                   </button>
                   <button
+                    type="button"
                     onClick={handleDismiss}
-                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors text-sm"
+                    className="px-4 py-2 bg-theme-card border border-theme text-theme-primary font-semibold rounded-lg transition-colors text-sm hover:bg-theme-nav focus:outline-none focus:ring-2 focus:ring-theme-accent"
                   >
                     Maybe Later
                   </button>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={handleDismiss}
-                className="text-slate-400 hover:text-white transition-colors p-1 flex-shrink-0"
+                className="text-theme-muted hover:text-theme-primary transition-colors p-1 flex-shrink-0 rounded-md hover:bg-theme-nav"
                 title="Close"
               >
                 <FaTimes className="w-4 h-4" />
