@@ -609,7 +609,7 @@ function CompanyStats() {
     placementTier === PLACEMENT_TIER_DREAM ? setDreamPage : setOpenDreamPage;
 
   return (
-    <div className="page-container p-4 sm:p-6 min-h-screen relative bg-theme-app">
+    <div className="page-container p-4 sm:p-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
       <div className="mb-4 sm:mb-6">
         <button
           type="button"
@@ -617,7 +617,7 @@ function CompanyStats() {
             resetListPages();
             navigate(PATH_COMPANY_CATEGORY);
           }}
-          className="mb-6 flex items-center back-link-theme text-sm sm:text-base ml-16 sm:ml-20"
+          className="mb-6 flex items-center back-link-theme text-sm sm:text-base ml-0 sm:ml-1 md:ml-16 lg:ml-20"
         >
           <FaArrowLeft className="mr-2" />
           Back
@@ -717,8 +717,8 @@ function CompanyStats() {
         </div>
       </div>
 
-      <section className="mb-6 sm:mb-10 w-full">
-        <div className="company-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch auto-rows-fr">
+      <section className="mb-6 sm:mb-10 w-full max-w-full min-w-0">
+        <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr">
           {tierListSlice.length > 0 ? (
             tierListSlice.map((c) => (
               <CompanyCard
@@ -739,7 +739,7 @@ function CompanyStats() {
         {renderTierPagination(tierListPool.length, tierListPage, setTierListPage)}
       </section>
 
-      <div className="fixed bottom-40 sm:bottom-44 right-16 sm:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end">
+      <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
         <button
           onClick={() => setShowFilter((prev) => !prev)}
           className="fab filter-fab bg-theme-accent p-3 sm:p-4 rounded-full shadow-lg transition duration-200"

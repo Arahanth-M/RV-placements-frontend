@@ -160,7 +160,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
   return (
     <div
-      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full flex flex-col bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl relative z-0 hover:z-10"
+      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl relative z-0 hover:z-10"
       data-testid="company-card"
     >
       {/* Top Section: Header + Logo */}
@@ -194,7 +194,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
         <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
           <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
-          <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed">
+          <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed break-words">
             {company.business_model || "Innovative solutions and high-quality services."}
           </span>
         </div>

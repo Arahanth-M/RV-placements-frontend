@@ -205,9 +205,12 @@ body {
   background: linear-gradient(145deg, #171b25, #121722) !important;
   border-radius: 16px;
   border: 1px solid var(--border) !important;
-  padding: 22px;
+  padding: clamp(14px, 3vw, 22px);
   transition: all 0.3s ease;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 [data-theme="dark"] .company-card:hover {
@@ -296,24 +299,7 @@ body {
   color: #e5e7eb !important;
 }
 
-/* Company grid - dark mode */
-[data-theme="dark"] .company-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-}
-
-@media (max-width: 1000px) {
-  [data-theme="dark"] .company-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 650px) {
-  [data-theme="dark"] .company-grid {
-    grid-template-columns: 1fr;
-  }
-}
+/* Company grid: responsive columns live in one place below (minmax(0,1fr)) — do not override per theme */
 
 /* Floating action button - dark mode */
 [data-theme="dark"] .fab {
@@ -412,33 +398,17 @@ body {
   }
 }
 
-/* Company grid - light mode */
-[data-theme="light"] .company-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-}
-
-@media (max-width: 1000px) {
-  [data-theme="light"] .company-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 650px) {
-  [data-theme="light"] .company-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* Company card - light mode */
 [data-theme="light"] .company-card {
   background: var(--bg-card) !important;
   border-radius: var(--radius-lg) !important;
-  padding: calc(var(--space-4) + 2px) !important;
+  padding: clamp(14px, 3vw, calc(var(--space-4) + 2px)) !important;
   border: 1px solid var(--border-light) !important;
   box-shadow: var(--shadow-soft);
   transition: all 0.25s ease;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 [data-theme="light"] .company-card:hover {
@@ -653,19 +623,28 @@ body {
   border-color: var(--accent-hover) !important;
 }
 
-/* Ensure grid rows and cards are equal height in both themes */
+/* Company grid: contain width on mobile/tablet; minmax(0,1fr) prevents column blowout */
 .company-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   grid-auto-rows: 1fr;
 }
 
 .company-grid > * {
+  min-width: 0;
+  max-width: 100%;
   height: 100%;
 }
 
 /* Global company card sizing – allow cards to grow with content so footer stays inside */
 .company-card {
-  min-height: 320px;
+  min-height: min(320px, 85vh);
   height: auto;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* Keep footer controls wrapped inside card bounds on smaller widths/content-heavy cards */
@@ -993,6 +972,11 @@ html, body, #root {
 /* Keep CompanyStats layout stable across theme changes */
 .page-container {
   padding: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 @media (min-width: 640px) {
@@ -1038,27 +1022,23 @@ html, body, #root {
   }
 }
 
-.company-grid {
+/* Default when only .company-grid is used without Tailwind grid-cols */
+.company-grid:not([class*="grid-cols"]) {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
 }
 
 @media (min-width: 640px) {
-  .company-grid {
+  .company-grid:not([class*="grid-cols"]) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1024px) {
-  .company-grid {
+  .company-grid:not([class*="grid-cols"]) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-}
-
-.company-card {
-  min-height: 340px;
-  height: 100%;
 }
 
 .filter-fab,
