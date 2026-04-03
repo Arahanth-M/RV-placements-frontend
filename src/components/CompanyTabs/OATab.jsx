@@ -272,6 +272,7 @@ import React, { useState } from "react";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
+import { solutionBlockClass } from "../../utils/solutionPalette";
 
 function OATab({ company, isAdmin, onCompanyUpdate }) {
   const [showModal, setShowModal] = useState(false);
@@ -524,33 +525,33 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
     }) || [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+    <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       {/* MCQ Questions Section */}
       {safeCompany.mcqQuestions && safeCompany.mcqQuestions.length > 0 && (
-        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-          <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex items-center gap-2">
+        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-indigo-400 flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Multiple Choice Questions (MCQs)
           </h2>
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             {safeCompany.mcqQuestions.map((q, qIndex) => (
               <div 
                 key={qIndex} 
-                className="border border-slate-700/50 rounded-lg bg-slate-800/40 p-5 hover:border-slate-600 transition-colors"
+                className="border border-slate-700/50 rounded-lg bg-slate-800/40 p-4 sm:p-5 hover:border-slate-600 transition-colors"
                 data-testid={`mcq-question-${qIndex}`}
               >
-                <div className="flex gap-3 mb-4">
-                  <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-indigo-900/50 text-indigo-300 text-sm font-bold border border-indigo-700/50">
+                <div className="flex gap-2.5 sm:gap-3 mb-3 sm:mb-4">
+                  <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-indigo-900/50 text-indigo-300 text-xs sm:text-sm font-bold border border-indigo-700/50">
                     {qIndex + 1}
                   </span>
-                  <p className="text-slate-200 font-medium text-lg leading-snug">
+                  <p className="text-slate-200 font-medium text-sm sm:text-lg leading-relaxed sm:leading-snug min-w-0">
                     {q.question}
                   </p>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 ml-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 ml-0 sm:ml-10">
                   {[
                     { label: 'A', value: q.optionA },
                     { label: 'B', value: q.optionB },
@@ -559,18 +560,18 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
                   ].map((opt) => opt.value && (
                     <div 
                       key={opt.label}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-slate-900/50 border border-slate-700/30 text-slate-400"
+                      className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-slate-900/50 border border-slate-700/30 text-slate-400"
                     >
-                      <span className="font-bold text-indigo-500/80">{opt.label}.</span>
-                      <span className="text-sm">{opt.value}</span>
+                      <span className="font-bold text-indigo-500/80 shrink-0">{opt.label}.</span>
+                      <span className="text-xs sm:text-sm leading-relaxed min-w-0">{opt.value}</span>
                     </div>
                   ))}
                 </div>
 
                 {q.answer && (
-                  <div className="mt-4 ml-10 flex items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-2 rounded-lg border border-emerald-500/20 w-fit">
-                    <FaCheck className="w-3.5 h-3.5" />
-                    <span className="text-sm font-semibold tracking-wide">
+                  <div className="mt-3 sm:mt-4 ml-0 sm:ml-10 flex flex-wrap items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-2 rounded-lg border border-emerald-500/20 w-full sm:w-fit max-w-full">
+                    <FaCheck className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug">
                       Correct Answer: <span className="text-emerald-300 ml-1">{q.answer}</span>
                     </span>
                   </div>
@@ -581,11 +582,11 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
         </div>
       )}
 
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
-          Online Assessment Questions
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-indigo-400 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span className="shrink-0">Online Assessment Questions</span>
           <button
-            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
+            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
             onClick={() => setShowModal(true)}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -596,19 +597,19 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
         </h2>
 
         {parsedQuestions.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {parsedQuestions.map((q, index) => (
               <div
                 key={index}
                 className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <button
                     onClick={() => toggleQuestionAccordion(index)}
-                    className="flex-1 text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
+                    className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate">Question {index + 1}</span>
-                    <span className="text-lg text-slate-400">
+                    <span className="truncate min-w-0">Question {index + 1}</span>
+                    <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openQuestionIndex === index ? "−" : "+"}
                     </span>
                   </button>
@@ -636,50 +637,52 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
                 </div>
 
                 {openQuestionIndex === index && (
-                  <div className="px-4 pb-4 text-slate-300 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
-                    <p>{q || `Question ${index + 1}`}</p>
+                  <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
+                    <p className="min-w-0">{q || `Question ${index + 1}`}</p>
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
-                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
+                      <div className={`min-w-0 overflow-hidden ${solutionBlockClass(index)} sol-solution-wrap`}>
                         <button
+                          type="button"
                           onClick={() => toggleSolutionAccordion(index)}
-                          className="w-full text-left px-4 py-2 font-medium text-indigo-400 flex justify-between items-center"
+                          className="sol-view-btn px-3 py-2.5 sm:px-4 sm:py-2"
                         >
                           <span>View Solution</span>
-                          <span className="text-lg text-slate-400">
+                          <span className="text-base sm:text-lg text-slate-400">
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
                         {openSolutionIndex[index] && (
-                          <div className="px-4 pb-4">
+                          <div className="px-3 pb-3 sm:px-4 sm:pb-4">
                             <div className="relative">
                               <button
+                                type="button"
                                 onClick={() => handleCopySolution(solutions[index], index)}
-                                className="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
+                                className="sol-copy-fab absolute top-2 right-2 p-2 rounded-md transition-opacity hover:opacity-90 flex items-center gap-1.5 text-xs z-10"
                                 title="Copy solution"
                               >
                                 {copiedIndex === index ? (
                                   <>
-                                    <FaCheck className="w-3 h-3" />
+                                    <FaCheck className="w-3 h-3 shrink-0" />
                                     <span>Copied!</span>
                                   </>
                                 ) : (
                                   <>
-                                    <FaCopy className="w-3 h-3" />
+                                    <FaCopy className="w-3 h-3 shrink-0" />
                                     <span>Copy</span>
                                   </>
                                 )}
                               </button>
-                              <pre className="bg-slate-900 text-green-300 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre font-mono">
-                                <code>{solutions[index]}</code>
+                              <pre className="sol-pre rounded-lg pl-3 pr-3 pb-3 pt-11 sm:pt-12 sm:pl-4 sm:pr-4 sm:pb-4 overflow-x-auto max-w-full text-xs sm:text-sm leading-relaxed whitespace-pre font-mono border">
+                                <code className="break-words">{solutions[index]}</code>
                               </pre>
                             </div>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-400 italic">
+                      <p className="text-xs sm:text-sm text-slate-400 italic">
                         No solution submitted yet.
                       </p>
                     )}

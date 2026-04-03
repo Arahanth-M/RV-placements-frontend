@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FaCopy, FaCheck } from "react-icons/fa";
+import { solutionBlockClass } from "../../utils/solutionPalette";
 
 /**
  * Human-readable label for a key (e.g. "solution_code" -> "Solution Code").
@@ -46,7 +47,7 @@ function ValueDisplay({ value }) {
   if (value == null) return <span className="text-theme-muted italic">—</span>;
   if (typeof value === "string") {
     return (
-      <span className="text-theme-secondary whitespace-pre-wrap break-words leading-relaxed">
+      <span className="text-theme-secondary text-sm sm:text-base whitespace-pre-wrap break-words leading-relaxed">
         {value}
       </span>
     );
@@ -60,7 +61,7 @@ function ValueDisplay({ value }) {
         {value.map((item, i) => (
           <li key={i}>
             {typeof item === "object" && item !== null ? (
-              <pre className="text-sm whitespace-pre-wrap break-words font-mono bg-theme-input rounded p-3 mt-1 border border-theme">
+              <pre className="text-xs sm:text-sm whitespace-pre-wrap break-words font-mono bg-theme-input rounded p-2.5 sm:p-3 mt-1 border border-theme">
                 {JSON.stringify(item, null, 2)}
               </pre>
             ) : (
@@ -73,7 +74,7 @@ function ValueDisplay({ value }) {
   }
   if (typeof value === "object") {
     return (
-      <pre className="text-sm text-theme-secondary whitespace-pre-wrap break-words font-mono bg-theme-input rounded p-3 border border-theme">
+      <pre className="text-xs sm:text-sm text-theme-secondary whitespace-pre-wrap break-words font-mono bg-theme-input rounded p-2.5 sm:p-3 border border-theme">
         {JSON.stringify(value, null, 2)}
       </pre>
     );
@@ -84,22 +85,42 @@ function ValueDisplay({ value }) {
 /**
  * Single field in its own box (formal card). Accepts optional displayValue for overrides (e.g. percentage), isLink for clickable link.
  */
-function FieldBox({ label, value, isCode, displayValue, isLink }) {
+function FieldBox({ label, value, isCode, displayValue, isLink, paletteIndex }) {
   const isEmpty = value == null || (typeof value === "string" && !value.trim());
   if (isEmpty) return null;
 
   const content = displayValue !== undefined ? displayValue : value;
+  const usePalette =
+    typeof paletteIndex === "number" && !Number.isNaN(paletteIndex);
 
   if (isCode) {
     return (
-      <div className="rounded-xl border border-theme bg-theme-card overflow-hidden shadow-sm">
-        <div className="px-4 py-2.5 border-b border-theme bg-theme-input">
-          <span className="text-sm font-semibold text-theme-accent tracking-wide">
+      <div
+        className={`rounded-xl overflow-hidden shadow-sm ${
+          usePalette ? "sol-code-card" : "border border-theme bg-theme-card"
+        }`}
+      >
+        <div
+          className={`px-3 py-2 sm:px-4 sm:py-2.5 border-b ${
+            usePalette ? "sol-field-header" : "border-theme bg-theme-input"
+          }`}
+        >
+          <span
+            className={`text-xs sm:text-sm font-semibold tracking-wide ${
+              usePalette ? "sol-field-label" : "text-theme-accent"
+            }`}
+          >
             {label}
           </span>
         </div>
-        <div className="p-4">
-          <pre className="text-sm text-theme-primary whitespace-pre-wrap break-words font-mono leading-relaxed bg-theme-input rounded-lg p-4 border border-theme">
+        <div className="p-3 sm:p-4">
+          <pre
+            className={
+              usePalette
+                ? "sol-pre text-xs sm:text-sm whitespace-pre-wrap break-words font-mono leading-relaxed rounded-lg p-3 sm:p-4 border"
+                : "text-xs sm:text-sm text-theme-primary whitespace-pre-wrap break-words font-mono leading-relaxed bg-theme-input rounded-lg p-3 sm:p-4 border border-theme"
+            }
+          >
             <code>{typeof content === "string" ? content : JSON.stringify(content, null, 2)}</code>
           </pre>
         </div>
@@ -113,12 +134,12 @@ function FieldBox({ label, value, isCode, displayValue, isLink }) {
 
   return (
     <div className="rounded-xl border border-theme bg-theme-card overflow-hidden shadow-sm">
-      <div className="px-4 py-2.5 border-b border-theme bg-theme-input">
-        <span className="text-sm font-semibold text-theme-secondary tracking-wide">
+      <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-theme bg-theme-input">
+        <span className="text-xs sm:text-sm font-semibold text-theme-secondary tracking-wide">
           {label}
         </span>
       </div>
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {isUrl ? (
           <a
             href={linkHref}
@@ -197,9 +218,9 @@ function CodingTab({ company }) {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
-        <div className="bg-theme-card border border-theme rounded-xl p-8 text-center">
-          <h2 className="text-xl font-semibold mb-2 text-theme-accent">
+      <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-theme-primary">
+        <div className="bg-theme-card border border-theme rounded-xl p-6 sm:p-8 text-center">
+          <h2 className="text-lg sm:text-xl font-semibold mb-2 text-theme-accent">
             Previous Coding Questions
           </h2>
           <p className="text-theme-muted">No coding questions added yet.</p>
@@ -209,15 +230,15 @@ function CodingTab({ company }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
-      <div className="bg-theme-card border border-theme rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-1 text-theme-accent">
+    <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-theme-primary">
+      <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold mb-1 text-theme-accent">
           Previous Coding Questions
         </h2>
-        <p className="text-theme-muted text-sm mb-6">
+        <p className="text-theme-muted text-xs sm:text-sm mb-4 sm:mb-6">
           {items.length} question{items.length !== 1 ? "s" : ""} available
         </p>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {items.map((item, index) => {
             if (!item || typeof item !== "object") return null;
             const keys = sortKeys(
@@ -237,17 +258,17 @@ function CodingTab({ company }) {
                 <button
                   type="button"
                   onClick={() => toggleAccordion(index)}
-                  className="w-full text-left px-5 py-4 font-semibold text-theme-primary flex justify-between items-center min-w-0 hover:bg-theme-nav transition-colors"
+                  className="w-full text-left px-3 py-3.5 sm:px-5 sm:py-4 font-semibold text-theme-primary flex justify-between items-center min-w-0 hover:bg-theme-nav transition-colors gap-2 text-sm sm:text-base"
                 >
-                  <span className="truncate pr-2">{preview}</span>
-                  <span className="text-theme-muted text-lg shrink-0">
+                  <span className="truncate pr-2 min-w-0">{preview}</span>
+                  <span className="text-theme-muted text-base sm:text-lg shrink-0">
                     {openIndex === index ? "−" : "+"}
                   </span>
                 </button>
 
                 {openIndex === index && (
-                  <div className="px-4 pb-5 pt-1">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="px-3 pb-4 sm:px-4 sm:pb-5 pt-1 min-w-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {keys.map((key) => {
                         const value = item[key];
                         const isEmpty =
@@ -270,38 +291,55 @@ function CodingTab({ company }) {
                         const displayValue = isAcceptance ? formatAcceptance(value) : undefined;
                         const label = fieldLabel(key);
 
+                        const codeOrdinal = keys
+                          .filter((k) => CODE_KEYS.has(k))
+                          .indexOf(key);
+                        const codePalette =
+                          (codeOrdinal + index * 7) % 6;
+
                         return (
                           <div
                             key={key}
-                            className={`relative ${isCode || isFullWidth ? "col-span-2" : ""}`}
+                            className={`min-w-0 ${isCode || isFullWidth ? "md:col-span-2" : ""}`}
                           >
-                            {isCode && (
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(value, `${index}-${key}`)}
-                                className="absolute top-1 right-1 z-10 flex items-center gap-1.5 rounded-lg bg-theme-input hover:bg-theme-nav text-theme-primary px-2.5 py-1.5 text-xs font-medium transition-colors border border-theme"
-                                title="Copy"
-                              >
-                                {copiedKey === `${index}-${key}` ? (
-                                  <>
-                                    <FaCheck className="w-3 h-3" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <FaCopy className="w-3 h-3" />
-                                    Copy
-                                  </>
-                                )}
-                              </button>
+                            {isCode ? (
+                              <div className={`relative ${solutionBlockClass(codePalette)}`}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(value, `${index}-${key}`)}
+                                  className="sol-copy-fab absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] sm:text-xs font-medium transition-opacity hover:opacity-90 border"
+                                  title="Copy"
+                                >
+                                  {copiedKey === `${index}-${key}` ? (
+                                    <>
+                                      <FaCheck className="w-3 h-3 shrink-0" />
+                                      Copied
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FaCopy className="w-3 h-3 shrink-0" />
+                                      Copy
+                                    </>
+                                  )}
+                                </button>
+                                <FieldBox
+                                  label={label}
+                                  value={processedValue}
+                                  isCode={isCode}
+                                  displayValue={displayValue}
+                                  isLink={isLink}
+                                  paletteIndex={codePalette}
+                                />
+                              </div>
+                            ) : (
+                              <FieldBox
+                                label={label}
+                                value={processedValue}
+                                isCode={isCode}
+                                displayValue={displayValue}
+                                isLink={isLink}
+                              />
                             )}
-                            <FieldBox
-                              label={label}
-                              value={processedValue}
-                              isCode={isCode}
-                              displayValue={displayValue}
-                              isLink={isLink}
-                            />
                           </div>
                         );
                       })}

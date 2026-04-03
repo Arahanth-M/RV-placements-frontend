@@ -89,6 +89,7 @@ import React, { useState, useEffect } from "react";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
+import { solutionBlockClass } from "../../utils/solutionPalette";
 
 function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   const [openIndexQ, setOpenIndexQ] = useState(null);
@@ -461,29 +462,29 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+    <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       {/* Interview Questions */}
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold text-indigo-400 mb-4 flex justify-between items-center">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex justify-between items-center">
           Interview Questions
         </h2>
 
         {interviewQuestions.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {interviewQuestions.map((q, index) => (
               <div
                 key={index}
                 className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
                   <button
                     onClick={() =>
                       setOpenIndexQ(openIndexQ === index ? null : index)
                     }
-                    className="flex-1 text-left px-4 py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0"
+                    className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate">Question {index + 1}</span>
-                    <span className="text-lg text-slate-400">
+                    <span className="truncate min-w-0">Question {index + 1}</span>
+                    <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openIndexQ === index ? "−" : "+"}
                     </span>
                   </button>
@@ -511,42 +512,44 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
                 </div>
 
                 {openIndexQ === index && (
-                  <div className="px-4 pb-4 text-slate-300 leading-relaxed space-y-3 break-words whitespace-pre-wrap">
-                    <p>{q || `Question ${index + 1}`}</p>
+                  <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
+                    <p className="min-w-0">{q || `Question ${index + 1}`}</p>
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
-                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
+                      <div className={`min-w-0 overflow-hidden ${solutionBlockClass(index)} sol-solution-wrap`}>
                         <button
+                          type="button"
                           onClick={() => toggleSolutionAccordion(index)}
-                          className="w-full text-left px-4 py-2 font-medium text-indigo-400 flex justify-between items-center"
+                          className="sol-view-btn px-3 py-2.5 sm:px-4 sm:py-2"
                         >
                           <span>View Solution</span>
-                          <span className="text-lg text-slate-400">
+                          <span className="text-base sm:text-lg text-slate-400">
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
                         {openSolutionIndex[index] && (
-                          <div className="px-4 pb-4">
+                          <div className="px-3 pb-3 sm:px-4 sm:pb-4">
                             <div className="relative">
                               <button
+                                type="button"
                                 onClick={() => handleCopySolution(solutions[index], index)}
-                                className="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-md transition-colors flex items-center gap-2 text-xs z-10"
+                                className="sol-copy-fab absolute top-2 right-2 p-2 rounded-md transition-opacity hover:opacity-90 flex items-center gap-1.5 text-xs z-10"
                                 title="Copy solution"
                               >
                                 {copiedIndex === index ? (
                                   <>
-                                    <FaCheck className="w-3 h-3" />
+                                    <FaCheck className="w-3 h-3 shrink-0" />
                                     <span>Copied!</span>
                                   </>
                                 ) : (
                                   <>
-                                    <FaCopy className="w-3 h-3" />
+                                    <FaCopy className="w-3 h-3 shrink-0" />
                                     <span>Copy</span>
                                   </>
                                 )}
                               </button>
-                              <pre className="bg-slate-900 text-green-300 rounded-lg p-4 overflow-x-auto max-w-full text-sm leading-relaxed whitespace-pre-wrap break-words">
+                              <pre className="sol-pre rounded-lg pl-3 pr-3 pb-3 pt-11 sm:pt-12 sm:pl-4 sm:pr-4 sm:pb-4 overflow-x-auto max-w-full text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-mono border">
                                 <code>{solutions[index]}</code>
                               </pre>
                             </div>
@@ -555,8 +558,8 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
                       </div>
                     ) : (
                       <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
-                        <div className="px-4 py-2">
-                          <p className="text-sm text-slate-400 italic">
+                        <div className="px-3 py-2.5 sm:px-4 sm:py-2">
+                          <p className="text-xs sm:text-sm text-slate-400 italic">
                             Solution not yet provided
                           </p>
                         </div>
@@ -573,13 +576,13 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
       </div>
 
       {/* Interview Process */}
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold text-indigo-400 mb-4 flex justify-between items-center">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex justify-between items-center">
           Interview Process
         </h2>
 
         {interviewProcess.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {interviewProcess.map((process, index) => {
               const processContent = process.content || process;
               const isAnonymous = process.isAnonymous === true || process.isAnonymous === 'true';
@@ -587,13 +590,13 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
               const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
               
               return (
-                <div key={index} className="bg-slate-800/60 rounded-lg p-4 border border-slate-700 flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
+                <div key={index} className="bg-slate-800/60 rounded-lg p-3 sm:p-4 border border-slate-700 flex items-start justify-between gap-2 sm:gap-3">
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
+                    <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold text-[10px] sm:text-xs">
                       {index + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-slate-300">
+                      <p className="whitespace-pre-wrap break-words text-xs sm:text-base text-slate-300 leading-6 sm:leading-relaxed">
                         {processContent}
                       </p>
                       {showSubmitter && (
