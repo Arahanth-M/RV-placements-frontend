@@ -208,7 +208,7 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
             </div>
           </form>
         )}
-      </div> (LANGUAGE_JAVASCRIPT)
+      </div>
 
       {/* ROLES */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">

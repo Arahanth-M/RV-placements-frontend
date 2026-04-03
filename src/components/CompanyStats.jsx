@@ -617,7 +617,7 @@ function CompanyStats() {
             resetListPages();
             navigate(PATH_COMPANY_CATEGORY);
           }}
-          className="mb-6 flex items-center back-link-theme text-sm sm:text-base ml-0 sm:ml-1 md:ml-16 lg:ml-20"
+          className="mb-6 flex items-center back-link-theme text-sm sm:text-base"
         >
           <FaArrowLeft className="mr-2" />
           Back

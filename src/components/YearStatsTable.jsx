@@ -86,7 +86,7 @@ function YearStatsTable({ year, data, onBack }) {
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center back-link-theme text-sm sm:text-base ml-16 sm:ml-20"
+        className="flex items-center back-link-theme text-sm sm:text-base"
       >
         <FaArrowLeft className="mr-2" />
         Back to Year Selection
