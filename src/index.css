@@ -549,6 +549,10 @@ body {
   color: var(--text-primary) !important;
 }
 
+[data-theme="light"] .company-tab-content .text-white {
+  color: var(--text-primary) !important;
+}
+
 [data-theme="light"] .company-tab-content .text-slate-300,
 [data-theme="light"] .company-tab-content .text-slate-400 {
   color: var(--text-secondary) !important;
@@ -561,12 +565,24 @@ body {
 }
 
 [data-theme="light"] .company-tab-content .bg-slate-900\/70,
+[data-theme="light"] .company-tab-content .bg-slate-900\/40,
 [data-theme="light"] .company-tab-content .bg-slate-800\/80,
+[data-theme="light"] .company-tab-content .bg-slate-800\/95,
 [data-theme="light"] .company-tab-content .bg-slate-800\/60,
 [data-theme="light"] .company-tab-content .bg-slate-800\/40,
 [data-theme="light"] .company-tab-content .bg-slate-800,
 [data-theme="light"] .company-tab-content .bg-slate-900 {
   background: var(--bg-card) !important;
+}
+
+/* Preserve gradient utility usage while translating slate stops in light theme */
+[data-theme="light"] .company-tab-content .from-slate-800\/70 {
+  --tw-gradient-from: var(--bg-card) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(255 255 255 / 0) var(--tw-gradient-to-position) !important;
+}
+
+[data-theme="light"] .company-tab-content .to-slate-900 {
+  --tw-gradient-to: var(--bg-card) var(--tw-gradient-to-position) !important;
 }
 
 [data-theme="light"] .company-tab-content .bg-slate-700,
@@ -601,223 +617,9 @@ body {
   background: rgba(15, 23, 42, 0.35) !important;
 }
 
-/* OA / Interview / Coding: rotating solution accents (CSS variables per index) */
-.company-tab-content .sol-solution-wrap {
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 0.5rem;
-}
-
-.company-tab-content .sol-block--0 {
-  --sol-wrap-border: rgb(56 189 248 / 0.5);
-  --sol-wrap-bg: rgb(15 23 42 / 0.58);
-  --sol-btn: #7dd3fc;
-  --sol-pre-bg: rgb(12 74 110 / 0.52);
-  --sol-pre-text: #e0f2fe;
-  --sol-pre-border: rgb(56 189 248 / 0.38);
-  --sol-hdr-bg: rgb(12 74 110 / 0.48);
-  --sol-hdr-text: #bae6fd;
-  --sol-copy-bg: rgb(15 23 42 / 0.94);
-  --sol-copy-border: rgb(14 165 233 / 0.45);
-  --sol-copy-text: #f0f9ff;
-  --sol-code-text: #7dd3fc;
-}
-
-.company-tab-content .sol-block--1 {
-  --sol-wrap-border: rgb(167 139 250 / 0.5);
-  --sol-wrap-bg: rgb(15 23 42 / 0.58);
-  --sol-btn: #c4b5fd;
-  --sol-pre-bg: rgb(76 29 149 / 0.45);
-  --sol-pre-text: #ede9fe;
-  --sol-pre-border: rgb(167 139 250 / 0.35);
-  --sol-hdr-bg: rgb(76 29 149 / 0.42);
-  --sol-hdr-text: #ddd6fe;
-  --sol-copy-bg: rgb(15 23 42 / 0.94);
-  --sol-copy-border: rgb(167 139 250 / 0.45);
-  --sol-copy-text: #f5f3ff;
-  --sol-code-text: #c4b5fd;
-}
-
-.company-tab-content .sol-block--2 {
-  --sol-wrap-border: rgb(251 191 36 / 0.5);
-  --sol-wrap-bg: rgb(15 23 42 / 0.58);
-  --sol-btn: #fcd34d;
-  --sol-pre-bg: rgb(120 53 15 / 0.42);
-  --sol-pre-text: #fef3c7;
-  --sol-pre-border: rgb(251 191 36 / 0.35);
-  --sol-hdr-bg: rgb(120 53 15 / 0.4);
-  --sol-hdr-text: #fde68a;
-  --sol-copy-bg: rgb(15 23 42 / 0.94);
-  --sol-copy-border: rgb(245 158 11 / 0.45);
-  --sol-copy-text: #fffbeb;
-  --sol-code-text: #fcd34d;
-}
-
-.company-tab-content .sol-block--3 {
-  --sol-wrap-border: rgb(251 113 133 / 0.5);
-  --sol-wrap-bg: rgb(15 23 42 / 0.58);
-  --sol-btn: #fda4af;
-  --sol-pre-bg: rgb(136 19 55 / 0.42);
-  --sol-pre-text: #ffe4e6;
-  --sol-pre-border: rgb(251 113 133 / 0.35);
-  --sol-hdr-bg: rgb(136 19 55 / 0.4);
-  --sol-hdr-text: #fecdd3;
-  --sol-copy-bg: rgb(15 23 42 / 0.94);
-  --sol-copy-border: rgb(251 113 133 / 0.45);
-  --sol-copy-text: #fff1f2;
-  --sol-code-text: #fda4af;
-}
-
-.company-tab-content .sol-block--4 {
-  --sol-wrap-border: rgb(52 211 153 / 0.5);
-  --sol-wrap-bg: rgb(15 23 42 / 0.58);
-  --sol-btn: #6ee7b7;
-  --sol-pre-bg: rgb(6 78 59 / 0.45);
-  --sol-pre-text: #d1fae5;
-  --sol-pre-border: rgb(52 211 153 / 0.35);
-  --sol-hdr-bg: rgb(6 78 59 / 0.42);
-  --sol-hdr-text: #a7f3d0;
-  --sol-copy-bg: rgb(15 23 42 / 0.94);
-  --sol-copy-border: rgb(16 185 129 / 0.45);
-  --sol-copy-text: #ecfdf5;
-  --sol-code-text: #6ee7b7;
-}
-
-.company-tab-content .sol-block--5 {
-  --sol-wrap-border: rgb(192 132 252 / 0.5);
-  --sol-wrap-bg: rgb(15 23 42 / 0.58);
-  --sol-btn: #e9d5ff;
-  --sol-pre-bg: rgb(88 28 135 / 0.45);
-  --sol-pre-text: #fae8ff;
-  --sol-pre-border: rgb(192 132 252 / 0.35);
-  --sol-hdr-bg: rgb(88 28 135 / 0.4);
-  --sol-hdr-text: #e9d5ff;
-  --sol-copy-bg: rgb(15 23 42 / 0.94);
-  --sol-copy-border: rgb(168 85 247 / 0.45);
-  --sol-copy-text: #faf5ff;
-  --sol-code-text: #e9d5ff;
-}
-
-/* OA / Interview: vars on same node as wrap */
-.company-tab-content .sol-solution-wrap.sol-block {
-  border-color: var(--sol-wrap-border);
-  background: var(--sol-wrap-bg);
-}
-
-/* Coding tab: only label + code text use palette; borders stay theme tokens */
-.company-tab-content .sol-block .coding-solution-label {
-  color: var(--sol-code-text);
-}
-
-.company-tab-content .sol-block .coding-solution-pre,
-.company-tab-content .sol-block .coding-solution-pre code {
-  color: var(--sol-code-text);
-}
-
-.company-tab-content .sol-block .sol-view-btn {
-  color: var(--sol-btn);
-}
-
-.company-tab-content .sol-block .sol-pre {
-  background: var(--sol-pre-bg);
-  color: var(--sol-pre-text);
-  border-color: var(--sol-pre-border) !important;
-}
-
-.company-tab-content .sol-block .sol-copy-fab {
-  background: var(--sol-copy-bg);
-  color: var(--sol-copy-text);
-  border: 1px solid var(--sol-copy-border);
-}
-
-[data-theme="light"] .company-tab-content .sol-block--0 {
-  --sol-wrap-border: #38bdf8;
-  --sol-wrap-bg: #f0f9ff;
-  --sol-btn: #0369a1;
-  --sol-pre-bg: #ffffff;
-  --sol-pre-text: #0c4a6e;
-  --sol-pre-border: #bae6fd;
-  --sol-hdr-bg: #e0f2fe;
-  --sol-hdr-text: #075985;
-  --sol-copy-bg: #f0f9ff;
-  --sol-copy-border: #7dd3fc;
-  --sol-copy-text: #0c4a6e;
-  --sol-code-text: #0369a1;
-}
-
-[data-theme="light"] .company-tab-content .sol-block--1 {
-  --sol-wrap-border: #a78bfa;
-  --sol-wrap-bg: #f5f3ff;
-  --sol-btn: #5b21b6;
-  --sol-pre-bg: #ffffff;
-  --sol-pre-text: #4c1d95;
-  --sol-pre-border: #ddd6fe;
-  --sol-hdr-bg: #ede9fe;
-  --sol-hdr-text: #5b21b6;
-  --sol-copy-bg: #faf5ff;
-  --sol-copy-border: #c4b5fd;
-  --sol-copy-text: #4c1d95;
-  --sol-code-text: #5b21b6;
-}
-
-[data-theme="light"] .company-tab-content .sol-block--2 {
-  --sol-wrap-border: #f59e0b;
-  --sol-wrap-bg: #fffbeb;
-  --sol-btn: #b45309;
-  --sol-pre-bg: #ffffff;
-  --sol-pre-text: #78350f;
-  --sol-pre-border: #fde68a;
-  --sol-hdr-bg: #fef3c7;
-  --sol-hdr-text: #92400e;
-  --sol-copy-bg: #fffbeb;
-  --sol-copy-border: #fcd34d;
-  --sol-copy-text: #78350f;
-  --sol-code-text: #b45309;
-}
-
-[data-theme="light"] .company-tab-content .sol-block--3 {
-  --sol-wrap-border: #fb7185;
-  --sol-wrap-bg: #fff1f2;
-  --sol-btn: #be123c;
-  --sol-pre-bg: #ffffff;
-  --sol-pre-text: #881337;
-  --sol-pre-border: #fecdd3;
-  --sol-hdr-bg: #ffe4e6;
-  --sol-hdr-text: #9f1239;
-  --sol-copy-bg: #fff1f2;
-  --sol-copy-border: #fda4af;
-  --sol-copy-text: #881337;
-  --sol-code-text: #be123c;
-}
-
-[data-theme="light"] .company-tab-content .sol-block--4 {
-  --sol-wrap-border: #34d399;
-  --sol-wrap-bg: #ecfdf5;
-  --sol-btn: #047857;
-  --sol-pre-bg: #ffffff;
-  --sol-pre-text: #064e3b;
-  --sol-pre-border: #a7f3d0;
-  --sol-hdr-bg: #d1fae5;
-  --sol-hdr-text: #065f46;
-  --sol-copy-bg: #ecfdf5;
-  --sol-copy-border: #6ee7b7;
-  --sol-copy-text: #064e3b;
-  --sol-code-text: #047857;
-}
-
-[data-theme="light"] .company-tab-content .sol-block--5 {
-  --sol-wrap-border: #c084fc;
-  --sol-wrap-bg: #faf5ff;
-  --sol-btn: #7e22ce;
-  --sol-pre-bg: #ffffff;
-  --sol-pre-text: #581c87;
-  --sol-pre-border: #e9d5ff;
-  --sol-hdr-bg: #f3e8ff;
-  --sol-hdr-text: #6b21a8;
-  --sol-copy-bg: #faf5ff;
-  --sol-copy-border: #d8b4fe;
-  --sol-copy-text: #581c87;
-  --sol-code-text: #7e22ce;
+/* Prism / react-syntax-highlighter: keep long lines scrollable inside company tabs */
+.company-tab-content .solution-syntax-root > div {
+  overflow-x: auto !important;
 }
 
 /* Company detail top tab buttons */

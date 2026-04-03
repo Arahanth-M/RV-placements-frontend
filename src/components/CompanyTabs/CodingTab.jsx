@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FaCopy, FaCheck } from "react-icons/fa";
-import { solutionBlockClass } from "../../utils/solutionPalette";
+import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 
 /**
  * Human-readable label for a key (e.g. "solution_code" -> "Solution Code").
@@ -85,34 +85,24 @@ function ValueDisplay({ value }) {
 /**
  * Single field in its own box (formal card). Accepts optional displayValue for overrides (e.g. percentage), isLink for clickable link.
  */
-function FieldBox({ label, value, isCode, displayValue, isLink, paletteIndex }) {
+function FieldBox({ label, value, isCode, displayValue, isLink, codeToolbar }) {
   const isEmpty = value == null || (typeof value === "string" && !value.trim());
   if (isEmpty) return null;
 
   const content = displayValue !== undefined ? displayValue : value;
-  const usePalette =
-    typeof paletteIndex === "number" && !Number.isNaN(paletteIndex);
 
   if (isCode) {
+    const text =
+      typeof content === "string" ? content : JSON.stringify(content, null, 2);
     return (
       <div className="rounded-xl border border-theme bg-theme-card overflow-hidden shadow-sm">
         <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-theme bg-theme-input">
-          <span
-            className={`text-xs sm:text-sm font-semibold tracking-wide ${
-              usePalette ? "coding-solution-label" : "text-theme-accent"
-            }`}
-          >
+          <span className="text-xs sm:text-sm font-semibold text-theme-accent tracking-wide">
             {label}
           </span>
         </div>
         <div className="p-3 sm:p-4">
-          <pre
-            className={`text-xs sm:text-sm whitespace-pre-wrap break-words font-mono leading-relaxed bg-theme-input rounded-lg p-3 sm:p-4 border border-theme ${
-              usePalette ? "coding-solution-pre" : "text-theme-primary"
-            }`}
-          >
-            <code>{typeof content === "string" ? content : JSON.stringify(content, null, 2)}</code>
-          </pre>
+          <SolutionSyntaxBlock code={text} toolbar={codeToolbar} />
         </div>
       </div>
     );
@@ -281,55 +271,40 @@ function CodingTab({ company }) {
                         const displayValue = isAcceptance ? formatAcceptance(value) : undefined;
                         const label = fieldLabel(key);
 
-                        const codeOrdinal = keys
-                          .filter((k) => CODE_KEYS.has(k))
-                          .indexOf(key);
-                        const codePalette =
-                          (codeOrdinal + index * 7) % 6;
-
                         return (
                           <div
                             key={key}
                             className={`min-w-0 ${isCode || isFullWidth ? "md:col-span-2" : ""}`}
                           >
-                            {isCode ? (
-                              <div className={`relative ${solutionBlockClass(codePalette)}`}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopy(value, `${index}-${key}`)}
-                                  className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-lg bg-theme-input hover:bg-theme-nav text-theme-primary px-2 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border border-theme"
-                                  title="Copy"
-                                >
-                                  {copiedKey === `${index}-${key}` ? (
-                                    <>
-                                      <FaCheck className="w-3 h-3 shrink-0" />
-                                      Copied
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FaCopy className="w-3 h-3 shrink-0" />
-                                      Copy
-                                    </>
-                                  )}
-                                </button>
-                                <FieldBox
-                                  label={label}
-                                  value={processedValue}
-                                  isCode={isCode}
-                                  displayValue={displayValue}
-                                  isLink={isLink}
-                                  paletteIndex={codePalette}
-                                />
-                              </div>
-                            ) : (
-                              <FieldBox
-                                label={label}
-                                value={processedValue}
-                                isCode={isCode}
-                                displayValue={displayValue}
-                                isLink={isLink}
-                              />
-                            )}
+                            <FieldBox
+                              label={label}
+                              value={processedValue}
+                              isCode={isCode}
+                              displayValue={displayValue}
+                              isLink={isLink}
+                              codeToolbar={
+                                isCode ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(value, `${index}-${key}`)}
+                                    className="flex items-center gap-1.5 rounded-lg bg-theme-input hover:bg-theme-nav text-theme-primary px-2 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border border-theme"
+                                    title="Copy"
+                                  >
+                                    {copiedKey === `${index}-${key}` ? (
+                                      <>
+                                        <FaCheck className="w-3 h-3 shrink-0" />
+                                        Copied
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FaCopy className="w-3 h-3 shrink-0" />
+                                        Copy
+                                      </>
+                                    )}
+                                  </button>
+                                ) : null
+                              }
+                            />
                           </div>
                         );
                       })}

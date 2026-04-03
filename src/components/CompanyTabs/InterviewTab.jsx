@@ -89,7 +89,7 @@ import React, { useState, useEffect } from "react";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
-import { solutionBlockClass } from "../../utils/solutionPalette";
+import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 
 function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   const [openIndexQ, setOpenIndexQ] = useState(null);
@@ -517,42 +517,42 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
-                      <div className={`min-w-0 overflow-hidden ${solutionBlockClass(index)} sol-solution-wrap`}>
+                      <div className="min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60">
                         <button
                           type="button"
                           onClick={() => toggleSolutionAccordion(index)}
-                          className="sol-view-btn px-3 py-2.5 sm:px-4 sm:py-2"
+                          className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-indigo-400 flex justify-between items-center gap-2 border-b border-slate-700 bg-slate-900/40"
                         >
                           <span>View Solution</span>
-                          <span className="text-base sm:text-lg text-slate-400">
+                          <span className="text-base sm:text-lg text-slate-400 shrink-0">
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
                         {openSolutionIndex[index] && (
-                          <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={() => handleCopySolution(solutions[index], index)}
-                                className="sol-copy-fab absolute top-2 right-2 p-2 rounded-md transition-opacity hover:opacity-90 flex items-center gap-1.5 text-xs z-10"
-                                title="Copy solution"
-                              >
-                                {copiedIndex === index ? (
-                                  <>
-                                    <FaCheck className="w-3 h-3 shrink-0" />
-                                    <span>Copied!</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <FaCopy className="w-3 h-3 shrink-0" />
-                                    <span>Copy</span>
-                                  </>
-                                )}
-                              </button>
-                              <pre className="sol-pre rounded-lg pl-3 pr-3 pb-3 pt-11 sm:pt-12 sm:pl-4 sm:pr-4 sm:pb-4 overflow-x-auto max-w-full text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words font-mono border">
-                                <code>{solutions[index]}</code>
-                              </pre>
-                            </div>
+                          <div className="p-2 sm:p-3">
+                            <SolutionSyntaxBlock
+                              code={solutions[index]}
+                              toolbar={
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopySolution(solutions[index], index)}
+                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                  title="Copy solution"
+                                >
+                                  {copiedIndex === index ? (
+                                    <>
+                                      <FaCheck className="w-3 h-3 shrink-0" />
+                                      <span>Copied!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FaCopy className="w-3 h-3 shrink-0" />
+                                      <span>Copy</span>
+                                    </>
+                                  )}
+                                </button>
+                              }
+                            />
                           </div>
                         )}
                       </div>
