@@ -95,19 +95,11 @@ function FieldBox({ label, value, isCode, displayValue, isLink, paletteIndex }) 
 
   if (isCode) {
     return (
-      <div
-        className={`rounded-xl overflow-hidden shadow-sm ${
-          usePalette ? "sol-code-card" : "border border-theme bg-theme-card"
-        }`}
-      >
-        <div
-          className={`px-3 py-2 sm:px-4 sm:py-2.5 border-b ${
-            usePalette ? "sol-field-header" : "border-theme bg-theme-input"
-          }`}
-        >
+      <div className="rounded-xl border border-theme bg-theme-card overflow-hidden shadow-sm">
+        <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-theme bg-theme-input">
           <span
             className={`text-xs sm:text-sm font-semibold tracking-wide ${
-              usePalette ? "sol-field-label" : "text-theme-accent"
+              usePalette ? "coding-solution-label" : "text-theme-accent"
             }`}
           >
             {label}
@@ -115,11 +107,9 @@ function FieldBox({ label, value, isCode, displayValue, isLink, paletteIndex }) 
         </div>
         <div className="p-3 sm:p-4">
           <pre
-            className={
-              usePalette
-                ? "sol-pre text-xs sm:text-sm whitespace-pre-wrap break-words font-mono leading-relaxed rounded-lg p-3 sm:p-4 border"
-                : "text-xs sm:text-sm text-theme-primary whitespace-pre-wrap break-words font-mono leading-relaxed bg-theme-input rounded-lg p-3 sm:p-4 border border-theme"
-            }
+            className={`text-xs sm:text-sm whitespace-pre-wrap break-words font-mono leading-relaxed bg-theme-input rounded-lg p-3 sm:p-4 border border-theme ${
+              usePalette ? "coding-solution-pre" : "text-theme-primary"
+            }`}
           >
             <code>{typeof content === "string" ? content : JSON.stringify(content, null, 2)}</code>
           </pre>
@@ -307,7 +297,7 @@ function CodingTab({ company }) {
                                 <button
                                   type="button"
                                   onClick={() => handleCopy(value, `${index}-${key}`)}
-                                  className="sol-copy-fab absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] sm:text-xs font-medium transition-opacity hover:opacity-90 border"
+                                  className="absolute top-2 right-2 z-10 flex items-center gap-1.5 rounded-lg bg-theme-input hover:bg-theme-nav text-theme-primary px-2 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border border-theme"
                                   title="Copy"
                                 >
                                   {copiedKey === `${index}-${key}` ? (
