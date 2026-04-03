@@ -42,7 +42,7 @@ function App() {
               <div className="flex flex-col min-h-screen bg-theme-app text-theme-primary">
                 <Sidebar />
 
-              <main className="flex-grow app-main--sidebar-offset">
+              <main className="flex-grow">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />

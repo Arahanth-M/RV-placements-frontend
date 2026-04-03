@@ -1,14 +1,13 @@
 @import "tailwindcss";
 
 /*
- * Fixed sidebar hamburger (top-left) stacks above normal flow. On viewports up to
- * 1279px, inset main so back links and page titles stay clear and tappable.
- * Wide screens rely on horizontal centering / margins instead.
+ * Sidebar hamburger is fixed top-left. Only back-navigation controls use this
+ * class so the rest of the page layout stays full width.
  */
 @media (max-width: 1279px) {
-  .app-main--sidebar-offset {
-    padding-top: max(3.25rem, env(safe-area-inset-top, 0px));
-    padding-left: max(3.25rem, env(safe-area-inset-left, 0px));
+  .back-nav-clear-sidebar {
+    margin-left: max(3.25rem, env(safe-area-inset-left, 0px));
+    margin-top: 0.25rem;
   }
 }
 

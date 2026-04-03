@@ -519,7 +519,7 @@ function CompanyStats() {
               setSelectedYear(null);
               navigate(PATH_COMPANY_STATS, { replace: true });
             }}
-            className="mb-6 flex items-center back-link-theme text-sm sm:text-base ml-0 sm:ml-2"
+            className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
           >
             <FaArrowLeft className="mr-2" />
             Back to Year Selection
@@ -617,7 +617,7 @@ function CompanyStats() {
             resetListPages();
             navigate(PATH_COMPANY_CATEGORY);
           }}
-          className="mb-6 flex items-center back-link-theme text-sm sm:text-base"
+          className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
         >
           <FaArrowLeft className="mr-2" />
           Back

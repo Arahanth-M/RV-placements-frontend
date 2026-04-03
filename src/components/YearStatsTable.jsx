@@ -42,7 +42,7 @@ function YearStatsTable({ year, data, onBack }) {
       <div className="bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg p-6 sm:p-8">
         <button
           onClick={onBack}
-          className="mb-4 flex items-center back-link-theme text-sm sm:text-base"
+          className="back-nav-clear-sidebar mb-4 flex items-center back-link-theme text-sm sm:text-base"
         >
           <FaArrowLeft className="mr-2" />
           Back to Year Selection
@@ -86,7 +86,7 @@ function YearStatsTable({ year, data, onBack }) {
       {/* Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center back-link-theme text-sm sm:text-base"
+        className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base"
       >
         <FaArrowLeft className="mr-2" />
         Back to Year Selection
