@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { adminAPI, eventAPI } from '../utils/api';
 import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar } from 'react-icons/fa';
+
+const ADMIN_PAGE_SIZE = 25;
+const ADMIN_BULK_FETCH_LIMIT = 5000;
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -38,38 +41,160 @@ const AdminDashboard = () => {
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [approvingAll, setApprovingAll] = useState(false);
   const [approvingAllCompanies, setApprovingAllCompanies] = useState(false);
+  const [subPendingMeta, setSubPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [subApprovedMeta, setSubApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [coPendingMeta, setCoPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [coApprovedMeta, setCoApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [eventsLoaded, setEventsLoaded] = useState(false);
 
-  useEffect(() => {
-    fetchDashboardData();
+  const loadPendingSubmissionsList = useCallback(async (page) => {
+    const res = await adminAPI.getSubmissions({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
+    const d = res.data;
+    setSubmissions(d.items || []);
+    setSubPendingMeta({
+      page: d.page || page,
+      total: d.total ?? 0,
+      totalPages: Math.max(1, d.totalPages || 1),
+    });
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const loadApprovedSubmissionsList = useCallback(async (page) => {
+    const res = await adminAPI.getSubmissions({ params: { status: 'approved', page, limit: ADMIN_PAGE_SIZE } });
+    const d = res.data;
+    setApprovedSubmissions(d.items || []);
+    setSubApprovedMeta({
+      page: d.page || page,
+      total: d.total ?? 0,
+      totalPages: Math.max(1, d.totalPages || 1),
+    });
+  }, []);
 
-      const [statsResponse, pendingSubmissionsResponse, approvedSubmissionsResponse, pendingCompaniesResponse, approvedCompaniesResponse, eventsResponse] = await Promise.all([
-        adminAPI.getStats(),
-        adminAPI.getSubmissions({ params: { status: 'pending' } }),
-        adminAPI.getSubmissions({ params: { status: 'approved' } }),
-        adminAPI.getCompanies({ params: { status: 'pending' } }),
-        adminAPI.getCompanies({ params: { status: 'approved' } }),
-        eventAPI.getAllEvents().catch(() => ({ data: [] })), // Handle errors gracefully
-      ]);
+  const loadPendingCompaniesList = useCallback(async (page) => {
+    const res = await adminAPI.getCompanies({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
+    const d = res.data;
+    setCompanies(d.items || []);
+    setCoPendingMeta({
+      page: d.page || page,
+      total: d.total ?? 0,
+      totalPages: Math.max(1, d.totalPages || 1),
+    });
+  }, []);
 
-      setStats(statsResponse.data);
-      setSubmissions(pendingSubmissionsResponse.data || []);
-      setApprovedSubmissions(approvedSubmissionsResponse.data || []);
-      setCompanies(pendingCompaniesResponse.data || []);
-      setApprovedCompanies(approvedCompaniesResponse.data || []);
-      setEvents(eventsResponse.data || []);
-    } catch (err) {
-      console.error('Error fetching admin data:', err);
-      setError('Failed to load dashboard data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadApprovedCompaniesList = useCallback(async (page) => {
+    const res = await adminAPI.getCompanies({ params: { status: 'approved', page, limit: ADMIN_PAGE_SIZE } });
+    const d = res.data;
+    setApprovedCompanies(d.items || []);
+    setCoApprovedMeta({
+      page: d.page || page,
+      total: d.total ?? 0,
+      totalPages: Math.max(1, d.totalPages || 1),
+    });
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const statsRes = await adminAPI.getStats();
+        setStats(statsRes.data);
+      } catch (err) {
+        console.error('Error loading admin stats:', err);
+        setError('Failed to load dashboard. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'submissions') return;
+    if (submissionsSubTab !== 'pending') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadPendingSubmissionsList(subPendingMeta.page);
+      } catch (e) {
+        if (!cancelled) console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, submissionsSubTab, subPendingMeta.page, loadPendingSubmissionsList]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'submissions') return;
+    if (submissionsSubTab !== 'approved') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadApprovedSubmissionsList(subApprovedMeta.page);
+      } catch (e) {
+        if (!cancelled) console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, submissionsSubTab, subApprovedMeta.page, loadApprovedSubmissionsList]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'companies') return;
+    if (companiesSubTab !== 'pending') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadPendingCompaniesList(coPendingMeta.page);
+      } catch (e) {
+        if (!cancelled) console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, companiesSubTab, coPendingMeta.page, loadPendingCompaniesList]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'companies') return;
+    if (companiesSubTab !== 'approved') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadApprovedCompaniesList(coApprovedMeta.page);
+      } catch (e) {
+        if (!cancelled) console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, companiesSubTab, coApprovedMeta.page, loadApprovedCompaniesList]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'events') return;
+    if (eventsLoaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await eventAPI.getAllEvents();
+        if (!cancelled) setEvents(res.data || []);
+      } catch {
+        if (!cancelled) setEvents([]);
+      } finally {
+        if (!cancelled) setEventsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, eventsLoaded]);
 
   const parseContent = (contentString) => {
     try {
@@ -90,6 +215,40 @@ const AdminDashboard = () => {
     });
   };
 
+  const renderAdminPagination = (meta, setPage) => {
+    if (meta.total <= 0) return null;
+    const from = (meta.page - 1) * ADMIN_PAGE_SIZE + 1;
+    const to = Math.min(meta.page * ADMIN_PAGE_SIZE, meta.total);
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-slate-700 bg-slate-800/40">
+        <p className="text-xs text-slate-400">
+          {from}–{to} of {meta.total}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={meta.page <= 1}
+            onClick={() => setPage(meta.page - 1)}
+            className="px-3 py-1.5 text-xs rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-slate-300 tabular-nums">
+            Page {meta.page} / {meta.totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={meta.page >= meta.totalPages}
+            onClick={() => setPage(meta.page + 1)}
+            className="px-3 py-1.5 text-xs rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const handleApprove = async (submissionId) => {
     if (!window.confirm('Are you sure you want to approve this submission? This will update the company database.')) {
       return;
@@ -98,21 +257,13 @@ const AdminDashboard = () => {
     try {
       setApprovingIds(prev => new Set(prev).add(submissionId));
       
-      const response = await adminAPI.approveSubmission(submissionId);
-      
-      // Move the approved submission from pending to approved list
-      const approvedSubmission = submissions.find(sub => sub._id === submissionId);
-      if (approvedSubmission) {
-        approvedSubmission.status = 'approved';
-        approvedSubmission.approvedAt = new Date();
-        setApprovedSubmissions(prev => [approvedSubmission, ...prev]);
-        setSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
-      }
-      
-      // Refresh stats
+      await adminAPI.approveSubmission(submissionId);
+
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
-      
+      await loadPendingSubmissionsList(subPendingMeta.page);
+      await loadApprovedSubmissionsList(subApprovedMeta.page);
+
       alert('Submission approved successfully!');
     } catch (err) {
       console.error('Error approving submission:', err);
@@ -153,14 +304,11 @@ const AdminDashboard = () => {
       setRejectingIds(prev => new Set(prev).add(submissionId));
       
       await adminAPI.rejectSubmission(submissionId);
-      
-      // Remove the rejected submission from the list
-      setSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
-      
-      // Refresh stats
+
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
-      
+      await loadPendingSubmissionsList(subPendingMeta.page);
+
       alert('Submission rejected and deleted successfully!');
     } catch (err) {
       console.error('Error rejecting submission:', err);
@@ -194,21 +342,13 @@ const AdminDashboard = () => {
     try {
       setApprovingCompanyIds(prev => new Set(prev).add(companyId));
       
-      const response = await adminAPI.approveCompany(companyId);
-      
-      // Move the approved company from pending to approved list
-      const approvedCompany = companies.find(comp => comp._id === companyId);
-      if (approvedCompany) {
-        approvedCompany.status = 'approved';
-        approvedCompany.approvedAt = new Date();
-        setApprovedCompanies(prev => [approvedCompany, ...prev]);
-        setCompanies(prev => prev.filter(comp => comp._id !== companyId));
-      }
-      
-      // Refresh stats
+      await adminAPI.approveCompany(companyId);
+
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
-      
+      await loadPendingCompaniesList(coPendingMeta.page);
+      await loadApprovedCompaniesList(coApprovedMeta.page);
+
       alert('Company approved successfully!');
     } catch (err) {
       console.error('Error approving company:', err);
@@ -231,14 +371,11 @@ const AdminDashboard = () => {
       setRejectingCompanyIds(prev => new Set(prev).add(companyId));
       
       await adminAPI.rejectCompany(companyId);
-      
-      // Remove the rejected company from the list
-      setCompanies(prev => prev.filter(comp => comp._id !== companyId));
-      
-      // Refresh stats
+
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
-      
+      await loadPendingCompaniesList(coPendingMeta.page);
+
       alert('Company rejected and deleted successfully!');
     } catch (err) {
       console.error('Error rejecting company:', err);
@@ -261,14 +398,11 @@ const AdminDashboard = () => {
       setDeletingIds(prev => new Set(prev).add(submissionId));
       
       await adminAPI.deleteApprovedSubmission(submissionId);
-      
-      // Remove the deleted submission from the approved list
-      setApprovedSubmissions(prev => prev.filter(sub => sub._id !== submissionId));
-      
-      // Refresh stats
+
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
-      
+      await loadApprovedSubmissionsList(subApprovedMeta.page);
+
       alert('Approved submission deleted successfully!');
     } catch (err) {
       console.error('Error deleting approved submission:', err);
@@ -291,14 +425,11 @@ const AdminDashboard = () => {
       setDeletingCompanyIds(prev => new Set(prev).add(companyId));
       
       await adminAPI.deleteApprovedCompany(companyId);
-      
-      // Remove the deleted company from the approved list
-      setApprovedCompanies(prev => prev.filter(comp => comp._id !== companyId));
-      
-      // Refresh stats
+
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
-      
+      await loadApprovedCompaniesList(coApprovedMeta.page);
+
       alert('Approved company deleted successfully!');
     } catch (err) {
       console.error('Error deleting approved company:', err);
@@ -312,8 +443,17 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleViewFullSubmission = (submission) => {
-    setSelectedSubmission(submission);
+  const handleViewFullSubmission = async (submission) => {
+    if (submission.contentTruncated) {
+      try {
+        const res = await adminAPI.getSubmission(submission._id);
+        setSelectedSubmission(res.data);
+      } catch {
+        setSelectedSubmission(submission);
+      }
+    } else {
+      setSelectedSubmission(submission);
+    }
     setShowSubmissionModal(true);
   };
 
@@ -323,31 +463,31 @@ const AdminDashboard = () => {
       return;
     }
 
-    const confirmMessage = `Are you sure you want to approve all ${submissions.length} pending submission(s)? This will update the company database.`;
+    const confirmMessage = `Approve all ${submissions.length} pending submission(s) on this page? (Up to ${ADMIN_BULK_FETCH_LIMIT} total can be loaded for bulk.) This will update the company database.`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
 
     try {
       setApprovingAll(true);
-      const totalSubmissions = submissions.length;
+      let bulkList = submissions;
+      if (subPendingMeta.total > submissions.length) {
+        const bulkRes = await adminAPI.getSubmissions({
+          params: { status: 'pending', page: 1, limit: ADMIN_BULK_FETCH_LIMIT },
+        });
+        bulkList = bulkRes.data.items || [];
+      }
+
+      const totalSubmissions = bulkList.length;
       let successCount = 0;
       let failCount = 0;
       const errors = [];
 
-      // Approve all submissions sequentially to avoid overwhelming the server
-      for (const submission of submissions) {
+      for (const submission of bulkList) {
         try {
           setApprovingIds(prev => new Set(prev).add(submission._id));
           await adminAPI.approveSubmission(submission._id);
-          
-          // Move the approved submission from pending to approved list
-          const approvedSubmission = { ...submission };
-          approvedSubmission.status = 'approved';
-          approvedSubmission.approvedAt = new Date();
-          setApprovedSubmissions(prev => [approvedSubmission, ...prev]);
-          setSubmissions(prev => prev.filter(sub => sub._id !== submission._id));
-          
+
           successCount++;
         } catch (err) {
           console.error(`Error approving submission ${submission._id}:`, err);
@@ -363,11 +503,11 @@ const AdminDashboard = () => {
         }
       }
 
-      // Refresh stats
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
+      await loadPendingSubmissionsList(subPendingMeta.page);
+      await loadApprovedSubmissionsList(subApprovedMeta.page);
 
-      // Show summary
       if (failCount === 0) {
         alert(`Successfully approved all ${successCount} submission(s)!`);
       } else {
@@ -389,7 +529,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const confirmMessage = `Are you sure you want to approve all ${companies.length} pending company/companies? They will be visible to all users.`;
+    const confirmMessage = `Approve all ${companies.length} pending company/companies on this page? (Loads up to ${ADMIN_BULK_FETCH_LIMIT} if more exist.) They will be visible to all users.`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -400,19 +540,19 @@ const AdminDashboard = () => {
       let failCount = 0;
       const errors = [];
 
-      // Approve all companies sequentially to avoid overwhelming the server
-      for (const company of companies) {
+      let bulkCompanies = companies;
+      if (coPendingMeta.total > companies.length) {
+        const bulkRes = await adminAPI.getCompanies({
+          params: { status: 'pending', page: 1, limit: ADMIN_BULK_FETCH_LIMIT },
+        });
+        bulkCompanies = bulkRes.data.items || [];
+      }
+
+      for (const company of bulkCompanies) {
         try {
           setApprovingCompanyIds(prev => new Set(prev).add(company._id));
           await adminAPI.approveCompany(company._id);
-          
-          // Move the approved company from pending to approved list
-          const approvedCompany = { ...company };
-          approvedCompany.status = 'approved';
-          approvedCompany.approvedAt = new Date();
-          setApprovedCompanies(prev => [approvedCompany, ...prev]);
-          setCompanies(prev => prev.filter(comp => comp._id !== company._id));
-          
+
           successCount++;
         } catch (err) {
           console.error(`Error approving company ${company._id}:`, err);
@@ -428,11 +568,11 @@ const AdminDashboard = () => {
         }
       }
 
-      // Refresh stats
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
+      await loadPendingCompaniesList(coPendingMeta.page);
+      await loadApprovedCompaniesList(coApprovedMeta.page);
 
-      // Show summary
       if (failCount === 0) {
         alert(`Successfully approved all ${successCount} company/companies! They are now visible to all users.`);
       } else {
@@ -707,12 +847,16 @@ const AdminDashboard = () => {
                             : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
                       >
-                        {approvingAll ? 'Approving All...' : `Approve All (${submissions.length})`}
+                        {approvingAll ? 'Approving All...' : `Approve all on page (${submissions.length})`}
                       </button>
                     )}
                     <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
                       <button
-                          onClick={() => setSubmissionsSubTab('pending')}
+                          type="button"
+                          onClick={() => {
+                            setSubmissionsSubTab('pending');
+                            setSubPendingMeta((m) => ({ ...m, page: 1 }));
+                          }}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                             submissionsSubTab === 'pending'
                             ? 'bg-indigo-600 text-white'
@@ -722,7 +866,11 @@ const AdminDashboard = () => {
                         Pending ({stats.pendingSubmissions || 0})
                       </button>
                       <button
-                          onClick={() => setSubmissionsSubTab('approved')}
+                          type="button"
+                          onClick={() => {
+                            setSubmissionsSubTab('approved');
+                            setSubApprovedMeta((m) => ({ ...m, page: 1 }));
+                          }}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                             submissionsSubTab === 'approved'
                             ? 'bg-indigo-600 text-white'
@@ -779,12 +927,12 @@ const AdminDashboard = () => {
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <p className="text-xs sm:text-sm font-medium text-slate-200">
-                                      {submission.submittedBy.name}
+                                      {submission.submittedBy?.name || 'N/A'}
                                       {submission.isAnonymous && (
                                         <span className="ml-2 text-xs text-orange-600 font-normal">(Anonymous)</span>
                                       )}
                                     </p>
-                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
+                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy?.email || ''}</p>
                                   </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
@@ -845,6 +993,9 @@ const AdminDashboard = () => {
                         </tbody>
                       </table>
                     </div>
+                    {renderAdminPagination(subPendingMeta, (p) =>
+                      setSubPendingMeta((m) => ({ ...m, page: p }))
+                    )}
                   </div>
                 )
               ) : (
@@ -896,12 +1047,12 @@ const AdminDashboard = () => {
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <div>
                                     <p className="text-xs sm:text-sm font-medium text-slate-200">
-                                      {submission.submittedBy.name}
+                                      {submission.submittedBy?.name || 'N/A'}
                                       {submission.isAnonymous && (
                                         <span className="ml-2 text-xs text-orange-400 font-normal">(Anonymous)</span>
                                       )}
                                     </p>
-                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy.email}</p>
+                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy?.email || ''}</p>
                                   </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
@@ -957,6 +1108,9 @@ const AdminDashboard = () => {
                         </tbody>
                       </table>
                     </div>
+                    {renderAdminPagination(subApprovedMeta, (p) =>
+                      setSubApprovedMeta((m) => ({ ...m, page: p }))
+                    )}
                   </div>
                 )
               )}
@@ -982,12 +1136,16 @@ const AdminDashboard = () => {
                             : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
                       >
-                        {approvingAllCompanies ? 'Approving All...' : `Approve All (${companies.length})`}
+                        {approvingAllCompanies ? 'Approving All...' : `Approve all on page (${companies.length})`}
                       </button>
                     )}
                     <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
                       <button
-                          onClick={() => setCompaniesSubTab('pending')}
+                          type="button"
+                          onClick={() => {
+                            setCompaniesSubTab('pending');
+                            setCoPendingMeta((m) => ({ ...m, page: 1 }));
+                          }}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                             companiesSubTab === 'pending'
                             ? 'bg-indigo-600 text-white'
@@ -997,7 +1155,11 @@ const AdminDashboard = () => {
                         Pending ({stats.pendingCompanies || 0})
                       </button>
                       <button
-                          onClick={() => setCompaniesSubTab('approved')}
+                          type="button"
+                          onClick={() => {
+                            setCompaniesSubTab('approved');
+                            setCoApprovedMeta((m) => ({ ...m, page: 1 }));
+                          }}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                             companiesSubTab === 'approved'
                             ? 'bg-indigo-600 text-white'
@@ -1108,6 +1270,9 @@ const AdminDashboard = () => {
                           </div>
                         ))}
                       </div>
+                      {renderAdminPagination(coPendingMeta, (p) =>
+                        setCoPendingMeta((m) => ({ ...m, page: p }))
+                      )}
                     </div>
                   </div>
                 )
@@ -1146,6 +1311,9 @@ const AdminDashboard = () => {
                           ))}
                         </div>
                       </div>
+                      {renderAdminPagination(coApprovedMeta, (p) =>
+                        setCoApprovedMeta((m) => ({ ...m, page: p }))
+                      )}
                     </div>
                   </div>
                 )

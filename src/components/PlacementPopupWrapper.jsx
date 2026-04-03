@@ -62,6 +62,13 @@ const PlacementPopupWrapper = () => {
         return;
       }
       
+      // Check sessionStorage to prevent showing popup on every page refresh
+      const userId = user.userId || user._id;
+      const storageKey = `placementPopupShown_${userId}`;
+      if (sessionStorage.getItem(storageKey) === 'true') {
+        return;
+      }
+      
       // Prevent duplicate fetch/show cycles for the same resolved company id
       if (hasCheckedRef.current) {
         return;
@@ -89,6 +96,8 @@ const PlacementPopupWrapper = () => {
           setCompanyId(company._id);
           setCompanyName(company.name);
           setShowPopup(true);
+          // Mark as shown for this session
+          sessionStorage.setItem(storageKey, 'true');
         } else {
           hasCheckedRef.current = false;
           console.warn(`❌ [PlacementPopup] No company found for ID: ${studentCompanyId}`);
