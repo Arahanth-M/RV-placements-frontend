@@ -1,72 +1,195 @@
 import React from "react";
-import { FaLinkedin, FaUser } from "react-icons/fa";
+import {
+  FaUser,
+  FaLinkedin,
+  FaGithub,
+  FaEnvelope,
+  FaGlobe,
+} from "react-icons/fa";
 
-function Developers() {
-  // Dummy data structure - you can replace this with actual data
-  const developers = [
-    {
-      name: "Developer Name",
-      photo: "https://via.placeholder.com/200x200?text=Photo",
-      linkedinUrl: "https://linkedin.com/in/developer",
+const developers = [
+  {
+    name: "Arahanth M",
+    photo: "/developers/arahanth.jpg",
+    social: {
+      linkedin: "https://www.linkedin.com/in/arahanth-m-4379731b5",
+      github: "https://github.com/Arahanth-M",
+      email: "",
+      website: "",
     },
-    // Add more developers here as needed
+  },
+  {
+    name: "Darshan Kashyap N",
+    photo: "/developers/darshan.jpg",
+    social: {
+      linkedin: "",
+      github: "",
+      email: "",
+      website: "",
+    },
+  },
+];
+
+function initialsFromName(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function DevCardHero({ name, photo }) {
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const showPhoto = Boolean(photo) && !imageFailed;
+
+  return (
+    <div className="relative min-h-0 flex-1 w-full bg-neutral-200">
+      {showPhoto ? (
+        <img
+          src={photo}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-top"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-violet-600 text-5xl font-bold text-white sm:text-6xl"
+          aria-hidden
+        >
+          {initialsFromName(name)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Ensures anchors open correct URLs when values omit https:// (e.g. linkedin.com/in/...). */
+function normalizeWebHref(raw) {
+  const s = raw?.trim() ?? "";
+  if (!s) return "";
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith("//")) return `https:${s}`;
+  return `https://${s}`;
+}
+
+function DevSocialRow({ social }) {
+  const items = [
+    {
+      key: "linkedin",
+      href: normalizeWebHref(social?.linkedin),
+      Icon: FaLinkedin,
+      label: "LinkedIn",
+    },
+    {
+      key: "github",
+      href: normalizeWebHref(social?.github),
+      Icon: FaGithub,
+      label: "GitHub",
+    },
+    {
+      key: "email",
+      href: (() => {
+        const raw = social?.email?.trim() ?? "";
+        if (!raw) return "";
+        return raw.startsWith("mailto:") ? raw : `mailto:${raw}`;
+      })(),
+      Icon: FaEnvelope,
+      label: "Email",
+    },
+    {
+      key: "website",
+      href: normalizeWebHref(social?.website),
+      Icon: FaGlobe,
+      label: "Website",
+    },
   ];
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#302C2C' }}>
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">Our Developers</h1>
-          <p className="text-sm sm:text-base md:text-lg text-slate-400">
+    <div className="flex shrink-0 items-center gap-4 sm:gap-5 text-neutral-900">
+      {items.map(({ key, href, Icon, label }) => {
+        const icon = (
+          <Icon className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
+        );
+        if (!href) {
+          return (
+            <span key={key} className="opacity-25" aria-hidden>
+              {icon}
+            </span>
+          );
+        }
+        const isMail = href.startsWith("mailto:");
+        return (
+          <a
+            key={key}
+            href={href}
+            {...(isMail
+              ? {}
+              : { target: "_blank", rel: "noopener noreferrer" })}
+            aria-label={label}
+            className="transition-opacity hover:opacity-65"
+          >
+            {icon}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+function DeveloperProfileCard({ developer }) {
+  const { social } = developer;
+
+  return (
+    <article className="flex h-[min(520px,calc(100svh-14rem))] sm:h-[min(560px,calc(100svh-13rem))] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 transition-shadow hover:shadow-xl mx-auto">
+      <DevCardHero name={developer.name} photo={developer.photo} />
+
+      <footer className="flex min-h-[4.25rem] shrink-0 items-center justify-between gap-3 bg-white px-4 py-3 sm:min-h-[4.5rem] sm:px-5">
+        <h2 className="truncate text-base font-semibold tracking-tight text-neutral-900 sm:text-lg">
+          {developer.name}
+        </h2>
+        <DevSocialRow social={social} />
+      </footer>
+    </article>
+  );
+}
+
+function Developers() {
+  return (
+    <div className="min-h-screen flex flex-col bg-theme-app text-theme-primary">
+      <div className="flex min-h-0 flex-1 flex-col w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
+        <header className="mb-8 shrink-0 text-center sm:mb-10">
+          <h1 className="mb-2 text-2xl font-bold text-theme-primary sm:mb-3 sm:text-3xl md:text-4xl">
+            Our Developers
+          </h1>
+          <p className="mx-auto max-w-2xl text-sm text-theme-secondary sm:text-base md:text-lg">
             Meet the team behind the platform
           </p>
-        </div>
+        </header>
 
-        {/* Developers Grid */}
         {developers.length === 0 ? (
-          <div className="text-center py-8 sm:py-12">
-            <FaUser className="mx-auto text-slate-600 text-4xl sm:text-6xl mb-4" />
-            <p className="text-slate-300 text-base sm:text-lg">No developers added yet.</p>
-            <p className="text-slate-400 mt-2 text-sm sm:text-base">Check back soon!</p>
+          <div className="flex flex-1 items-center justify-center py-12 text-center">
+            <div>
+              <FaUser
+                className="mx-auto mb-4 text-4xl text-theme-muted sm:text-6xl"
+                aria-hidden
+              />
+              <p className="text-base text-theme-secondary sm:text-lg">
+                No developers added yet.
+              </p>
+              <p className="mt-2 text-sm text-theme-muted sm:text-base">
+                Check back soon!
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            {developers.map((developer, index) => (
-              <div
-                key={index}
-                className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-shadow text-center"
-              >
-                {/* Photo */}
-                <div className="mb-3 sm:mb-4">
-                  <img
-                    src={developer.photo}
-                    alt={developer.name}
-                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto object-cover border-4 border-slate-700"
-                    onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/200x200?text=Photo";
-                    }}
-                  />
-                </div>
-
-                {/* Name */}
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
-                  {developer.name}
-                </h3>
-
-                {/* LinkedIn Link */}
-                {developer.linkedinUrl && (
-                  <a
-                    href={developer.linkedinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm sm:text-base"
-                  >
-                    <FaLinkedin className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    LinkedIn Profile
-                  </a>
-                )}
-              </div>
+          <div className="grid flex-1 grid-cols-1 content-start justify-items-center gap-8 lg:grid-cols-2 lg:gap-10">
+            {developers.map((developer) => (
+              <DeveloperProfileCard
+                key={developer.name}
+                developer={developer}
+              />
             ))}
           </div>
         )}
@@ -76,4 +199,3 @@ function Developers() {
 }
 
 export default Developers;
-

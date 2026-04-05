@@ -316,10 +316,24 @@ function CompanyStats() {
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
       if (category === "all") return true;
-      if (category === "internship + fte") {
-        return c.type.toLowerCase().includes("internship + fte");
+      
+      const typeLower = (c.type || "").toLowerCase();
+
+      if (category === "ppo") {
+        return typeLower.includes("ppo");
       }
-      return c.type.toLowerCase() === category.toLowerCase();
+      if (category === "internship + fte") {
+        return typeLower.includes("internship") && typeLower.includes("fte");
+      }
+      if (category === "others") {
+        const isFte = typeLower === "fte";
+        const isOnlyInternship = typeLower === "only internship(6 months)";
+        const isPpo = typeLower.includes("ppo");
+        const isInternshipFte = typeLower.includes("internship") && typeLower.includes("fte");
+        return !isFte && !isOnlyInternship && !isPpo && !isInternshipFte;
+      }
+      
+      return typeLower === category.toLowerCase();
     })
     .filter((c) => {
       if (cluster === "all") return true;
@@ -797,6 +811,30 @@ function CompanyStats() {
               }`}
             >
               Only Internship
+            </button>
+            <button
+              onClick={() => {
+                setCategory("ppo");
+                setShowFilter(false);
+                resetListPages();
+              }}
+              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                category === "ppo" ? "font-semibold nav-active-theme text-theme-primary" : ""
+              }`}
+            >
+              PPO
+            </button>
+            <button
+              onClick={() => {
+                setCategory("others");
+                setShowFilter(false);
+                resetListPages();
+              }}
+              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                category === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
+              }`}
+            >
+              Others
             </button>
           </div>
         )}

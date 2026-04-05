@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaThumbsUp, FaChartBar, FaTimes } from "react-icons/fa";
+import { FaThumbsUp, FaChartBar, FaTimes, FaEdit, FaCheck } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import CompanyLogo from "./CompanyLogo";
@@ -19,6 +19,10 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
   const [editGotIn, setEditGotIn] = useState("");
   const [statsSaving, setStatsSaving] = useState(false);
   const hasPrefetchedRef = useRef(false);
+
+  const [isEditingType, setIsEditingType] = useState(false);
+  const [editTypeValue, setEditTypeValue] = useState("");
+  const [isSavingType, setIsSavingType] = useState(false);
 
   // Update local state when company prop changes
   useEffect(() => {
@@ -158,6 +162,33 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     }
   };
 
+  const startEditType = (e) => {
+    e.stopPropagation();
+    setEditTypeValue(company.type || "");
+    setIsEditingType(true);
+  };
+
+  const cancelEditType = (e) => {
+    e.stopPropagation();
+    setIsEditingType(false);
+  };
+
+  const saveType = async (e) => {
+    e.stopPropagation();
+    setIsSavingType(true);
+    try {
+      const { adminAPI } = await import("../utils/api");
+      await adminAPI.updateCompanyGeneralInfo(company._id, { type: editTypeValue });
+      if (onStatsUpdated) onStatsUpdated();
+      setIsEditingType(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update company type");
+    } finally {
+      setIsSavingType(false);
+    }
+  };
+
   return (
     <div
       className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl relative z-0 hover:z-10"
@@ -179,9 +210,36 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
           <h2 className="company-name text-lg sm:text-xl font-bold text-theme-primary tracking-tight truncate">
             {company.name || "Unknown Company"}
           </h2>
-          <p className="company-role text-xs sm:text-sm text-theme-secondary italic truncate">
-            {company.type || "Placement Drive"}
-          </p>
+          <div className="flex items-center gap-2">
+            {!isEditingType ? (
+              <>
+                <p className="company-role text-xs sm:text-sm text-theme-secondary italic truncate">
+                  {company.type || "Placement Drive"}
+                </p>
+                {isAdmin && (
+                  <button onClick={startEditType} className="text-theme-muted hover:text-theme-accent transition-colors" aria-label="Edit type" title="Edit company type">
+                    <FaEdit className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-1 w-full max-w-[220px]" onClick={(e) => e.stopPropagation()}>
+                 <input
+                    type="text"
+                    value={editTypeValue}
+                    onChange={(e) => setEditTypeValue(e.target.value)}
+                    className="text-xs px-2 py-1 rounded bg-theme-input border border-theme-accent text-theme-primary w-full focus:outline-none focus:ring-1 focus:ring-theme-accent"
+                    placeholder="e.g. fte, internship + fte"
+                 />
+                 <button onClick={saveType} disabled={isSavingType} className="text-green-500 hover:text-green-400 p-1 rounded bg-theme-card transition-colors disabled:opacity-50">
+                    <FaCheck className="w-3.5 h-3.5" />
+                 </button>
+                 <button onClick={cancelEditType} disabled={isSavingType} className="text-red-500 hover:text-red-400 p-1 rounded bg-theme-card transition-colors disabled:opacity-50">
+                    <FaTimes className="w-3.5 h-3.5" />
+                 </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { interviewAPI } from "../../utils/api";
@@ -201,6 +202,44 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     }
   }, [isProcessing]);
 
+  /** After every round is done, the server sets status to completed and attaches finalReport; poll if the client is briefly ahead of the report. */
+  useEffect(() => {
+    if (status !== "completed" || !sessionId || report) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let intervalId = null;
+
+    const tick = async () => {
+      try {
+        const { data } = await interviewAPI.getInterviewStatus(sessionId);
+        if (cancelled) return;
+        if (data?.report) {
+          setReport(data.report);
+        }
+        if (data?.status === "completed" && typeof data.totalRounds === "number") {
+          setTotalRounds(Number(data.totalRounds) || 0);
+        }
+      } catch {
+        // ignore transient errors while waiting for the final report
+      }
+    };
+
+    tick();
+    intervalId = window.setInterval(tick, 2000);
+    const timeoutId = window.setTimeout(() => {
+      if (intervalId) window.clearInterval(intervalId);
+      intervalId = null;
+    }, 120000);
+
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [status, sessionId, report]);
+
   const fetchResumableInterview = useCallback(async () => {
     if (!user?.userId || !company?._id) {
       setResumeSession(null);
@@ -299,6 +338,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       onForceExitToGeneral();
     }
   }, [onForceExitToGeneral]);
+
+  const handleEndInterview = useCallback(async () => {
+    await finalizeExitToGeneral();
+  }, [finalizeExitToGeneral]);
 
   useEffect(() => {
     if (!isInterviewActive) return;
@@ -550,40 +593,49 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       setQuestion("");
       questionRef.current = "";
 
-      const deferredRoundSummary = {
-        score:
-          typeof st?.roundFeedback?.score === "number"
-            ? st.roundFeedback.score
-            : null,
-        strengths: st?.roundFeedback?.strengths || [],
-        weaknesses: st?.roundFeedback?.weaknesses || [],
-        summary: st?.roundFeedback?.summary || "",
-        improvementTips: st?.roundFeedback?.improvementTips || [],
-        nextRoundAvailable: Boolean(st?.nextRoundAvailable),
-      };
-      const hasLastAnswerFeedback =
-        String(st.lastFeedback || "").trim().length > 0 ||
-        typeof st.lastScore === "number";
-
-      if (hasLastAnswerFeedback) {
-        setPendingQuestionFeedback({
-          feedback: st.lastFeedback || "",
-          score: typeof st.lastScore === "number" ? st.lastScore : null,
-          nextQuestion: "",
-          deferredRoundSummary,
-        });
+      /** Entire interview finished: never show per-answer feedback on top of the final summary. */
+      if (st.status === "completed") {
+        setPendingQuestionFeedback(null);
         setRoundFeedbackView(null);
         roundFeedbackRef.current = null;
-        setFeedback("");
-        setScore(null);
-      } else {
-        setPendingQuestionFeedback(null);
         setFeedback(st.lastFeedback || "");
         setScore(typeof st.lastScore === "number" ? st.lastScore : null);
-        setRoundFeedbackView(deferredRoundSummary);
-        roundFeedbackRef.current = {
+      } else {
+        const deferredRoundSummary = {
+          score:
+            typeof st?.roundFeedback?.score === "number"
+              ? st.roundFeedback.score
+              : null,
+          strengths: st?.roundFeedback?.strengths || [],
+          weaknesses: st?.roundFeedback?.weaknesses || [],
+          summary: st?.roundFeedback?.summary || "",
+          improvementTips: st?.roundFeedback?.improvementTips || [],
           nextRoundAvailable: Boolean(st?.nextRoundAvailable),
         };
+        const hasLastAnswerFeedback =
+          String(st.lastFeedback || "").trim().length > 0 ||
+          typeof st.lastScore === "number";
+
+        if (hasLastAnswerFeedback) {
+          setPendingQuestionFeedback({
+            feedback: st.lastFeedback || "",
+            score: typeof st.lastScore === "number" ? st.lastScore : null,
+            nextQuestion: "",
+            deferredRoundSummary,
+          });
+          setRoundFeedbackView(null);
+          roundFeedbackRef.current = null;
+          setFeedback("");
+          setScore(null);
+        } else {
+          setPendingQuestionFeedback(null);
+          setFeedback(st.lastFeedback || "");
+          setScore(typeof st.lastScore === "number" ? st.lastScore : null);
+          setRoundFeedbackView(deferredRoundSummary);
+          roundFeedbackRef.current = {
+            nextRoundAvailable: Boolean(st?.nextRoundAvailable),
+          };
+        }
       }
     } else {
       roundFeedbackRef.current = null;
@@ -623,18 +675,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
     if (st.status === "completed") {
       setResumeSession(null);
-      if (document.fullscreenElement && document.exitFullscreen) {
-        try {
-          suppressFullscreenExitPromptRef.current = true;
-          document.exitFullscreen();
-        } catch {
-          // Ignore fullscreen exit errors.
-        } finally {
-          window.setTimeout(() => {
-            suppressFullscreenExitPromptRef.current = false;
-          }, 300);
-        }
-      }
     }
   }, []);
 
@@ -899,40 +939,48 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           setQuestion("");
           questionRef.current = "";
 
-          const deferredRoundSummary = {
-            score:
-              typeof data?.roundFeedback?.score === "number"
-                ? data.roundFeedback.score
-                : null,
-            strengths: data?.roundFeedback?.strengths || [],
-            weaknesses: data?.roundFeedback?.weaknesses || [],
-            summary: data?.roundFeedback?.summary || "",
-            improvementTips: data?.roundFeedback?.improvementTips || [],
-            nextRoundAvailable: Boolean(data?.nextRoundAvailable),
-          };
-          const hasLastAnswerFeedback =
-            String(data.feedback || "").trim().length > 0 ||
-            typeof data.score === "number";
-
-          if (hasLastAnswerFeedback) {
-            setPendingQuestionFeedback({
-              feedback: data.feedback || "",
-              score: typeof data.score === "number" ? data.score : null,
-              nextQuestion: "",
-              deferredRoundSummary,
-            });
+          if (data.status === "completed") {
+            setPendingQuestionFeedback(null);
             setRoundFeedbackView(null);
             roundFeedbackRef.current = null;
-            setFeedback("");
-            setScore(null);
-          } else {
-            setPendingQuestionFeedback(null);
             setFeedback(data.feedback || "");
             setScore(typeof data.score === "number" ? data.score : null);
-            setRoundFeedbackView(deferredRoundSummary);
-            roundFeedbackRef.current = {
+          } else {
+            const deferredRoundSummary = {
+              score:
+                typeof data?.roundFeedback?.score === "number"
+                  ? data.roundFeedback.score
+                  : null,
+              strengths: data?.roundFeedback?.strengths || [],
+              weaknesses: data?.roundFeedback?.weaknesses || [],
+              summary: data?.roundFeedback?.summary || "",
+              improvementTips: data?.roundFeedback?.improvementTips || [],
               nextRoundAvailable: Boolean(data?.nextRoundAvailable),
             };
+            const hasLastAnswerFeedback =
+              String(data.feedback || "").trim().length > 0 ||
+              typeof data.score === "number";
+
+            if (hasLastAnswerFeedback) {
+              setPendingQuestionFeedback({
+                feedback: data.feedback || "",
+                score: typeof data.score === "number" ? data.score : null,
+                nextQuestion: "",
+                deferredRoundSummary,
+              });
+              setRoundFeedbackView(null);
+              roundFeedbackRef.current = null;
+              setFeedback("");
+              setScore(null);
+            } else {
+              setPendingQuestionFeedback(null);
+              setFeedback(data.feedback || "");
+              setScore(typeof data.score === "number" ? data.score : null);
+              setRoundFeedbackView(deferredRoundSummary);
+              roundFeedbackRef.current = {
+                nextRoundAvailable: Boolean(data?.nextRoundAvailable),
+              };
+            }
           }
         } else {
           roundFeedbackRef.current = null;
@@ -961,18 +1009,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         }
         if (data.status === "completed") {
           setResumeSession(null);
-          if (document.fullscreenElement && document.exitFullscreen) {
-            try {
-              suppressFullscreenExitPromptRef.current = true;
-              await document.exitFullscreen();
-            } catch {
-              // Ignore fullscreen exit errors.
-            } finally {
-              window.setTimeout(() => {
-                suppressFullscreenExitPromptRef.current = false;
-              }, 300);
-            }
-          }
         }
       }
     } catch (err) {
@@ -1042,6 +1078,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   const showStartPrompt = !sessionId || status === "idle";
   const interviewCompleted = status === "completed";
+  /** Entire multi-round session finished (server only sets this after the last round’s report is generated). */
+  const showInterviewFinale =
+    interviewCompleted && Boolean(sessionId) && !isProcessing;
   const hasResumableInterview =
     Boolean(resumeSession?.sessionId) && resumeSession?.status === "in_progress";
 
@@ -1093,6 +1132,183 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           </div>
         </div>
       )}
+
+      {showInterviewFinale &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="interview-final-summary-title"
+          >
+            <div className="w-full max-w-3xl max-h-[min(92vh,900px)] flex flex-col overflow-hidden rounded-2xl border border-emerald-500/35 bg-gradient-to-b from-emerald-950/30 to-theme-card shadow-2xl shadow-emerald-950/20">
+              <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-emerald-500/20 bg-emerald-500/10 shrink-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500/95">
+                  All rounds complete
+                </p>
+                <h2
+                  id="interview-final-summary-title"
+                  className="text-xl sm:text-2xl font-bold text-theme-primary mt-1"
+                >
+                  Full interview summary
+                  {company?.name ? (
+                    <span className="text-theme-secondary font-medium"> — {company.name}</span>
+                  ) : null}
+                </h2>
+                {totalRounds > 0 ? (
+                  <p className="text-sm text-theme-primary mt-2 font-medium">
+                    You finished every round ({totalRounds}{" "}
+                    {totalRounds === 1 ? "round" : "rounds"}).
+                  </p>
+                ) : null}
+                <p className="text-sm text-theme-secondary mt-2">
+                  The detailed summary is below. When you&apos;re done reading, use End interview to
+                  leave fullscreen and return to this company&apos;s General tab.
+                </p>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto">
+            {report ? (
+              <div className="p-5 sm:p-8 space-y-8 text-sm border-t border-emerald-500/10">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-600/90 dark:text-emerald-400/90 mb-3">
+                    Interview summary
+                  </p>
+                  <p className="text-sm text-theme-secondary">
+                    Overall performance across the completed interview — review this section last,
+                    then end the session.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-end gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-1">
+                      Overall score
+                    </p>
+                    <p className="text-4xl sm:text-5xl font-bold tabular-nums text-emerald-500">
+                      {report.overallScore ?? 0}
+                      <span className="text-xl sm:text-2xl font-semibold text-theme-secondary">
+                        /10
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-2">
+                      Overall strength
+                    </p>
+                    <p className="text-theme-primary leading-relaxed">
+                      {report.overallStrength ||
+                        (report.strengths && report.strengths[0]) ||
+                        "Not enough signal to highlight a primary strength."}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-rose-500/90 mb-2">
+                      Overall weakness
+                    </p>
+                    <p className="text-theme-primary leading-relaxed">
+                      {report.overallWeakness ||
+                        (report.weaknesses && report.weaknesses[0]) ||
+                        "No major weakness called out—review detailed notes below."}
+                    </p>
+                  </div>
+                </div>
+
+                {(report.summaryFeedback || "").trim() ? (
+                  <div className="rounded-xl border border-theme bg-theme-input/80 p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-2">
+                      Feedback
+                    </p>
+                    <p className="text-theme-primary leading-relaxed whitespace-pre-wrap">
+                      {report.summaryFeedback}
+                    </p>
+                  </div>
+                ) : null}
+
+                {(report.companyRoadmap || []).length > 0 ? (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-3">
+                      Roadmap for this company&apos;s interview
+                    </p>
+                    <ol className="list-decimal pl-5 space-y-2 text-theme-secondary">
+                      {(report.companyRoadmap || []).map((step, index) => (
+                        <li key={`roadmap-overlay-${index}`} className="leading-relaxed text-theme-primary">
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
+
+                <div className="grid sm:grid-cols-2 gap-6 pt-2 border-t border-theme">
+                  <div>
+                    <p className="font-semibold text-theme-primary text-sm mb-2">Strengths (detail)</p>
+                    <ul className="list-disc pl-5 text-theme-secondary space-y-1">
+                      {(report.strengths || []).length ? (
+                        (report.strengths || []).map((item, index) => (
+                          <li key={`strength-overlay-${index}`}>{item}</li>
+                        ))
+                      ) : (
+                        <li className="list-none pl-0 text-theme-muted">—</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-theme-primary text-sm mb-2">Weaknesses (detail)</p>
+                    <ul className="list-disc pl-5 text-theme-secondary space-y-1">
+                      {(report.weaknesses || []).length ? (
+                        (report.weaknesses || []).map((item, index) => (
+                          <li key={`weakness-overlay-${index}`}>{item}</li>
+                        ))
+                      ) : (
+                        <li className="list-none pl-0 text-theme-muted">—</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+                {(report.improvementPlan || []).length > 0 ? (
+                  <div>
+                    <p className="font-semibold text-theme-primary text-sm mb-2">Improvement plan</p>
+                    <ul className="list-disc pl-5 text-theme-secondary space-y-1">
+                      {(report.improvementPlan || []).map((item, index) => (
+                        <li key={`plan-overlay-${index}`}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
+                <div
+                  className="h-10 w-10 rounded-full border-2 border-emerald-500/40 border-t-emerald-500 animate-spin"
+                  aria-hidden
+                />
+                <p className="text-sm font-medium text-theme-primary">
+                  Preparing your full interview summary…
+                </p>
+                <p className="text-xs text-theme-secondary max-w-md">
+                  All rounds are finished. Your overall results will appear here in a moment. You can
+                  still use End interview below to exit.
+                </p>
+              </div>
+            )}
+              </div>
+
+              <div className="px-5 py-4 sm:px-8 border-t border-emerald-500/20 bg-theme-card/95 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleEndInterview}
+                  className="w-full px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-semibold shadow-lg shadow-emerald-900/30 transition-colors"
+                >
+                  End interview
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {roundFeedbackView && !interviewCompleted && (
         <div
@@ -1188,9 +1404,15 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
         <button
           onClick={showStartPrompt ? handleStartInterview : resetInterviewState}
-          disabled={loading || (!showStartPrompt && status === "in_progress")}
+          disabled={
+            loading ||
+            (!showStartPrompt && status === "in_progress") ||
+            interviewCompleted
+          }
           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-            loading || (!showStartPrompt && status === "in_progress")
+            loading ||
+            (!showStartPrompt && status === "in_progress") ||
+            interviewCompleted
               ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
               : "bg-theme-accent text-white"
           }`}
@@ -1440,129 +1662,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           >
             {loading ? "Submitting..." : "Submit Answer"}
           </button>
-        </div>
-      )}
-
-      {interviewCompleted && (
-        <div className="mt-5 rounded-2xl border border-emerald-500/35 bg-gradient-to-b from-emerald-950/25 to-theme-card overflow-hidden shadow-lg shadow-emerald-950/10">
-          <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-emerald-500/20 bg-emerald-500/10">
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500/95">
-              Interview complete
-            </p>
-            <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mt-1">
-              Final summary
-              {company?.name ? (
-                <span className="text-theme-secondary font-medium"> — {company.name}</span>
-              ) : null}
-            </h3>
-          </div>
-          {report ? (
-            <div className="p-5 sm:p-8 space-y-8 text-sm">
-              <div className="flex flex-wrap items-end gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-1">
-                    Overall score
-                  </p>
-                  <p className="text-4xl sm:text-5xl font-bold tabular-nums text-emerald-500">
-                    {report.overallScore ?? 0}
-                    <span className="text-xl sm:text-2xl font-semibold text-theme-secondary">
-                      /10
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 sm:p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-2">
-                    Overall strength
-                  </p>
-                  <p className="text-theme-primary leading-relaxed">
-                    {report.overallStrength ||
-                      (report.strengths && report.strengths[0]) ||
-                      "Not enough signal to highlight a primary strength."}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-4 sm:p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-rose-500/90 mb-2">
-                    Overall weakness
-                  </p>
-                  <p className="text-theme-primary leading-relaxed">
-                    {report.overallWeakness ||
-                      (report.weaknesses && report.weaknesses[0]) ||
-                      "No major weakness called out—review detailed notes below."}
-                  </p>
-                </div>
-              </div>
-
-              {(report.summaryFeedback || "").trim() ? (
-                <div className="rounded-xl border border-theme bg-theme-input/80 p-4 sm:p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-2">
-                    Feedback
-                  </p>
-                  <p className="text-theme-primary leading-relaxed whitespace-pre-wrap">
-                    {report.summaryFeedback}
-                  </p>
-                </div>
-              ) : null}
-
-              {(report.companyRoadmap || []).length > 0 ? (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-3">
-                    Roadmap for this company&apos;s interview
-                  </p>
-                  <ol className="list-decimal pl-5 space-y-2 text-theme-secondary">
-                    {(report.companyRoadmap || []).map((step, index) => (
-                      <li key={`roadmap-${index}`} className="leading-relaxed text-theme-primary">
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              ) : null}
-
-              <div className="grid sm:grid-cols-2 gap-6 pt-2 border-t border-theme">
-                <div>
-                  <p className="font-semibold text-theme-primary text-sm mb-2">Strengths (detail)</p>
-                  <ul className="list-disc pl-5 text-theme-secondary space-y-1">
-                    {(report.strengths || []).length ? (
-                      (report.strengths || []).map((item, index) => (
-                        <li key={`strength-${index}`}>{item}</li>
-                      ))
-                    ) : (
-                      <li className="list-none pl-0 text-theme-muted">—</li>
-                    )}
-                  </ul>
-                </div>
-                <div>
-                  <p className="font-semibold text-theme-primary text-sm mb-2">Weaknesses (detail)</p>
-                  <ul className="list-disc pl-5 text-theme-secondary space-y-1">
-                    {(report.weaknesses || []).length ? (
-                      (report.weaknesses || []).map((item, index) => (
-                        <li key={`weakness-${index}`}>{item}</li>
-                      ))
-                    ) : (
-                      <li className="list-none pl-0 text-theme-muted">—</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-              {(report.improvementPlan || []).length > 0 ? (
-                <div>
-                  <p className="font-semibold text-theme-primary text-sm mb-2">Improvement plan</p>
-                  <ul className="list-disc pl-5 text-theme-secondary space-y-1">
-                    {(report.improvementPlan || []).map((item, index) => (
-                      <li key={`plan-${index}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p className="p-6 text-sm text-theme-secondary">
-              Final report is not available.
-            </p>
-          )}
         </div>
       )}
       <div className="mt-8 pt-5 border-t border-theme">

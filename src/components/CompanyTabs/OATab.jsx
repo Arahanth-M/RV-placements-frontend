@@ -453,74 +453,81 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
       if (!sol) return "";
       let processedSol;
       
+      // Extended list of common solution/answer keys
+      const solutionKeys = ["solution", "answer", "ans", "text", "content", "code"];
+      const questionKeys = ["question", "q", "problem"];
+
+      // Helper to extract solution from object
+      const getFromObject = (obj) => {
+        for (const key of solutionKeys) {
+          if (obj[key]) return obj[key];
+        }
+        // If we only have question/problem keys, and nothing else, use JSON.stringify as fallback
+        // but if we have ANY solution key, we should have used it above.
+        // If no solution key but has question key, we should probably return empty or handle it.
+        // Let's try to find any key that is NOT a question key.
+        const otherKeys = Object.keys(obj).filter(k => !questionKeys.includes(k.toLowerCase()));
+        if (otherKeys.length > 0) {
+          return obj[otherKeys[0]];
+        }
+        return JSON.stringify(obj);
+      };
+
+      // Helper to extract solution from string if it contains both
+      const stripQuestionMarkers = (str) => {
+        if (typeof str !== "string") return str;
+        
+        // Common patterns where both question and solution are in the same string
+        // Case-insensitive search for "Solution:", "Answer:", etc.
+        const markers = [
+          /\bsolution\s*[:=-]\s*/i,
+          /\banswer\s*[:=-]\s*/i,
+          /\bans\s*[:=-]\s*/i,
+          /\boutput\s*[:=-]\s*/i,
+          /\bcode\s*[:=-]\s*/i,
+        ];
+
+        for (const marker of markers) {
+          const match = str.match(marker);
+          if (match) {
+            // Take everything AFTER the marker
+            return str.substring(match.index + match[0].length).trim();
+          }
+        }
+        return str;
+      };
+
       // Handle different input formats
       if (typeof sol === "string") {
-        // Try to parse as JSON first (handles cases like ["solution\nhere"])
+        const trimmed = sol.trim();
+        // Try to parse as JSON first
         try {
-          const parsed = JSON.parse(sol);
-          // If it's an array, extract the first element
+          const parsed = JSON.parse(trimmed);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            const firstItem = parsed[0];
-            if (typeof firstItem === "object" && firstItem !== null) {
-              // Try to extract common fields from object
-              processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
-            } else {
-              processedSol = String(firstItem);
-            }
+            const item = parsed[0];
+            processedSol = typeof item === "object" ? getFromObject(item) : String(item);
           } else if (typeof parsed === "object" && parsed !== null) {
-            // Try to extract common fields from object
-            processedSol = parsed.solution || parsed.answer || parsed.text || parsed.content || JSON.stringify(parsed);
+            processedSol = getFromObject(parsed);
           } else {
             processedSol = String(parsed);
           }
         } catch {
-          // Not valid JSON, check if it starts and ends with brackets
-          // (handles cases where it's stored as a string representation of an array)
-          const trimmed = sol.trim();
+          // If it's a string representation of an array like "[...]"
           if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-            // Try one more time to parse after trimming
-            try {
-              const parsed = JSON.parse(trimmed);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                const firstItem = parsed[0];
-                if (typeof firstItem === "object" && firstItem !== null) {
-                  // Try to extract common fields from object
-                  processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
-                } else {
-                  processedSol = String(firstItem);
-                }
-              } else if (typeof parsed === "object" && parsed !== null) {
-                // Try to extract common fields from object
-                processedSol = parsed.solution || parsed.answer || parsed.text || parsed.content || JSON.stringify(parsed);
-              } else {
-                processedSol = String(parsed);
-              }
-            } catch {
-              // If still can't parse, remove outer brackets manually
-              processedSol = trimmed.slice(1, -1);
-            }
+            processedSol = stripQuestionMarkers(trimmed.slice(1, -1));
           } else {
-            // Use as-is
-            processedSol = sol;
+            processedSol = stripQuestionMarkers(sol);
           }
         }
       } else if (Array.isArray(sol) && sol.length > 0) {
-        // If it's already an array, extract the first element
-        const firstItem = sol[0];
-        if (typeof firstItem === "object" && firstItem !== null) {
-          // Try to extract common fields from object
-          processedSol = firstItem.solution || firstItem.answer || firstItem.text || firstItem.content || JSON.stringify(firstItem);
-        } else {
-          processedSol = String(firstItem);
-        }
+        const item = sol[0];
+        processedSol = typeof item === "object" ? getFromObject(item) : String(item);
       } else if (typeof sol === "object" && sol !== null) {
-        // If it's an object, try to extract common fields
-        processedSol = sol.solution || sol.answer || sol.text || sol.content || JSON.stringify(sol);
+        processedSol = getFromObject(sol);
       } else {
         processedSol = String(sol);
       }
       
-      // Convert escape sequences to actual characters (e.g., \n -> newline)
       return unescapeString(processedSol);
     }) || [];
 

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { adminAPI } from "../../utils/api";
 
 function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
-  const [aboutOpen, setAboutOpen] = useState(true);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
   const [rolesDraft, setRolesDraft] = useState(() =>
