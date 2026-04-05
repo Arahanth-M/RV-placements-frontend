@@ -276,8 +276,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   useEffect(() => {
     fetchResumableInterview();
-    fetchPreviewPlan();
-  }, [fetchResumableInterview, fetchPreviewPlan]);
+  }, [fetchResumableInterview]);
 
   useEffect(() => {
     if (!previewPlan) return;
@@ -528,6 +527,11 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
     setPendingQuestionFeedback(null);
+
+    // Lazy-load preview only when user explicitly starts the flow.
+    if (!previewPlan && !previewLoading) {
+      fetchPreviewPlan().catch(() => {});
+    }
 
     try {
       const { data } = await interviewAPI.startInterview({

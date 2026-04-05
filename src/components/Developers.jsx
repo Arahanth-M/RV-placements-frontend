@@ -18,16 +18,6 @@ const developers = [
       website: "",
     },
   },
-  {
-    name: "Darshan Kashyap N",
-    photo: "/developers/darshan.jpg",
-    social: {
-      linkedin: "",
-      github: "",
-      email: "",
-      website: "",
-    },
-  },
 ];
 
 function initialsFromName(name) {

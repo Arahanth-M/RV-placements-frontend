@@ -40,6 +40,45 @@ const companyDetailsPromises = new Map();
 // Cache TTL for company list/details: after this many ms, cached data is treated as stale
 // and refetched from the server. Set to 2 minutes.
 const CACHE_TTL_MS = 2 * 60 * 1000;
+const INTERVIEW_SUMMARY_CACHE_TTL_MS = 30 * 1000;
+const INTERVIEW_DETAIL_CACHE_TTL_MS = 120 * 1000;
+
+const interviewSummaryCache = new Map();
+const interviewDetailCache = new Map();
+const interviewSummaryPromises = new Map();
+const interviewDetailPromises = new Map();
+
+function getInterviewSummaryCacheKey(userId, page, limit) {
+  return `${encodeURIComponent(String(userId || ''))}|${Number(page) || 1}|${Number(limit) || 10}`;
+}
+
+function getFreshCachedEntry(cacheMap, key, ttlMs) {
+  const cached = cacheMap.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.at > ttlMs) {
+    cacheMap.delete(key);
+    return null;
+  }
+  return cached.value;
+}
+
+function setCachedEntry(cacheMap, key, value) {
+  cacheMap.set(key, { value, at: Date.now() });
+}
+
+function clearInterviewSummaryCacheForUser(userId) {
+  const needle = `${encodeURIComponent(String(userId || ''))}|`;
+  for (const key of interviewSummaryCache.keys()) {
+    if (key.startsWith(needle)) {
+      interviewSummaryCache.delete(key);
+    }
+  }
+  for (const key of interviewSummaryPromises.keys()) {
+    if (key.startsWith(needle)) {
+      interviewSummaryPromises.delete(key);
+    }
+  }
+}
 
 export const authAPI = {
   getCurrentUser: () => API.get('/api/auth/current_user'),
@@ -302,22 +341,100 @@ export const leaderboardAPI = {
 export const interviewAPI = {
   previewInterviewPlan: (companyId) =>
     API.get(`/api/interview/preview-plan/${companyId}`),
-  startInterview: ({ userId, companyId }) =>
-    API.post('/api/interview/start-interview', { userId, companyId }),
-  submitAnswer: ({ sessionId, answer }) =>
-    API.post('/api/interview/submit-answer', { sessionId, answer }, { timeout: 30000 }),
-  moveToNextRound: ({ sessionId }) =>
-    API.post('/api/interview/move-to-next-round', { sessionId }),
-  discardInterview: (sessionId) =>
-    API.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`),
+  async startInterview({ userId, companyId }) {
+    const res = await API.post('/api/interview/start-interview', { userId, companyId });
+    clearInterviewSummaryCacheForUser(userId);
+    if (res?.data?.sessionId) {
+      interviewDetailCache.delete(String(res.data.sessionId));
+      interviewDetailPromises.delete(String(res.data.sessionId));
+    }
+    return res;
+  },
+  async submitAnswer({ sessionId, answer }) {
+    const res = await API.post('/api/interview/submit-answer', { sessionId, answer }, { timeout: 30000 });
+    interviewDetailCache.delete(String(sessionId));
+    interviewDetailPromises.delete(String(sessionId));
+    return res;
+  },
+  async moveToNextRound({ sessionId }) {
+    const res = await API.post('/api/interview/move-to-next-round', { sessionId });
+    interviewDetailCache.delete(String(sessionId));
+    interviewDetailPromises.delete(String(sessionId));
+    return res;
+  },
+  async discardInterview(sessionId) {
+    const res = await API.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`);
+    interviewDetailCache.delete(String(sessionId));
+    interviewDetailPromises.delete(String(sessionId));
+    return res;
+  },
   getResumableInterview: ({ userId, companyId }) =>
     API.get('/api/interview/resume-interview', { params: { userId, companyId } }),
   getInterviewStatus: (sessionId) =>
     API.get(`/api/interview/interview-status/${encodeURIComponent(sessionId)}`, {
       timeout: 15000,
     }),
-  getUserInterviewSessions: (userId) =>
-    API.get(`/api/interview/sessions/${encodeURIComponent(userId)}`),
+  async getUserInterviewSessions(userId, options = {}) {
+    const page = Number(options.page) || 1;
+    const limit = Number(options.limit) || 10;
+    const key = getInterviewSummaryCacheKey(userId, page, limit);
+    const cached = getFreshCachedEntry(
+      interviewSummaryCache,
+      key,
+      INTERVIEW_SUMMARY_CACHE_TTL_MS
+    );
+    if (cached) {
+      return { data: cached };
+    }
+
+    if (!interviewSummaryPromises.has(key)) {
+      interviewSummaryPromises.set(
+        key,
+        API.get(`/api/interview/sessions/${encodeURIComponent(userId)}`, {
+          params: { page, limit },
+        })
+          .then((res) => {
+            setCachedEntry(interviewSummaryCache, key, res.data);
+            return res;
+          })
+          .finally(() => {
+            interviewSummaryPromises.delete(key);
+          })
+      );
+    }
+    return interviewSummaryPromises.get(key);
+  },
+  async getInterviewSessionDetail(sessionId) {
+    const key = String(sessionId);
+    const cached = getFreshCachedEntry(
+      interviewDetailCache,
+      key,
+      INTERVIEW_DETAIL_CACHE_TTL_MS
+    );
+    if (cached) {
+      return { data: cached };
+    }
+
+    if (!interviewDetailPromises.has(key)) {
+      interviewDetailPromises.set(
+        key,
+        API.get(`/api/interview/session/${encodeURIComponent(sessionId)}`)
+          .then((res) => {
+            setCachedEntry(interviewDetailCache, key, res.data);
+            return res;
+          })
+          .finally(() => {
+            interviewDetailPromises.delete(key);
+          })
+      );
+    }
+    return interviewDetailPromises.get(key);
+  },
+  invalidateUserInterviewSummaryCache: (userId) => clearInterviewSummaryCacheForUser(userId),
+  invalidateInterviewSessionDetailCache: (sessionId) => {
+    interviewDetailCache.delete(String(sessionId));
+    interviewDetailPromises.delete(String(sessionId));
+  },
   getUserAnalytics: (userId) =>
     API.get(`/api/interview/analytics/${encodeURIComponent(userId)}`),
 };

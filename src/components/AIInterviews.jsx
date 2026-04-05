@@ -33,30 +33,74 @@ function AIInterviews() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("sessions");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
-    const fetchSessions = async () => {
+    const fetchSessions = async (targetPage, append = false) => {
       if (!user?.userId) {
         setSessions([]);
         setLoading(false);
+        setHasMore(false);
         return;
       }
 
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
       try {
-        const { data } = await interviewAPI.getUserInterviewSessions(user.userId);
-        setSessions(Array.isArray(data) ? data : []);
+        const { data } = await interviewAPI.getUserInterviewSessions(user.userId, {
+          page: targetPage,
+          limit: PAGE_SIZE,
+        });
+        const items = Array.isArray(data) ? data : data?.items || [];
+        if (append) {
+          setSessions((prev) => [...prev, ...items]);
+        } else {
+          setSessions(items);
+        }
+        setHasMore(Boolean(data?.pagination?.hasMore));
       } catch (err) {
         console.error("Failed to fetch interview sessions:", err);
         setError("Failed to load interviews. Please try again.");
       } finally {
-        setLoading(false);
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
     };
 
-    fetchSessions();
+    setPage(1);
+    fetchSessions(1, false);
   }, [user?.userId]);
+
+  const handleLoadMore = async () => {
+    if (!user?.userId || loadingMore || !hasMore) return;
+    const nextPage = page + 1;
+    setLoadingMore(true);
+    try {
+      const { data } = await interviewAPI.getUserInterviewSessions(user.userId, {
+        page: nextPage,
+        limit: PAGE_SIZE,
+      });
+      const items = Array.isArray(data) ? data : data?.items || [];
+      setSessions((prev) => [...prev, ...items]);
+      setHasMore(Boolean(data?.pagination?.hasMore));
+      setPage(nextPage);
+    } catch (err) {
+      console.error("Failed to load more interview sessions:", err);
+      setError("Failed to load more interviews. Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const groupedSessions = useMemo(() => {
     const completed = [];
@@ -178,6 +222,22 @@ function AIInterviews() {
                       </div>
                     )}
                   </div>
+                  {hasMore && (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          loadingMore
+                            ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
+                            : "bg-theme-accent text-white hover:opacity-90"
+                        }`}
+                      >
+                        {loadingMore ? "Loading..." : "Load more interviews"}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -189,34 +249,76 @@ function AIInterviews() {
 }
 
 function InterviewSessionCard({ session }) {
-  const roundEntries = getRoundQuestionEntries(session);
+  const [detailSession, setDetailSession] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const [hasRequestedDetail, setHasRequestedDetail] = useState(false);
+
+  const handleToggle = async (event) => {
+    const isOpen = event.currentTarget.open;
+    if (!isOpen || hasRequestedDetail || detailLoading) {
+      return;
+    }
+    setHasRequestedDetail(true);
+    setDetailLoading(true);
+    setDetailError("");
+    try {
+      const { data } = await interviewAPI.getInterviewSessionDetail(session._id);
+      setDetailSession(data || null);
+    } catch (err) {
+      console.error("Failed to fetch interview session detail:", err);
+      setDetailError("Failed to load interview details. Please try again.");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const sessionData = detailSession || session;
+  const roundEntries = getRoundQuestionEntries(sessionData);
   const hasRoundQuestions = roundEntries.length > 0;
-  const hasHistory = Array.isArray(session.history) && session.history.length > 0;
+  const hasHistory = Array.isArray(sessionData.history) && sessionData.history.length > 0;
 
   return (
-    <details className="rounded-lg border border-theme p-3 bg-theme-input">
+    <details
+      className="rounded-lg border border-theme p-3 bg-theme-input"
+      onToggle={handleToggle}
+    >
       <summary className="cursor-pointer text-sm font-semibold text-theme-primary">
-        {session.companyName || "Unknown Company"} -{" "}
-        {session.status === "completed" ? "Completed" : "In Progress"} -{" "}
-        {new Date(session.updatedAt).toLocaleString()}
+        {sessionData.companyName || "Unknown Company"} -{" "}
+        {sessionData.status === "completed" ? "Completed" : "In Progress"} -{" "}
+        {new Date(sessionData.updatedAt).toLocaleString()}
       </summary>
 
       <div className="mt-3 space-y-3 text-sm">
         <p className="text-theme-secondary">
           <span className="font-semibold text-theme-primary">Round:</span>{" "}
-          {session.currentRound || "N/A"} |{" "}
+          {sessionData.currentRound || "N/A"} |{" "}
           <span className="font-semibold text-theme-primary">Difficulty:</span>{" "}
-          {session.difficultyLevel || "N/A"}
+          {sessionData.difficultyLevel || "N/A"}
         </p>
 
-        {Array.isArray(session.roundsPlan) && session.roundsPlan.length > 0 && (
+        {Array.isArray(sessionData.roundsPlan) && sessionData.roundsPlan.length > 0 && (
           <p className="text-theme-secondary">
             <span className="font-semibold text-theme-primary">Rounds Plan:</span>{" "}
-            {session.roundsPlan.join(" -> ")}
+            {sessionData.roundsPlan.join(" -> ")}
           </p>
         )}
 
-        {hasRoundQuestions ? (
+        {detailLoading && (
+          <p className="text-theme-secondary">Loading detailed interview data...</p>
+        )}
+
+        {!detailLoading && detailError && (
+          <p className="text-red-400">{detailError}</p>
+        )}
+
+        {!detailLoading && !detailError && !detailSession && (
+          <p className="text-theme-secondary">
+            Expand to fetch full question-by-question details.
+          </p>
+        )}
+
+        {!detailLoading && !detailError && detailSession && hasRoundQuestions ? (
           <div className="space-y-3">
             {roundEntries.map((roundEntry) => (
               <div
@@ -258,11 +360,11 @@ function InterviewSessionCard({ session }) {
               </div>
             ))}
           </div>
-        ) : hasHistory ? (
+        ) : !detailLoading && !detailError && detailSession && hasHistory ? (
           <div className="space-y-2">
-            {session.history.map((item, idx) => (
+            {sessionData.history.map((item, idx) => (
               <div
-                key={`${session._id}-item-${idx}`}
+                key={`${sessionData._id}-item-${idx}`}
                 className="p-3 rounded-md border border-theme bg-theme-card"
               >
                 <p className="text-theme-primary">
@@ -287,36 +389,40 @@ function InterviewSessionCard({ session }) {
           <p className="text-theme-secondary">No answered questions yet.</p>
         )}
 
-        {session.finalReport && (
+        {detailSession?.finalReport && (
           <div className="p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 space-y-3 text-sm">
             <p className="text-theme-primary font-semibold">Final summary</p>
             <p className="text-theme-secondary">
               <span className="font-semibold text-theme-primary">Score:</span>{" "}
-              {session.finalReport.overallScore ?? 0}/10
+              {detailSession.finalReport.overallScore ?? 0}/10
             </p>
-            {(session.finalReport.overallStrength || session.finalReport.strengths?.[0]) && (
+            {(detailSession.finalReport.overallStrength ||
+              detailSession.finalReport.strengths?.[0]) && (
               <p className="text-theme-secondary">
                 <span className="font-semibold text-theme-primary">Overall strength:</span>{" "}
-                {session.finalReport.overallStrength || session.finalReport.strengths?.[0]}
+                {detailSession.finalReport.overallStrength ||
+                  detailSession.finalReport.strengths?.[0]}
               </p>
             )}
-            {(session.finalReport.overallWeakness || session.finalReport.weaknesses?.[0]) && (
+            {(detailSession.finalReport.overallWeakness ||
+              detailSession.finalReport.weaknesses?.[0]) && (
               <p className="text-theme-secondary">
                 <span className="font-semibold text-theme-primary">Overall weakness:</span>{" "}
-                {session.finalReport.overallWeakness || session.finalReport.weaknesses?.[0]}
+                {detailSession.finalReport.overallWeakness ||
+                  detailSession.finalReport.weaknesses?.[0]}
               </p>
             )}
-            {session.finalReport.summaryFeedback?.trim() ? (
+            {detailSession.finalReport.summaryFeedback?.trim() ? (
               <p className="text-theme-secondary whitespace-pre-wrap">
                 <span className="font-semibold text-theme-primary">Feedback:</span>{" "}
-                {session.finalReport.summaryFeedback}
+                {detailSession.finalReport.summaryFeedback}
               </p>
             ) : null}
-            {(session.finalReport.companyRoadmap || []).length > 0 ? (
+            {(detailSession.finalReport.companyRoadmap || []).length > 0 ? (
               <div>
                 <p className="font-semibold text-theme-primary mb-1">Company interview roadmap</p>
                 <ol className="list-decimal pl-5 text-theme-secondary space-y-1">
-                  {(session.finalReport.companyRoadmap || []).map((step, i) => (
+                  {(detailSession.finalReport.companyRoadmap || []).map((step, i) => (
                     <li key={`fr-road-${i}`}>{step}</li>
                   ))}
                 </ol>
@@ -324,15 +430,15 @@ function InterviewSessionCard({ session }) {
             ) : null}
             <p className="text-theme-secondary">
               <span className="font-semibold text-theme-primary">Strengths (detail):</span>{" "}
-              {(session.finalReport.strengths || []).join("; ") || "N/A"}
+              {(detailSession.finalReport.strengths || []).join("; ") || "N/A"}
             </p>
             <p className="text-theme-secondary">
               <span className="font-semibold text-theme-primary">Weaknesses (detail):</span>{" "}
-              {(session.finalReport.weaknesses || []).join("; ") || "N/A"}
+              {(detailSession.finalReport.weaknesses || []).join("; ") || "N/A"}
             </p>
             <p className="text-theme-secondary">
               <span className="font-semibold text-theme-primary">Improvement plan:</span>{" "}
-              {(session.finalReport.improvementPlan || []).join("; ") || "N/A"}
+              {(detailSession.finalReport.improvementPlan || []).join("; ") || "N/A"}
             </p>
           </div>
         )}
