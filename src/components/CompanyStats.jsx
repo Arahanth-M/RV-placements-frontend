@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
@@ -28,12 +28,10 @@ function CompanyStats() {
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
-  const [cluster, setCluster] = useState("all");
   const [dreamPage, setDreamPage] = useState(1);
   const [openDreamPage, setOpenDreamPage] = useState(1);
   const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
-  const [showClusterFilter, setShowClusterFilter] = useState(false);
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
   const [placementTier, setPlacementTier] = useState(null);
 
@@ -43,7 +41,6 @@ function CompanyStats() {
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const { user, isAdmin } = useAuth();
-  const clusterFilterRef = useRef(null);
 
   // Helper function to get user-specific storage keys
   const getStorageKey = (key) => {
@@ -59,7 +56,6 @@ function CompanyStats() {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
-        'companystats_cluster',
         'companystats_dream_page',
         'companystats_open_dream_page',
         'companystats_internship_only_page',
@@ -80,7 +76,6 @@ function CompanyStats() {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
-        'companystats_cluster',
         'companystats_dream_page',
         'companystats_open_dream_page',
         'companystats_internship_only_page',
@@ -212,7 +207,6 @@ function CompanyStats() {
     if (selectedYear === 2026 && sessionStorage.getItem(getStorageKey('fromCompanyCards')) === 'true') {
       const storedSearch = sessionStorage.getItem(getStorageKey('companystats_search'));
       const storedCategory = sessionStorage.getItem(getStorageKey('companystats_category'));
-      const storedCluster = sessionStorage.getItem(getStorageKey('companystats_cluster'));
       const storedDreamPage = sessionStorage.getItem(getStorageKey('companystats_dream_page'));
       const storedOpenDreamPage = sessionStorage.getItem(getStorageKey('companystats_open_dream_page'));
       const storedInternshipOnlyPage = sessionStorage.getItem(getStorageKey('companystats_internship_only_page'));
@@ -235,7 +229,6 @@ function CompanyStats() {
         if (storedTier === PLACEMENT_TIER_INTERNSHIP_ONLY) cat = "all";
         setCategory(cat);
       }
-      if (storedCluster !== null) setCluster(storedCluster);
       if (storedDreamPage !== null) setDreamPage(parseInt(storedDreamPage, 10) || 1);
       else setDreamPage(fallbackPage);
       if (storedOpenDreamPage !== null) setOpenDreamPage(parseInt(storedOpenDreamPage, 10) || 1);
@@ -257,12 +250,11 @@ function CompanyStats() {
     if (selectedYear === 2026 && user && user.userId) {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
       sessionStorage.setItem(getStorageKey('companystats_category'), category);
-      sessionStorage.setItem(getStorageKey('companystats_cluster'), cluster);
       sessionStorage.setItem(getStorageKey('companystats_dream_page'), String(dreamPage));
       sessionStorage.setItem(getStorageKey('companystats_open_dream_page'), String(openDreamPage));
       sessionStorage.setItem(getStorageKey('companystats_internship_only_page'), String(internshipOnlyPage));
     }
-  }, [selectedYear, search, category, cluster, dreamPage, openDreamPage, internshipOnlyPage, user]);
+  }, [selectedYear, search, category, dreamPage, openDreamPage, internshipOnlyPage, user]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
@@ -323,23 +315,6 @@ function CompanyStats() {
     }
   }, [selectedYear, user]);
 
-  // Close cluster filter dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (clusterFilterRef.current && !clusterFilterRef.current.contains(event.target)) {
-        setShowClusterFilter(false);
-      }
-    };
-
-    if (showClusterFilter) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showClusterFilter]);
-
   // Filter companies (only for 2026)
   const filteredCompanies = companies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
@@ -363,13 +338,6 @@ function CompanyStats() {
       }
       
       return typeLower === category.toLowerCase();
-    })
-    .filter((c) => {
-      if (cluster === "all") return true;
-      // Handle null/undefined and trim whitespace for comparison
-      const companyCluster = c.cluster ? c.cluster.trim() : null;
-      const selectedCluster = cluster.trim();
-      return companyCluster === selectedCluster;
     });
 
   const ctcObjectFromRole = (ctc) => {
@@ -646,7 +614,6 @@ function CompanyStats() {
               setCompanies([]);
               setSearch("");
               setCategory("all");
-              setCluster("all");
               resetListPages();
               setPlacementTier(null);
               setSelectedYear(null);
@@ -807,85 +774,6 @@ function CompanyStats() {
               className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
           />
         </div>
-          {/* Cluster Filter Dropdown */}
-          <div className="relative w-full sm:w-auto" ref={clusterFilterRef}>
-            <button
-              onClick={() => setShowClusterFilter(!showClusterFilter)}
-              className="filter-dropdown w-full sm:w-auto px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm bg-theme-input hover:bg-theme-card-hover focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base text-theme-primary font-medium min-w-[200px] sm:min-w-[250px] flex items-center justify-between"
-            >
-              <span>
-                {cluster === "all" 
-                  ? "All Clusters" 
-                  : cluster === "Computer Science and Engineering"
-                  ? "CSE"
-                  : cluster === "Electronics and Communication"
-                  ? "ECE"
-                  : cluster === "Mechanical Engineering"
-                  ? "ME"
-                  : cluster}
-              </span>
-              <svg
-                className={`w-4 h-4 ml-2 transition-transform ${showClusterFilter ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {showClusterFilter && (
-              <div className="absolute right-0 mt-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-full min-w-[200px] sm:min-w-[250px] z-50">
-                <button
-                  onClick={() => {
-                    setCluster("all");
-                    setShowClusterFilter(false);
-                    resetListPages();
-                  }}
-                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    cluster === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                  }`}
-                >
-                  All Clusters
-                </button>
-                <button
-                  onClick={() => {
-                    setCluster("Computer Science and Engineering");
-                    setShowClusterFilter(false);
-                    resetListPages();
-                  }}
-                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    cluster === "Computer Science and Engineering" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                  }`}
-                >
-                  Computer Science and Engineering
-                </button>
-                <button
-                  onClick={() => {
-                    setCluster("Electronics and Communication");
-                    setShowClusterFilter(false);
-                    resetListPages();
-                  }}
-                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    cluster === "Electronics and Communication" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                  }`}
-                >
-                  Electronics and Communication
-                </button>
-                <button
-                  onClick={() => {
-                    setCluster("Mechanical Engineering");
-                    setShowClusterFilter(false);
-                    resetListPages();
-                  }}
-                  className={`w-full px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    cluster === "Mechanical Engineering" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                  }`}
-                >
-                  Mechanical Engineering
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -902,9 +790,7 @@ function CompanyStats() {
             ))
           ) : (
             <p className="text-theme-muted col-span-full text-center py-8">
-              {cluster !== "all"
-                ? "No companies match this cluster and search."
-                : "No companies match your search or filters."}
+              No companies match your search or filters.
             </p>
           )}
         </div>
