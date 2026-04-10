@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 ## Multi-stage Dockerfile for React (Vite) frontend
 
 # Stage 1: Build stage
@@ -12,8 +13,9 @@ ENV REACT_APP_API_URL=${REACT_APP_API_URL}
 # Copy dependency manifests first for better caching
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (BuildKit cache speeds repeat builds — enable: DOCKER_BUILDKIT=1)
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 
 # Copy the rest of the frontend source code
 COPY . .

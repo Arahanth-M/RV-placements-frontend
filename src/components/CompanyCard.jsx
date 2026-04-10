@@ -306,17 +306,32 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
           <button
             onClick={handleThumbsUp}
             disabled={isUpdating || hasUpvoted || isCheckingStatus}
-            className={`helpful-btn flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-xs font-bold ${
+            className={`helpful-btn ${hasUpvoted ? "helpful-btn--active" : ""} group relative inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all ${
               hasUpvoted
-                ? "bg-green-500 text-white cursor-not-allowed shadow-inner"
+                ? "border-theme bg-theme-card-hover text-theme-secondary cursor-not-allowed opacity-90"
                 : isUpdating || isCheckingStatus
-                ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
-                : "bg-theme-accent hover:brightness-110 text-white shadow-sm"
+                ? "border-theme bg-theme-card-hover text-theme-muted cursor-not-allowed"
+                : "border-theme bg-theme-input text-theme-primary hover:-translate-y-[1px] hover:shadow-md hover:bg-theme-nav"
             }`}
             title={hasUpvoted ? "Already upvoted" : "Mark as helpful"}
+            aria-label={`Helpful votes: ${helpfulCount}`}
           >
-            <FaThumbsUp className={`w-3.5 h-3.5 ${isUpdating ? 'animate-bounce' : ''}`} />
-            <span>{helpfulCount}</span>
+            <span
+              className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-card ${
+                hasUpvoted ? "opacity-80" : ""
+              }`}
+              aria-hidden
+            >
+              <FaThumbsUp className={`w-3.5 h-3.5 ${isUpdating ? "animate-bounce" : ""}`} />
+            </span>
+            <span className="text-theme-secondary">Helpful</span>
+            <span
+              className={`min-w-[28px] rounded-md px-2 py-0.5 text-center text-[11px] font-bold border border-theme bg-theme-card text-theme-primary ${
+                hasUpvoted ? "text-theme-secondary" : ""
+              }`}
+            >
+              {helpfulCount}
+            </span>
           </button>
         </div>
       </div>

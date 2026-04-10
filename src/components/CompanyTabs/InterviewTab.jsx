@@ -90,8 +90,14 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import rvLogo from "../../assets/logo2.png";
 
 function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
+  const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+  const [showAddProcessModal, setShowAddProcessModal] = useState(false);
+  const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
+  const [newInterviewSolution, setNewInterviewSolution] = useState("");
+  const [newInterviewProcess, setNewInterviewProcess] = useState("");
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -424,6 +430,60 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
     }
   };
 
+  const handleSubmitInterviewQuestion = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          companyId: company?._id,
+          type: "interviewQuestions",
+          content: JSON.stringify({
+            question: newInterviewQuestion,
+            solution: newInterviewSolution,
+          }),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to submit interview question");
+      const data = await res.json();
+      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setNewInterviewQuestion("");
+      setNewInterviewSolution("");
+      setShowAddQuestionModal(false);
+    } catch (err) {
+      console.error(err);
+      alert(MESSAGES.SUBMISSION_ERROR);
+    }
+  };
+
+  const handleSubmitInterviewProcess = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          companyId: company?._id,
+          type: "interviewProcess",
+          content: newInterviewProcess,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to submit interview process");
+      const data = await res.json();
+      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setNewInterviewProcess("");
+      setShowAddProcessModal(false);
+    } catch (err) {
+      console.error(err);
+      alert(MESSAGES.SUBMISSION_ERROR);
+    }
+  };
+
   // Normalize interview process - handle both legacy string format and new JSON string format
   let interviewProcess = [];
   if (Array.isArray(company.interviewProcess)) {
@@ -465,8 +525,18 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
     <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       {/* Interview Questions */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex justify-between items-center">
-          Interview Questions
+        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span className="shrink-0">Interview Questions</span>
+          <button
+            type="button"
+            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
+            onClick={() => setShowAddQuestionModal(true)}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Add Interview Question</span>
+          </button>
         </h2>
 
         {interviewQuestions.length > 0 ? (
@@ -577,8 +647,18 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
 
       {/* Interview Process */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex justify-between items-center">
-          Interview Process
+        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <span className="shrink-0">Interview Process</span>
+          <button
+            type="button"
+            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
+            onClick={() => setShowAddProcessModal(true)}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Add Interview Process</span>
+          </button>
         </h2>
 
         {interviewProcess.length > 0 ? (
@@ -635,6 +715,122 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
           <p className="text-slate-400">No interview process info yet.</p>
         )}
       </div>
+
+      {/* Add Interview Question Modal */}
+      {showAddQuestionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+            <div className="border-b border-theme bg-theme-card px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <img
+                    src={rvLogo}
+                    alt="RV College logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-theme-primary">Add Interview Question</h3>
+                  <p className="mt-1 text-sm text-theme-secondary">Add a high-quality interview prompt with optional answer guidance.</p>
+                </div>
+              </div>
+            </div>
+            <form onSubmit={handleSubmitInterviewQuestion} className="space-y-5 px-6 py-5">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-theme-primary">Question</label>
+                <textarea
+                  value={newInterviewQuestion}
+                  onChange={(e) => setNewInterviewQuestion(e.target.value)}
+                  placeholder="Enter the interview question"
+                  className="w-full min-h-[130px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-theme-primary">Suggested answer (optional)</label>
+                <textarea
+                  value={newInterviewSolution}
+                  onChange={(e) => setNewInterviewSolution(e.target.value)}
+                  placeholder="Add key points, approach, or sample answer"
+                  className="w-full min-h-[130px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
+                  onClick={() => {
+                    setShowAddQuestionModal(false);
+                    setNewInterviewQuestion("");
+                    setNewInterviewSolution("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                >
+                  Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Interview Process Modal */}
+      {showAddProcessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+            <div className="border-b border-theme bg-theme-card px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <img
+                    src={rvLogo}
+                    alt="RV College logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-theme-primary">Add Interview Process</h3>
+                  <p className="mt-1 text-sm text-theme-secondary">Describe the rounds, focus areas, and expectations in a structured way.</p>
+                </div>
+              </div>
+            </div>
+            <form onSubmit={handleSubmitInterviewProcess} className="space-y-5 px-6 py-5">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-theme-primary">Process details</label>
+                <textarea
+                  value={newInterviewProcess}
+                  onChange={(e) => setNewInterviewProcess(e.target.value)}
+                  placeholder="Example: Round 1 - Online Assessment ... Round 2 - Technical Interview ..."
+                  className="w-full min-h-[170px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                  required
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
+                  onClick={() => {
+                    setShowAddProcessModal(false);
+                    setNewInterviewProcess("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                >
+                  Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Edit Interview Question modal (admin) */}
       {editIQIndex !== null && (

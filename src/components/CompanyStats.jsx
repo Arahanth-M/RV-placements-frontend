@@ -10,6 +10,7 @@ import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
 import {
   PLACEMENT_TIER_DREAM,
+  PLACEMENT_TIER_INTERNSHIP_ONLY,
   PLACEMENT_TIER_OPEN_DREAM,
   PATH_COMPANY_CATEGORY,
   PATH_COMPANY_STATS,
@@ -30,6 +31,7 @@ function CompanyStats() {
   const [cluster, setCluster] = useState("all");
   const [dreamPage, setDreamPage] = useState(1);
   const [openDreamPage, setOpenDreamPage] = useState(1);
+  const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   const [showClusterFilter, setShowClusterFilter] = useState(false);
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
@@ -60,6 +62,7 @@ function CompanyStats() {
         'companystats_cluster',
         'companystats_dream_page',
         'companystats_open_dream_page',
+        'companystats_internship_only_page',
         'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
@@ -80,6 +83,7 @@ function CompanyStats() {
         'companystats_cluster',
         'companystats_dream_page',
         'companystats_open_dream_page',
+        'companystats_internship_only_page',
         'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
@@ -179,11 +183,20 @@ function CompanyStats() {
     if (selectedYear !== 2026) setPlacementTier(null);
   }, [selectedYear]);
 
+  // Internship-only list is pre-filtered; hide type filter and avoid stale category (e.g. FTE) emptying the grid.
+  useEffect(() => {
+    if (placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY) return;
+    setCategory("all");
+    setShowFilter(false);
+  }, [placementTier]);
+
   useEffect(() => {
     const key = getStorageKey("companystats_placement_tier");
     if (selectedYear === 2026) {
       const v =
-        placementTier === PLACEMENT_TIER_DREAM || placementTier === PLACEMENT_TIER_OPEN_DREAM
+        placementTier === PLACEMENT_TIER_DREAM ||
+        placementTier === PLACEMENT_TIER_OPEN_DREAM ||
+        placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY
           ? placementTier
           : "";
       sessionStorage.setItem(key, v);
@@ -202,20 +215,35 @@ function CompanyStats() {
       const storedCluster = sessionStorage.getItem(getStorageKey('companystats_cluster'));
       const storedDreamPage = sessionStorage.getItem(getStorageKey('companystats_dream_page'));
       const storedOpenDreamPage = sessionStorage.getItem(getStorageKey('companystats_open_dream_page'));
+      const storedInternshipOnlyPage = sessionStorage.getItem(getStorageKey('companystats_internship_only_page'));
       const legacyPage = sessionStorage.getItem(getStorageKey('companystats_page'));
       const parsedLegacy = legacyPage != null ? parseInt(legacyPage, 10) : NaN;
       const fallbackPage = Number.isFinite(parsedLegacy) && parsedLegacy > 0 ? parsedLegacy : 1;
 
+      const storedTierRaw = sessionStorage.getItem(getStorageKey("companystats_placement_tier"));
+      const storedTier =
+        storedTierRaw === PLACEMENT_TIER_DREAM ||
+        storedTierRaw === PLACEMENT_TIER_OPEN_DREAM ||
+        storedTierRaw === PLACEMENT_TIER_INTERNSHIP_ONLY
+          ? storedTierRaw
+          : null;
+
       if (storedSearch !== null) setSearch(storedSearch);
-      if (storedCategory !== null) setCategory(storedCategory);
+      if (storedCategory !== null) {
+        let cat =
+          storedCategory === "only internship(6 months)" ? "all" : storedCategory;
+        if (storedTier === PLACEMENT_TIER_INTERNSHIP_ONLY) cat = "all";
+        setCategory(cat);
+      }
       if (storedCluster !== null) setCluster(storedCluster);
       if (storedDreamPage !== null) setDreamPage(parseInt(storedDreamPage, 10) || 1);
       else setDreamPage(fallbackPage);
       if (storedOpenDreamPage !== null) setOpenDreamPage(parseInt(storedOpenDreamPage, 10) || 1);
       else setOpenDreamPage(fallbackPage);
+      if (storedInternshipOnlyPage !== null) setInternshipOnlyPage(parseInt(storedInternshipOnlyPage, 10) || 1);
+      else setInternshipOnlyPage(fallbackPage);
 
-      const storedTier = sessionStorage.getItem(getStorageKey("companystats_placement_tier"));
-      if (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM) {
+      if (storedTier) {
         setPlacementTier(storedTier);
       }
       
@@ -232,8 +260,9 @@ function CompanyStats() {
       sessionStorage.setItem(getStorageKey('companystats_cluster'), cluster);
       sessionStorage.setItem(getStorageKey('companystats_dream_page'), String(dreamPage));
       sessionStorage.setItem(getStorageKey('companystats_open_dream_page'), String(openDreamPage));
+      sessionStorage.setItem(getStorageKey('companystats_internship_only_page'), String(internshipOnlyPage));
     }
-  }, [selectedYear, search, category, cluster, dreamPage, openDreamPage, user]);
+  }, [selectedYear, search, category, cluster, dreamPage, openDreamPage, internshipOnlyPage, user]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
@@ -343,8 +372,66 @@ function CompanyStats() {
       return companyCluster === selectedCluster;
     });
 
-  const dreamCompanies = filteredCompanies.filter((c) => c.category !== "open dream");
-  const openDreamCompanies = filteredCompanies.filter((c) => c.category === "open dream");
+  const ctcObjectFromRole = (ctc) => {
+    if (ctc == null) return null;
+    if (typeof ctc !== "object" || Array.isArray(ctc)) return null;
+    if (typeof ctc.get === "function" && typeof ctc.entries === "function") {
+      try {
+        return Object.fromEntries(ctc);
+      } catch {
+        return null;
+      }
+    }
+    return ctc;
+  };
+
+  const isCtcValueVacuous = (value) => {
+    if (value === null || value === undefined) return true;
+    if (typeof value === "string") {
+      const normalized = value.trim();
+      return normalized === "" || normalized === "0";
+    }
+    if (typeof value === "number") return !Number.isFinite(value) || value === 0;
+    return false;
+  };
+
+  /** True when there are no CTC keys or every value is vacuous (no usable package text/amount). */
+  const isCtcObjectEmpty = (ctc) => {
+    const obj = ctcObjectFromRole(ctc);
+    if (!obj) return true;
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return true;
+    return keys.every((k) => isCtcValueVacuous(obj[k]));
+  };
+
+  /** Any non-empty string in any role's ctc → belongs with Dream / Open dream, not internship-only. */
+  const hasNonEmptyCtcStringInCompany = (company) => {
+    if (!Array.isArray(company?.roles)) return false;
+    for (const role of company.roles) {
+      const obj = ctcObjectFromRole(role?.ctc);
+      if (!obj) continue;
+      for (const v of Object.values(obj)) {
+        if (typeof v !== "string") continue;
+        const normalized = v.trim();
+        if (normalized !== "" && normalized !== "0") return true;
+      }
+    }
+    return false;
+  };
+
+  const isInternshipOnlyCompany = (company) => {
+    if (!Array.isArray(company?.roles) || company.roles.length === 0) return false;
+    if (hasNonEmptyCtcStringInCompany(company)) return false;
+    if (!company.roles.every((role) => isCtcObjectEmpty(role?.ctc))) return false;
+    return company.roles.some((role) => Number(role?.internshipStipend) > 0);
+  };
+  const internshipOnlyCompanies = filteredCompanies.filter(isInternshipOnlyCompany);
+  const dreamCompanies = filteredCompanies.filter(
+    (company) => company.category !== "open dream" && !isInternshipOnlyCompany(company)
+  );
+  const openDreamCompanies = filteredCompanies.filter(
+    (company) => company.category === "open dream" && !isInternshipOnlyCompany(company)
+  );
 
   const dreamSlice = dreamCompanies.slice(
     (dreamPage - 1) * companiesPerPage,
@@ -353,6 +440,10 @@ function CompanyStats() {
   const openDreamSlice = openDreamCompanies.slice(
     (openDreamPage - 1) * companiesPerPage,
     openDreamPage * companiesPerPage
+  );
+  const internshipOnlySlice = internshipOnlyCompanies.slice(
+    (internshipOnlyPage - 1) * companiesPerPage,
+    internshipOnlyPage * companiesPerPage
   );
 
   const renderTierPagination = (totalItems, page, setPage) => {
@@ -415,6 +506,27 @@ function CompanyStats() {
   const resetListPages = () => {
     setDreamPage(1);
     setOpenDreamPage(1);
+    setInternshipOnlyPage(1);
+  };
+
+  const yearStatsHubBullets = {
+    2024: [
+      "Year stats table with placement outcomes.",
+      "Scan companies and packages at a glance.",
+      "Sort / browse rows for quick comparison.",
+    ],
+    2025: [
+      "Year stats table with placement outcomes.",
+      "Same layout as 2024 for easy comparison.",
+      "Sort / browse rows for quick comparison.",
+    ],
+    2026: [
+      "OA questions and interview Q&A with solutions.",
+      "Company-wise AI mock interviews.",
+      "Past coding questions per company, with intuition.",
+      "Must-do topics tailored per company.",
+      "CTC split by role—and more in each profile.",
+    ],
   };
 
   // Year selection view (hub only, not ?tier= and not /category)
@@ -429,10 +541,11 @@ function CompanyStats() {
           {/* Year Selection Cards */}
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-theme-primary mb-4">Select Year</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 min-h-[calc(100vh-12rem)] items-stretch">
             {[2024, 2025, 2026].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
               const isDisabled = requiresAuth && !user;
+              const bullets = yearStatsHubBullets[year] || [];
               
               return (
                 <button
@@ -450,13 +563,13 @@ function CompanyStats() {
                     setSelectedYear(year);
                   }}
                   disabled={isDisabled}
-                  className={`rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card ${
+                  className={`company-card rounded-xl shadow-lg p-6 sm:p-8 border-2 bg-theme-card flex flex-col h-full min-h-[22rem] transform-gpu transition-[transform,box-shadow,border-color] duration-500 ease-out motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 ${
                     isDisabled
                       ? "opacity-50 cursor-not-allowed border-theme"
-                      : "hover:shadow-2xl hover:scale-105 border-theme hover:border-theme-accent"
+                      : "border-theme hover:-translate-y-2 hover:scale-[1.03] hover:shadow-2xl hover:border-theme-accent"
                   }`}
                 >
-                  <div className="flex flex-col items-center text-center">
+                  <div className="flex flex-col items-center text-center flex-1">
                     <div className={`rounded-full p-4 sm:p-5 mb-4 ${
                       isDisabled ? "bg-gray-700" : "bg-blue-900"
                     }`}>
@@ -467,12 +580,17 @@ function CompanyStats() {
                     <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-theme-primary mb-2">
                       {year} Stats
                     </h2>
-                    <p className="text-theme-secondary text-sm sm:text-base">
-                      {year === 2026 ? "View Company Cards" : "View Statistics Table"}
+                    <p className="text-theme-secondary text-sm sm:text-base mb-3">
+                      {year === 2026 ? "View company cards" : "View statistics table"}
                     </p>
+                    <ul className="text-left text-xs sm:text-sm text-theme-secondary space-y-1.5 list-disc pl-4 w-full max-w-sm mx-auto mt-auto">
+                      {bullets.map((line, i) => (
+                        <li key={`${year}-${i}`}>{line}</li>
+                      ))}
+                    </ul>
                     {isDisabled && (
-                      <p className="text-red-500 text-xs mt-2 font-medium">
-                        Login Required
+                      <p className="text-red-500 text-xs mt-3 font-medium">
+                        Login required
                       </p>
                     )}
                   </div>
@@ -517,6 +635,7 @@ function CompanyStats() {
   ) {
     const dreamLogoPreview = dreamCompanies.slice(0, 5);
     const openDreamLogoPreview = openDreamCompanies.slice(0, 5);
+    const internshipOnlyLogoPreview = internshipOnlyCompanies.slice(0, 5);
 
     return (
       <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
@@ -541,14 +660,14 @@ function CompanyStats() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
             <p className="text-theme-secondary text-sm sm:text-base max-w-2xl">
-              Choose Dream or Open dream to browse company cards for 2026.
+              Choose Dream, Open dream, or Internship only to browse company cards for 2026.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             <button
               type="button"
               onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_DREAM))}
-              className="rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              className="company-card rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex flex-col h-full">
 
@@ -571,7 +690,7 @@ function CompanyStats() {
             <button
               type="button"
               onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_OPEN_DREAM))}
-              className="rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              className="company-card rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex flex-col h-full">
 
@@ -591,13 +710,36 @@ function CompanyStats() {
                 </div>
               </div>
             </button>
+            <button
+              type="button"
+              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_INTERNSHIP_ONLY))}
+              className="company-card rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex flex-col h-full">
+
+                <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mb-3 flex-shrink-0">
+                  Internship only companies
+                </h3>
+                <div className="flex-1 flex items-center justify-center mb-4 min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={internshipOnlyLogoPreview}
+                    gridSize={5}
+                    interval={3000}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{internshipOnlyCompanies.length} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Company cards list: /companystats?tier=dream|open_dream
+  // Company cards list: /companystats?tier=dream|open_dream|internship_only
   if (
     !(
       selectedYear === 2026 &&
@@ -614,13 +756,29 @@ function CompanyStats() {
   }
 
   const tierListSlice =
-    placementTier === PLACEMENT_TIER_DREAM ? dreamSlice : openDreamSlice;
+    placementTier === PLACEMENT_TIER_DREAM
+      ? dreamSlice
+      : placementTier === PLACEMENT_TIER_OPEN_DREAM
+        ? openDreamSlice
+        : internshipOnlySlice;
   const tierListPool =
-    placementTier === PLACEMENT_TIER_DREAM ? dreamCompanies : openDreamCompanies;
+    placementTier === PLACEMENT_TIER_DREAM
+      ? dreamCompanies
+      : placementTier === PLACEMENT_TIER_OPEN_DREAM
+        ? openDreamCompanies
+        : internshipOnlyCompanies;
   const tierListPage =
-    placementTier === PLACEMENT_TIER_DREAM ? dreamPage : openDreamPage;
+    placementTier === PLACEMENT_TIER_DREAM
+      ? dreamPage
+      : placementTier === PLACEMENT_TIER_OPEN_DREAM
+        ? openDreamPage
+        : internshipOnlyPage;
   const setTierListPage =
-    placementTier === PLACEMENT_TIER_DREAM ? setDreamPage : setOpenDreamPage;
+    placementTier === PLACEMENT_TIER_DREAM
+      ? setDreamPage
+      : placementTier === PLACEMENT_TIER_OPEN_DREAM
+        ? setOpenDreamPage
+        : setInternshipOnlyPage;
 
   return (
     <div className="page-container p-4 sm:p-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
@@ -753,92 +911,82 @@ function CompanyStats() {
         {renderTierPagination(tierListPool.length, tierListPage, setTierListPage)}
       </section>
 
-      <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
-        <button
-          onClick={() => setShowFilter((prev) => !prev)}
-          className="fab filter-fab bg-theme-accent p-3 sm:p-4 rounded-full shadow-lg transition duration-200"
-          aria-label="Filter"
-        >
-          <FaFilter size={18} className="sm:w-5 sm:h-5" />
-        </button>
+      {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY && (
+        <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
+          <button
+            onClick={() => setShowFilter((prev) => !prev)}
+            className="fab filter-fab bg-theme-accent p-3 sm:p-4 rounded-full shadow-lg transition duration-200"
+            aria-label="Filter"
+          >
+            <FaFilter size={18} className="sm:w-5 sm:h-5" />
+          </button>
 
-        {showFilter && (
-          <div className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0">
-            <button
-              onClick={() => {
-                setCategory("all");
-                setShowFilter(false);
-                resetListPages();
-              }}
-              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                category === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => {
-                setCategory("fte");
-                setShowFilter(false);
-                resetListPages();
-              }}
-              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                category === "fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
-              }`}
-            >
-              FTE
-            </button>
-            <button
-              onClick={() => {
-                setCategory("internship + fte");
-                setShowFilter(false);
-                resetListPages();
-              }}
-              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                category === "internship + fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
-              }`}
-            >
-              Internship + FTE
-            </button>
-            <button
-              onClick={() => {
-                setCategory("only internship(6 months)");
-                setShowFilter(false);
-                resetListPages();
-              }}
-              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                category === "only internship(6 months)" ? "font-semibold nav-active-theme text-theme-primary" : ""
-              }`}
-            >
-              Only Internship
-            </button>
-            <button
-              onClick={() => {
-                setCategory("ppo");
-                setShowFilter(false);
-                resetListPages();
-              }}
-              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                category === "ppo" ? "font-semibold nav-active-theme text-theme-primary" : ""
-              }`}
-            >
-              PPO
-            </button>
-            <button
-              onClick={() => {
-                setCategory("others");
-                setShowFilter(false);
-                resetListPages();
-              }}
-              className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                category === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
-              }`}
-            >
-              Others
-            </button>
-          </div>
-        )}
-      </div>
+          {showFilter && (
+            <div className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0">
+              <button
+                onClick={() => {
+                  setCategory("all");
+                  setShowFilter(false);
+                  resetListPages();
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  category === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => {
+                  setCategory("fte");
+                  setShowFilter(false);
+                  resetListPages();
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  category === "fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                FTE
+              </button>
+              <button
+                onClick={() => {
+                  setCategory("internship + fte");
+                  setShowFilter(false);
+                  resetListPages();
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  category === "internship + fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                Internship + FTE
+              </button>
+              <button
+                onClick={() => {
+                  setCategory("ppo");
+                  setShowFilter(false);
+                  resetListPages();
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  category === "ppo" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                PPO
+              </button>
+              <button
+                onClick={() => {
+                  setCategory("others");
+                  setShowFilter(false);
+                  resetListPages();
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  category === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                Others
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

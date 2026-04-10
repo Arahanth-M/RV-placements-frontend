@@ -5,7 +5,7 @@ function Footer() {
   return (
     <footer className="bg-theme-sidebar border-t border-theme-sidebar text-theme-secondary py-8 mt-6">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Company Info */}
           <div>
             <h3 className="text-lg font-semibold text-theme-primary mb-4">lastminuteplacementprep</h3>
@@ -35,40 +35,13 @@ function Footer() {
                 </Link>
               </li>
               <li>
-                <Link to="/developers" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
+                <Link to="/team" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
                   Our Developers
                 </Link>
               </li>
               <li>
                 <Link to="/premium" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
                   Premium
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal Pages */}
-          <div>
-            <h3 className="text-lg font-semibold text-theme-primary mb-4">Legal</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/privacy" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/terms" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
-                  Terms & Conditions
-                </Link>
-              </li>
-              <li>
-                <Link to="/shipping" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
-                  Shipping Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/cancellation" className="text-sm text-theme-secondary hover:text-theme-accent transition-colors">
-                  Cancellation & Refund
                 </Link>
               </li>
             </ul>

@@ -135,11 +135,13 @@ function DeveloperProfileCard({ developer }) {
     <article className="flex h-[min(520px,calc(100svh-14rem))] sm:h-[min(560px,calc(100svh-13rem))] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 transition-shadow hover:shadow-xl mx-auto">
       <DevCardHero name={developer.name} photo={developer.photo} />
 
-      <footer className="flex min-h-[4.25rem] shrink-0 items-center justify-between gap-3 bg-white px-4 py-3 sm:min-h-[4.5rem] sm:px-5">
-        <h2 className="truncate text-base font-semibold tracking-tight text-neutral-900 sm:text-lg">
+      <footer className="flex min-h-[4.25rem] shrink-0 flex-col items-start gap-2 bg-white px-4 py-3 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+        <h2 className="w-full text-base font-semibold tracking-tight text-neutral-900 sm:w-auto sm:text-lg">
           {developer.name}
         </h2>
-        <DevSocialRow social={social} />
+        <div className="w-full sm:w-auto">
+          <DevSocialRow social={social} />
+        </div>
       </footer>
     </article>
   );

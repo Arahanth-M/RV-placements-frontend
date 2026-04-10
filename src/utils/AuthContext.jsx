@@ -302,7 +302,8 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user, checkSessionExpiry]);
 
-  const refreshUser = async () => {
+  const refreshUser = async (options = {}) => {
+    const force = options?.force === true;
     setLoading(true);
     try {
       // If offline, reuse last-known user rather than calling API
@@ -328,7 +329,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Check if session has expired before refreshing
-      if (isSessionExpired() && localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
+      if (!force && isSessionExpired() && localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
         console.log('Session expired. Logging out...');
         clearLoginTimestamp();
         setUser(null);
@@ -342,7 +343,7 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data);
         // Store login timestamp only if it doesn't exist (fresh login)
         // This prevents resetting the timer on manual refreshes
-        if (!localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
+        if (force || !localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
           storeLoginTimestamp();
         }
         // Check admin status

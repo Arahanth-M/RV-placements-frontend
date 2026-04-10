@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { studentAPI } from '../utils/api';
+
+const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -10,15 +12,26 @@ const AuthCallback = () => {
   const [userData, setUserData] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const handledRef = useRef(false);
 
   useEffect(() => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+
     const handleCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       
       if (urlParams.get('login') === 'success' || urlParams.get('signup') === 'success') {
         try {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const fetchedUserData = await refreshUser();
+          // Cookie/JWT propagation can be slightly delayed after OAuth redirect.
+          // Retry briefly before treating auth as failed.
+          let fetchedUserData = null;
+          const maxAttempts = 5;
+          for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            fetchedUserData = await refreshUser({ force: true });
+            if (fetchedUserData) break;
+            await new Promise((resolve) => setTimeout(resolve, 350));
+          }
           
           if (fetchedUserData) {
             const signupFlag = urlParams.get('signup') === 'success';
@@ -40,12 +53,12 @@ const AuthCallback = () => {
             await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag);
           } else {
             console.error('No user data received after authentication');
-            navigate('/login', { replace: true });
+            navigate('/', { replace: true });
             setIsProcessing(false);
           }
         } catch (err) {
           console.error("Failed to fetch user after authentication", err);
-          navigate('/login', { replace: true });
+          navigate('/', { replace: true });
           setIsProcessing(false);
         }
       } else if (urlParams.get('login') === 'failed') {
@@ -66,7 +79,7 @@ const AuthCallback = () => {
         setIsProcessing(false);
       } else {
         console.log('Authentication callback invalid');
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
         setIsProcessing(false);
       }
     };
@@ -106,9 +119,15 @@ const AuthCallback = () => {
 
   const handleLoginComplete = (user, signup, admin) => {
     if (admin) {
-      navigate('/admin/dashboard', { replace: true });
+      sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
     } else {
-      navigate('/', { replace: true });
+      sessionStorage.setItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY, '1');
+    }
+
+    if (admin) {
+      window.location.replace('/admin/dashboard');
+    } else {
+      window.location.replace('/');
     }
     setIsProcessing(false);
   };

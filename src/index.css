@@ -255,27 +255,18 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Helpful (thumbs up) button - dark mode: green when upvoted */
-[data-theme="dark"] .company-card .helpful-btn--active,
-[data-theme="dark"] .company-card .helpful-btn.helpful-btn--active {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  background: #32cd32 !important;
-  color: white !important;
-  font-weight: 500;
-  font-size: 14px;
+/* Helpful (thumbs up) — dark mode: neutral surfaces only (no accent green) */
+[data-theme="dark"] .company-card .helpful-btn {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
 }
 
-[data-theme="dark"] .company-card .helpful-btn:not(.helpful-btn--active) {
-  background: var(--accent) !important;
-  color: white !important;
-  padding: 6px 12px;
-  border-radius: 10px;
-  font-weight: 500;
-  font-size: 14px;
+[data-theme="dark"] .company-card .helpful-btn.helpful-btn--active,
+[data-theme="dark"] .company-card .helpful-btn--active {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border) !important;
 }
 
 /* Stats button on card - dark mode */
@@ -1130,6 +1121,21 @@ html, body, #root {
   font-size: 0.8125rem;
 }
 
+@media (max-width: 639px) {
+  .ai-interview-explore-scope .ai-interview-explore-btn {
+    gap: 0.375rem;
+    padding: 0.5rem 0.8rem;
+    padding-left: 12px;
+    max-width: min(92vw, 11.25rem);
+    font-size: 0.75rem;
+  }
+
+  .ai-interview-explore-scope .ai-interview-explore-btn__icon-wrapper {
+    width: 20px;
+    height: 20px;
+  }
+}
+
 @media (min-width: 640px) {
   .ai-interview-explore-scope .ai-interview-explore-btn {
     font-size: 0.875rem;
@@ -1170,5 +1176,57 @@ html, body, #root {
 .ai-interview-explore-scope .ai-interview-explore-btn:hover .ai-interview-explore-btn__icon-svg--copy {
   transition: transform 0.3s ease-in-out 0.1s;
   transform: translate(0);
+}
+
+/* Global smooth hover transitions for card-like surfaces across routes */
+:where(
+  .company-card,
+  .bg-theme-card[class*="rounded"][class*="shadow"],
+  .content-cards-page-theme [class*="rounded"][class*="shadow"],
+  .contact-page-theme [class*="rounded"][class*="shadow"],
+  .admin-dashboard-theme [class*="rounded"][class*="shadow"],
+  .events-page-theme [class*="rounded"][class*="shadow"]
+) {
+  transition:
+    transform 240ms ease,
+    box-shadow 240ms ease,
+    border-color 240ms ease,
+    background-color 240ms ease;
+}
+
+:where(
+  .company-card,
+  .bg-theme-card[class*="rounded"][class*="shadow"],
+  .content-cards-page-theme [class*="rounded"][class*="shadow"],
+  .contact-page-theme [class*="rounded"][class*="shadow"],
+  .admin-dashboard-theme [class*="rounded"][class*="shadow"],
+  .events-page-theme [class*="rounded"][class*="shadow"]
+):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(
+    .company-card,
+    .bg-theme-card[class*="rounded"][class*="shadow"],
+    .content-cards-page-theme [class*="rounded"][class*="shadow"],
+    .contact-page-theme [class*="rounded"][class*="shadow"],
+    .admin-dashboard-theme [class*="rounded"][class*="shadow"],
+    .events-page-theme [class*="rounded"][class*="shadow"]
+  ) {
+    transition: none;
+  }
+
+  :where(
+    .company-card,
+    .bg-theme-card[class*="rounded"][class*="shadow"],
+    .content-cards-page-theme [class*="rounded"][class*="shadow"],
+    .contact-page-theme [class*="rounded"][class*="shadow"],
+    .admin-dashboard-theme [class*="rounded"][class*="shadow"],
+    .events-page-theme [class*="rounded"][class*="shadow"]
+  ):hover {
+    transform: none;
+  }
 }
   

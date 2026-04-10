@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../utils/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const { login, signup } = useAuth();
+  const { login, signup, user, isAdmin, refreshUser } = useAuth();
   const [showOptions, setShowOptions] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const handledOAuthQueryRef = useRef(false);
   const isAdminRoute = location.pathname.includes('/admin');
   
   const handleLogin = () => {
@@ -16,6 +18,40 @@ const Login = () => {
     // Signup always uses regular flow, but we can add admin signup later if needed
     signup();
   };
+
+  useEffect(() => {
+    if (user) {
+      navigate(isAdmin ? '/admin/dashboard' : '/', { replace: true });
+    }
+  }, [user, isAdmin, navigate]);
+
+  useEffect(() => {
+    if (handledOAuthQueryRef.current) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess =
+      urlParams.get('login') === 'success' || urlParams.get('signup') === 'success';
+    if (!oauthSuccess) return;
+
+    handledOAuthQueryRef.current = true;
+
+    const finalizeOAuthOnLoginPage = async () => {
+      let refreshedUser = null;
+      const maxAttempts = 5;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        refreshedUser = await refreshUser({ force: true });
+        if (refreshedUser) break;
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+      if (refreshedUser) {
+        const adminFlag = urlParams.get('admin') === 'true';
+        window.location.replace(adminFlag ? '/admin/dashboard' : '/');
+      }
+    };
+
+    finalizeOAuthOnLoginPage().catch((err) => {
+      console.error('OAuth completion from /login failed:', err);
+    });
+  }, [refreshUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-theme-app">

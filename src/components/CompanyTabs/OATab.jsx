@@ -273,6 +273,7 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import rvLogo from "../../assets/logo2.png";
 
 function OATab({ company, isAdmin, onCompanyUpdate }) {
   const [showModal, setShowModal] = useState(false);
@@ -705,34 +706,54 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
 
       {/* Modal to add new question */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <h3 className="text-lg font-semibold mb-4 text-indigo-400">Add Online Assessment</h3>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <textarea
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Enter question"
-                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required
-              />
-              <textarea
-                value={solution}
-                onChange={(e) => setSolution(e.target.value)}
-                placeholder="Enter solution (optional)"
-                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+            <div className="border-b border-theme bg-theme-card px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <img
+                    src={rvLogo}
+                    alt="RV College logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-theme-primary">Add Online Assessment Question</h3>
+                  <p className="mt-1 text-sm text-theme-secondary">Submit a clear OA question with an optional solution.</p>
+                </div>
+              </div>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-theme-primary">Question</label>
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Enter the complete question statement"
+                  className="w-full min-h-[130px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-theme-primary">Solution (optional)</label>
+                <textarea
+                  value={solution}
+                  onChange={(e) => setSolution(e.target.value)}
+                  placeholder="Add explanation, approach, or sample code"
+                  className="w-full min-h-[130px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-1">
                 <button
                   type="button"
-                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
+                  className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
                   onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                 >
                   Submit
                 </button>

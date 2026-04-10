@@ -308,13 +308,6 @@ export const yearStatsAPI = {
   },
 };
 
-export const commentAPI = {
-  getComments: (companyId, page = 1, limit = 20) => 
-    API.get(`/api/companies/${companyId}/comments`, { params: { page, limit } }),
-  createComment: (companyId, comment) => API.post(`/api/companies/${companyId}/comments`, { comment }),
-  deleteComment: (commentId) => API.delete(`/api/comments/${commentId}`),
-};
-
 export const notificationAPI = {
   getNotifications: () => API.get('/api/notifications'),
   getUnreadCount: () => API.get('/api/notifications/unread/count'),

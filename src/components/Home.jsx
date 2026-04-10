@@ -183,7 +183,7 @@ function Home() {
 
       {/* Company Logos Marquee Section */}
       {companyLogos.length > 0 && (
-        <div className="py-8 sm:py-12 border-t border-b border-theme overflow-hidden bg-theme-card">
+        <div className="py-8 sm:py-12 overflow-hidden bg-theme-card">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <h3 className="text-center text-xl sm:text-2xl font-bold text-theme-primary mb-6 sm:mb-8">
               Our Recruiters
@@ -194,11 +194,11 @@ function Home() {
                 {companyLogos.map((company, idx) => (
                   <div
                     key={idx}
-                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 rounded-lg shadow-sm border-2 border-theme-accent bg-theme-card p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                    className="inline-flex items-center justify-center h-20 sm:h-24 md:h-28 w-40 sm:w-48 md:w-52 mx-5 sm:mx-8 rounded-lg shadow-sm bg-theme-card p-4 sm:p-5 hover:shadow-md transition-shadow flex-shrink-0"
                   >
                     <CompanyLogo
                       company={company}
-                      className="max-h-full max-w-full object-contain"
+                      className="max-h-[5rem] sm:max-h-[6rem] md:max-h-28 w-auto max-w-full object-contain"
                       alt={company.name || "Company logo"}
                     />
                   </div>
@@ -207,11 +207,11 @@ function Home() {
                 {companyLogos.map((company, idx) => (
                   <div
                     key={`duplicate-${idx}`}
-                    className="inline-flex items-center justify-center h-16 sm:h-20 w-32 sm:w-40 mx-4 sm:mx-6 rounded-lg shadow-sm border-2 border-theme-accent bg-theme-card p-3 sm:p-4 hover:shadow-md transition-shadow flex-shrink-0"
+                    className="inline-flex items-center justify-center h-20 sm:h-24 md:h-28 w-40 sm:w-48 md:w-52 mx-5 sm:mx-8 rounded-lg shadow-sm bg-theme-card p-4 sm:p-5 hover:shadow-md transition-shadow flex-shrink-0"
                   >
                     <CompanyLogo
                       company={company}
-                      className="max-h-full max-w-full object-contain"
+                      className="max-h-[5rem] sm:max-h-[6rem] md:max-h-28 w-auto max-w-full object-contain"
                       alt={company.name || "Company logo"}
                     />
                   </div>

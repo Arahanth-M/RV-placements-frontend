@@ -11,19 +11,15 @@ import AuthCallback from "./components/AuthCallback";
 import CompanyStats from "./components/CompanyStats";
 import CompanyDetails from "./components/CompanyDetails";
 import Contact from "./components/Contact";
+import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
 // import Premium from "./components/Premium";
 import Resources from "./components/Resources";
-import Feedback from "./components/Feedback";
 import AdminDashboard from "./components/AdminDashboard";
 import Events from "./components/Events";
 import Analytics from "./components/Analytics";
-import PrivacyPolicy from "./components/PrivacyPolicy";
-import TermsConditions from "./components/TermsConditions";
-import ShippingPolicy from "./components/ShippingPolicy";
-import CancellationRefund from "./components/CancellationRefund";
 import Developers from "./components/Developers";
 import GlobalChatbot from "./components/GlobalChatbot";
 import StudentProfilePage from "./components/StudentProfilePage";
@@ -65,6 +61,7 @@ function App() {
                     } 
                   />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/login" element={<Login />} />
                   {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
                   {/* <Route path="/premium" element={<Premium />} /> */}
                   <Route 
@@ -82,14 +79,6 @@ function App() {
                         <AIInterviews />
                       </ProtectedRoute>
                     }
-                  />
-                  <Route 
-                    path="/feedback" 
-                    element={
-                      <ProtectedRoute>
-                        <Feedback />
-                      </ProtectedRoute>
-                    } 
                   />
                   <Route 
                     path="/events" 
@@ -115,11 +104,7 @@ function App() {
                       </ProtectedAdminRoute>
                     } 
                   />
-                  <Route path="/privacy" element={<PrivacyPolicy />} />
-                  <Route path="/terms" element={<TermsConditions />} />
-                  <Route path="/shipping" element={<ShippingPolicy />} />
-                  <Route path="/cancellation" element={<CancellationRefund />} />
-                  <Route path="/developers" element={<Developers />} />
+                  <Route path="/team" element={<Developers />} />
                   <Route 
                     path="/profile" 
                     element={

@@ -388,15 +388,15 @@ const Sidebar = () => {
                     Company Stats
                   </Link>
                   <Link
-                    to="/leaderboard"
+                    to="/interviews"
                     onClick={() => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
                     className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
-                    <FaTrophy className="w-4 h-4 mr-2" />
-                    Leaderboard
+                    <FaComments className="w-4 h-4 mr-2" />
+                    AI Interviews
                   </Link>
                   <Link
                     to="/resources"
@@ -410,26 +410,15 @@ const Sidebar = () => {
                     Resources
                   </Link>
                   <Link
-                    to="/interviews"
+                    to="/leaderboard"
                     onClick={() => {
                       setShowStudentsCornerMenu(false);
                       setIsVisible(false);
                     }}
                     className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
                   >
-                    <FaComments className="w-4 h-4 mr-2" />
-                    AI Interviews
-                  </Link>
-                  <Link
-                    to="/feedback"
-                    onClick={() => {
-                      setShowStudentsCornerMenu(false);
-                      setIsVisible(false);
-                    }}
-                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
-                  >
-                    <FaComments className="w-4 h-4 mr-2" />
-                    Feedback
+                    <FaTrophy className="w-4 h-4 mr-2" />
+                    Leaderboard
                   </Link>
                 </div>
               )}
@@ -533,7 +522,7 @@ const Sidebar = () => {
                   </div>
                   
                   {showAccountMenu && (
-                    <div className="absolute top-full left-0 mt-2 w-full bg-theme-card border border-theme rounded-md shadow-lg z-50 md:bottom-full md:top-auto md:mt-0 md:mb-2">
+                    <div className="absolute bottom-full left-0 mb-2 w-full bg-theme-card border border-theme rounded-md shadow-lg z-50">
                       <div className="py-1">
                         <div 
                           className="px-4 py-2 text-sm text-theme-secondary border-b border-theme break-words cursor-pointer hover:text-theme-accent hover:bg-theme-nav transition-colors"

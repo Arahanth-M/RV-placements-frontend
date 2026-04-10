@@ -14,7 +14,6 @@ import CodingTab from "./CompanyTabs/CodingTab";
 import InterviewTab from "./CompanyTabs/InterviewTab";
 import MustDoTab from "./CompanyTabs/MustDoTab";
 import VideoTab from "./CompanyTabs/VideoTab";
-import CommentsTab from "./CompanyTabs/CommentsTab";
 import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
@@ -256,7 +255,7 @@ function CompanyDetails() {
         </div>
       </div>
       <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "coding", "interview", "internship", "mustdo", "comments"].map((tab) => (
+        {["general", "oa", "coding", "interview", "internship", "mustdo"].map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -276,9 +275,7 @@ function CompanyDetails() {
               ? "Interview Experience"
               : tab === "internship"
               ? "Internship Experience"
-              : tab === "mustdo"
-              ? "Must Do Topics"
-              : "Comments"}
+              : "Must Do Topics"}
           </button>
         ))}
         {company.videoUrl && (
@@ -333,14 +330,13 @@ function CompanyDetails() {
         )}
         {activeTab === "mustdo" && <MustDoTab company={company} />}
         {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
-        {activeTab === "comments" && <CommentsTab company={company} />}
         {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
       </div>
     </div>
 
     {activeTab !== "aiinterview" && (
       <div
-        className="ai-interview-explore-scope fixed z-[45] pointer-events-none flex flex-col items-end gap-2"
+        className="ai-interview-explore-scope fixed z-[30] pointer-events-none flex flex-col items-end gap-2"
         style={{
           bottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
           right: "max(1rem, env(safe-area-inset-right, 0px))",
