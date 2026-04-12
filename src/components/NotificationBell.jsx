@@ -193,7 +193,7 @@ function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleBellClick}
-        className="relative p-2 text-theme-secondary hover:text-theme-primary transition-colors focus:outline-none"
+        className="relative p-2.5 rounded-full border border-theme bg-theme-card text-theme-secondary hover:text-theme-primary hover:bg-theme-card-hover transition-colors focus:outline-none"
         title="Notifications"
       >
         <FaBell className="w-5 h-5" />
