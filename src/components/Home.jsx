@@ -1,27 +1,125 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { companyAPI } from "../utils/api";
 import homeImage5 from "../assets/home5.png";
-import logo3 from "../assets/logo3.png";
+import home2 from "../assets/home2.png";
 import CompanyLogo from "./CompanyLogo";
 
+/* ── tiny hook: count up when element enters viewport ── */
+function useCountUp(target, duration = 1800) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        let start = null;
+        const step = (ts) => {
+          if (!start) start = ts;
+          const progress = Math.min((ts - start) / duration, 1);
+          setCount(Math.floor(progress * target));
+          if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, duration]);
+  return { count, ref };
+}
+
+/* ── stagger-reveal card ── */
+function RevealCard({ children, delay = 0, className = "" }) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { threshold: 0.15 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(28px)",
+        transition: `opacity 0.55s ease ${delay}ms, transform 0.55s ease ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ── stat pill ── */
+function StatPill({ value, suffix, label, duration }) {
+  const { count, ref } = useCountUp(value, duration);
+  return (
+    <div ref={ref} className="flex flex-col items-center px-6 py-4 rounded-2xl bg-theme-card border border-theme-accent/20">
+      <span className="text-3xl sm:text-4xl font-extrabold text-theme-accent">
+        {count}{suffix}
+      </span>
+      <span className="text-xs sm:text-sm text-theme-secondary mt-1 text-center">{label}</span>
+    </div>
+  );
+}
+
+/* ── section intro: kicker + title + optional subtitle + accent bar ── */
+function SectionIntro({ kicker, title, titleAccent, subtitle, id }) {
+  return (
+    <div className="mx-auto max-w-3xl text-center mb-12 sm:mb-16 md:mb-20">
+      <span className="inline-flex items-center justify-center rounded-full border border-theme-accent/35 bg-theme-accent/10 px-5 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-theme-accent mb-6 shadow-sm">
+        {kicker}
+      </span>
+      <h2
+        id={id}
+        className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-extrabold text-theme-primary tracking-tight leading-[1.12]"
+      >
+        {title}
+        {titleAccent ? (
+          <>
+            {" "}
+            <span className="text-theme-accent">{titleAccent}</span>
+          </>
+        ) : null}
+      </h2>
+      {subtitle ? (
+        <p className="mt-5 text-base sm:text-lg text-theme-secondary leading-relaxed max-w-2xl mx-auto">
+          {subtitle}
+        </p>
+      ) : null}
+      <div className="mt-8 sm:mt-10 flex justify-center items-center gap-2">
+        <span className="h-1 w-12 sm:w-16 rounded-full bg-theme-accent shadow-[0_0_20px_var(--accent)] opacity-90" />
+        <span className="h-1 w-2 rounded-full bg-theme-accent/45" />
+        <span className="h-1 w-2 rounded-full bg-theme-accent/25" />
+      </div>
+    </div>
+  );
+}
+
 function Home() {
-  // Local image assets
-  const images = [
-    homeImage5,
-    logo3,
-  ];
+  const images = [homeImage5, home2];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [companyLogos, setCompanyLogos] = useState([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-    }, 5000); // 5 seconds delay
-
+      setCurrentIndex((prev) => (prev + 1) % images.length);
+    }, 5000);
     return () => clearInterval(interval);
   }, [images.length]);
 
-  // Fetch companies for logo marquee (approved only; API returns approved)
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -34,232 +132,355 @@ function Home() {
     fetchCompanies();
   }, []);
 
+  const challenges = [
+    { icon: "❓", text: "Students prepare well but don't know the exact type of questions companies ask." },
+    { icon: "🏢", text: "Lack of clarity about what a company does and its work culture." },
+    { icon: "💼", text: "Uncertainty about interview processes reduces confidence." },
+    { icon: "📊", text: "No clear idea about how many students were placed in each company previously." },
+  ];
+
+  const features = [
+    {
+      icon: "📝",
+      title: "AI Mock Interviews",
+      text: "Company-specific mock interviews fully powered by AI.",
+      to: "/interviews",
+    },
+    {
+      icon: "🔍",
+      title: "Company Insights",
+      text: "Detailed insights into company profiles and offered roles.",
+      to: "/companystats",
+    },
+    {
+      icon: "📋",
+      title: "Interview Breakdown",
+      text: "Step-by-step breakdown of previous interview processes.",
+      to: "/companystats",
+    },
+    {
+      icon: "🤖",
+      title: "AI Chatbot",
+      text: "A chatbot to answer specific placement-related questions.",
+      to: "/",
+    },
+    {
+      icon: "➕",
+      title: "Community Contributions",
+      text: "Students can add company details that get reviewed and hosted on the platform.",
+      to: "/companystats",
+    },
+  ];
+
+  const vision = [
+    { icon: "🎥", title: "Live Interactions", text: "Live interaction videos with seniors sharing experiences." },
+    { icon: "📚", title: "Curated Resources", text: "More curated notes & resources for cutting-edge tech." },
+    { icon: "🔄", title: "Continuous Updates", text: "Continuous feature updates to support student success." },
+  ];
+
+  const stats = [
+    { value: 100, suffix: "+", label: "Companies Listed", duration: 1600 },
+    { value: 200, suffix: "+", label: "Interview Experiences and Questions", duration: 1800 },
+    { value: 3, suffix: "+", label: "Years of Data", duration: 1000 },
+    { value: 4, suffix: "+", label: "Active Features", duration: 1000 },
+  ];
+
   return (
     <div className="min-h-screen bg-theme-app">
-      {/* Hero Section - Title on Left, Images on Right */}
-      <div className="w-full py-8 sm:py-12 md:py-16 px-4 sm:px-6 bg-theme-hero">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-            {/* Left Side - Title and Description */}
-            <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-theme-primary mb-4 sm:mb-6">
-                Welcome to RVCE Placement Dashboard
-              </h1>
-              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-theme-secondary leading-relaxed">
-                Your ultimate destination for placement preparation. Gain access to
-                company insights, interview experiences, curated resources, and
-                guidance from seniors: Everything you need to land your dream
-                job or internship with confidence.
-              </p>
-            </div>
 
-            {/* Right Side - Image Slideshow */}
-            <div className="flex-1 w-full lg:w-auto">
-              <div className="relative w-full flex items-center justify-center rounded-xl overflow-hidden bg-theme-card" style={{ minHeight: '300px', maxHeight: '70vh' }}>
-                {images.map((image, index) => {
-                  const isRvLogo = image === logo3;
-                  const opacityClass = index === currentIndex ? 'opacity-100' : 'opacity-0';
-                  const commonImgStyle = {
-                    maxWidth: '100%',
-                    maxHeight: '70vh',
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain',
-                    imageRendering: 'auto',
-                    WebkitBackfaceVisibility: 'hidden',
-                    backfaceVisibility: 'hidden',
-                    transform: 'translateZ(0)',
-                  };
-                  if (isRvLogo) {
-                    return (
-                      <div key={index} className={`rv-logo absolute inset-0 flex items-center justify-center p-4 transition-opacity duration-1000 ${opacityClass}`}>
-                        <img src={image} alt="Slide RV Logo" style={commonImgStyle} />
-                      </div>
-                    );
-                  }
-                  return (
-                    <img
-                      key={index}
-                      src={image}
-                      alt={`Slide ${index + 1}`}
-                      className={`absolute transition-opacity duration-1000 ${opacityClass}`}
-                      style={commonImgStyle}
-                    />
-                  );
-                })}
+      {/* ── HERO ── */}
+      <div className="w-full py-10 sm:py-16 md:py-20 px-4 sm:px-6 bg-theme-hero relative overflow-hidden">
+        {/* subtle background decoration */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 80% 20%, var(--color-accent, #6366f1) 0%, transparent 55%)",
+            opacity: 0.06,
+          }}
+        />
+        <div className="max-w-7xl mx-auto relative">
+          <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+
+            {/* Left */}
+            <div className="flex-1 text-center lg:text-left">
+             
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-theme-primary mb-5 leading-tight">
+               Welcome to RVCE{" "}
+                <span className="text-theme-accent">Placement Dashboard</span>{" "}
+              </h1>
+              <p className="text-base sm:text-lg md:text-xl text-theme-secondary leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8">
+                Company insights, interview experiences, curated resources, and
+                senior guidance. Everything you need to ace placements at RVCE.
+              </p>
+              <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
+                <a
+                  href="/companystats"
+                  className="px-6 py-3 rounded-xl bg-theme-accent text-white font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
+                >
+                  Explore Companies →
+                </a>
               </div>
             </div>
-          </div>
-        </div>
+{/*slideshow*/}
+<div className="flex-1 w-full lg:w-auto">
+  <div
+    className="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-theme-card"
+    style={{ height: "380px" }}
+  >
+    
+    {/* Slides */}
+    {images.map((image, index) => (
+      <div
+        key={index}
+        className="absolute inset-0 transition-opacity duration-1000"
+        style={{ opacity: index === currentIndex ? 1 : 0 }}
+      >
+        <img
+          src={image}
+          alt={`Slide ${index + 1}`}
+          className="w-full h-full object-contain"
+        />
       </div>
+    ))}
 
-      {/* Challenges Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
-        <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-theme-primary mb-4 px-2">
-            Challenges Students Face During Placements
-          </h2>
-          <div className="w-24 h-1 bg-theme-accent mx-auto"></div>
-        </div>
-        <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-          {[
-            {
-              icon: "❓",
-              text: "Students prepare well but don't know the exact type of questions companies ask.",
-            },
-            {
-              icon: "🏢",
-              text: "Lack of clarity about what a company does and its work culture.",
-            },
-            {
-              icon: "💼",
-              text: "Uncertainty about interview processes reduces confidence.",
-            },
-            {
-              icon: "📊",
-              text: "No clear idea about how many students were placed in each company previously.",
-            },
-          ].map((point, idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-theme-card border-2 border-theme-accent"
-            >
-              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">{point.icon}</div>
-              <p className="text-base sm:text-lg text-theme-secondary leading-relaxed">{point.text}</p>
-            </div>
+   
+  </div>
+</div>
+</div>
+</div>
+</div>
+  
+      {/* ── STATS STRIP ── */}
+      <div className="bg-theme-card border-y border-theme py-8 px-4">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {stats.map((s, i) => (
+            <StatPill key={i} {...s} />
           ))}
         </div>
       </div>
 
-      {/* What We Provide Section */}
-      <div className="py-12 sm:py-16 md:py-20 bg-theme-hero">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-theme-primary mb-4 px-2">
-              What We Provide
-            </h2>
-            <div className="w-24 h-1 bg-theme-accent mx-auto"></div>
-          </div>
-          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {[
-              {
-                icon: "📝",
-                title: "AI mock Interviews",
-                text: "Company specific mock interviews fully powered by AI",
-              },
-              {
-                icon: "🔍",
-                title: "Company Insights",
-                text: "Detailed insights into company profiles and offered roles.",
-              },
-              {
-                icon: "📋",
-                title: "Interview Breakdown",
-                text: "Step-by-step breakdown of previous interview processes.",
-              },
-              {
-                icon: "🤖",
-                title: "AI Chatbot",
-                text: "A chatbot to ask specific questions related to placement stats.",
-              },
-              {
-                icon: "➕",
-                title: "Community Contributions",
-                text: "Allow students to add company details they are familiar with, which will be approved and hosted on the platform.",
-              },
-            ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-theme-card border-2 border-theme-accent"
-              >
-                <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{feature.icon}</div>
-                <h3 className="text-lg sm:text-xl font-bold text-theme-accent mb-2 sm:mb-3">{feature.title}</h3>
-                <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{feature.text}</p>
-              </div>
+      {/* ── THE PROBLEM ── */}
+      <section
+        className="relative py-16 sm:py-20 md:py-28 overflow-hidden"
+        aria-labelledby="home-problem-heading"
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.06] dark:opacity-[0.11]"
+          style={{
+            background:
+              "radial-gradient(ellipse 90% 60% at 50% -10%, var(--accent), transparent 55%), radial-gradient(ellipse 50% 40% at 100% 50%, var(--accent), transparent 60%)",
+          }}
+        />
+        <div
+          className="absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 40%, transparent), transparent)",
+          }}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
+          <SectionIntro
+            kicker="The Problem"
+            title="Challenges Students"
+            titleAccent="Face"
+            subtitle="Placement prep shouldn’t be a guessing game. Here’s what gets in the way—and why we built this dashboard."
+            id="home-problem-heading"
+          />
+          <div className="grid sm:grid-cols-2 gap-6 sm:gap-8">
+            {challenges.map((point, idx) => (
+              <RevealCard key={idx} delay={idx * 100}>
+                <div className="group relative h-full rounded-3xl border border-theme bg-theme-card p-6 sm:p-8 transition-all duration-300 hover:border-theme-accent/50 hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.25)] dark:hover:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.55)] overflow-hidden">
+                  <div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, transparent) 0%, transparent 45%)",
+                    }}
+                  />
+                  <div
+                    className="absolute left-0 top-8 bottom-8 w-1 rounded-full opacity-90"
+                    style={{
+                      background:
+                        "linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))",
+                    }}
+                  />
+                  <div className="relative pl-5 sm:pl-6 flex gap-4 sm:gap-5">
+                    <div className="shrink-0 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-theme-accent/12 border border-theme-accent/25 text-3xl sm:text-4xl shadow-inner">
+                      {point.icon}
+                    </div>
+                    <div className="min-w-0 pt-1">
+                      <p className="text-base sm:text-lg text-theme-primary leading-relaxed font-medium">
+                        {point.text}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </RevealCard>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Company Logos Marquee Section */}
+      {/* ── OUR SOLUTION ── */}
+      <section
+        className="relative py-16 sm:py-20 md:py-28 overflow-hidden bg-theme-hero"
+        aria-labelledby="home-solution-heading"
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.05] dark:opacity-[0.09]"
+          style={{
+            backgroundImage: `repeating-linear-gradient(
+              -12deg,
+              transparent,
+              transparent 40px,
+              color-mix(in srgb, var(--accent) 6%, transparent) 40px,
+              color-mix(in srgb, var(--accent) 6%, transparent) 41px
+            )`,
+          }}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
+          <SectionIntro
+            kicker="Our Solution"
+            title="What We"
+            titleAccent="Provide"
+            subtitle="Tools built around real interview data and community—so you prepare with context, not guesswork."
+            id="home-solution-heading"
+          />
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {features.map((feature, idx) => (
+              <RevealCard key={idx} delay={idx * 90}>
+                <Link
+                  to={feature.to}
+                  className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-theme bg-theme-card text-left no-underline text-inherit outline-none transition-all duration-300 hover:border-theme-accent/45 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-theme-accent focus-visible:ring-offset-2 focus-visible:ring-offset-theme-hero dark:hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)]"
+                  aria-label={`Open ${feature.title}`}
+                >
+                  <div
+                    className="h-1 w-full opacity-95"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, transparent), transparent)",
+                    }}
+                  />
+                  <div className="flex flex-1 flex-col p-6 sm:p-8">
+                    <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-theme-accent/20 bg-theme-accent/10 text-4xl transition-colors duration-300 group-hover:border-theme-accent/35 group-hover:bg-theme-accent/15">
+                      {feature.icon}
+                    </div>
+                    <h3 className="mb-2 text-lg font-bold text-theme-primary transition-colors duration-300 group-hover:text-theme-accent sm:text-xl">
+                      {feature.title}
+                    </h3>
+                    <p className="flex-1 text-sm leading-relaxed text-theme-secondary sm:text-base">
+                      {feature.text}
+                    </p>
+                    <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-theme-accent opacity-90 transition-opacity duration-300 group-hover:opacity-100">
+                      Go to feature <span aria-hidden>→</span>
+                    </span>
+                  </div>
+                </Link>
+              </RevealCard>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMPANY LOGOS MARQUEE ── */}
       {companyLogos.length > 0 && (
-        <div className="py-8 sm:py-12 overflow-hidden bg-theme-card">
+        <div className="py-10 sm:py-14 overflow-hidden bg-theme-card border-y border-theme">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <h3 className="text-center text-xl sm:text-2xl font-bold text-theme-primary mb-6 sm:mb-8">
-              Our Recruiters
+            <h3 className="text-center text-xl sm:text-2xl font-bold text-theme-primary mb-8">
+              Recruiters
             </h3>
-            <div className="relative w-full overflow-hidden">
-              <div className="flex animate-marquee whitespace-nowrap" style={{ width: 'max-content' }}>
-                {/* First set of logos from database */}
-                {companyLogos.map((company, idx) => (
-                  <div
-                    key={idx}
-                    className="inline-flex items-center justify-center h-20 sm:h-24 md:h-28 w-40 sm:w-48 md:w-52 mx-5 sm:mx-8 rounded-lg shadow-sm bg-theme-card p-4 sm:p-5 hover:shadow-md transition-shadow flex-shrink-0"
-                  >
-                    <CompanyLogo
-                      company={company}
-                      className="max-h-[5rem] sm:max-h-[6rem] md:max-h-28 w-auto max-w-full object-contain"
-                      alt={company.name || "Company logo"}
-                    />
+          </div>
+          <div className="relative w-full overflow-hidden">
+            <div
+              className="flex animate-marquee whitespace-nowrap"
+              style={{ width: "max-content" }}
+            >
+              {[...companyLogos, ...companyLogos].map((company, idx) => {
+                const id = company._id || company.id;
+                const tileClass =
+                  "inline-flex items-center justify-center h-20 sm:h-24 md:h-28 w-40 sm:w-48 md:w-52 mx-5 sm:mx-8 rounded-xl border border-theme bg-theme-card p-4 sm:p-5 flex-shrink-0 transition-all outline-none hover:border-theme-accent hover:shadow-md focus-visible:ring-2 focus-visible:ring-theme-accent focus-visible:ring-offset-2 focus-visible:ring-offset-theme-card";
+                const inner = (
+                  <CompanyLogo
+                    company={company}
+                    className="max-h-[5rem] sm:max-h-[6rem] md:max-h-28 w-auto max-w-full object-contain pointer-events-none"
+                    alt={company.name || "Company logo"}
+                  />
+                );
+                if (id) {
+                  return (
+                    <Link
+                      key={`${String(id)}-${idx}`}
+                      to={`/companies/${id}`}
+                      className={tileClass}
+                      aria-label={`View ${company.name || "company"} details and interviews`}
+                    >
+                      {inner}
+                    </Link>
+                  );
+                }
+                return (
+                  <div key={idx} className={tileClass}>
+                    {inner}
                   </div>
-                ))}
-                {/* Duplicate set for seamless loop */}
-                {companyLogos.map((company, idx) => (
-                  <div
-                    key={`duplicate-${idx}`}
-                    className="inline-flex items-center justify-center h-20 sm:h-24 md:h-28 w-40 sm:w-48 md:w-52 mx-5 sm:mx-8 rounded-lg shadow-sm bg-theme-card p-4 sm:p-5 hover:shadow-md transition-shadow flex-shrink-0"
-                  >
-                    <CompanyLogo
-                      company={company}
-                      className="max-h-[5rem] sm:max-h-[6rem] md:max-h-28 w-auto max-w-full object-contain"
-                      alt={company.name || "Company logo"}
-                    />
-                  </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Future Vision Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
-        <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-theme-primary mb-4 px-2">
-            Our Future Vision 🚀
-          </h2>
-          <div className="w-24 h-1 bg-theme-accent mx-auto"></div>
+      {/* ── WHAT'S NEXT ── */}
+      <section
+        className="relative py-16 sm:py-20 md:py-28 overflow-hidden"
+        aria-labelledby="home-next-heading"
+      >
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.07] dark:opacity-[0.12]"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 50% at 0% 100%, var(--accent), transparent 50%), radial-gradient(ellipse 60% 45% at 100% 0%, var(--accent), transparent 50%)",
+          }}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
+          <SectionIntro
+            kicker="What's Next"
+            title="Our Future"
+            titleAccent="Vision"
+            subtitle="We’re not done—here’s what we’re working toward to keep the platform indispensable for every batch."
+            id="home-next-heading"
+          />
+          <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-6 lg:gap-10">
+            {vision.map((plan, idx) => (
+              <RevealCard key={idx} delay={idx * 110}>
+                <div className="group relative h-full rounded-3xl border border-theme bg-theme-card p-6 sm:p-8 text-center transition-all duration-300 hover:border-theme-accent/50 hover:shadow-lg dark:hover:shadow-[0_16px_40px_-10px_rgba(0,0,0,0.45)]">
+                  <div className="text-4xl sm:text-5xl mb-4">{plan.icon}</div>
+                  <h3 className="text-lg sm:text-xl font-bold text-theme-accent mb-2">{plan.title}</h3>
+                  <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{plan.text}</p>
+                </div>
+              </RevealCard>
+            ))}
+          </div>
         </div>
-        <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          {[
-            {
-              icon: "🎥",
-              title: "Live Interactions",
-              text: "Live interaction videos with seniors sharing experiences.",
-            },
-            {
-              icon: "📚",
-              title: "Curated Resources",
-              text: "More curated notes & resources for cutting-edge tech.",
-            },
-            {
-              icon: "🔄",
-              title: "Continuous Updates",
-              text: "Continuous feature updates to support student success.",
-            },
-          ].map((plan, idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl shadow-lg p-6 sm:p-8 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-theme-card border-2 border-theme-accent"
-            >
-              <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{plan.icon}</div>
-              <h3 className="text-lg sm:text-xl font-bold text-theme-accent mb-2 sm:mb-3">{plan.title}</h3>
-              <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{plan.text}</p>
-            </div>
-          ))}
+      </section>
+
+      {/* ── CTA BANNER ── */}
+      <div className="bg-theme-hero border-t border-theme py-14 px-4 text-center">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-theme-primary mb-4">
+          Ready to ace your placements?
+        </h2>
+        <p className="text-base sm:text-lg text-theme-secondary mb-8 max-w-xl mx-auto">
+          Join hundreds of RVCE students already using the platform to prepare smarter.
+        </p>
+        <div className="flex flex-wrap gap-3 justify-center">
+          <a
+            href="/login"
+            className="px-8 py-3 rounded-xl bg-theme-accent text-white font-semibold text-base hover:opacity-90 transition-opacity shadow-lg"
+          >
+            Get Started →
+          </a>
         </div>
       </div>
-
 
     </div>
   );
