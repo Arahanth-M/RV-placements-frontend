@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import InterviewAnalytics from "./InterviewAnalytics";
+import { useNavigate } from "react-router-dom";
+
 
 const toSafeString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -102,6 +104,12 @@ function AIInterviews() {
     }
   };
 
+  const navigate = useNavigate();
+  
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   const groupedSessions = useMemo(() => {
     const completed = [];
     const inProgress = [];
@@ -113,12 +121,26 @@ function AIInterviews() {
         inProgress.push(session);
       }
     });
+  
 
     return { completed, inProgress };
   }, [sessions]);
 
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+           {/* Back Button */}
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+      </div>
       {/* Header Section */}
       <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-theme-primary">

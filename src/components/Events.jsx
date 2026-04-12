@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { eventAPI } from '../utils/api';
-import { FaCalendarAlt, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaCalendarAlt, FaExternalLinkAlt, FaArrowLeft } from 'react-icons/fa';
 
 const Events = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchEvents();
@@ -24,6 +26,9 @@ const Events = () => {
       setLoading(false);
     }
   };
+  const handleBack = () => {
+  navigate(-1);
+};
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -42,6 +47,19 @@ const Events = () => {
   return (
     <div className="events-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-7xl mx-auto">
+         {/* Back Button */}
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+      </div>
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Events</h1>
@@ -93,8 +111,8 @@ const Events = () => {
                       <tbody className="bg-slate-800/40 divide-y divide-slate-700">
                         {sortedEvents.map((event) => {
                           return (
-                            <tr 
-                              key={event._id} 
+                            <tr
+                              key={event._id}
                               className="hover:bg-slate-700/50"
                             >
                               <td className="px-3 sm:px-6 py-3 sm:py-4">
@@ -136,4 +154,3 @@ const Events = () => {
 };
 
 export default Events;
-
