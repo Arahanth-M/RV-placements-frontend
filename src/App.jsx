@@ -48,7 +48,7 @@ function App() {
               <div className="flex flex-col min-h-screen bg-theme-app text-theme-primary">
                 <Header />
 
-              <main className="flex-grow pt-6 sm:pt-8 pb-2 px-2 sm:px-4 md:px-6">
+              <main className="flex-grow pt-3 sm:pt-5 pb-2 px-2 sm:px-4 md:px-6">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />

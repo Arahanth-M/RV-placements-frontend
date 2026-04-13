@@ -33,7 +33,7 @@ const Events = () => {
     }
   };
   const handleBack = () => {
-  navigate(-1);
+  navigate('/');
 };
 
   const formatDate = (dateString) => {
@@ -51,7 +51,7 @@ const Events = () => {
   });
 
   return (
-    <div className="events-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="events-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-7xl mx-auto">
          {/* Back Button */}
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">

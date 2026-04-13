@@ -150,7 +150,7 @@ function DeveloperProfileCard({ developer }) {
 function Developers() {
   return (
     <div className="min-h-screen flex flex-col bg-theme-app text-theme-primary">
-      <div className="flex min-h-0 flex-1 flex-col w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10">
+      <div className="flex min-h-0 flex-1 flex-col w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
         <header className="mb-8 shrink-0 text-center sm:mb-10">
           <h1 className="mb-2 text-2xl font-bold text-theme-primary sm:mb-3 sm:text-3xl md:text-4xl">
             Our Developers

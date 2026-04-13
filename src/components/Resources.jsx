@@ -73,7 +73,7 @@ const Resources = () => {
   const isFiltering  = search.trim() !== '' || typeFilter !== 'All';
 
   const navigate = useNavigate();
-  const handleBack = () => navigate(-1);
+  const handleBack = () => navigate('/');
 
   const highlight = (text) => {
     const q = search.trim();
@@ -108,7 +108,7 @@ const Resources = () => {
   };
 
   return (
-    <div className="events-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="events-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
 

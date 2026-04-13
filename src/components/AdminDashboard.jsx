@@ -664,7 +664,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="admin-dashboard-theme min-h-screen py-8 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="admin-dashboard-theme min-h-screen py-6 sm:py-8 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">

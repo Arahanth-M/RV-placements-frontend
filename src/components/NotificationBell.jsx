@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { FaBell, FaTimes, FaTrash, FaSync } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { notificationAPI } from "../utils/api";
+import { BASE_URL } from "../utils/constants";
 import { useAuth } from "../utils/AuthContext";
 
 function NotificationBell() {
@@ -26,7 +27,11 @@ function NotificationBell() {
         notificationAPI.getNotifications(),
         notificationAPI.getUnreadCount(),
       ]);
-      setNotifications(notificationsRes.data || []);
+      const listPayload = notificationsRes.data;
+      const list = Array.isArray(listPayload)
+        ? listPayload
+        : listPayload?.notifications ?? [];
+      setNotifications(list);
       setUnreadCount(countRes.data?.count || 0);
     } catch (err) {
       console.error("Error fetching notifications:", err);
@@ -89,6 +94,31 @@ function NotificationBell() {
     return () => {
       stopPolling();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user?.betaAccess === false) return;
+
+    const streamUrl = `${BASE_URL}/api/notifications/stream`;
+    const eventSource = new EventSource(streamUrl, { withCredentials: true });
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "NEW_NOTIFICATION" && data.notification) {
+          setNotifications((prev) => [data.notification, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+        }
+      } catch (err) {
+        console.error("SSE notification parse error:", err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
     };
   }, [user]);
 
@@ -282,7 +312,11 @@ function NotificationBell() {
                           </button>
                         </div>
                         <p className="text-theme-secondary text-sm mt-1 leading-relaxed">
-                          {notification.message}
+                          {notification.message ||
+                            notification.body ||
+                            (notification.payload?.companyName
+                              ? `${notification.payload.companyName} is now available`
+                              : "")}
                         </p>
                         <p className="text-[10px] text-theme-muted mt-2 font-medium uppercase tracking-wider">
                           {new Date(notification.createdAt).toLocaleDateString(

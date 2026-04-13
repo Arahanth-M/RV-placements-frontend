@@ -70,13 +70,19 @@ const StudentProfilePage = () => {
   // Filter keys as requested
   const validKeys = Object.keys(profileData).filter(key => key && key !== "_id" && key !== "__v");
 
+  // Never show internal / redundant fields in the profile UI
+  const hiddenProfileKeys = new Set(["companyid", "placementcompanies"]);
+  const isHiddenProfileKey = (key) => hiddenProfileKeys.has(String(key).toLowerCase());
+
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
   const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
   
   const otherFields = validKeys.filter(
-    key => !personalInfoFields.some(f => key.toLowerCase().includes(f.toLowerCase())) &&
-    !academicFields.some(f => key.toLowerCase().includes(f.toLowerCase()))
+    key =>
+      !isHiddenProfileKey(key) &&
+      !personalInfoFields.some(f => key.toLowerCase().includes(f.toLowerCase())) &&
+      !academicFields.some(f => key.toLowerCase().includes(f.toLowerCase()))
   );
 
   const getFieldCategory = (key) => {
@@ -104,7 +110,7 @@ const StudentProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-theme-app overflow-y-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <button

@@ -326,7 +326,7 @@ function Analytics({ year = null, embedded = false }) {
   );
 
   const pageShell = (inner) => (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app">
+    <div className="min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app">
       <div className="max-w-7xl mx-auto">{inner}</div>
     </div>
   );

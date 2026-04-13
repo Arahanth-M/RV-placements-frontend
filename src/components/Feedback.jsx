@@ -6,7 +6,7 @@ const Feedback = () => {
   const form2Url = "https://docs.google.com/forms/d/e/1FAIpQLScK4_tn14N7T1WLOQF-ZD_HpcSajyMDtkp1exA4weBsTdsCqQ/viewform";
 
   return (
-    <div className="content-cards-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="content-cards-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

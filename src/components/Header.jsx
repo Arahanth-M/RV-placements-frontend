@@ -14,6 +14,8 @@ import {
   FaUserShield,
   FaTachometerAlt,
   FaExclamationCircle,
+  FaBars,
+  FaTimes,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import NotificationBell from "./NotificationBell";
@@ -65,7 +67,7 @@ function accountInitialLetter(user, displayName) {
 
 // Sidebar-style dropdown item class
 const dropdownItemClass =
-  "flex w-full items-center gap-2 px-3 py-2 text-sl text-theme-secondary hover:text-theme-primary hover:bg-theme-nav rounded-md transition-colors";
+  "flex w-full items-center gap-2 px-3 py-2 text-sm text-theme-secondary hover:text-theme-primary hover:bg-theme-nav rounded-md transition-colors";
 
 const dropdownItemRedClass =
   "flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-500 hover:bg-theme-nav rounded-md transition-colors";
@@ -80,9 +82,11 @@ const Header = () => {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [hasPendingItems, setHasPendingItems] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const studentMenuRef = useRef(null);
   const adminMenuRef = useRef(null);
   const accountMenuRef = useRef(null);
+  const headerShellRef = useRef(null);
 
   useEffect(() => {
     setAvatarFailed(false);
@@ -104,12 +108,29 @@ const Header = () => {
     await logout();
     navigate("/");
     setAccountMenuOpen(false);
+    setMobileNavOpen(false);
   };
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [mobileNavOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       const el = event.target;
       if (!(el instanceof Node)) return;
+      if (headerShellRef.current && !headerShellRef.current.contains(el)) {
+        setMobileNavOpen(false);
+      }
       if (studentMenuRef.current && !studentMenuRef.current.contains(el)) {
         setStudentMenuOpen(false);
       }
@@ -187,8 +208,9 @@ const Header = () => {
       <div className="relative" ref={accountMenuRef}>
         {!user ? (
           <button
+            type="button"
             onClick={() => setAccountMenuOpen((prev) => !prev)}
-            className="inline-flex items-center gap-2 rounded-full border border-theme px-5 py-3 text-base font-semibold text-theme-primary bg-theme-card hover:bg-theme-hero transition"
+            className="inline-flex items-center gap-1.5 rounded-full border border-theme px-3 py-2 text-sm font-semibold text-theme-primary bg-theme-card hover:bg-theme-hero transition sm:gap-2 sm:px-5 sm:py-3 sm:text-base"
           >
             Login
             <FaChevronDown className={`h-3 w-3 transition ${accountMenuOpen ? "rotate-180" : ""}`} />
@@ -197,7 +219,7 @@ const Header = () => {
           <button
             type="button"
             onClick={() => setAccountMenuOpen((prev) => !prev)}
-            className={`inline-flex min-h-[2.75rem] items-center gap-3 rounded-full border-2 pl-2 pr-4 py-1.5 text-left text-theme-primary transition-[background-color,border-color] duration-200 ${
+            className={`inline-flex min-h-[2.5rem] sm:min-h-[2.75rem] items-center gap-2 sm:gap-3 rounded-full border-2 pl-1.5 pr-2.5 py-1 sm:pl-2 sm:pr-4 sm:py-1.5 text-left text-theme-primary transition-[background-color,border-color] duration-200 ${
               accountMenuOpen
                 ? "border-theme-accent bg-theme-accent/12"
                 : "border-theme bg-theme-card hover:border-theme-accent/45 hover:bg-theme-hero"
@@ -209,12 +231,12 @@ const Header = () => {
                 src={user.picture}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="h-10 w-10 shrink-0 rounded-full border-2 border-theme object-cover"
+                className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full border-2 border-theme object-cover"
                 onError={() => setAvatarFailed(true)}
               />
             ) : (
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-theme bg-theme-hero">
-                <span className="text-sm font-semibold text-theme-primary">{headerInitial}</span>
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full border-2 border-theme bg-theme-hero">
+                <span className="text-xs font-semibold text-theme-primary sm:text-sm">{headerInitial}</span>
               </div>
             )}
             <span className="hidden min-w-0 max-w-[10rem] truncate text-sm font-semibold text-theme-primary sm:inline sm:max-w-[13rem]">
@@ -269,154 +291,221 @@ const Header = () => {
     );
   };
 
+  const mobileNavLinkClass =
+    "flex w-full items-center gap-3 px-4 py-3.5 text-base font-semibold text-theme-primary border-b border-theme hover:bg-theme-hero transition-colors";
+
   return (
-    <header className="sticky top-0 z-50 mb-3 flex w-full overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
-      <Link
-        to="/"
-        className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center border-b border-r border-theme bg-white p-2 shadow-inner transition hover:bg-white/90"
-        title="RVCE Placement — Home"
-      >
-        <img src={logo} className="h-full w-full object-contain" />
-      </Link>
+    <div ref={headerShellRef} className="sticky top-0 z-50 mb-2">
+      <header className="flex w-full items-stretch overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
+        <div className="flex shrink-0 items-center pl-3 pr-2 py-2 sm:pl-5 sm:pr-2 sm:py-2.5">
+          <Link
+            to="/"
+            className="flex h-11 w-[3.85rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-theme bg-white px-2.5 py-1.5 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-14 sm:w-[5rem] sm:rounded-full sm:px-2.5 sm:py-1.5"
+            title="RVCE Placement — Home"
+          >
+            <img src={logo} alt="" className="h-full w-full max-h-full object-contain object-center" />
+          </Link>
+        </div>
 
-      <div className="flex min-h-[4.5rem] min-w-0 flex-1 flex-col justify-center gap-1 border-b border-theme px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6">
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 overflow-visible sm:min-w-0 sm:flex-nowrap sm:justify-end sm:gap-2 md:gap-3">
+        <div className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col justify-center border-l border-theme py-2 pl-2 pr-2 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-2">
+          {/* Mobile: compact actions + menu */}
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:hidden">
+            {user && (
+              <div className="flex shrink-0 items-center [&_button]:p-2 [&_svg]:h-[1.05rem] [&_svg]:w-[1.05rem]">
+                <NotificationBell />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="shrink-0 rounded-full border border-theme bg-theme-card p-2 text-theme-primary hover:bg-theme-card-hover transition-colors"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <FaSun className="h-[1.05rem] w-[1.05rem]" /> : <FaMoon className="h-[1.05rem] w-[1.05rem]" />}
+            </button>
+            <div className="shrink-0">{renderAccountMenu()}</div>
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((o) => !o)}
+              className="shrink-0 rounded-full border border-theme bg-theme-card p-2 text-theme-primary hover:bg-theme-card-hover transition-colors"
+              aria-expanded={mobileNavOpen}
+              aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+            >
+              {mobileNavOpen ? <FaTimes className="h-[1.1rem] w-[1.1rem]" /> : <FaBars className="h-[1.1rem] w-[1.1rem]" />}
+            </button>
+          </div>
 
-          {/* Home & Events */}
-          {primaryLinks.slice(0, 2).map((item) => (
+          {/* Desktop navigation (md+) */}
+          <nav
+            className="hidden min-h-0 w-full min-w-0 flex-wrap items-center justify-end gap-2 overflow-visible md:flex md:gap-2 lg:gap-3"
+            aria-label="Main"
+          >
+            {primaryLinks.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition lg:px-5 lg:py-3 lg:text-base ${
+                  location.pathname === item.path
+                    ? "bg-theme-accent text-white"
+                    : "text-theme-secondary hover:bg-theme-hero"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+
+            <div className="relative shrink-0" ref={studentMenuRef}>
+              <button
+                type="button"
+                onClick={() => setStudentMenuOpen((prev) => !prev)}
+                aria-label="Student Corner"
+                className={`inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base ${
+                  isStudentCornerActive
+                    ? "border-theme-accent bg-theme-accent text-white"
+                    : studentMenuOpen
+                      ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
+                      : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                }`}
+              >
+                <FaGraduationCap className={`h-4 w-4 shrink-0 ${isStudentCornerActive ? "text-white" : "opacity-90"}`} />
+                <span>Student Corner</span>
+                <FaChevronDown
+                  className={`h-3 w-3 transition ${studentMenuOpen ? "rotate-180" : ""} ${isStudentCornerActive ? "text-white/90" : ""}`}
+                />
+              </button>
+
+              {studentMenuOpen && (
+                <div className="absolute left-0 top-full z-[100] mt-1 w-52 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
+                  {studentCornerLinks.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => setStudentMenuOpen(false)}
+                        className={dropdownItemClass}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {isAdmin && (
+              <div className="relative shrink-0" ref={adminMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setAdminMenuOpen((prev) => !prev)}
+                  aria-label="Admin"
+                  className={`inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base ${
+                    location.pathname.startsWith("/admin")
+                      ? "border-theme-accent bg-theme-accent text-white"
+                      : adminMenuOpen
+                        ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
+                        : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                  }`}
+                >
+                  <FaUserShield className={`h-4 w-4 shrink-0 ${location.pathname.startsWith("/admin") ? "text-white" : ""}`} />
+                  <span>Admin</span>
+                  {hasPendingItems && (
+                    <FaExclamationCircle className="h-3.5 w-3.5 text-red-400 animate-pulse" title="Pending items" />
+                  )}
+                  <FaChevronDown
+                    className={`h-3 w-3 transition ${adminMenuOpen ? "rotate-180" : ""} ${location.pathname.startsWith("/admin") ? "text-white/90" : ""}`}
+                  />
+                </button>
+
+                {adminMenuOpen && (
+                  <div className="absolute right-0 top-full z-[100] mt-1 w-52 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
+                    <Link
+                      to="/admin/dashboard"
+                      onClick={() => setAdminMenuOpen(false)}
+                      className={dropdownItemClass}
+                    >
+                      <FaTachometerAlt className="h-4 w-4 shrink-0" />
+                      Dashboard
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="shrink-0 rounded-full border border-theme bg-theme-card p-2.5 text-theme-primary hover:bg-theme-card-hover transition-colors lg:p-3"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
+            </button>
+
+            {user && (
+              <div className="shrink-0 flex items-center">
+                <NotificationBell />
+              </div>
+            )}
+
+            <div className="shrink-0">{renderAccountMenu()}</div>
+          </nav>
+        </div>
+      </header>
+
+      {mobileNavOpen && (
+        <nav
+          className="absolute left-0 right-0 top-full z-[60] max-h-[min(75vh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain border-b border-theme bg-theme-card shadow-lg md:hidden"
+          aria-label="Mobile menu"
+        >
+          {primaryLinks.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`shrink-0 rounded-full px-3 py-2.5 sm:px-5 sm:py-3 text-sm sm:text-base font-semibold transition ${
-                location.pathname === item.path
-                  ? "bg-theme-accent text-white"
-                  : "text-theme-secondary hover:bg-theme-hero"
+              onClick={() => setMobileNavOpen(false)}
+              className={`${mobileNavLinkClass} ${
+                location.pathname === item.path ? "bg-theme-accent/15 text-theme-accent border-theme-accent/20" : ""
               }`}
             >
               {item.label}
             </Link>
           ))}
 
-          {/* ── Student Corner dropdown ── */}
-          <div className="relative shrink-0" ref={studentMenuRef}>
-            <button
-              type="button"
-              onClick={() => setStudentMenuOpen((prev) => !prev)}
-              className={`inline-flex min-h-[2.75rem] sm:min-h-[3rem] items-center gap-2 rounded-full border-2 px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-semibold transition-[background-color,border-color,color] duration-200 ${
-                isStudentCornerActive
-                  ? "border-theme-accent bg-theme-accent text-white"
-                  : studentMenuOpen
-                    ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
-                    : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
-              }`}
-            >
-              <FaGraduationCap
-                className={`h-4 w-4 ${isStudentCornerActive ? "text-white" : "opacity-90"}`}
-              />
-              <span className="max-[480px]:sr-only">Student Corner</span>
-              <span className="hidden max-[480px]:inline">Corner</span>
-              <FaChevronDown
-                className={`h-3 w-3 transition ${studentMenuOpen ? "rotate-180" : ""} ${isStudentCornerActive ? "text-white/90" : ""}`}
-              />
-            </button>
-
-            {studentMenuOpen && (
-              <div className="absolute left-0 top-full z-[100] mt-1 w-52 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
-                {studentCornerLinks.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setStudentMenuOpen(false)}
-                      className={dropdownItemClass}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Contact */}
-          <Link
-            to="/contact"
-            className={`shrink-0 rounded-full px-3 py-2.5 sm:px-5 sm:py-3 text-sm sm:text-base font-semibold transition ${
-              location.pathname === "/contact"
-                ? "bg-theme-accent text-white"
-                : "text-theme-secondary hover:bg-theme-hero"
-            }`}
-          >
-            Contact
-          </Link>
-
-          {/* Admin Corner dropdown */}
-          {isAdmin && (
-            <div className="relative shrink-0" ref={adminMenuRef}>
-              <button
-                type="button"
-                onClick={() => setAdminMenuOpen((prev) => !prev)}
-                className={`inline-flex min-h-[2.75rem] sm:min-h-[3rem] items-center gap-2 rounded-full border-2 px-3 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-semibold transition-[background-color,border-color,color] duration-200 ${
-                  location.pathname.startsWith("/admin")
-                    ? "border-theme-accent bg-theme-accent text-white"
-                    : adminMenuOpen
-                      ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
-                      : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
-                }`}
+          <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-theme-secondary">Student Corner</div>
+          {studentCornerLinks.map((item) => {
+            const Icon = item.icon;
+            const active = isPathActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileNavOpen(false)}
+                className={`${mobileNavLinkClass} ${active ? "bg-theme-accent/15 text-theme-accent" : ""}`}
               >
-                <FaUserShield
-                  className={`h-4 w-4 ${location.pathname.startsWith("/admin") ? "text-white" : ""}`}
-                />
-                <span className="hidden sm:inline">Admin</span>
-                {hasPendingItems && (
-                  <FaExclamationCircle
-                    className="h-3.5 w-3.5 text-red-400 animate-pulse"
-                    title="Pending items"
-                  />
-                )}
-                <FaChevronDown
-                  className={`h-3 w-3 transition ${adminMenuOpen ? "rotate-180" : ""} ${location.pathname.startsWith("/admin") ? "text-white/90" : ""}`}
-                />
-              </button>
+                <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                {item.label}
+              </Link>
+            );
+          })}
 
-              {adminMenuOpen && (
-                <div className="absolute right-0 top-full z-[100] mt-1 w-52 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
-                  <Link
-                    to="/admin/dashboard"
-                    onClick={() => setAdminMenuOpen(false)}
-                    className={dropdownItemClass}
-                  >
-                    <FaTachometerAlt className="h-4 w-4 shrink-0" />
-                    Dashboard
-                  </Link>
-                </div>
-              )}
-            </div>
+          {isAdmin && (
+            <>
+              <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-theme-secondary">Admin</div>
+              <Link
+                to="/admin/dashboard"
+                onClick={() => setMobileNavOpen(false)}
+                className={`${mobileNavLinkClass} ${location.pathname.startsWith("/admin") ? "bg-theme-accent/15 text-theme-accent" : ""}`}
+              >
+                <FaTachometerAlt className="h-4 w-4 shrink-0 opacity-80" />
+                Dashboard
+              </Link>
+            </>
           )}
-
-          {/* Theme toggle */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="shrink-0 p-2.5 sm:p-3 rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <FaSun className="w-5 h-5" /> : <FaMoon className="w-5 h-5" />}
-          </button>
-
-          {user && (
-            <div className="shrink-0 flex items-center">
-              <NotificationBell />
-            </div>
-          )}
-
-          <div className="shrink-0">{renderAccountMenu()}</div>
         </nav>
-      </div>
-    </header>
+      )}
+    </div>
   );
 };
 

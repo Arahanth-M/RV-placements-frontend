@@ -7,11 +7,11 @@ import { FaEnvelope, FaExternalLinkAlt, FaUniversity } from "react-icons/fa";
 function Contact() {
   const navigate = useNavigate();
   const handleBack = () => {
-  navigate(-1);
+  navigate('/');
 };
 
   return (
-    <div className="contact-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="contact-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-4xl mx-auto">
            {/* Back Button */}
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">

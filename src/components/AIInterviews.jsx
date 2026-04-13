@@ -115,7 +115,7 @@ function AIInterviews() {
   const navigate = useNavigate();
   
   const handleBack = () => {
-    navigate(-1);
+    navigate('/');
   };
 
   const groupedSessions = useMemo(() => {
@@ -135,7 +135,7 @@ function AIInterviews() {
   }, [sessions]);
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+    <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
            {/* Back Button */}
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
         <button

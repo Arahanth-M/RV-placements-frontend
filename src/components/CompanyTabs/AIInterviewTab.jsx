@@ -290,6 +290,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   }, [fetchResumableInterview]);
 
   useEffect(() => {
+    fetchPreviewPlan();
+  }, [fetchPreviewPlan]);
+
+  useEffect(() => {
     if (!previewPlan) return;
     console.info("[AIInterviewTab] Preview payload", {
       totalRounds: previewPlan?.totalRounds,
@@ -542,7 +546,6 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setRoundFeedbackView(null);
     setPendingQuestionFeedback(null);
 
-    // Lazy-load preview only when user explicitly starts the flow.
     if (!previewPlan && !previewLoading) {
       fetchPreviewPlan().catch(() => {});
     }

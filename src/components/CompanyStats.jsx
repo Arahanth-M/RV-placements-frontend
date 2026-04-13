@@ -42,6 +42,10 @@ function CompanyStats() {
   const tierQuery = searchParams.get("tier");
   const { user, isAdmin } = useAuth();
 
+  const handleBack = () => {
+    navigate('/');
+  };  
+
   // Helper function to get user-specific storage keys
   const getStorageKey = (key) => {
     if (!user || !user.userId) return key;
@@ -340,6 +344,7 @@ function CompanyStats() {
       return typeLower === category.toLowerCase();
     });
 
+
   const ctcObjectFromRole = (ctc) => {
     if (ctc == null) return null;
     if (typeof ctc !== "object" || Array.isArray(ctc)) return null;
@@ -506,6 +511,19 @@ function CompanyStats() {
     return (
       <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
         <div className="max-w-7xl mx-auto">
+           {/* Back Button */}
+      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back
+        </button>
+      </div>
           {/* Year Selection Cards */}
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-theme-primary mb-4">Select Year</h2>
@@ -748,7 +766,7 @@ function CompanyStats() {
         : setInternshipOnlyPage;
 
   return (
-    <div className="page-container p-4 sm:p-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
+    <div className="page-container px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
       <div className="mb-4 sm:mb-6">
         <button
           type="button"

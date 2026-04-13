@@ -135,7 +135,7 @@ const AuthCallback = () => {
   if (isProcessing) {
     return (
       <div className="min-h-screen bg-theme-app">
-        <div className="w-full py-8 sm:py-12 md:py-16 px-4 sm:px-6 bg-theme-hero">
+        <div className="w-full py-6 sm:py-10 md:py-14 px-4 sm:px-6 bg-theme-hero">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
               <div className="flex-1 w-full space-y-4">
@@ -150,7 +150,7 @@ const AuthCallback = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16">
           <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {[1, 2, 3, 4].map((item) => (
               <div key={item} className="bg-theme-card border-2 border-theme-accent rounded-2xl p-6 sm:p-8 space-y-3">

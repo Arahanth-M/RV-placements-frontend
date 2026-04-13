@@ -135,56 +135,52 @@ function Home() {
         const res = await companyAPI.getAllCompanies();
         setCompanyLogos((res.data || []).slice(0, 6));
       } catch (err) {
-        console.error("❌ Error fetching companies for marquee:", err);
+        console.error("Error fetching companies for marquee:", err);
       }
     };
     fetchCompanies();
   }, []);
 
   const challenges = [
-    { icon: "❓", text: "Students prepare well but don't know the exact type of questions companies ask." },
-    { icon: "🏢", text: "Lack of clarity about what a company does and its work culture." },
-    { icon: "💼", text: "Uncertainty about interview processes reduces confidence." },
-    { icon: "📊", text: "No clear idea about how many students were placed in each company previously." },
+    { text: "Students prepare well but don't know the exact type of questions companies ask." },
+    { text: "Lack of clarity about what a company does and its work culture." },
+    { text: "Uncertainty about interview processes reduces confidence." },
+    { text: "No clear idea about how many students were placed in each company previously." },
   ];
 
   const features = [
     {
-      icon: "📝",
+      title: "Updates on the events",
+      text: "Get the latest updates on the events and the companies that are coming to the campus.",
+    },
+    {
       title: "AI Mock Interviews",
       text: "Company-specific mock interviews fully powered by AI.",
-      to: "/interviews",
     },
+
     {
-      icon: "🔍",
       title: "Company Insights",
       text: "Detailed insights into company profiles and offered roles.",
-      to: "/companystats",
     },
     {
-      icon: "📋",
       title: "Interview Breakdown",
       text: "Step-by-step breakdown of previous interview processes.",
-      to: "/companystats",
     },
     {
-      icon: "🤖",
-      title: "AI Chatbot",
-      text: "A chatbot to answer specific placement-related questions.",
-      to: "/",
+      title: "Performance Analysis",
+      text: "Get the performance analysis of the students in the interviews along with the strengths and weaknesses.",
     },
     {
-      icon: "➕",
-      title: "Community Contributions",
-      text: "Students can add company details that get reviewed and hosted on the platform.",
-      to: "/companystats",
+      title: "Company Stats",
+      text: "Previous year's company stats and the number of students placed in each company.",
     },
   ];
 
   const vision = [
-    { icon: "🎥", title: "Live Interactions", text: "Live interaction videos with seniors sharing experiences." },
-    { icon: "📚", title: "Curated Resources", text: "More curated notes & resources for cutting-edge tech." },
-    { icon: "🔄", title: "Continuous Updates", text: "Continuous feature updates to support student success." },
+    { title: "Live Interactions", text: "Live interaction videos with seniors sharing experiences." },
+    { title: "Curated Resources", text: "More curated notes & resources for cutting-edge tech." },
+    { title: "Continuous Updates", text: "Continuous feature updates to support student success." },
+    { title: "Resume Builder", text: "A resume builder to help students build their resumes and get feedback on them." },
   ];
 
   const stats = [
@@ -199,7 +195,7 @@ function Home() {
       {showBetaPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-xl text-center max-w-md">
-            <h2 className="text-xl font-bold mb-4">🚀 Beta Access</h2>
+            <h2 className="text-xl font-bold mb-4">Beta Access</h2>
             <p className="text-gray-600 mb-4">
               The platform is currently in beta and access is limited to selected users.
               Your batch will be enabled very soon.
@@ -215,7 +211,7 @@ function Home() {
       )}
 
       {/* ── HERO ── */}
-      <div className="w-full py-10 sm:py-16 md:py-20 px-4 sm:px-6 bg-theme-hero relative overflow-hidden">
+      <div className="w-full py-8 sm:py-14 md:py-16 px-4 sm:px-6 bg-theme-hero relative overflow-hidden">
         {/* subtle background decoration */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -331,15 +327,10 @@ function Home() {
                         "linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 45%, transparent))",
                     }}
                   />
-                  <div className="relative pl-5 sm:pl-6 flex gap-4 sm:gap-5">
-                    <div className="shrink-0 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-theme-accent/12 border border-theme-accent/25 text-3xl sm:text-4xl shadow-inner">
-                      {point.icon}
-                    </div>
-                    <div className="min-w-0 pt-1">
-                      <p className="text-base sm:text-lg text-theme-primary leading-relaxed font-medium">
-                        {point.text}
-                      </p>
-                    </div>
+                  <div className="relative pl-5 sm:pl-6">
+                    <p className="text-lg sm:text-xl text-theme-primary leading-relaxed font-medium">
+                      {point.text}
+                    </p>
                   </div>
                 </div>
               </RevealCard>
@@ -376,11 +367,7 @@ function Home() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {features.map((feature, idx) => (
               <RevealCard key={idx} delay={idx * 90}>
-                <Link
-                  to={feature.to}
-                  className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-theme bg-theme-card text-left no-underline text-inherit outline-none transition-all duration-300 hover:border-theme-accent/45 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-theme-accent focus-visible:ring-offset-2 focus-visible:ring-offset-theme-hero dark:hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)]"
-                  aria-label={`Open ${feature.title}`}
-                >
+                <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-theme bg-theme-card text-left transition-all duration-300 hover:border-theme-accent/45 hover:shadow-xl dark:hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.5)]">
                   <div
                     className="h-1 w-full opacity-95"
                     style={{
@@ -389,20 +376,14 @@ function Home() {
                     }}
                   />
                   <div className="flex flex-1 flex-col p-6 sm:p-8">
-                    <div className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-theme-accent/20 bg-theme-accent/10 text-4xl transition-colors duration-300 group-hover:border-theme-accent/35 group-hover:bg-theme-accent/15">
-                      {feature.icon}
-                    </div>
-                    <h3 className="mb-2 text-lg font-bold text-theme-primary transition-colors duration-300 group-hover:text-theme-accent sm:text-xl">
+                    <h3 className="mb-2 text-xl font-bold text-theme-primary transition-colors duration-300 group-hover:text-theme-accent sm:text-2xl">
                       {feature.title}
                     </h3>
-                    <p className="flex-1 text-sm leading-relaxed text-theme-secondary sm:text-base">
+                    <p className="flex-1 text-base leading-relaxed text-theme-secondary sm:text-lg">
                       {feature.text}
                     </p>
-                    <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-theme-accent opacity-90 transition-opacity duration-300 group-hover:opacity-100">
-                      Go to feature <span aria-hidden>→</span>
-                    </span>
                   </div>
-                </Link>
+                </div>
               </RevealCard>
             ))}
           </div>
@@ -476,13 +457,12 @@ function Home() {
             subtitle="We’re not done—here’s what we’re working toward to keep the platform indispensable for every batch."
             id="home-next-heading"
           />
-          <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-6 lg:gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 max-w-5xl mx-auto">
             {vision.map((plan, idx) => (
               <RevealCard key={idx} delay={idx * 110}>
                 <div className="group relative h-full rounded-3xl border border-theme bg-theme-card p-6 sm:p-8 text-center transition-all duration-300 hover:border-theme-accent/50 hover:shadow-lg dark:hover:shadow-[0_16px_40px_-10px_rgba(0,0,0,0.45)]">
-                  <div className="text-4xl sm:text-5xl mb-4">{plan.icon}</div>
-                  <h3 className="text-lg sm:text-xl font-bold text-theme-accent mb-2">{plan.title}</h3>
-                  <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{plan.text}</p>
+                  <h3 className="text-xl sm:text-2xl font-bold text-theme-accent mb-2">{plan.title}</h3>
+                  <p className="text-base sm:text-lg text-theme-secondary leading-relaxed">{plan.text}</p>
                 </div>
               </RevealCard>
             ))}
@@ -490,23 +470,7 @@ function Home() {
         </div>
       </section>
 
-      {/* ── CTA BANNER ── */}
-      <div className="bg-theme-hero border-t border-theme py-14 px-4 text-center">
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-theme-primary mb-4">
-          Ready to ace your placements?
-        </h2>
-        <p className="text-base sm:text-lg text-theme-secondary mb-8 max-w-xl mx-auto">
-          Join hundreds of RVCE students already using the platform to prepare smarter.
-        </p>
-        <div className="flex flex-wrap gap-3 justify-center">
-          <a
-            href="/login"
-            className="px-8 py-3 rounded-xl bg-theme-accent text-white font-semibold text-base hover:opacity-90 transition-opacity shadow-lg"
-          >
-            Get Started →
-          </a>
-        </div>
-      </div>
+    
 
     </div>
   );

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { leaderboardAPI } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
-import { FaTrophy, FaMedal, FaUser, FaRedo, FaSearch, FaTimes } from 'react-icons/fa';
+import { FaUser, FaRedo, FaSearch, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -9,8 +9,8 @@ import { useNavigate } from 'react-router-dom';
 const TIME_FILTERS = ['All Time', 'This Month', 'This Week'];
 
 const podiumMeta = [
-  { border: '#F59E0B', label: '1st', ptsBg: 'rgba(245,158,11,0.15)', ptsColor: '#D97706' },
-  { border: '#94A3B8', label: '2nd', ptsBg: 'rgba(148,163,184,0.15)', ptsColor: '#64748B' },
+  { border: '#F59E0B', ptsBg: 'rgba(245,158,11,0.15)', ptsColor: '#D97706' },
+  { border: '#94A3B8', ptsBg: 'rgba(148,163,184,0.15)', ptsColor: '#64748B' },
 ];
 
 /* ─── Skeleton row ─────────────────────────────────────────── */
@@ -26,10 +26,23 @@ const SkeletonRow = () => (
   </li>
 );
 
-/* ─── Avatar with fallback ─────────────────────────────────── */
+/* ─── Avatar: Google photos often need no-referrer; DB picture may be stale until next login ─── */
 const Avatar = ({ src, alt, size = 64, border }) => {
   const [imgError, setImgError] = useState(false);
   const iconSize = size * 0.44;
+  const url = typeof src === "string" ? src.trim() : "";
+  const initial = useMemo(() => {
+    const base = (alt || "").trim();
+    const ch = base.match(/[a-zA-Z0-9]/);
+    return ch ? ch[0].toUpperCase() : (base.charAt(0) || "?").toUpperCase();
+  }, [alt]);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [url]);
+
+  const showImage = Boolean(url) && !imgError;
+
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
@@ -38,15 +51,35 @@ const Avatar = ({ src, alt, size = 64, border }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       flexShrink: 0,
     }}>
-      {src && !imgError
-        ? <img
-            src={src}
-            alt={alt}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={() => setImgError(true)}
-          />
-        : <FaUser style={{ width: iconSize, height: iconSize, color: '#94A3B8' }} />
-      }
+      {showImage ? (
+        <img
+          src={url}
+          alt={alt || ""}
+          referrerPolicy="no-referrer"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setImgError(true)}
+        />
+      ) : initial && initial !== "?" ? (
+        <span
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--accent, #6366f1)',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: Math.max(12, Math.round(size * 0.38)),
+            userSelect: 'none',
+            lineHeight: 1,
+          }}
+        >
+          {initial}
+        </span>
+      ) : (
+        <FaUser style={{ width: iconSize, height: iconSize, color: '#94A3B8' }} />
+      )}
     </div>
   );
 };
@@ -54,9 +87,6 @@ const Avatar = ({ src, alt, size = 64, border }) => {
 /* ─── Podium card (top 2) ──────────────────────────────────── */
 const PodiumCard = ({ entry, rank, isCurrentUser }) => {
   const meta = podiumMeta[rank - 1] || podiumMeta[1];
-  const RankIcon = rank === 1
-    ? () => <FaTrophy className="w-5 h-5" style={{ color: '#F59E0B' }} />
-    : () => <FaMedal className="w-5 h-5" style={{ color: '#94A3B8' }} />;
 
   return (
     <div
@@ -90,21 +120,19 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
       {/* Rank badge */}
       <span style={{
         position: 'absolute', top: '10px', right: '10px',
-        fontSize: '11px', fontWeight: 700,
-        padding: '2px 8px', borderRadius: '999px',
+        fontSize: '13px', fontWeight: 800,
+        padding: '2px 10px', borderRadius: '999px',
         background: meta.ptsBg, color: meta.ptsColor,
         border: `1px solid ${meta.border}44`,
-      }}>{meta.label}</span>
+        fontVariantNumeric: 'tabular-nums',
+      }}>{rank}</span>
 
       {/* Avatar */}
       <div style={{ position: 'relative', marginBottom: '10px', marginTop: '8px' }}>
         <Avatar src={entry.picture} alt={entry.username} size={64} border={meta.border} />
-        <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
-          <RankIcon />
-        </div>
       </div>
 
-      <p style={{ marginTop: '12px', fontWeight: 600, fontSize: '14px', color: '#E2E8F0', textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <p style={{ marginTop: '12px', fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {entry.username}
       </p>
 
@@ -117,7 +145,7 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
       </span>
 
       {(entry.questionsAdded || entry.experiencesAdded) && (
-        <p style={{ marginTop: 8, fontSize: 11, color: '#64748B', textAlign: 'center', lineHeight: 1.5 }}>
+        <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
           {entry.questionsAdded
             ? <span>{entry.questionsAdded} Q{entry.questionsAdded !== 1 ? 's' : ''}</span>
             : null}
@@ -182,17 +210,17 @@ const Leaderboard = () => {
     .slice(0, showAll ? filtered.length : PAGE_SIZE + 2)
     .some((e) => user && e.userId === user.userId);
 
-  const scrollToMe = () => myRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-  const getRankIcon = (rank) => {
-    if (rank === 1) return <FaTrophy style={{ width: 20, height: 20, color: '#F59E0B' }} />;
-    if (rank === 2) return <FaMedal  style={{ width: 20, height: 20, color: '#94A3B8' }} />;
-    if (rank === 3) return <FaMedal  style={{ width: 20, height: 20, color: '#B45309' }} />;
-    return <span style={{ color: '#475569', fontWeight: 700, fontSize: 14, width: 24, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{rank}</span>;
+  const rankNumberStyle = {
+    color: 'var(--text-primary)',
+    fontWeight: 700,
+    fontSize: 15,
+    minWidth: 28,
+    textAlign: 'center',
+    fontVariantNumeric: 'tabular-nums',
   };
 
   const navigate = useNavigate();
-  const handleBack = () => navigate(-1);
+  const handleBack = () => navigate('/');
 
   const panelStyle = {
     background: 'var(--bg-card)',
@@ -203,7 +231,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="events-page-theme min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="events-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <style>{`
         @keyframes lb-fade-in {
           from { opacity: 0; transform: translateY(12px); }
@@ -219,7 +247,8 @@ const Leaderboard = () => {
         .lb-search-input { outline: none; width: 100%; }
         .lb-search-input:focus { border-color: #6366F1 !important; }
         .lb-chip { cursor: pointer; transition: all 0.18s; white-space: nowrap; font-family: inherit; }
-        .lb-chip:hover { border-color: #6366F1 !important; color: #818CF8 !important; }
+        .lb-chip:not(.lb-chip-active):hover { border-color: #6366F1 !important; color: #818CF8 !important; }
+        .lb-chip.lb-chip-active:hover { color: #fff !important; }
       `}</style>
 
       <div style={{ maxWidth: 896, margin: '0 auto' }}>
@@ -239,35 +268,13 @@ const Leaderboard = () => {
         </div>
 
         {/* ── Header ── */}
-        <div style={{ marginBottom: 32, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ fontSize: 'clamp(1.6rem,4vw,2.4rem)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <FaTrophy style={{ color: '#F59E0B' }} />
-              Contributor Leaderboard
-            </h1>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'nowrap' }}>
-              Top contributors who add questions and interview experiences to the platform.
-            </p>
-          </div>
-
-          <button
-            onClick={fetchLeaderboard}
-            disabled={loading}
-            style={{
-              marginLeft: 'auto',
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
-              fontSize: 14, color: 'var(--text-primary)',
-              border: '1px solid var(--border)', background: 'var(--bg-hero)',
-              padding: '8px 16px', borderRadius: 10,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit', transition: 'all 0.18s',
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.color = '#E2E8F0'; }}
-            onMouseOut={(e)  => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-          >
-            <FaRedo style={{ width: 13, height: 13 }} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 'clamp(1.6rem,4vw,2.4rem)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+            Contributor Leaderboard
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'nowrap' }}>
+            Top contributors who add questions and interview experiences to the platform.
+          </p>
         </div>
 
         {/* ── Points legend ── */}
@@ -298,7 +305,8 @@ const Leaderboard = () => {
             {TIME_FILTERS.map((f) => (
               <button
                 key={f}
-                className="lb-chip"
+                type="button"
+                className={`lb-chip${timeFilter === f ? " lb-chip-active" : ""}`}
                 onClick={() => setTimeFilter(f)}
                 style={{
                   padding: '6px 16px', borderRadius: 9, fontSize: 14, fontWeight: 500,
@@ -389,7 +397,7 @@ const Leaderboard = () => {
           <>
             {filtered.length === 0 ? (
               <div style={{ ...panelStyle, padding: '5rem 2rem', textAlign: 'center' }}>
-                <FaTrophy style={{ fontSize: 56, color: 'var(--accent-secondary)', display: 'block', margin: '0 auto 16px' }} />
+                <p style={{ fontSize: 48, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 16, fontVariantNumeric: 'tabular-nums' }}>0</p>
                 {search
                   ? <p style={{ color: '#94A3B8', fontSize: 18 }}>No users matching "<span style={{ color: '#818CF8' }}>{search}</span>"</p>
                   : <>
@@ -447,7 +455,7 @@ const Leaderboard = () => {
                         >
                           {/* rank */}
                           <div style={{ flexShrink: 0, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {getRankIcon(entry.rank)}
+                            <span style={rankNumberStyle}>{entry.rank}</span>
                           </div>
 
                           {/* avatar */}

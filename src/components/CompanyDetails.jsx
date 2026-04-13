@@ -84,7 +84,7 @@ function CompanyDetails() {
   if (!id) return <div className="p-6 min-h-screen bg-theme-app"><p className="text-theme-secondary">Invalid company link.</p></div>;
   if (loading && !company) {
     return (
-      <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+      <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
         <div className="mb-4">
           <div className="shimmer-box h-5 w-20 rounded-md" />
         </div>
@@ -222,7 +222,7 @@ function CompanyDetails() {
 
   return (
     <>
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+    <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
       {/* Back Button */}
       <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
         <button
