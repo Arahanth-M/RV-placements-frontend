@@ -16,6 +16,7 @@ function NotificationBell() {
   // Fetch notifications and unread count
   const fetchNotifications = async (silent = false) => {
     if (!user) return;
+    if (user?.betaAccess === false) return;
 
     try {
       if (!silent) {

@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { companyAPI } from "../utils/api";
+import { useAuth } from "../utils/AuthContext";
 import homeImage5 from "../assets/home5.png";
 import home2 from "../assets/home2.png";
 import CompanyLogo from "./CompanyLogo";
@@ -109,9 +110,17 @@ function SectionIntro({ kicker, title, titleAccent, subtitle, id }) {
 }
 
 function Home() {
+  const { user } = useAuth();
   const images = [homeImage5, home2];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [companyLogos, setCompanyLogos] = useState([]);
+  const [showBetaPopup, setShowBetaPopup] = useState(false);
+
+  useEffect(() => {
+    if (user && user.betaAccess === false) {
+      setShowBetaPopup(true);
+    }
+  }, [user]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -187,6 +196,23 @@ function Home() {
 
   return (
     <div className="min-h-screen bg-theme-app">
+      {showBetaPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-xl text-center max-w-md">
+            <h2 className="text-xl font-bold mb-4">🚀 Beta Access</h2>
+            <p className="text-gray-600 mb-4">
+              The platform is currently in beta and access is limited to selected users.
+              Your batch will be enabled very soon.
+            </p>
+            <button
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+              onClick={() => setShowBetaPopup(false)}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── HERO ── */}
       <div className="w-full py-10 sm:py-16 md:py-20 px-4 sm:px-6 bg-theme-hero relative overflow-hidden">

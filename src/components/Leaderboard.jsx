@@ -147,6 +147,10 @@ const Leaderboard = () => {
   const PAGE_SIZE = 10;
 
   const fetchLeaderboard = async () => {
+    if (user?.betaAccess === false) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -160,7 +164,7 @@ const Leaderboard = () => {
     }
   };
 
-  useEffect(() => { fetchLeaderboard(); }, []);
+  useEffect(() => { fetchLeaderboard(); }, [user?.betaAccess]);
 
   /* ── derived data ── */
   const filtered = leaderboard.filter((e) =>

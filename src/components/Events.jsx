@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { eventAPI } from '../utils/api';
+import { useAuth } from '../utils/AuthContext';
 import { FaCalendarAlt, FaExternalLinkAlt, FaArrowLeft } from 'react-icons/fa';
 
 const Events = () => {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,9 +13,13 @@ const Events = () => {
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [user?.betaAccess]);
 
   const fetchEvents = async () => {
+    if (user?.betaAccess === false) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);

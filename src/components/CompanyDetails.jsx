@@ -35,6 +35,10 @@ function CompanyDetails() {
 
   useEffect(() => {
     if (!id) return;
+    if (user?.betaAccess === false) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setLoadError(null);
     setCompany(null);
@@ -55,7 +59,7 @@ function CompanyDetails() {
         setLoadError(isOffline || networkError ? "offline" : "error");
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, user?.betaAccess]);
 
   const openTabFromNav = location.state?.openTab;
 
@@ -68,6 +72,7 @@ function CompanyDetails() {
 
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
+    if (user?.betaAccess === false) return;
     setIsRefreshing(true);
     companyAPI
       .refreshCompany(id)

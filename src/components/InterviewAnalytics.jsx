@@ -25,6 +25,11 @@ function InterviewAnalytics() {
       return;
     }
 
+    if (user?.betaAccess === false) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     interviewAPI
       .getUserAnalytics(user.userId)

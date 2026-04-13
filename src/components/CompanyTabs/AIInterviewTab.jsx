@@ -213,6 +213,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
     const tick = async () => {
       try {
+        if (user?.betaAccess === false) return;
         const { data } = await interviewAPI.getInterviewStatus(sessionId);
         if (cancelled) return;
         if (data?.report) {
@@ -238,10 +239,15 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       if (intervalId) window.clearInterval(intervalId);
       window.clearTimeout(timeoutId);
     };
-  }, [status, sessionId, report]);
+  }, [status, sessionId, report, user?.betaAccess]);
 
   const fetchResumableInterview = useCallback(async () => {
     if (!user?.userId || !company?._id) {
+      setResumeSession(null);
+      return;
+    }
+
+    if (user?.betaAccess === false) {
       setResumeSession(null);
       return;
     }
@@ -255,10 +261,15 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     } catch {
       setResumeSession(null);
     }
-  }, [user?.userId, company?._id]);
+  }, [user?.userId, user?.betaAccess, company?._id]);
 
   const fetchPreviewPlan = useCallback(async () => {
     if (!company?._id) {
+      setPreviewPlan(null);
+      return;
+    }
+
+    if (user?.betaAccess === false) {
       setPreviewPlan(null);
       return;
     }
@@ -272,7 +283,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     } finally {
       setPreviewLoading(false);
     }
-  }, [company?._id]);
+  }, [company?._id, user?.betaAccess]);
 
   useEffect(() => {
     fetchResumableInterview();
@@ -306,6 +317,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   const discardCurrentInterview = useCallback(async (targetSessionId) => {
     if (!targetSessionId) return;
+    if (user?.betaAccess === false) return;
     try {
       await interviewAPI.discardInterview(targetSessionId);
     } catch (err) {
@@ -315,7 +327,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       }
       console.error("Failed to discard in-progress interview:", err);
     }
-  }, []);
+  }, [user?.betaAccess]);
 
   const finalizeExitToGeneral = useCallback(async () => {
     setSessionId("");
@@ -517,6 +529,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       return;
     }
 
+    if (user?.betaAccess === false) return;
+
     loadingRef.current = true;
     roundFeedbackRef.current = null;
     setLoading(true);
@@ -685,6 +699,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const handleSubmitAnswer = async () => {
     if (!canSubmitAnswer) return;
 
+    if (user?.betaAccess === false) return;
+
     loadingRef.current = true;
     roundFeedbackRef.current = null;
     setLoading(true);
@@ -797,6 +813,9 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
         const pollOnce = async () => {
           if (interviewAnswerPollAbortedRef.current) {
+            return false;
+          }
+          if (user?.betaAccess === false) {
             return false;
           }
           pollCount += 1;
@@ -1057,6 +1076,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   const handleStartNextRound = async () => {
     if (!sessionId || loading || !roundFeedbackView?.nextRoundAvailable) return;
+    if (user?.betaAccess === false) return;
     loadingRef.current = true;
     setLoading(true);
     setError("");

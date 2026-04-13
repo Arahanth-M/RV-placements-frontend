@@ -49,6 +49,13 @@ function AIInterviews() {
         return;
       }
 
+      if (user?.betaAccess === false) {
+        setSessions([]);
+        setLoading(false);
+        setHasMore(false);
+        return;
+      }
+
       if (append) {
         setLoadingMore(true);
       } else {
@@ -81,9 +88,10 @@ function AIInterviews() {
 
     setPage(1);
     fetchSessions(1, false);
-  }, [user?.userId]);
+  }, [user?.userId, user?.betaAccess]);
 
   const handleLoadMore = async () => {
+    if (user?.betaAccess === false) return;
     if (!user?.userId || loadingMore || !hasMore) return;
     const nextPage = page + 1;
     setLoadingMore(true);
@@ -271,6 +279,7 @@ function AIInterviews() {
 }
 
 function InterviewSessionCard({ session }) {
+  const { user } = useAuth();
   const [detailSession, setDetailSession] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
@@ -281,6 +290,7 @@ function InterviewSessionCard({ session }) {
     if (!isOpen || hasRequestedDetail || detailLoading) {
       return;
     }
+    if (user?.betaAccess === false) return;
     setHasRequestedDetail(true);
     setDetailLoading(true);
     setDetailError("");

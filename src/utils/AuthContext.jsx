@@ -8,6 +8,7 @@ const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
 const AuthContext = createContext({
   user: null,
   isAdmin: false,
+  betaAccess: true,
   studentData: null,
   loading: true,
   login: () => {},
@@ -395,6 +396,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAdmin,
+    betaAccess: user?.betaAccess ?? true,
     studentData,
     loading,
     login,

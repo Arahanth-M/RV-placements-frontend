@@ -18,6 +18,11 @@ function Analytics({ year = null, embedded = false }) {
         return;
       }
 
+      if (user?.betaAccess === false) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
