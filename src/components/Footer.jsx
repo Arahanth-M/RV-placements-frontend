@@ -30,7 +30,7 @@ function Footer() {
               { label: "Home", to: "/" },
               { label: "Company Stats", to: "/companystats" },
               { label: "Contact Us", to: "/contact" },
-              { label: "Our Developers", to: "/team" },
+              {label: "Feedback", to: "/feedback"},
             ].map(({ label, to }) => (
             <li key={to}>
               <Link
