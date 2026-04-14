@@ -78,14 +78,17 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
+  const [mobileStudentCornerOpen, setMobileStudentCornerOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [mobileAccountMenuOpen, setMobileAccountMenuOpen] = useState(false);
+  const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [hasPendingItems, setHasPendingItems] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const studentMenuRef = useRef(null);
   const adminMenuRef = useRef(null);
-  const accountMenuRef = useRef(null);
+  const mobileAccountMenuRef = useRef(null);
+  const desktopAccountMenuRef = useRef(null);
   const headerShellRef = useRef(null);
 
   useEffect(() => {
@@ -107,12 +110,14 @@ const Header = () => {
   const handleLogout = async () => {
     await logout();
     navigate("/");
-    setAccountMenuOpen(false);
+    setMobileAccountMenuOpen(false);
+    setDesktopAccountMenuOpen(false);
     setMobileNavOpen(false);
   };
 
   useEffect(() => {
     setMobileNavOpen(false);
+    setMobileStudentCornerOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -137,8 +142,11 @@ const Header = () => {
       if (adminMenuRef.current && !adminMenuRef.current.contains(el)) {
         setAdminMenuOpen(false);
       }
-      if (accountMenuRef.current && !accountMenuRef.current.contains(el)) {
-        setAccountMenuOpen(false);
+      if (mobileAccountMenuRef.current && !mobileAccountMenuRef.current.contains(el)) {
+        setMobileAccountMenuOpen(false);
+      }
+      if (desktopAccountMenuRef.current && !desktopAccountMenuRef.current.contains(el)) {
+        setDesktopAccountMenuOpen(false);
       }
     };
 
@@ -199,10 +207,14 @@ const Header = () => {
     </div>
   );
 
-  const renderAccountMenu = () => {
+  const renderAccountMenu = (isMobile = false) => {
     if (loading) {
       return <span className="text-sm text-theme-secondary">Loading...</span>;
     }
+
+    const accountMenuOpen = isMobile ? mobileAccountMenuOpen : desktopAccountMenuOpen;
+    const setAccountMenuOpen = isMobile ? setMobileAccountMenuOpen : setDesktopAccountMenuOpen;
+    const accountMenuRef = isMobile ? mobileAccountMenuRef : desktopAccountMenuRef;
 
     return (
       <div className="relative" ref={accountMenuRef}>
@@ -324,15 +336,21 @@ const Header = () => {
             >
               {theme === "dark" ? <FaSun className="h-[1.05rem] w-[1.05rem]" /> : <FaMoon className="h-[1.05rem] w-[1.05rem]" />}
             </button>
-            <div className="shrink-0">{renderAccountMenu()}</div>
+            <div className="shrink-0">{renderAccountMenu(true)}</div>
             <button
               type="button"
-              onClick={() => setMobileNavOpen((o) => !o)}
-              className="shrink-0 rounded-full border border-theme bg-theme-card p-2 text-theme-primary hover:bg-theme-card-hover transition-colors"
+              onClick={() =>
+                setMobileNavOpen((open) => {
+                  const next = !open;
+                  if (next) setMobileStudentCornerOpen(false);
+                  return next;
+                })
+              }
+              className="shrink-0 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors active:scale-[0.98] touch-manipulation"
               aria-expanded={mobileNavOpen}
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
             >
-              {mobileNavOpen ? <FaTimes className="h-[1.1rem] w-[1.1rem]" /> : <FaBars className="h-[1.1rem] w-[1.1rem]" />}
+              {mobileNavOpen ? <FaTimes className="h-[1.2rem] w-[1.2rem]" /> : <FaBars className="h-[1.2rem] w-[1.2rem]" />}
             </button>
           </div>
 
@@ -450,7 +468,7 @@ const Header = () => {
               </div>
             )}
 
-            <div className="shrink-0">{renderAccountMenu()}</div>
+            <div className="shrink-0">{renderAccountMenu(false)}</div>
           </nav>
         </div>
       </header>
@@ -473,22 +491,48 @@ const Header = () => {
             </Link>
           ))}
 
-          <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-theme-secondary">Student Corner</div>
-          {studentCornerLinks.map((item) => {
-            const Icon = item.icon;
-            const active = isPathActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setMobileNavOpen(false)}
-                className={`${mobileNavLinkClass} ${active ? "bg-theme-accent/15 text-theme-accent" : ""}`}
-              >
-                <Icon className="h-4 w-4 shrink-0 opacity-80" />
-                {item.label}
-              </Link>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => setMobileStudentCornerOpen((prev) => !prev)}
+            aria-expanded={mobileStudentCornerOpen}
+            className={`flex w-full items-center justify-between gap-3 border-b border-theme px-4 py-3.5 text-left text-base font-semibold transition-colors ${
+              isStudentCornerActive || mobileStudentCornerOpen
+                ? "bg-theme-accent/10 text-theme-primary"
+                : "text-theme-primary hover:bg-theme-hero"
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <FaGraduationCap className="h-4 w-4 shrink-0 opacity-80" />
+              Student Corner
+            </span>
+            <FaChevronDown
+              className={`h-3 w-3 shrink-0 transition ${mobileStudentCornerOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {mobileStudentCornerOpen && (
+            <div className="border-b border-theme bg-theme-nav/30">
+              {studentCornerLinks.map((item) => {
+                const Icon = item.icon;
+                const active = isPathActive(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => {
+                      setMobileNavOpen(false);
+                      setMobileStudentCornerOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-3 px-6 py-3 text-[15px] font-medium transition-colors ${
+                      active ? "text-theme-accent bg-theme-accent/10" : "text-theme-secondary hover:text-theme-primary hover:bg-theme-hero"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
           {isAdmin && (
             <>

@@ -24,6 +24,11 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
   const [editEligibility, setEditEligibility] = useState(company.eligibility || "");
   const [editBusinessModel, setEditBusinessModel] = useState(company.business_model || "");
 
+  const isInternshipOnlyCompany = (() => {
+    const typeLower = (company?.type || "").toLowerCase();
+    return typeLower.includes("only internship");
+  })();
+
 
   const formatCTCValue = (value) => {
     if (value === null || value === undefined) return "N/A";
@@ -238,8 +243,8 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
                 {role.roleName}
               </h3>
 
-              {/* CTC */}
-              {role.ctc && (
+              {/* CTC (hidden for internship-only companies) */}
+              {!isInternshipOnlyCompany && role.ctc && (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                   {Object.entries(role.ctc).map(([key, value]) => (
                     <div key={key} className="bg-slate-800 rounded-lg p-4">

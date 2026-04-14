@@ -62,14 +62,21 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
     return <p className="text-theme-muted text-sm italic">No logos available</p>;
   }
 
-  // Adjust grid columns based on number of items to look balanced
-  const columns = displayedCompanies.length >= 5 ? 5 : displayedCompanies.length >= 3 ? 3 : displayedCompanies.length;
+  // Keep logo tiles inside narrow mobile cards:
+  // use fewer columns on mobile, then expand on larger breakpoints.
+  const gridClassName =
+    displayedCompanies.length >= 5
+      ? "grid-cols-3 sm:grid-cols-5"
+      : displayedCompanies.length >= 3
+        ? "grid-cols-3"
+        : displayedCompanies.length === 2
+          ? "grid-cols-2"
+          : "grid-cols-1";
 
   return (
-    <div className={`grid gap-2 p-2 w-full mx-auto min-h-[80px] items-center justify-center`}
-         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+    <div className={`grid ${gridClassName} gap-1.5 sm:gap-2 p-1.5 sm:p-2 w-full mx-auto min-h-[72px] sm:min-h-[80px] items-center justify-center overflow-hidden`}>
       {displayedCompanies.map((company, index) => (
-        <div key={index} className="relative w-16 h-16 sm:w-20 sm:h-20 mx-auto">
+        <div key={index} className="relative w-10 h-10 sm:w-20 sm:h-20 mx-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={company?._id || company?.name || index}
@@ -86,11 +93,11 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
                 duration: 0.4,
                 scale: { type: "spring", stiffness: 300, damping: 15 }
               }}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-theme bg-theme-input flex items-center justify-center overflow-hidden shadow-sm transition-all cursor-pointer"
+              className="w-10 h-10 sm:w-20 sm:h-20 rounded-lg sm:rounded-xl border border-theme sm:border-2 bg-theme-input flex items-center justify-center overflow-hidden shadow-sm transition-all cursor-pointer"
             >
               <CompanyLogo
                 company={company}
-                className="w-12 h-12 sm:w-16 sm:h-16 object-contain p-1"
+                className="w-8 h-8 sm:w-16 sm:h-16 object-contain p-0.5 sm:p-1"
                 alt={`${company?.name || 'Company'} logo`}
               />
             </motion.div>

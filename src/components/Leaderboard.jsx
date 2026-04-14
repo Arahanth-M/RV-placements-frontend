@@ -6,8 +6,6 @@ import { useNavigate } from 'react-router-dom';
 
 
 /* ─── helpers ─────────────────────────────────────────────── */
-const TIME_FILTERS = ['All Time', 'This Month', 'This Week'];
-
 const podiumMeta = [
   { border: '#F59E0B', ptsBg: 'rgba(245,158,11,0.15)', ptsColor: '#D97706' },
   { border: '#94A3B8', ptsBg: 'rgba(148,163,184,0.15)', ptsColor: '#64748B' },
@@ -167,7 +165,6 @@ const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
-  const [timeFilter, setTimeFilter]   = useState('All Time');
   const [search, setSearch]           = useState('');
   const [showAll, setShowAll]         = useState(false);
   const myRowRef = useRef(null);
@@ -246,9 +243,6 @@ const Leaderboard = () => {
         .lb-row-hover:hover { background: rgba(79,70,229,0.08) !important; }
         .lb-search-input { outline: none; width: 100%; }
         .lb-search-input:focus { border-color: #6366F1 !important; }
-        .lb-chip { cursor: pointer; transition: all 0.18s; white-space: nowrap; font-family: inherit; }
-        .lb-chip:not(.lb-chip-active):hover { border-color: #6366F1 !important; color: #818CF8 !important; }
-        .lb-chip.lb-chip-active:hover { color: #fff !important; }
       `}</style>
 
       <div style={{ maxWidth: 896, margin: '0 auto' }}>
@@ -295,32 +289,8 @@ const Leaderboard = () => {
           ))}
         </div>
 
-        {/* ── Time filter + Search ── */}
+        {/* ── Search ── */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{
-            display: 'flex', gap: 6,
-            background: 'var(--bg-hero)', border: '1px solid var(--border)',
-            padding: 4, borderRadius: 12,
-          }}>
-            {TIME_FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                className={`lb-chip${timeFilter === f ? " lb-chip-active" : ""}`}
-                onClick={() => setTimeFilter(f)}
-                style={{
-                  padding: '6px 16px', borderRadius: 9, fontSize: 14, fontWeight: 500,
-                  border: 'none',
-                  background: timeFilter === f ? 'var(--accent)' : 'transparent',
-                  color: timeFilter === f ? '#fff' : 'var(--text-secondary)',
-                  boxShadow: timeFilter === f ? '0 2px 6px rgba(79,70,229,0.25)' : 'none',
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
           <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
             <FaSearch style={{
               position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)',

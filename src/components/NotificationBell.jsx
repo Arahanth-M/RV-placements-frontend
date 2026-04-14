@@ -236,10 +236,10 @@ function NotificationBell() {
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-theme-card backdrop-blur-md rounded-xl shadow-2xl border border-theme z-50 max-h-[32rem] overflow-hidden flex flex-col transition-all duration-200 ease-out transform origin-top-right">
-          <div className="bg-theme-card border-b border-theme px-4 py-3 flex justify-between items-center bg-opacity-50">
-            <h3 className="font-bold text-lg text-theme-accent">Notifications</h3>
-            <div className="flex items-center gap-3">
+        <div className="fixed left-3 right-3 top-[4.25rem] z-50 max-h-[min(62vh,26rem)] overflow-hidden rounded-xl border border-theme bg-theme-card shadow-2xl backdrop-blur-md transition-all duration-200 ease-out sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-96 sm:max-h-[32rem] sm:origin-top-right flex flex-col">
+          <div className="bg-theme-card border-b border-theme px-3 py-2.5 sm:px-4 sm:py-3 flex justify-between items-start sm:items-center gap-2 bg-opacity-50">
+            <h3 className="font-bold text-base sm:text-lg text-theme-accent">Notifications</h3>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
                 onClick={handleRefresh}
                 className="text-sm text-theme-secondary hover:text-theme-primary transition-all duration-300 hover:rotate-180 p-1 rounded-full hover:bg-theme-card-hover"
@@ -250,7 +250,7 @@ function NotificationBell() {
               {notifications.length > 0 && (
                 <button
                   onClick={handleClearAll}
-                  className="text-xs text-theme-secondary hover:text-red-500 transition-colors flex items-center gap-1 font-medium"
+                  className="text-[11px] sm:text-xs text-theme-secondary hover:text-red-500 transition-colors flex items-center gap-1 font-medium"
                   title="Clear all notifications"
                 >
                   <FaTrash className="w-3 h-3" />
@@ -260,7 +260,7 @@ function NotificationBell() {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsSeen}
-                  className="text-xs text-theme-accent hover:text-theme-accent-hover font-medium underline-offset-2 hover:underline"
+                  className="text-[11px] sm:text-xs text-theme-accent hover:text-theme-accent-hover font-medium underline-offset-2 hover:underline"
                 >
                   Mark all as read
                 </button>
@@ -285,20 +285,20 @@ function NotificationBell() {
                 {notifications.map((notification) => (
                   <div
                     key={notification._id}
-                    className={`px-4 py-4 hover:bg-theme-card-hover transition-colors cursor-pointer group ${
-                      !notification.isSeen ? "bg-theme-accent bg-opacity-[0.03] border-l-2 border-theme-accent" : ""
+                    className={`px-3 sm:px-4 py-3.5 sm:py-4 hover:bg-theme-card-hover transition-colors cursor-pointer group ${
+                      !notification.isSeen ? "bg-theme-hero/35 border-l-2 border-theme-accent" : ""
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start gap-3">
                       <div
                         className={`flex-shrink-0 w-2 h-2 rounded-full mt-1.5 transition-all duration-300 ${
-                          !notification.isSeen ? "bg-theme-accent scale-110 shadow-[0_0_8px_rgba(50,205,50,0.5)]" : "bg-transparent"
+                          !notification.isSeen ? "bg-theme-accent" : "bg-transparent"
                         }`}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2">
-                          <p className={`font-semibold text-sm leading-tight transition-colors ${
+                          <p className={`font-semibold text-[13px] sm:text-sm leading-tight transition-colors ${
                             !notification.isSeen ? "text-theme-primary" : "text-theme-secondary"
                           }`}>
                             {notification.title}
@@ -311,7 +311,7 @@ function NotificationBell() {
                             <FaTimes className="w-3 h-3" />
                           </button>
                         </div>
-                        <p className="text-theme-secondary text-sm mt-1 leading-relaxed">
+                        <p className="text-theme-secondary text-[13px] sm:text-sm mt-1 leading-relaxed">
                           {notification.message ||
                             notification.body ||
                             (notification.payload?.companyName
