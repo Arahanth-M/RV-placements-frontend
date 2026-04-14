@@ -46,7 +46,7 @@ function Feedback() {
               href={DUMMY_FEEDBACK_FORM_URL}
               target="_blank"
               rel="noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 sm:text-base"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent shadow-sm transition-colors hover:bg-theme-card sm:text-base"
             >
               Open Feedback Form
               <FaExternalLinkAlt className="h-3.5 w-3.5" />
