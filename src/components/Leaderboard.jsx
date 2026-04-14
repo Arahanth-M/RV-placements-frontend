@@ -163,6 +163,7 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
 const Leaderboard = () => {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState([]);
+  const [weeklyTopContributor, setWeeklyTopContributor] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [search, setSearch]           = useState('');
@@ -179,8 +180,12 @@ const Leaderboard = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await leaderboardAPI.getLeaderboard();
-      setLeaderboard(response.data || []);
+      const [leaderboardResponse, weeklyTopResponse] = await Promise.all([
+        leaderboardAPI.getLeaderboard(),
+        leaderboardAPI.getWeeklyTopContributor(),
+      ]);
+      setLeaderboard(leaderboardResponse.data || []);
+      setWeeklyTopContributor(weeklyTopResponse.data || null);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
       setError('Failed to load leaderboard. Please try again.');
@@ -287,6 +292,47 @@ const Leaderboard = () => {
               <span style={{ fontWeight: 700, color: ptsColor, marginLeft: 4 }}>{pts}</span>
             </div>
           ))}
+        </div>
+
+        {/* ── Weekly top contributor ── */}
+        <div
+          style={{
+            ...panelStyle,
+            marginBottom: 20,
+            padding: "14px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <Avatar
+            src={weeklyTopContributor?.picture}
+            alt={weeklyTopContributor?.username || "Top contributor"}
+            size={44}
+            border="#6366F1"
+          />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 2 }}>
+              This Week's Top Contributor
+            </p>
+            {weeklyTopContributor ? (
+              <>
+                <p style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {weeklyTopContributor.username || "Anonymous"}
+                </p>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
+                  {weeklyTopContributor.weeklyPoints ?? 0} pts
+                  {weeklyTopContributor.totalSubmissions != null
+                    ? ` · ${weeklyTopContributor.totalSubmissions} submissions`
+                    : ""}
+                </p>
+              </>
+            ) : (
+              <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                No contributions recorded yet for this week.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* ── Search ── */}
