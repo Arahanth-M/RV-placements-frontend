@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaThumbsUp, FaChartBar, FaTimes, FaEdit, FaCheck } from "react-icons/fa";
+import { FaThumbsUp, FaTimes, FaEdit, FaCheck } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import CompanyLogo from "./CompanyLogo";
@@ -12,12 +12,6 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
-  const [showStatsModal, setShowStatsModal] = useState(false);
-  const [editingStats, setEditingStats] = useState(false);
-  const [editApplied, setEditApplied] = useState("");
-  const [editClearedOA, setEditClearedOA] = useState("");
-  const [editGotIn, setEditGotIn] = useState("");
-  const [statsSaving, setStatsSaving] = useState(false);
   const hasPrefetchedRef = useRef(false);
 
   const [isEditingType, setIsEditingType] = useState(false);
@@ -112,55 +106,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     }
   };
 
-  const handleStatsClick = (e) => {
-    e.stopPropagation();
-    setShowStatsModal(true);
-  };
-
-  const applied = company.totalStudentsApplied ?? 0;
-  const clearedOA = company.totalClearedOA ?? 0;
-  const gotIn = company.totalGotIn ?? 0;
-
-  const startEditStats = () => {
-    setEditApplied(String(applied));
-    setEditClearedOA(String(clearedOA));
-    setEditGotIn(String(gotIn));
-    setEditingStats(true);
-  };
-
-  const cancelEditStats = () => {
-    setEditingStats(false);
-    setEditApplied("");
-    setEditClearedOA("");
-    setEditGotIn("");
-  };
-
-  const saveStats = async (e) => {
-    e.preventDefault();
-    const a = parseInt(editApplied, 10);
-    const o = parseInt(editClearedOA, 10);
-    const g = parseInt(editGotIn, 10);
-    if (isNaN(a) || a < 0 || isNaN(o) || o < 0 || isNaN(g) || g < 0) {
-      alert("Please enter valid non-negative numbers.");
-      return;
-    }
-    setStatsSaving(true);
-    try {
-      const { adminAPI } = await import("../utils/api");
-      await adminAPI.updateCompanyStats(company._id, { totalStudentsApplied: a, totalClearedOA: o, totalGotIn: g });
-      if (onStatsUpdated) onStatsUpdated();
-      setEditingStats(false);
-      setEditApplied("");
-      setEditClearedOA("");
-      setEditGotIn("");
-      setShowStatsModal(false);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update stats.");
-    } finally {
-      setStatsSaving(false);
-    }
-  };
+  const totalGotIn = company.totalGotIn ?? 0;
 
   const startEditType = (e) => {
     e.stopPropagation();
@@ -245,7 +191,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
       {/* Middle Section: Main info - Flex grow to push footer down */}
       <div className="flex-1 flex flex-col min-w-0 gap-3">
-        <div className="company-info text-sm line-clamp-1 flex-shrink-0">
+        <div className="company-info text-sm flex-shrink-0 leading-relaxed break-words">
           <span className="font-semibold text-theme-secondary">Date of visit: </span>
           <span className="text-theme-muted">{company.date_of_visit || "TBA"}</span>
         </div>
@@ -294,15 +240,10 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
         <div className="card-footer flex items-center justify-between gap-2 overflow-hidden">
-          <button
-            onClick={handleStatsClick}
-            className="stats-btn flex items-center gap-2 px-3 py-1.5 rounded-lg bg-theme-card-hover hover:bg-theme-nav text-theme-primary text-xs font-bold transition-all border border-theme"
-            title="View statistics"
-          >
-            <FaChartBar className="w-3.5 h-3.5" />
-            <span>Stats</span>
-          </button>
-          
+          <p className="text-xs sm:text-sm font-semibold text-theme-secondary shrink-0">
+            Got in: <span className="text-theme-primary tabular-nums">{totalGotIn}</span>
+          </p>
+
           <button
             onClick={handleThumbsUp}
             disabled={isUpdating || hasUpvoted || isCheckingStatus}
@@ -335,100 +276,6 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
           </button>
         </div>
       </div>
-
-      {/* Stats modal */}
-      {showStatsModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={(e) => { e.stopPropagation(); setShowStatsModal(false); setEditingStats(false); }}
-        >
-          <div
-            className="bg-theme-card border border-theme rounded-xl shadow-xl max-w-sm w-full p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-theme-primary">Placement Stats</h3>
-              <button
-                onClick={() => setShowStatsModal(false)}
-                className="p-1 rounded text-theme-secondary hover:text-theme-primary hover:bg-theme-nav"
-                aria-label="Close"
-              >
-                <FaTimes className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-sm text-theme-secondary mb-4">{company.name}</p>
-
-            {!editingStats ? (
-              <>
-                <ul className="space-y-3">
-                  <li className="flex justify-between items-center py-2 border-b border-theme">
-                    <span className="text-theme-secondary">Total students applied</span>
-                    <span className="font-semibold text-theme-primary">{applied}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2 border-b border-theme">
-                    <span className="text-theme-secondary">Cleared OA</span>
-                    <span className="font-semibold text-theme-primary">{clearedOA}</span>
-                  </li>
-                  <li className="flex justify-between items-center py-2">
-                    <span className="text-theme-secondary">Got in</span>
-                    <span className="font-semibold text-theme-primary">{gotIn}</span>
-                  </li>
-                </ul>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={startEditStats}
-                    className="mt-4 w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold"
-                  >
-                    Edit stats
-                  </button>
-                )}
-              </>
-            ) : (
-              <form onSubmit={saveStats} className="space-y-3">
-                <label className="block">
-                  <span className="text-theme-secondary text-sm">Total students applied</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editApplied}
-                    onChange={(e) => setEditApplied(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-lg bg-theme-input border border-theme-input text-theme-primary"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-theme-secondary text-sm">Cleared OA</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editClearedOA}
-                    onChange={(e) => setEditClearedOA(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-lg bg-theme-input border border-theme-input text-theme-primary"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-theme-secondary text-sm">Got in</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editGotIn}
-                    onChange={(e) => setEditGotIn(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-lg bg-theme-input border border-theme-input text-theme-primary"
-                  />
-                </label>
-                <div className="flex gap-2 pt-2">
-                  <button type="button" onClick={cancelEditStats} className="flex-1 py-2 rounded-lg border border-theme text-theme-secondary hover:bg-theme-nav">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={statsSaving} className="flex-1 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold disabled:opacity-50">
-                    {statsSaving ? "Saving…" : "Save"}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
