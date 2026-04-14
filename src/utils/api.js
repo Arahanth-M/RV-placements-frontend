@@ -5,8 +5,6 @@ import {
   setCachedCompaniesList,
   saveToIndexedDB,
   getCompanyDetailsOfflineEntry,
-  getCachedYearStats,
-  setCachedYearStats,
   updateCachedHelpfulCount,
   clearCompaniesListCache,
   clearCompanyDetailsCache,
@@ -287,24 +285,7 @@ export const eventAPI = {
 
 export const yearStatsAPI = {
   async getYearStats(year) {
-    // 1. Try IndexedDB first – year stats are effectively static, so no TTL is used.
-    try {
-      const cached = await getCachedYearStats(year);
-      if (cached != null) {
-        return { data: cached };
-      }
-    } catch (e) {
-      console.warn('IndexedDB get year stats failed, falling back to API', e);
-    }
-
-    // 2. Cache miss: fetch from API and store once
-    const res = await API.get(`/api/year-stats/${year}`);
-    try {
-      await setCachedYearStats(year, res.data);
-    } catch (e) {
-      console.warn('IndexedDB set year stats failed', e);
-    }
-    return res;
+    return API.get(`/api/year-stats/${year}`);
   },
 };
 
