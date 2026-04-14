@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
@@ -47,6 +47,65 @@ function CompanyStats() {
   const handleBack = () => {
     navigate('/');
   };  
+
+  const toTimestamp = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    // Numeric epoch values (seconds or milliseconds).
+    if (/^\d+$/.test(raw)) {
+      const n = Number(raw);
+      if (Number.isFinite(n)) return raw.length <= 10 ? n * 1000 : n;
+    }
+
+    // Native parse first for ISO-like formats.
+    let ts = Date.parse(raw);
+    if (!Number.isNaN(ts)) return ts;
+
+    // Remove ordinal suffixes (e.g. 25th -> 25) for "25th August 2026".
+    const noOrdinal = raw.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
+    ts = Date.parse(noOrdinal);
+    if (!Number.isNaN(ts)) return ts;
+
+    // dd/mm/yyyy or dd-mm-yyyy or dd.mm.yyyy
+    const dmy = noOrdinal.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (dmy) {
+      const day = Number(dmy[1]);
+      const month = Number(dmy[2]) - 1;
+      let year = Number(dmy[3]);
+      if (year < 100) year += 2000;
+      const date = new Date(year, month, day);
+      if (
+        date.getFullYear() === year &&
+        date.getMonth() === month &&
+        date.getDate() === day
+      ) {
+        return date.getTime();
+      }
+    }
+
+    return null;
+  };
+
+  const orderedCompanies = useMemo(() => {
+    return [...companies].sort((a, b) => {
+      const aMessageTs = toTimestamp(a?.messageDate ?? a?.messagedate ?? a?.message_date);
+      const bMessageTs = toTimestamp(b?.messageDate ?? b?.messagedate ?? b?.message_date);
+
+      if (aMessageTs !== null && bMessageTs !== null) return aMessageTs - bMessageTs;
+      if (aMessageTs !== null) return -1;
+      if (bMessageTs !== null) return 1;
+
+      const aUpdatedTs = toTimestamp(a?.updatedAt) ?? toTimestamp(a?.createdAt) ?? 0;
+      const bUpdatedTs = toTimestamp(b?.updatedAt) ?? toTimestamp(b?.createdAt) ?? 0;
+      if (aUpdatedTs !== bUpdatedTs) return aUpdatedTs - bUpdatedTs;
+
+      return (a?.name || "").localeCompare(b?.name || "");
+    });
+  }, [companies]);
 
   // Helper function to get user-specific storage keys
   const getStorageKey = (key) => {
@@ -299,7 +358,7 @@ function CompanyStats() {
       const fetchCompanies = async () => {
         try {
           const res = await companyAPI.getAllCompanies();
-          setCompanies(res.data);
+          setCompanies(res.data || []);
         } catch (err) {
           console.error("❌ Error fetching companies:", err);
         }
@@ -350,7 +409,7 @@ function CompanyStats() {
   }, [selectedYear, user]);
 
   // Filter companies (only for 2026)
-  const filteredCompanies = companies
+  const filteredCompanies = orderedCompanies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
       if (category === "all") return true;
@@ -468,6 +527,12 @@ function CompanyStats() {
     summerInternshipPage * companiesPerPage
   );
 
+  const scrollToCompanyListTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   const renderTierPagination = (totalItems, page, setPage) => {
     const totalPages = Math.ceil(totalItems / companiesPerPage);
     if (totalItems <= companiesPerPage) return null;
@@ -475,7 +540,10 @@ function CompanyStats() {
       <div className="pagination flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
         <button
           type="button"
-          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+          onClick={() => {
+            setPage((prev) => Math.max(prev - 1, 1));
+            scrollToCompanyListTop();
+          }}
           disabled={page === 1}
           className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
         >
@@ -504,7 +572,10 @@ function CompanyStats() {
               <button
                 type="button"
                 key={pageNum}
-                onClick={() => setPage(pageNum)}
+                onClick={() => {
+                  setPage(pageNum);
+                  scrollToCompanyListTop();
+                }}
                 data-active={pageNum === page ? "true" : undefined}
                 className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition duration-200 text-sm sm:text-base ${pageNum === page ? "active bg-theme-accent text-white" : "bg-theme-card border border-theme text-theme-secondary hover:bg-theme-nav"}`}
               >
@@ -515,7 +586,10 @@ function CompanyStats() {
         </div>
         <button
           type="button"
-          onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+          onClick={() => {
+            setPage((prev) => Math.min(prev + 1, totalPages));
+            scrollToCompanyListTop();
+          }}
           disabled={page === totalPages}
           className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
         >
@@ -694,7 +768,7 @@ function CompanyStats() {
           </button>
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
-            <p className="text-theme-secondary text-sm sm:text-base max-w-2xl">
+            <p className="text-theme-secondary text-sm sm:text-base whitespace-nowrap">
               Choose Dream, Open dream, Internship only, or Summer internship (type includes PPO) to browse company cards for 2026.
             </p>
           </div>
@@ -876,7 +950,7 @@ function CompanyStats() {
                 key={c._id}
                 company={c}
                 isAdmin={isAdmin}
-                onStatsUpdated={() => companyAPI.getAllCompanies().then((res) => setCompanies(res.data))}
+                onStatsUpdated={() => companyAPI.getAllCompanies().then((res) => setCompanies(res.data || []))}
               />
             ))
           ) : (
