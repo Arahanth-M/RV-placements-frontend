@@ -12,6 +12,7 @@ import {
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_INTERNSHIP_ONLY,
   PLACEMENT_TIER_OPEN_DREAM,
+  PLACEMENT_TIER_SUMMER_INTERNSHIP,
   PATH_COMPANY_CATEGORY,
   PATH_COMPANY_STATS,
   companystatsTierListUrl,
@@ -31,6 +32,7 @@ function CompanyStats() {
   const [dreamPage, setDreamPage] = useState(1);
   const [openDreamPage, setOpenDreamPage] = useState(1);
   const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
+  const [summerInternshipPage, setSummerInternshipPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
   const [placementTier, setPlacementTier] = useState(null);
@@ -63,6 +65,7 @@ function CompanyStats() {
         'companystats_dream_page',
         'companystats_open_dream_page',
         'companystats_internship_only_page',
+        'companystats_summer_internship_page',
         'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
@@ -83,6 +86,7 @@ function CompanyStats() {
         'companystats_dream_page',
         'companystats_open_dream_page',
         'companystats_internship_only_page',
+        'companystats_summer_internship_page',
         'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
@@ -182,11 +186,21 @@ function CompanyStats() {
     if (selectedYear !== 2026) setPlacementTier(null);
   }, [selectedYear]);
 
-  // Internship-only list is pre-filtered; hide type filter and avoid stale category (e.g. FTE) emptying the grid.
+  // Internship-only / summer internship lists are pre-bucketed; hide type filter and avoid stale category emptying the grid.
   useEffect(() => {
-    if (placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY) return;
+    if (
+      placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
+      placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP
+    )
+      return;
     setCategory("all");
     setShowFilter(false);
+  }, [placementTier]);
+
+  // PPO companies live under Summer internship only; clear legacy "ppo" filter on Dream / Open dream.
+  useEffect(() => {
+    if (placementTier !== PLACEMENT_TIER_DREAM && placementTier !== PLACEMENT_TIER_OPEN_DREAM) return;
+    setCategory((prev) => (prev === "ppo" ? "all" : prev));
   }, [placementTier]);
 
   useEffect(() => {
@@ -195,7 +209,8 @@ function CompanyStats() {
       const v =
         placementTier === PLACEMENT_TIER_DREAM ||
         placementTier === PLACEMENT_TIER_OPEN_DREAM ||
-        placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY
+        placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY ||
+        placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP
           ? placementTier
           : "";
       sessionStorage.setItem(key, v);
@@ -214,6 +229,7 @@ function CompanyStats() {
       const storedDreamPage = sessionStorage.getItem(getStorageKey('companystats_dream_page'));
       const storedOpenDreamPage = sessionStorage.getItem(getStorageKey('companystats_open_dream_page'));
       const storedInternshipOnlyPage = sessionStorage.getItem(getStorageKey('companystats_internship_only_page'));
+      const storedSummerInternshipPage = sessionStorage.getItem(getStorageKey('companystats_summer_internship_page'));
       const legacyPage = sessionStorage.getItem(getStorageKey('companystats_page'));
       const parsedLegacy = legacyPage != null ? parseInt(legacyPage, 10) : NaN;
       const fallbackPage = Number.isFinite(parsedLegacy) && parsedLegacy > 0 ? parsedLegacy : 1;
@@ -222,7 +238,8 @@ function CompanyStats() {
       const storedTier =
         storedTierRaw === PLACEMENT_TIER_DREAM ||
         storedTierRaw === PLACEMENT_TIER_OPEN_DREAM ||
-        storedTierRaw === PLACEMENT_TIER_INTERNSHIP_ONLY
+        storedTierRaw === PLACEMENT_TIER_INTERNSHIP_ONLY ||
+        storedTierRaw === PLACEMENT_TIER_SUMMER_INTERNSHIP
           ? storedTierRaw
           : null;
 
@@ -230,7 +247,16 @@ function CompanyStats() {
       if (storedCategory !== null) {
         let cat =
           storedCategory === "only internship(6 months)" ? "all" : storedCategory;
-        if (storedTier === PLACEMENT_TIER_INTERNSHIP_ONLY) cat = "all";
+        if (
+          storedTier === PLACEMENT_TIER_INTERNSHIP_ONLY ||
+          storedTier === PLACEMENT_TIER_SUMMER_INTERNSHIP
+        )
+          cat = "all";
+        if (
+          cat === "ppo" &&
+          (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM)
+        )
+          cat = "all";
         setCategory(cat);
       }
       if (storedDreamPage !== null) setDreamPage(parseInt(storedDreamPage, 10) || 1);
@@ -239,6 +265,9 @@ function CompanyStats() {
       else setOpenDreamPage(fallbackPage);
       if (storedInternshipOnlyPage !== null) setInternshipOnlyPage(parseInt(storedInternshipOnlyPage, 10) || 1);
       else setInternshipOnlyPage(fallbackPage);
+      if (storedSummerInternshipPage !== null)
+        setSummerInternshipPage(parseInt(storedSummerInternshipPage, 10) || 1);
+      else setSummerInternshipPage(fallbackPage);
 
       if (storedTier) {
         setPlacementTier(storedTier);
@@ -257,8 +286,9 @@ function CompanyStats() {
       sessionStorage.setItem(getStorageKey('companystats_dream_page'), String(dreamPage));
       sessionStorage.setItem(getStorageKey('companystats_open_dream_page'), String(openDreamPage));
       sessionStorage.setItem(getStorageKey('companystats_internship_only_page'), String(internshipOnlyPage));
+      sessionStorage.setItem(getStorageKey('companystats_summer_internship_page'), String(summerInternshipPage));
     }
-  }, [selectedYear, search, category, dreamPage, openDreamPage, internshipOnlyPage, user]);
+  }, [selectedYear, search, category, dreamPage, openDreamPage, internshipOnlyPage, summerInternshipPage, user]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
@@ -398,12 +428,27 @@ function CompanyStats() {
     if (!company.roles.every((role) => isCtcObjectEmpty(role?.ctc))) return false;
     return company.roles.some((role) => Number(role?.internshipStipend) > 0);
   };
-  const internshipOnlyCompanies = filteredCompanies.filter(isInternshipOnlyCompany);
+
+  const isPpoCompany = (company) => {
+    const typeLower = (company?.type || "").toLowerCase();
+    return typeLower.includes("ppo");
+  };
+
+  const summerInternshipCompanies = filteredCompanies.filter(isPpoCompany);
+  const internshipOnlyCompanies = filteredCompanies.filter(
+    (company) => isInternshipOnlyCompany(company) && !isPpoCompany(company)
+  );
   const dreamCompanies = filteredCompanies.filter(
-    (company) => company.category !== "open dream" && !isInternshipOnlyCompany(company)
+    (company) =>
+      !isPpoCompany(company) &&
+      company.category !== "open dream" &&
+      !isInternshipOnlyCompany(company)
   );
   const openDreamCompanies = filteredCompanies.filter(
-    (company) => company.category === "open dream" && !isInternshipOnlyCompany(company)
+    (company) =>
+      !isPpoCompany(company) &&
+      company.category === "open dream" &&
+      !isInternshipOnlyCompany(company)
   );
 
   const dreamSlice = dreamCompanies.slice(
@@ -417,6 +462,10 @@ function CompanyStats() {
   const internshipOnlySlice = internshipOnlyCompanies.slice(
     (internshipOnlyPage - 1) * companiesPerPage,
     internshipOnlyPage * companiesPerPage
+  );
+  const summerInternshipSlice = summerInternshipCompanies.slice(
+    (summerInternshipPage - 1) * companiesPerPage,
+    summerInternshipPage * companiesPerPage
   );
 
   const renderTierPagination = (totalItems, page, setPage) => {
@@ -480,6 +529,7 @@ function CompanyStats() {
     setDreamPage(1);
     setOpenDreamPage(1);
     setInternshipOnlyPage(1);
+    setSummerInternshipPage(1);
   };
 
   const yearStatsHubBullets = {
@@ -613,7 +663,7 @@ function CompanyStats() {
     );
   }
 
-  // 2026: choose Dream vs Open dream (two cards) — /category only
+  // 2026: choose Dream / Open dream / Internship only / Summer internship — /category only
   if (
     selectedYear === 2026 &&
     placementTier === null &&
@@ -645,21 +695,21 @@ function CompanyStats() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
             <p className="text-theme-secondary text-sm sm:text-base max-w-2xl">
-              Choose Dream, Open dream, or Internship only to browse company cards for 2026.
+              Choose Dream, Open dream, Internship only, or Summer internship (type includes PPO) to browse company cards for 2026.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
+          <div className="mx-auto grid min-w-0 w-full max-w-5xl grid-cols-2 grid-rows-2 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch">
             <button
               type="button"
               onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_DREAM))}
-              className="company-card rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
-              <div className="flex flex-col h-full">
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
 
-                <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mb-3 flex-shrink-0">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Dream companies
                 </h3>
-                <div className="flex-1 flex items-center justify-center mb-4 min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={dreamCompanies}
                     gridSize={5}
@@ -675,14 +725,14 @@ function CompanyStats() {
             <button
               type="button"
               onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_OPEN_DREAM))}
-              className="company-card rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
-              <div className="flex flex-col h-full">
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
 
-                <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mb-3 flex-shrink-0">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Open dream companies
                 </h3>
-                <div className="flex-1 flex items-center justify-center mb-4 min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={openDreamCompanies}
                     gridSize={5}
@@ -698,14 +748,14 @@ function CompanyStats() {
             <button
               type="button"
               onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_INTERNSHIP_ONLY))}
-              className="company-card rounded-xl shadow-lg p-6 sm:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
-              <div className="flex flex-col h-full">
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
 
-                <h3 className="text-xl sm:text-2xl font-bold text-theme-primary mb-3 flex-shrink-0">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Internship only companies
                 </h3>
-                <div className="flex-1 flex items-center justify-center mb-4 min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={internshipOnlyLogoPreview}
                     gridSize={5}
@@ -718,13 +768,35 @@ function CompanyStats() {
                 </div>
               </div>
             </button>
+            <button
+              type="button"
+              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_SUMMER_INTERNSHIP))}
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                  Summer internship companies
+                </h3>
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={summerInternshipCompanies}
+                    gridSize={5}
+                    interval={3200}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{summerInternshipCompanies.length} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Company cards list: /companystats?tier=dream|open_dream|internship_only
+  // Company cards list: /companystats?tier=dream|open_dream|internship_only|summer_internship
   if (
     !(
       selectedYear === 2026 &&
@@ -740,30 +812,31 @@ function CompanyStats() {
     );
   }
 
-  const tierListSlice =
-    placementTier === PLACEMENT_TIER_DREAM
-      ? dreamSlice
-      : placementTier === PLACEMENT_TIER_OPEN_DREAM
-        ? openDreamSlice
-        : internshipOnlySlice;
-  const tierListPool =
-    placementTier === PLACEMENT_TIER_DREAM
-      ? dreamCompanies
-      : placementTier === PLACEMENT_TIER_OPEN_DREAM
-        ? openDreamCompanies
-        : internshipOnlyCompanies;
-  const tierListPage =
-    placementTier === PLACEMENT_TIER_DREAM
-      ? dreamPage
-      : placementTier === PLACEMENT_TIER_OPEN_DREAM
-        ? openDreamPage
-        : internshipOnlyPage;
-  const setTierListPage =
-    placementTier === PLACEMENT_TIER_DREAM
-      ? setDreamPage
-      : placementTier === PLACEMENT_TIER_OPEN_DREAM
-        ? setOpenDreamPage
-        : setInternshipOnlyPage;
+  let tierListSlice;
+  let tierListPool;
+  let tierListPage;
+  let setTierListPage;
+  if (placementTier === PLACEMENT_TIER_DREAM) {
+    tierListSlice = dreamSlice;
+    tierListPool = dreamCompanies;
+    tierListPage = dreamPage;
+    setTierListPage = setDreamPage;
+  } else if (placementTier === PLACEMENT_TIER_OPEN_DREAM) {
+    tierListSlice = openDreamSlice;
+    tierListPool = openDreamCompanies;
+    tierListPage = openDreamPage;
+    setTierListPage = setOpenDreamPage;
+  } else if (placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY) {
+    tierListSlice = internshipOnlySlice;
+    tierListPool = internshipOnlyCompanies;
+    tierListPage = internshipOnlyPage;
+    setTierListPage = setInternshipOnlyPage;
+  } else {
+    tierListSlice = summerInternshipSlice;
+    tierListPool = summerInternshipCompanies;
+    tierListPage = summerInternshipPage;
+    setTierListPage = setSummerInternshipPage;
+  }
 
   return (
     <div className="page-container px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
@@ -815,7 +888,8 @@ function CompanyStats() {
         {renderTierPagination(tierListPool.length, tierListPage, setTierListPage)}
       </section>
 
-      {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY && (
+      {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
+        placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP && (
         <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
           <button
             onClick={() => setShowFilter((prev) => !prev)}
@@ -862,18 +936,6 @@ function CompanyStats() {
                 }`}
               >
                 Internship + FTE
-              </button>
-              <button
-                onClick={() => {
-                  setCategory("ppo");
-                  setShowFilter(false);
-                  resetListPages();
-                }}
-                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                  category === "ppo" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                }`}
-              >
-                PPO
               </button>
               <button
                 onClick={() => {
