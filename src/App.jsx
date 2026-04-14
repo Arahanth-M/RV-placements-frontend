@@ -22,7 +22,6 @@ import AdminDashboard from "./components/AdminDashboard";
 import Events from "./components/Events";
 import Analytics from "./components/Analytics";
 import Developers from "./components/Developers";
-import GlobalChatbot from "./components/GlobalChatbot";
 import StudentProfilePage from "./components/StudentProfilePage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
@@ -136,7 +135,6 @@ function App() {
               </main>
 
               <Footer />
-              <GlobalChatbot />
               <PlacementPopupWrapper />
             </div>
             </ThemeProvider>
