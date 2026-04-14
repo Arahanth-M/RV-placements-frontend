@@ -39,8 +39,11 @@ function Contact() {
           {/* Email Card */}
           <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-shadow">
             <div className="flex items-center mb-3 sm:mb-4">
-              <div className="bg-indigo-600 rounded-full p-2 sm:p-3 mr-3 sm:mr-4">
-                <FaEnvelope className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              <div
+                className="rounded-full p-2 sm:p-3 mr-3 sm:mr-4 border border-theme-accent"
+                style={{ backgroundColor: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
+              >
+                <FaEnvelope className="w-5 h-5 sm:w-6 sm:h-6 text-theme-accent" />
               </div>
               <h2 className="text-xl sm:text-2xl font-semibold text-indigo-400">Email ID</h2>
             </div>
@@ -57,8 +60,11 @@ function Contact() {
           {/* Website Card */}
           <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-shadow">
             <div className="flex items-center mb-3 sm:mb-4">
-              <div className="bg-indigo-600 rounded-full p-2 sm:p-3 mr-3 sm:mr-4">
-                <FaUniversity className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              <div
+                className="rounded-full p-2 sm:p-3 mr-3 sm:mr-4 border border-theme-accent"
+                style={{ backgroundColor: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
+              >
+                <FaUniversity className="w-5 h-5 sm:w-6 sm:h-6 text-theme-accent" />
               </div>
               <h2 className="text-xl sm:text-2xl font-semibold text-indigo-400">About RVCE Placement</h2>
             </div>
