@@ -27,6 +27,7 @@ import StudentProfilePage from "./components/StudentProfilePage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
+import Feedback from "./components/Feedback";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
 function ScrollToTop() {
@@ -59,6 +60,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Leaderboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/feedback"
+                    element={
+                      <ProtectedRoute>
+                        <Feedback />
                       </ProtectedRoute>
                     }
                   />

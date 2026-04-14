@@ -420,6 +420,17 @@ const Sidebar = () => {
                     <FaTrophy className="w-4 h-4 mr-2" />
                     Leaderboard
                   </Link>
+                  <Link
+                    to="/feedback"
+                    onClick={() => {
+                      setShowStudentsCornerMenu(false);
+                      setIsVisible(false);
+                    }}
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                  >
+                    <FaEnvelope className="w-4 h-4 mr-2" />
+                    Feedback
+                  </Link>
                 </div>
               )}
             </div>
