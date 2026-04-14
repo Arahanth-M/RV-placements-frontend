@@ -1436,12 +1436,12 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             (!showStartPrompt && status === "in_progress") ||
             interviewCompleted
           }
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
             loading ||
             (!showStartPrompt && status === "in_progress") ||
             interviewCompleted
               ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
-              : "bg-theme-accent text-white"
+              : "border border-theme-accent/40 bg-theme-hero text-theme-accent shadow-sm hover:bg-theme-card"
           }`}
         >
           {showStartPrompt ? "Start Interview" : "Reset"}
