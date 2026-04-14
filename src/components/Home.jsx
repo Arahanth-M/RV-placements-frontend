@@ -1,10 +1,11 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
-import homeImage5 from "../assets/home5.png";
-import home2 from "../assets/home2.png";
+import aeroplane from "../assets/home5.png";
+import building from "../assets/rv_image.png";
 import CompanyLogo from "./CompanyLogo";
+import entrance from "../assets/new.jpeg";
 
 /* ── tiny hook: count up when element enters viewport ── */
 function useCountUp(target, duration = 1800) {
@@ -111,8 +112,10 @@ function SectionIntro({ kicker, title, titleAccent, subtitle, id }) {
 
 function Home() {
   const { user } = useAuth();
-  const images = [homeImage5, home2];
+  const images = useMemo(() => [aeroplane, entrance, building], []);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [imageRatios, setImageRatios] = useState({});
+  const [loadedSlides, setLoadedSlides] = useState({});
   const [companyLogos, setCompanyLogos] = useState([]);
   const [showBetaPopup, setShowBetaPopup] = useState(false);
 
@@ -124,10 +127,32 @@ function Home() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
+      setCurrentIndex((prev) => {
+        const next = (prev + 1) % images.length;
+        // Skip swap until next slide is decoded to avoid border flash.
+        return loadedSlides[next] ? next : prev;
+      });
     }, 5000);
     return () => clearInterval(interval);
-  }, [images.length]);
+  }, [images.length, loadedSlides]);
+
+  useEffect(() => {
+    images.forEach((src, index) => {
+      const img = new Image();
+      img.onload = () => {
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        setImageRatios((prev) => ({
+          ...prev,
+          [index]: img.naturalWidth / img.naturalHeight,
+        }));
+        setLoadedSlides((prev) => ({
+          ...prev,
+          [index]: true,
+        }));
+      };
+      img.src = src;
+    });
+  }, [images]);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -190,6 +215,13 @@ function Home() {
     { value: 4, suffix: "+", label: "Active Features", duration: 1000 },
   ];
 
+  const slideshowRatio = useMemo(() => {
+    const ratios = Object.values(imageRatios);
+    if (!ratios.length) return 16 / 9;
+    // Keep a stable frame to avoid layout jumps during slide switches.
+    return Math.max(...ratios);
+  }, [imageRatios]);
+
   return (
     <div className="min-h-screen bg-theme-app">
       {showBetaPopup && (
@@ -248,20 +280,23 @@ function Home() {
 <div className="flex-1 w-full lg:w-auto">
   <div
     className="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-theme-card"
-    style={{ height: "380px" }}
+    style={{ aspectRatio: slideshowRatio }}
   >
     
     {/* Slides */}
     {images.map((image, index) => (
       <div
         key={index}
-        className="absolute inset-0 transition-opacity duration-1000"
+        className="absolute inset-0 transition-opacity duration-500 ease-in-out will-change-opacity"
         style={{ opacity: index === currentIndex ? 1 : 0 }}
       >
         <img
           src={image}
           alt={`Slide ${index + 1}`}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
+          style={{ height: "100%" }}
+          loading="eager"
+          decoding="sync"
         />
       </div>
     ))}
