@@ -27,7 +27,7 @@ function Feedback() {
             </span>
           </div>
 
-          <h1 className="text-2xl font-bold text-theme-primary sm:text-3xl">
+          <h1 className="text-2xl font-bold text-theme-primary sm:text-3xl text-center">
             Help us improve this platform
           </h1>
           <p className="mt-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
@@ -46,7 +46,7 @@ function Feedback() {
               href={DUMMY_FEEDBACK_FORM_URL}
               target="_blank"
               rel="noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent shadow-sm transition-colors hover:bg-theme-card sm:text-base"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent shadow-sm transition-colors hover:opacity-90 transition-opacity shadow-lg"
             >
               Open Feedback Form
               <FaExternalLinkAlt className="h-3.5 w-3.5" />
