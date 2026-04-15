@@ -667,7 +667,7 @@ function CompanyStats() {
       </div>
           {/* Year Selection Cards */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-theme-primary mb-4">Select Year</h2>
+            <h2 className="text-xl font-semibold text-theme-primary mb-4 text-center">Select Year</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 min-h-[calc(100vh-12rem)] items-stretch">
             {[2024, 2025, 2026].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
