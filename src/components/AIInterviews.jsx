@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import InterviewAnalytics from "./InterviewAnalytics";
@@ -118,26 +118,13 @@ function AIInterviews() {
     navigate('/');
   };
 
-  const groupedSessions = useMemo(() => {
-    const completed = [];
-    const inProgress = [];
-
-    sessions.forEach((session) => {
-      if (session.status === "completed") {
-        completed.push(session);
-      } else {
-        inProgress.push(session);
-      }
-    });
-  
-
-    return { completed, inProgress };
-  }, [sessions]);
-
   return (
-    <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+    <div className="px-4 sm:px-6 pt-1 sm:pt-2 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
+      `}</style>
            {/* Back Button */}
-      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+      <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
         <button
           type="button"
           onClick={handleBack}
@@ -150,11 +137,27 @@ function AIInterviews() {
         </button>
       </div>
       {/* Header Section */}
-      <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-theme-primary">
-          Mock Interviews
+      <div className="mb-6 sm:mb-8 text-center">
+        <p style={{
+          fontSize: '13px',
+          fontWeight: 600,
+          letterSpacing: '0.13em',
+          textTransform: 'uppercase',
+          color: '#6366F1',
+          marginBottom: '0.75rem',
+        }}>
+          Placement prep
+        </p>
+        <h1 style={{
+          fontFamily: "'DM Serif Display', Georgia, serif",
+          fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
+          fontWeight: 400,
+          lineHeight: 1.13,
+          marginBottom: '1rem',
+        }} className="text-theme-primary">
+          Mock <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Interviews</em>
         </h1>
-        <p className="mt-2 text-sm text-theme-secondary">
+        <p className="text-theme-secondary" style={{ fontSize: '17px', maxWidth: '520px', margin: '0 auto', lineHeight: 1.7 }}>
           Track your progress, review feedback, and analyze your performance in AI-driven interviews.
         </p>
       </div>
@@ -165,7 +168,7 @@ function AIInterviews() {
           onClick={() => setActiveTab("sessions")}
           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
             activeTab === "sessions"
-              ? "bg-theme-accent text-white shadow-md"
+              ? "bg-theme-hero text-theme-accent shadow-md"
               : "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav"
           }`}
         >
@@ -175,7 +178,7 @@ function AIInterviews() {
           onClick={() => setActiveTab("analytics")}
           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
             activeTab === "analytics"
-              ? "bg-theme-accent text-white shadow-md"
+              ? "bg-theme-hero text-theme-accent shadow-md"
               : "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav"
           }`}
         >
@@ -223,30 +226,14 @@ function AIInterviews() {
                 <>
                   <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-theme-primary mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                      In Progress ({groupedSessions.inProgress.length})
-                    </h2>
-                    {groupedSessions.inProgress.length === 0 ? (
-                      <p className="text-sm text-theme-secondary">No in-progress interviews.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {groupedSessions.inProgress.map((session) => (
-                          <InterviewSessionCard key={session._id} session={session} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
-                    <h2 className="text-lg font-semibold text-theme-primary mb-3 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      Completed ({groupedSessions.completed.length})
+                      Completed ({sessions.length})
                     </h2>
-                    {groupedSessions.completed.length === 0 ? (
-                      <p className="text-sm text-theme-secondary">No completed interviews.</p>
+                    {sessions.length === 0 ? (
+                      <p className="text-sm text-theme-secondary">No interviews found.</p>
                     ) : (
                       <div className="space-y-3">
-                        {groupedSessions.completed.map((session) => (
+                        {sessions.map((session) => (
                           <InterviewSessionCard key={session._id} session={session} />
                         ))}
                       </div>
