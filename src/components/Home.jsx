@@ -270,7 +270,7 @@ function Home() {
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <a
                   href="/companystats"
-                  className="px-6 py-3 rounded-xl bg-theme-accent text-white font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
+                  className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
                 >
                   Explore Companies →
                 </a>
