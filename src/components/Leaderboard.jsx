@@ -233,8 +233,9 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="events-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className="events-page-theme min-h-screen pt-3 sm:pt-4 pb-8 sm:pb-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
         @keyframes lb-fade-in {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -253,7 +254,7 @@ const Leaderboard = () => {
       <div style={{ maxWidth: 896, margin: '0 auto' }}>
 
         {/* Back Button */}
-        <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+        <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
           <button
             type="button"
             onClick={handleBack}
@@ -267,11 +268,28 @@ const Leaderboard = () => {
         </div>
 
         {/* ── Header ── */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 'clamp(1.6rem,4vw,2.4rem)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
-            Contributor Leaderboard
+        <div style={{ marginBottom: 32, textAlign: 'center' }}>
+          <p style={{
+            fontSize: '13px',
+            fontWeight: 600,
+            letterSpacing: '0.13em',
+            textTransform: 'uppercase',
+            color: '#6366F1',
+            marginBottom: '0.75rem',
+          }}>
+            Placement prep
+          </p>
+          <h1 style={{
+            fontFamily: "'DM Serif Display', Georgia, serif",
+            fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
+            fontWeight: 400,
+            lineHeight: 1.13,
+            marginBottom: '1rem',
+            color: 'var(--text-primary)',
+          }}>
+            Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
           </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'nowrap' }}>
+          <p style={{ fontSize: '17px', color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '620px', margin: '0 auto' }}>
             Top contributors who add questions and interview experiences to the platform.
           </p>
         </div>
