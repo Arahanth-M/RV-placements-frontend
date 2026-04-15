@@ -310,13 +310,26 @@ const Header = () => {
   return (
     <div ref={headerShellRef} className="sticky top-0 z-50 mb-2">
       <header className="flex w-full items-stretch overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
-        <div className="flex shrink-0 items-center pl-3 pr-2 py-2 sm:pl-5 sm:pr-2 sm:py-2.5">
+        <div className="flex shrink-0 items-center gap-2 pl-3 pr-2 py-2 sm:gap-2.5 sm:pl-5 sm:pr-2 sm:py-2.5">
           <Link
             to="/"
             className="flex h-11 w-[3.85rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-theme bg-white px-2.5 py-1.5 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-14 sm:w-[5rem] sm:rounded-full sm:px-2.5 sm:py-1.5"
             title="RVCE Placement — Home"
           >
             <img src={logo} alt="" className="h-full w-full max-h-full object-contain object-center" />
+          </Link>
+          <Link
+            to="/feedback"
+            className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition-colors sm:h-10 sm:px-3.5 sm:text-xs ${
+              isPathActive("/feedback")
+                ? "border-theme-accent bg-theme-accent text-white"
+                : "border-theme bg-theme-card text-theme-primary hover:bg-theme-hero"
+            }`}
+            title="Open feedback form"
+            aria-label="Open feedback form"
+          >
+            <FaComments className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Feedback</span>
           </Link>
         </div>
 
