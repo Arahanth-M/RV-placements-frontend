@@ -1,20 +1,76 @@
 import React, { useState, useMemo } from "react";
-import { FaArrowLeft, FaSearch } from "react-icons/fa";
+import { FaArrowLeft, FaSearch, FaFilter } from "react-icons/fa";
 import Analytics from "./Analytics";
 
 function YearStatsTable({ year, data, onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("Table");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [showFilter, setShowFilter] = useState(false);
+
+  const toLpa = (value) => {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value > 1000 ? value / 100000 : value;
+    }
+    if (typeof value === "string") {
+      const cleaned = value.toLowerCase().replace(/[,₹\s]/g, "");
+      const match = cleaned.match(/(\d+(\.\d+)?)/);
+      if (!match) return null;
+      const numeric = Number(match[1]);
+      if (!Number.isFinite(numeric)) return null;
+      return numeric > 1000 ? numeric / 100000 : numeric;
+    }
+    return null;
+  };
+
+  const resolveRowCategory = (row) => {
+    const entries = Object.entries(row || {});
+
+    // Priority 1: Explicit category/tier-like fields
+    const explicitCategory = entries.find(([key]) =>
+      /(category|tier|type)/i.test(key)
+    );
+    const explicitValue = explicitCategory ? String(explicitCategory[1] || "").toLowerCase().trim() : "";
+    if (explicitValue.includes("open-dream") || explicitValue.includes("open dream")) return "open_dream";
+    if (explicitValue.includes("dream")) return "dream";
+
+    // Priority 2: Any textual marker in the row
+    const rowText = entries
+      .map(([, value]) => String(value ?? "").toLowerCase())
+      .join(" | ");
+    if (rowText.includes("open-dream") || rowText.includes("open dream")) return "open_dream";
+    if (/\bdream\b/.test(rowText)) return "dream";
+
+    // Priority 3: Infer by package threshold (>= 10 LPA => Open-Dream)
+    const packageValues = entries
+      .filter(([key]) => /(ctc|package|salary|lpa)/i.test(key))
+      .map(([, value]) => toLpa(value))
+      .filter((v) => v !== null && v > 0);
+    if (packageValues.length > 0) {
+      const bestLpa = Math.max(...packageValues);
+      return bestLpa >= 10 ? "open_dream" : "dream";
+    }
+
+    return "other";
+  };
 
   // Filter data based on search term
   // Search in all fields, but prioritize company name fields
   const filteredData = useMemo(() => {
+    const categoryFiltered = (data || []).filter((row) => {
+      if (categoryFilter === "all") return true;
+      if (categoryFilter === "dream") return resolveRowCategory(row) === "dream";
+      if (categoryFilter === "open_dream") return resolveRowCategory(row) === "open_dream";
+      return true;
+    });
+
     if (!searchTerm.trim()) {
-      return data || [];
+      return categoryFiltered;
     }
 
     const searchLower = searchTerm.toLowerCase();
-    return (data || []).filter((row) => {
+    return categoryFiltered.filter((row) => {
       // Check all fields for the search term
       return Object.entries(row).some(([key, value]) => {
         // Skip MongoDB internal fields
@@ -35,7 +91,7 @@ function YearStatsTable({ year, data, onBack }) {
         return valueStr.includes(searchLower);
       });
     });
-  }, [data, searchTerm]);
+  }, [data, searchTerm, categoryFilter]);
 
   if (!data || data.length === 0) {
     return (
@@ -135,18 +191,18 @@ function YearStatsTable({ year, data, onBack }) {
                 {year} Placement Statistics
               </h2>
               <div className="relative w-full sm:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="h-4 w-4 text-theme-muted" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaSearch className="h-4 w-4 text-theme-muted" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search by company name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary placeholder-theme-muted focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Search by company name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary placeholder-theme-muted focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
-                />
-              </div>
-              {searchTerm && (
+              {(searchTerm || categoryFilter !== "all") && (
                 <p className="text-sm text-theme-muted mt-2">
                   Showing {filteredData.length} of {data.length} results
                 </p>
@@ -155,13 +211,20 @@ function YearStatsTable({ year, data, onBack }) {
 
             {filteredData.length === 0 ? (
               <div className="p-8 text-center">
-                <p className="text-theme-secondary">No results found for "{searchTerm}"</p>
+                <p className="text-theme-secondary">
+                  {searchTerm
+                    ? `No results found for "${searchTerm}"`
+                    : "No results found for selected filters."}
+                </p>
                 <button
                   type="button"
-                  onClick={() => setSearchTerm("")}
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCategoryFilter("all");
+                  }}
                   className="mt-4 text-[var(--primary)] hover:opacity-90 font-medium text-sm"
                 >
-                  Clear search
+                  Clear filters
                 </button>
               </div>
             ) : (
@@ -193,6 +256,56 @@ function YearStatsTable({ year, data, onBack }) {
           </div>
         )}
       </div>
+      {activeTab === "Table" && (
+        <div className="fixed bottom-28 sm:bottom-36 right-4 sm:right-8 z-50 flex flex-col gap-3 items-end">
+          <button
+            type="button"
+            onClick={() => setShowFilter((prev) => !prev)}
+            className="bg-[var(--primary)] text-white p-3 sm:p-4 rounded-full shadow-lg transition duration-200 hover:opacity-90"
+            aria-label="Filter categories"
+          >
+            <FaFilter size={18} className="sm:w-5 sm:h-5" />
+          </button>
+
+          {showFilter && (
+            <div className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-44 flex flex-col right-0">
+              <button
+                onClick={() => {
+                  setCategoryFilter("all");
+                  setShowFilter(false);
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  categoryFilter === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => {
+                  setCategoryFilter("dream");
+                  setShowFilter(false);
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  categoryFilter === "dream" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                Dream
+              </button>
+              <button
+                onClick={() => {
+                  setCategoryFilter("open_dream");
+                  setShowFilter(false);
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  categoryFilter === "open_dream" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                }`}
+              >
+                Open-Dream
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
