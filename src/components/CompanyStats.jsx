@@ -509,6 +509,23 @@ function CompanyStats() {
       company.category === "open dream" &&
       !isInternshipOnlyCompany(company)
   );
+  // Category cards must always represent full 2026 data, independent of list search/filter state.
+  const allSummerInternshipCompanies = orderedCompanies.filter(isPpoCompany);
+  const allInternshipOnlyCompanies = orderedCompanies.filter(
+    (company) => isInternshipOnlyCompany(company) && !isPpoCompany(company)
+  );
+  const allDreamCompanies = orderedCompanies.filter(
+    (company) =>
+      !isPpoCompany(company) &&
+      company.category !== "open dream" &&
+      !isInternshipOnlyCompany(company)
+  );
+  const allOpenDreamCompanies = orderedCompanies.filter(
+    (company) =>
+      !isPpoCompany(company) &&
+      company.category === "open dream" &&
+      !isInternshipOnlyCompany(company)
+  );
 
   const dreamSlice = dreamCompanies.slice(
     (dreamPage - 1) * companiesPerPage,
@@ -743,9 +760,9 @@ function CompanyStats() {
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY
   ) {
-    const dreamLogoPreview = dreamCompanies.slice(0, 5);
-    const openDreamLogoPreview = openDreamCompanies.slice(0, 5);
-    const internshipOnlyLogoPreview = internshipOnlyCompanies.slice(0, 5);
+    const dreamLogoPreview = allDreamCompanies.slice(0, 5);
+    const openDreamLogoPreview = allOpenDreamCompanies.slice(0, 5);
+    const internshipOnlyLogoPreview = allInternshipOnlyCompanies.slice(0, 5);
 
     return (
       <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
@@ -785,13 +802,13 @@ function CompanyStats() {
                 </h3>
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
-                    companies={dreamCompanies}
+                    companies={dreamLogoPreview}
                     gridSize={5}
                     interval={3500}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{dreamCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{allDreamCompanies.length} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -808,13 +825,13 @@ function CompanyStats() {
                 </h3>
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
-                    companies={openDreamCompanies}
+                    companies={openDreamLogoPreview}
                     gridSize={5}
                     interval={2800}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{openDreamCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{allOpenDreamCompanies.length} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -837,7 +854,7 @@ function CompanyStats() {
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{internshipOnlyCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{allInternshipOnlyCompanies.length} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -853,13 +870,13 @@ function CompanyStats() {
                 </h3>
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
-                    companies={summerInternshipCompanies}
+                    companies={allSummerInternshipCompanies.slice(0, 5)}
                     gridSize={5}
                     interval={3200}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{summerInternshipCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{allSummerInternshipCompanies.length} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
