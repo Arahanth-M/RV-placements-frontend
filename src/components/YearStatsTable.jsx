@@ -53,17 +53,18 @@ function YearStatsTable({ year, data, onBack }) {
   }
 
   // Get all unique keys from all objects to create table headers
-  const allKeys = new Set();
-  data.forEach((item) => {
-    Object.keys(item).forEach((key) => {
-      // Exclude MongoDB internal fields
-      if (key !== "_id" && key !== "__v") {
-        allKeys.add(key);
-      }
+  const headers = useMemo(() => {
+    const allKeys = new Set();
+    (data || []).forEach((item) => {
+      Object.keys(item || {}).forEach((key) => {
+        // Exclude MongoDB internal fields
+        if (key !== "_id" && key !== "__v") {
+          allKeys.add(key);
+        }
+      });
     });
-  });
-
-  const headers = Array.from(allKeys);
+    return Array.from(allKeys);
+  }, [data]);
 
   // Helper function to format cell values
   const formatCellValue = (value) => {
@@ -80,6 +81,23 @@ function YearStatsTable({ year, data, onBack }) {
     "bg-[var(--primary)] text-white shadow-sm";
   const tabInactive =
     "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav";
+
+  const tableRows = useMemo(
+    () =>
+      filteredData.map((row, index) => (
+        <tr key={row._id || index} className="hover:bg-theme-nav/80">
+          {headers.map((header) => (
+            <td
+              key={header}
+              className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-theme-secondary"
+            >
+              {formatCellValue(row[header])}
+            </td>
+          ))}
+        </tr>
+      )),
+    [filteredData, headers]
+  );
 
   return (
     <div className="space-y-6">
@@ -161,20 +179,7 @@ function YearStatsTable({ year, data, onBack }) {
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-theme-card divide-y divide-[var(--border)]">
-                    {filteredData.map((row, index) => (
-                      <tr key={row._id || index} className="hover:bg-theme-nav/80">
-                        {headers.map((header) => (
-                          <td
-                            key={header}
-                            className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-theme-secondary"
-                          >
-                            {formatCellValue(row[header])}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
+                  <tbody className="bg-theme-card divide-y divide-[var(--border)]">{tableRows}</tbody>
                 </table>
               </div>
             )}
@@ -192,4 +197,8 @@ function YearStatsTable({ year, data, onBack }) {
   );
 }
 
-export default YearStatsTable;
+export default React.memo(
+  YearStatsTable,
+  (prevProps, nextProps) =>
+    prevProps.year === nextProps.year && prevProps.data === nextProps.data
+);

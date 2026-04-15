@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 
+const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
+
 const GoogleIcon = () => (
   <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
     <path
@@ -31,12 +33,26 @@ const Login = () => {
   const isAdminRoute = location.pathname.includes("/admin");
 
   const handleGoogleSignIn = () => {
+    if (!isAdminRoute) {
+      const nextPath = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
+      if (nextPath.startsWith("/")) {
+        sessionStorage.setItem(LOGIN_REDIRECT_PATH_KEY, nextPath);
+      }
+    }
     login(isAdminRoute);
   };
 
   useEffect(() => {
     if (user) {
-      navigate(isAdmin ? "/admin/dashboard" : "/", { replace: true });
+      if (isAdmin) {
+        navigate("/admin/dashboard", { replace: true });
+        return;
+      }
+      const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+      const safeRedirect =
+        storedRedirect && storedRedirect.startsWith("/") ? storedRedirect : "/";
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      navigate(safeRedirect, { replace: true });
     }
   }, [user, isAdmin, navigate]);
 
@@ -59,7 +75,15 @@ const Login = () => {
       }
       if (refreshedUser) {
         const adminFlag = urlParams.get("admin") === "true";
-        window.location.replace(adminFlag ? "/admin/dashboard" : "/");
+        if (adminFlag) {
+          window.location.replace("/admin/dashboard");
+          return;
+        }
+        const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+        const safeRedirect =
+          storedRedirect && storedRedirect.startsWith("/") ? storedRedirect : "/";
+        sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+        window.location.replace(safeRedirect);
       }
     };
 

@@ -4,6 +4,7 @@ import { useAuth } from '../utils/AuthContext';
 import { studentAPI } from '../utils/api';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
+const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -127,7 +128,11 @@ const AuthCallback = () => {
     if (admin) {
       window.location.replace('/admin/dashboard');
     } else {
-      window.location.replace('/');
+      const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+      const safeRedirect =
+        storedRedirect && storedRedirect.startsWith("/") ? storedRedirect : "/";
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      window.location.replace(safeRedirect);
     }
     setIsProcessing(false);
   };
