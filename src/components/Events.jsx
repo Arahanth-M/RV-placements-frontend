@@ -119,40 +119,52 @@ const Events = () => {
               </div>
             ) : (
               <div className="max-w-5xl mx-auto w-full">
-                <div className="mb-3 sm:mb-4 flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setActiveFilter('all')}
-                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
-                      activeFilter === 'all'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
+                <div className="mb-3 sm:mb-4 flex items-center justify-center sm:justify-start">
+                  <div
+                    className="flex gap-2 p-1 bg-theme-card border border-theme rounded-xl w-fit"
+                    role="tablist"
+                    aria-label="Filter events"
                   >
-                    All ({sortedEvents.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveFilter('upcoming')}
-                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
-                      activeFilter === 'upcoming'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    Upcoming ({upcomingEventsCount})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveFilter('expired')}
-                    className={`px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
-                      activeFilter === 'expired'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    }`}
-                  >
-                    Expired ({expiredEventsCount})
-                  </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeFilter === 'all'}
+                      onClick={() => setActiveFilter('all')}
+                      className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                        activeFilter === 'all'
+                          ? 'bg-theme-hero text-theme-accent shadow-md'
+                          : 'text-theme-secondary hover:text-theme-primary hover:bg-theme-nav'
+                      }`}
+                    >
+                      All ({sortedEvents.length})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeFilter === 'upcoming'}
+                      onClick={() => setActiveFilter('upcoming')}
+                      className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                        activeFilter === 'upcoming'
+                          ? 'bg-theme-hero text-theme-accent shadow-md'
+                          : 'text-theme-secondary hover:text-theme-primary hover:bg-theme-nav'
+                      }`}
+                    >
+                      Upcoming ({upcomingEventsCount})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeFilter === 'expired'}
+                      onClick={() => setActiveFilter('expired')}
+                      className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                        activeFilter === 'expired'
+                          ? 'bg-theme-hero text-theme-accent shadow-md'
+                          : 'text-theme-secondary hover:text-theme-primary hover:bg-theme-nav'
+                      }`}
+                    >
+                      Expired ({expiredEventsCount})
+                    </button>
+                  </div>
                 </div>
                <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg overflow-hidden">
                 <div className="overflow-x-auto -mx-4 sm:mx-0">
