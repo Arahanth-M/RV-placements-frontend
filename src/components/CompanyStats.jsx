@@ -628,11 +628,13 @@ function CompanyStats() {
       "Year stats table with placement outcomes.",
       "Scan companies and packages at a glance.",
       "Sort / browse rows for quick comparison.",
+      "Filter by dream and open-dream and view branch-wise analytics.",
     ],
     2025: [
       "Year stats table with placement outcomes.",
       "Same layout as 2024 for easy comparison.",
       "Sort / browse rows for quick comparison.",
+      "Filter by dream and open-dream and view branch-wise analytics.",
     ],
     2026: [
       "OA questions and interview Q&A with solutions.",
@@ -640,6 +642,7 @@ function CompanyStats() {
       "Past coding questions per company, with intuition.",
       "Must-do topics tailored per company.",
       "CTC split by role—and more in each profile.",
+      "Companies sorted by the date they arrived on campus.",
     ],
   };
 
@@ -650,10 +653,10 @@ function CompanyStats() {
     !isPlacementTierParam(tierQuery)
   ) {
     return (
-      <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-6xl min-w-0">
            {/* Back Button */}
-      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
+      <div className="mb-6 flex items-center justify-between gap-2 flex-wrap">
         <button
           type="button"
           onClick={handleBack}
@@ -666,9 +669,14 @@ function CompanyStats() {
         </button>
       </div>
           {/* Year Selection Cards */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-theme-primary mb-4 text-center">Select Year</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 min-h-[calc(100vh-12rem)] items-stretch">
+          <div className="mb-8">
+            <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
+              Select Year
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
+              Pick a batch to open placement stats or the 2026 company hub.
+            </p>
+          <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
             {[2024, 2025, 2026].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
               const isDisabled = requiresAuth && !user;
@@ -690,33 +698,45 @@ function CompanyStats() {
                     setSelectedYear(year);
                   }}
                   disabled={isDisabled}
-                  className={`company-card rounded-xl shadow-lg p-6 sm:p-8 border-2 bg-theme-card flex flex-col h-full min-h-[22rem] transform-gpu transition-[transform,box-shadow,border-color] duration-500 ease-out motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100 ${
+                  className={`company-card group flex min-h-0 w-full min-w-0 flex-col rounded-2xl border-2 bg-theme-card p-6 text-left shadow-lg transition-[transform,box-shadow,border-color] duration-300 sm:p-7 motion-reduce:transition-none ${
                     isDisabled
-                      ? "opacity-50 cursor-not-allowed border-theme"
-                      : "border-theme hover:-translate-y-2 hover:scale-[1.03] hover:shadow-2xl hover:border-theme-accent"
+                      ? "cursor-not-allowed border-theme opacity-50"
+                      : "border-theme hover:-translate-y-1 hover:border-theme-accent hover:shadow-2xl motion-reduce:hover:translate-y-0"
                   }`}
                 >
-                  <div className="flex flex-col items-center text-center flex-1">
-                    <div className={`rounded-full p-4 sm:p-5 mb-4 ${
-                      isDisabled ? "bg-gray-700" : "bg-blue-900"
-                    }`}>
-                      <FaCalendarAlt className={`text-3xl sm:text-4xl ${
-                        isDisabled ? "text-gray-500" : "text-blue-300"
-                      }`} />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="mb-4 flex justify-center">
+                      <div
+                        className={`rounded-2xl border p-4 sm:p-5 ${
+                          isDisabled
+                            ? "border-theme bg-theme-nav text-theme-muted"
+                            : "border-theme-accent/35 bg-theme-accent/10 text-theme-accent"
+                        }`}
+                      >
+                        <FaCalendarAlt className="text-3xl sm:text-4xl" aria-hidden />
+                      </div>
                     </div>
-                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-theme-primary mb-2">
+                    <h3 className="text-center text-xl font-bold text-theme-primary sm:text-2xl">
                       {year} Stats
-                    </h2>
-                    <p className="text-theme-secondary text-sm sm:text-base mb-3">
+                    </h3>
+                    <p className="mb-4 text-center text-sm text-theme-secondary sm:text-base">
                       {year === 2026 ? "View company cards" : "View statistics table"}
                     </p>
-                    <ul className="text-left text-xs sm:text-sm text-theme-secondary space-y-1.5 list-disc pl-4 w-full max-w-sm mx-auto mt-auto">
+                    <ul className="w-full min-w-0 flex-1 list-outside list-disc space-y-2 pl-5 text-left text-sm leading-relaxed text-theme-secondary sm:pl-6 sm:text-base [&>li]:pl-1 marker:text-theme-accent">
                       {bullets.map((line, i) => (
-                        <li key={`${year}-${i}`}>{line}</li>
+                        <li key={`${year}-${i}`}>
+                          {line}
+                        </li>
                       ))}
                     </ul>
+                    {!isDisabled && (
+                      <div className="mt-5 flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
+                        <span>Open</span>
+                        <FaChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                      </div>
+                    )}
                     {isDisabled && (
-                      <p className="text-red-500 text-xs mt-3 font-medium">
+                      <p className="mt-4 text-center text-xs font-medium text-red-500 sm:text-sm">
                         Login required
                       </p>
                     )}
