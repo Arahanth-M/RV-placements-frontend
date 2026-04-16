@@ -117,10 +117,7 @@ const USNEntry = ({ onConfirm, onCancel, googleUsername }) => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 
-                           text-white font-semibold rounded-lg transition-colors 
-                           disabled:bg-slate-700 disabled:cursor-not-allowed 
-                           flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-3 rounded-lg bg-theme-accent text-white font-semibold transition-colors disabled:bg-theme-card-hover disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:opacity-90"
                 >
                   {loading ? (
                     <>
@@ -136,9 +133,7 @@ const USNEntry = ({ onConfirm, onCancel, googleUsername }) => {
                     type="button"
                     onClick={onCancel}
                     disabled={loading}
-                    className="px-6 py-3 bg-slate-700 hover:bg-slate-600 
-                             text-white font-semibold rounded-lg transition-colors 
-                             disabled:bg-slate-800 disabled:cursor-not-allowed"
+                    className="px-6 py-3 rounded-lg border border-theme text-theme-secondary hover:bg-theme-nav font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     Cancel
                   </button>
@@ -227,18 +222,14 @@ const USNEntry = ({ onConfirm, onCancel, googleUsername }) => {
               <div className="flex gap-4">
                 <button
                   onClick={handleConfirm}
-                  className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 
-                           text-white font-semibold rounded-lg transition-colors 
-                           flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-3 rounded-lg bg-theme-accent text-white font-semibold transition-colors flex items-center justify-center gap-2 hover:opacity-90"
                 >
                   <FaCheck className="mr-1" />
                   Approve & Save Profile
                 </button>
                 <button
                   onClick={handleReenter}
-                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 
-                           text-white font-semibold rounded-lg transition-colors 
-                           flex items-center justify-center gap-2"
+                  className="px-6 py-3 rounded-lg border border-theme text-theme-secondary hover:bg-theme-nav font-semibold transition-colors flex items-center justify-center gap-2"
                 >
                   <FaTimes className="mr-1" />
                   Re-enter USN
