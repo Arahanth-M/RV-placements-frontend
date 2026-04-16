@@ -1,17 +1,8 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import Login from './Login';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user && user.betaAccess === false) {
-      navigate('/', { replace: true });
-    }
-  }, [user]);
 
   if (loading) {
     return (
@@ -25,15 +16,15 @@ const ProtectedRoute = ({ children }) => {
     return <Login />;
   }
 
-  if (user && user.betaAccess === false) {
+  if (user.isAdminSession !== true && user.isBetaListed !== true) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-blue-600 mb-4">
-            🚀 Platform in Beta
+      <div className="flex justify-center items-center min-h-screen px-4">
+        <div className="max-w-xl w-full bg-theme-card border border-theme rounded-2xl p-6 sm:p-8 text-center shadow-lg">
+          <h2 className="text-2xl font-bold text-theme-primary mb-4">
+            Access restricted to beta users
           </h2>
-          <p className="text-gray-600">
-            Access is currently limited. You will get access very soon.
+          <p className="text-theme-secondary">
+            This section is currently available only for users included in the beta test. Please fill the form to join the beta if you are part of 2026 Computer Science.
           </p>
         </div>
       </div>

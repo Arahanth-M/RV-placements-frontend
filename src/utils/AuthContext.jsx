@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from './api';
-import { CONFIG, BASE_URL } from './constants';
+import { BASE_URL } from './constants';
 
 // Use a symbol to check if we're inside a provider
 const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
@@ -8,7 +8,6 @@ const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
 const AuthContext = createContext({
   user: null,
   isAdmin: false,
-  betaAccess: true,
   studentData: null,
   loading: true,
   login: () => {},
@@ -396,7 +395,6 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAdmin,
-    betaAccess: user?.betaAccess ?? true,
     studentData,
     loading,
     login,

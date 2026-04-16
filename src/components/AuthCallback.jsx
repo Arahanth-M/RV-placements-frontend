@@ -90,6 +90,14 @@ const AuthCallback = () => {
 
   // Strictly email-based profile fetch — no name matching
   const fetchStudentProfileByEmail = async (user, signup, admin) => {
+    if (user?.isBetaListed !== true) {
+      if (setStudentData) {
+        setStudentData(null);
+      }
+      handleLoginComplete(user, signup, admin);
+      return;
+    }
+
     try {
       const userId = user?.userId || user?._id;
       console.log(`📡 [AuthCallback] Fetching profile by email for user: ${user?.email}`);
@@ -112,6 +120,9 @@ const AuthCallback = () => {
       }
     } catch (err) {
       console.error('❌ [AuthCallback] Profile fetch failed:', err.message);
+      if (setStudentData) {
+        setStudentData(null);
+      }
       // Proceed without student data — user can still use other features
     }
     
