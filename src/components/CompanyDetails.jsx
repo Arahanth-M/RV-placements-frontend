@@ -165,6 +165,21 @@ function CompanyDetails() {
       return item && (item.question || (typeof item === "object" && Object.keys(item).length > 0));
     });
 
+  const companyNavTabs = [
+    { id: "general", label: "General" },
+    { id: "oa", label: "OA Questions" },
+    { id: "coding", label: "Coding" },
+    { id: "interview", label: "Interview Experience" },
+    { id: "internship", label: "Internship Experience" },
+    { id: "mustdo", label: "Must Do Topics" },
+  ];
+  const optionalCompanyNavTabs = [];
+  if (company.videoUrl) optionalCompanyNavTabs.push({ id: "video", label: "Video" });
+  if (hasInterviewQuestions) {
+    optionalCompanyNavTabs.push({ id: "offcampus", label: "Off-Campus Questions" });
+  }
+  const allCompanyNavTabs = [...companyNavTabs, ...optionalCompanyNavTabs];
+
   const handleBack = () => {
     if (isInterviewLocked) {
       if (typeof interviewExitHandlerRef.current === "function") {
@@ -247,11 +262,11 @@ function CompanyDetails() {
         </button>
       </div>
       
-      <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
-        <div className="flex items-center gap-4">
+      <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6">
+        <div className="flex items-center gap-4 sm:gap-5 md:gap-6">
           {/* Company Logo */}
           <div 
-            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-lg shadow-md border-2 border-theme flex-shrink-0 bg-theme-card flex items-center justify-center overflow-hidden"
+            className="h-16 w-16 shrink-0 rounded-xl border-2 border-theme bg-theme-card shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28 flex items-center justify-center overflow-hidden"
             data-testid="company-logo"
           >
             <CompanyLogo
@@ -261,62 +276,39 @@ function CompanyDetails() {
             />
           </div>
           {/* Company Name and Type */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-theme-primary mb-2 break-words">
+          <div className="flex-1 min-w-0 py-0.5">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-theme-primary leading-[1.08] tracking-tight break-words">
               {company.name}
             </h1>
-            <p className="text-base sm:text-lg text-theme-secondary break-words">{company.type}</p>
+            <p className="mt-2 sm:mt-3 text-lg sm:text-xl md:text-2xl text-theme-secondary font-medium break-words">
+              {company.type}
+            </p>
           </div>
         </div>
       </div>
-      <div className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap overflow-x-auto pb-2">
-        {["general", "oa", "coding", "interview", "internship", "mustdo"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => handleTabChange(tab)}
-            className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
-              activeTab === tab
-                ? "company-tab-btn--active"
-                : "bg-theme-card border border-theme text-theme-secondary"
-            }`}
-          >
-            {tab === "general"
-              ? "General"
-              : tab === "oa"
-              ? "OA Questions"
-              : tab === "coding"
-              ? "Coding"
-              : tab === "interview"
-              ? "Interview Experience"
-              : tab === "internship"
-              ? "Internship Experience"
-              : "Must Do Topics"}
-          </button>
-        ))}
-        {company.videoUrl && (
-          <button
-            onClick={() => handleTabChange("video")}
-            className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
-              activeTab === "video"
-                ? "company-tab-btn--active"
-                : "bg-theme-card border border-theme text-theme-secondary"
-            }`}
-          >
-            Video
-          </button>
-        )}
-        {hasInterviewQuestions && (
-          <button
-            onClick={() => handleTabChange("offcampus")}
-            className={`company-tab-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap ${
-              activeTab === "offcampus"
-                ? "company-tab-btn--active"
-                : "bg-theme-card border border-theme text-theme-secondary"
-            }`}
-          >
-            Off-Campus Questions
-          </button>
-        )}
+      <div className="mb-4 sm:mb-6 min-w-0">
+        <div
+          className="flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl md:gap-1.5 md:p-1.5"
+          role="tablist"
+          aria-label="Company sections"
+        >
+          {allCompanyNavTabs.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === id}
+              onClick={() => handleTabChange(id)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold leading-tight transition-all duration-200 sm:px-3.5 sm:py-2 sm:text-sm md:rounded-lg md:px-4 md:py-2.5 md:text-base lg:px-5 lg:py-2.5 lg:text-lg whitespace-nowrap ${
+                activeTab === id
+                  ? "bg-theme-hero text-theme-accent shadow-md"
+                  : "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="company-tab-content">
         {activeTab === "general" && (
