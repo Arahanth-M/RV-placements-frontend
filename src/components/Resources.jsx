@@ -144,15 +144,6 @@ const Resources = () => {
           transition: background 0.13s;
         }
 
-        /* ── Type filter chips ── */
-        .res-chip {
-          font-size: 15px; font-weight: 500;
-          padding: 10px 22px; border-radius: 10px;
-          cursor: pointer; transition: all 0.18s;
-          white-space: nowrap; font-family: inherit;
-          border: 1px solid;
-        }
-
         /* ── Card ── */
         .res-card {
           border-radius: 16px; overflow: hidden;
@@ -179,8 +170,7 @@ const Resources = () => {
         @media (max-width: 640px)  {
           .res-grid { grid-template-columns: 1fr; }
           .res-controls { flex-direction: column !important; }
-          .res-chips { width: 100%; }
-          .res-chip { flex: 1; text-align: center; }
+          .res-type-filters { width: 100%; max-width: 100%; }
         }
       `}</style>
 
@@ -303,28 +293,28 @@ const Resources = () => {
             )}
           </div>
 
-          {/* Type filter chips */}
-          <div className="res-chips" style={{ display: 'flex', gap: '8px', flexShrink: 0, paddingTop: '1px' }}>
-            {TYPE_FILTERS.map((f) => {
-              const isActive = typeFilter === f;
-              const activeStyle = isActive
-                ? f === 'All'
-                  ? { background: '#4F46E5', borderColor: '#4F46E5', color: '#fff' }
-                  : f === 'Free'
-                    ? { background: '#14361E', borderColor: '#166534', color: '#4ADE80' }
-                    : { background: '#3B2506', borderColor: '#92400E', color: '#FBB543' }
-                : {};
-              return (
-                <button
-                  key={f}
-                  className="res-chip border-slate-700 bg-slate-800/60 text-slate-400"
-                  style={activeStyle}
-                  onClick={() => setTypeFilter(f)}
-                >
-                  {f}
-                </button>
-              );
-            })}
+          {/* Type filters — same segmented control as AIInterviews / Events */}
+          <div
+            className="res-type-filters flex shrink-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl w-fit max-w-full"
+            role="tablist"
+            aria-label="Filter by resource type"
+          >
+            {TYPE_FILTERS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={typeFilter === f}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+                  typeFilter === f
+                    ? 'bg-theme-hero text-theme-accent shadow-md'
+                    : 'text-theme-secondary hover:text-theme-primary hover:bg-theme-nav'
+                }`}
+                onClick={() => setTypeFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
 
