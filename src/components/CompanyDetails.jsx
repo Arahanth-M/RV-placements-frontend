@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
+import { useInterviewLock } from "../utils/InterviewLockContext";
 import { companyAPI } from "../utils/api";
 import {
   companystatsTierListUrl,
@@ -24,14 +25,23 @@ function CompanyDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin } = useAuth();
+  const { setIsInterviewLocked: setGlobalInterviewLocked } = useInterviewLock();
   const [company, setCompany] = useState(null);
   const [activeTab, setActiveTab] = useState("general");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null); // 'offline' | 'error' | null
   const [loading, setLoading] = useState(true);
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
+  const interviewExitHandlerRef = useRef(null);
   const EXIT_WARNING_MESSAGE =
     "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
+
+  useEffect(() => {
+    setGlobalInterviewLocked(isInterviewLocked);
+    return () => {
+      setGlobalInterviewLocked(false);
+    };
+  }, [isInterviewLocked, setGlobalInterviewLocked]);
 
   useEffect(() => {
     if (!id) return;
@@ -157,12 +167,12 @@ function CompanyDetails() {
 
   const handleBack = () => {
     if (isInterviewLocked) {
+      if (typeof interviewExitHandlerRef.current === "function") {
+        interviewExitHandlerRef.current();
+        return;
+      }
       const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
       if (!shouldExit) return;
-      window.dispatchEvent(new Event("ai-interview-intentional-exit"));
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
       setIsInterviewLocked(false);
       setActiveTab("general");
       return;
@@ -208,12 +218,12 @@ function CompanyDetails() {
       activeTab === "aiinterview" &&
       nextTab !== "aiinterview"
     ) {
+      if (typeof interviewExitHandlerRef.current === "function") {
+        interviewExitHandlerRef.current();
+        return;
+      }
       const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
       if (!shouldExit) return;
-      window.dispatchEvent(new Event("ai-interview-intentional-exit"));
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
       setIsInterviewLocked(false);
     }
 
@@ -331,6 +341,9 @@ function CompanyDetails() {
             company={company}
             onInterviewLockChange={setIsInterviewLocked}
             onForceExitToGeneral={() => setActiveTab("general")}
+            registerInterviewExitHandler={(handler) => {
+              interviewExitHandlerRef.current = handler;
+            }}
           />
         )}
         {activeTab === "mustdo" && <MustDoTab company={company} />}

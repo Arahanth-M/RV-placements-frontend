@@ -310,7 +310,7 @@ export const placementAPI = {
 
 export const leaderboardAPI = {
   getLeaderboard: () => API.get('/api/leaderboard'),
-  getWeeklyTopContributor: () => API.get('/api/leaderboard/weekly-top'),
+  getPreviousDayTopContributor: () => API.get('/api/leaderboard/previous-day-top'),
 };
 
 export const interviewAPI = {

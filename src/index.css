@@ -67,6 +67,16 @@ body {
 .bg-theme-input { background-color: var(--input-bg); }
 .border-theme-input { border-color: var(--input-border); }
 
+/* Theme-aware backdrops for AI interview modals.
+   Tailwind theme tokens handle card/content colors; we only need backdrop opacity to match light vs dark. */
+.ai-interview-backdrop {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="light"] .ai-interview-backdrop {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
 [data-theme="dark"] {
   --bg-app: #080c14;
   --bg-card: #121a2b;

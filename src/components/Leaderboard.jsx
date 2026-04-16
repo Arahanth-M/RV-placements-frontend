@@ -163,7 +163,7 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
 const Leaderboard = () => {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState([]);
-  const [weeklyTopContributor, setWeeklyTopContributor] = useState(null);
+  const [previousDayTopContributor, setPreviousDayTopContributor] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [search, setSearch]           = useState('');
@@ -180,12 +180,12 @@ const Leaderboard = () => {
     try {
       setLoading(true);
       setError(null);
-      const [leaderboardResponse, weeklyTopResponse] = await Promise.all([
+      const [leaderboardResponse, previousDayTopResponse] = await Promise.all([
         leaderboardAPI.getLeaderboard(),
-        leaderboardAPI.getWeeklyTopContributor(),
+        leaderboardAPI.getPreviousDayTopContributor(),
       ]);
       setLeaderboard(leaderboardResponse.data || []);
-      setWeeklyTopContributor(weeklyTopResponse.data || null);
+      setPreviousDayTopContributor(previousDayTopResponse.data || null);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
       setError('Failed to load leaderboard. Please try again.');
@@ -211,6 +211,18 @@ const Leaderboard = () => {
   const currentUserInView = filtered
     .slice(0, showAll ? filtered.length : PAGE_SIZE + 2)
     .some((e) => user && e.userId === user.userId);
+  const previousDayLabel = useMemo(() => {
+    if (!previousDayTopContributor?.day) return "Yesterday";
+    try {
+      const formatted = new Date(`${previousDayTopContributor.day}T00:00:00+05:30`).toLocaleDateString(
+        "en-IN",
+        { day: "numeric", month: "short" }
+      );
+      return `Yesterday · ${formatted}`;
+    } catch {
+      return "Yesterday";
+    }
+  }, [previousDayTopContributor?.day]);
 
   const rankNumberStyle = {
     color: 'var(--text-primary)',
@@ -249,6 +261,16 @@ const Leaderboard = () => {
         .lb-row-hover:hover { background: rgba(79,70,229,0.08) !important; }
         .lb-search-input { outline: none; width: 100%; }
         .lb-search-input:focus { border-color: #6366F1 !important; }
+        .lb-header-wrap {
+          margin-bottom: 32px;
+        }
+        .lb-header-copy {
+          text-align: center;
+        }
+        .lb-yesterday-card {
+          margin: 0 auto 24px;
+          max-width: 300px;
+        }
       `}</style>
 
       <div style={{ maxWidth: 896, margin: '0 auto' }}>
@@ -268,30 +290,93 @@ const Leaderboard = () => {
         </div>
 
         {/* ── Header ── */}
-        <div style={{ marginBottom: 32, textAlign: 'center' }}>
-          <p style={{
-            fontSize: '13px',
-            fontWeight: 600,
-            letterSpacing: '0.13em',
-            textTransform: 'uppercase',
-            color: '#6366F1',
-            marginBottom: '0.75rem',
-          }}>
-            Placement prep
+        <div className="lb-header-wrap">
+          <div className="lb-header-copy">
+            <p style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              letterSpacing: '0.13em',
+              textTransform: 'uppercase',
+              color: '#6366F1',
+              marginBottom: '0.75rem',
+            }}>
+              Placement prep
+            </p>
+            <h1 style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
+              fontWeight: 400,
+              lineHeight: 1.13,
+              marginBottom: '1rem',
+              color: 'var(--text-primary)',
+            }}>
+              Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
+            </h1>
+            <p style={{ fontSize: '17px', color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '620px', margin: '0 auto' }}>
+              Top contributors who add questions and interview experiences to the platform.
+            </p>
+          </div>
+        </div>
+
+        <div
+          className="lb-yesterday-card"
+          style={{
+            ...panelStyle,
+            padding: '14px 16px',
+          }}
+        >
+          <p
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'var(--text-secondary)',
+              marginBottom: 10,
+            }}
+          >
+            Yesterday's Top Contributor
           </p>
-          <h1 style={{
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
-            fontWeight: 400,
-            lineHeight: 1.13,
-            marginBottom: '1rem',
-            color: 'var(--text-primary)',
-          }}>
-            Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
-          </h1>
-          <p style={{ fontSize: '17px', color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '620px', margin: '0 auto' }}>
-            Top contributors who add questions and interview experiences to the platform.
-          </p>
+
+          {previousDayTopContributor?.userId || previousDayTopContributor?.username ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Avatar
+                src={previousDayTopContributor?.picture}
+                alt={previousDayTopContributor?.username || 'Top contributor'}
+                size={48}
+                border="#6366F1"
+              />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: 'var(--text-primary)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {previousDayTopContributor?.username || 'Anonymous'}
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                  {previousDayLabel}
+                </p>
+                <p style={{ fontSize: 13, color: '#818CF8', marginTop: 6, fontWeight: 700 }}>
+                  {previousDayTopContributor?.approvedSubmissionCount ?? 0} approved submission
+                  {(previousDayTopContributor?.approvedSubmissionCount ?? 0) === 1 ? '' : 's'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                No approved submissions were recorded yesterday.
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
+                {previousDayLabel}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ── Points legend ── */}
@@ -310,47 +395,6 @@ const Leaderboard = () => {
               <span style={{ fontWeight: 700, color: ptsColor, marginLeft: 4 }}>{pts}</span>
             </div>
           ))}
-        </div>
-
-        {/* ── Weekly top contributor ── */}
-        <div
-          style={{
-            ...panelStyle,
-            marginBottom: 20,
-            padding: "14px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <Avatar
-            src={weeklyTopContributor?.picture}
-            alt={weeklyTopContributor?.username || "Top contributor"}
-            size={44}
-            border="#6366F1"
-          />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-secondary)", marginBottom: 2 }}>
-              This Week's Top Contributor
-            </p>
-            {weeklyTopContributor ? (
-              <>
-                <p style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {weeklyTopContributor.username || "Anonymous"}
-                </p>
-                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
-                  {weeklyTopContributor.weeklyPoints ?? 0} pts
-                  {weeklyTopContributor.totalSubmissions != null
-                    ? ` · ${weeklyTopContributor.totalSubmissions} submissions`
-                    : ""}
-                </p>
-              </>
-            ) : (
-              <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                No contributions recorded yet for this week.
-              </p>
-            )}
-          </div>
         </div>
 
         {/* ── Search ── */}

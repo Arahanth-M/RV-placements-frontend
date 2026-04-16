@@ -3,9 +3,10 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { interviewAPI } from "../../utils/api";
+import rvLogo from "../../assets/logo2.png";
 
 const EXIT_WARNING_MESSAGE =
-  "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
+  "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";
 
 const summarizeRoundAbout = (value, fallbackText) => {
   const raw = Array.isArray(value) ? value.join(" ") : String(value || "");
@@ -47,12 +48,28 @@ const isIgnorableDiscardError = (err) => {
   );
 };
 
-function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }) {
+const toDisplayCorrectness = (value) => {
+  const safe = String(value || "").trim().toLowerCase();
+  return ["correct", "partial", "incorrect"].includes(safe) ? safe : null;
+};
+
+const toDisplayRelevance = (value) => {
+  const safe = String(value || "").trim().toLowerCase();
+  return ["relevant", "irrelevant"].includes(safe) ? safe : null;
+};
+
+function AIInterviewTab({
+  company,
+  onInterviewLockChange,
+  onForceExitToGeneral,
+  registerInterviewExitHandler,
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [sessionId, setSessionId] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const answerCharCount = answer.trim().length;
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(null);
   const [status, setStatus] = useState("idle");
@@ -75,24 +92,28 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   /** After each answer: full-screen feedback until user taps "Next question". */
   const [pendingQuestionFeedback, setPendingQuestionFeedback] = useState(null);
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
   const [isInFullscreen, setIsInFullscreen] = useState(
     Boolean(document.fullscreenElement)
   );
   const [needsFullscreenResume, setNeedsFullscreenResume] = useState(false);
   const activeSessionIdRef = useRef("");
   const interviewActiveRef = useRef(false);
+  const isExitingInterviewRef = useRef(false);
   const processingFullscreenExitRef = useRef(false);
   const suppressFullscreenExitPromptRef = useRef(false);
   const roundCompletedAtRef = useRef(0);
   const loadingRef = useRef(false);
   const roundFeedbackRef = useRef(null);
   const questionRef = useRef("");
+  const answerTextAreaRef = useRef(null);
   /** Abort in-flight answer-evaluation polling when the tab unmounts or user navigates away. */
   const interviewAnswerPollAbortedRef = useRef(false);
   const tipsRef = useRef([]);
   tipsRef.current = tips;
   const pendingQuestionFeedbackRef = useRef(null);
   pendingQuestionFeedbackRef.current = pendingQuestionFeedback;
+  const quitConfirmResolverRef = useRef(null);
 
   const canStart = useMemo(() => {
     return Boolean(user?.userId && company?._id) && !loading;
@@ -333,10 +354,37 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     }
   }, [user?.betaAccess]);
 
+  const requestQuitConfirmation = useCallback(() => {
+    return new Promise((resolve) => {
+      if (typeof quitConfirmResolverRef.current === "function") {
+        quitConfirmResolverRef.current(false);
+      }
+      quitConfirmResolverRef.current = resolve;
+      setQuitConfirmOpen(true);
+    });
+  }, []);
+
+  const resolveQuitConfirmation = useCallback((confirmed) => {
+    setQuitConfirmOpen(false);
+    const resolver = quitConfirmResolverRef.current;
+    quitConfirmResolverRef.current = null;
+    if (typeof resolver === "function") {
+      resolver(Boolean(confirmed));
+    }
+  }, []);
+
   const finalizeExitToGeneral = useCallback(async () => {
+    interviewActiveRef.current = false;
+    activeSessionIdRef.current = "";
+    isExitingInterviewRef.current = true;
     setSessionId("");
     setResumeSession(null);
     resetInterviewState();
+    setNeedsFullscreenResume(false);
+    setIsInFullscreen(Boolean(document.fullscreenElement));
+    if (typeof onInterviewLockChange === "function") {
+      onInterviewLockChange(false);
+    }
     if (document.fullscreenElement && document.exitFullscreen) {
       try {
         suppressFullscreenExitPromptRef.current = true;
@@ -346,13 +394,47 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       } finally {
         window.setTimeout(() => {
           suppressFullscreenExitPromptRef.current = false;
+          isExitingInterviewRef.current = false;
         }, 1200);
       }
+    } else {
+      window.setTimeout(() => {
+        suppressFullscreenExitPromptRef.current = false;
+        isExitingInterviewRef.current = false;
+      }, 0);
     }
     if (typeof onForceExitToGeneral === "function") {
       onForceExitToGeneral();
     }
-  }, [onForceExitToGeneral]);
+  }, [onForceExitToGeneral, onInterviewLockChange]);
+
+  const handleQuitInterview = useCallback(async () => {
+    if (isExitingInterviewRef.current) {
+      return true;
+    }
+    if (!interviewActiveRef.current || !activeSessionIdRef.current) {
+      return false;
+    }
+
+    const sessionIdToDiscard = activeSessionIdRef.current;
+    const shouldExit = await requestQuitConfirmation();
+    if (!shouldExit) {
+      if (!document.fullscreenElement) {
+        await enterFullscreen();
+      }
+      return false;
+    }
+
+    window.dispatchEvent(new Event("ai-interview-intentional-exit"));
+    await finalizeExitToGeneral();
+    discardCurrentInterview(sessionIdToDiscard).catch(() => {});
+    return true;
+  }, [
+    discardCurrentInterview,
+    enterFullscreen,
+    finalizeExitToGeneral,
+    requestQuitConfirmation,
+  ]);
 
   const handleEndInterview = useCallback(async () => {
     await finalizeExitToGeneral();
@@ -384,21 +466,16 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       if (isHandling || !interviewActiveRef.current) return;
       isHandling = true;
 
-      const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
-      if (!shouldExit) {
+      const exited = await handleQuitInterview();
+      if (!exited) {
         window.history.pushState({ interviewLock: true }, "", window.location.href);
-        isHandling = false;
-        return;
       }
-
-      await discardCurrentInterview(activeSessionIdRef.current);
-      await finalizeExitToGeneral();
       isHandling = false;
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [discardCurrentInterview, finalizeExitToGeneral, isInterviewActive]);
+  }, [handleQuitInterview, isInterviewActive]);
 
   useEffect(() => {
     const updateFullscreenState = () => {
@@ -442,14 +519,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         processingFullscreenExitRef.current = true;
         window.setTimeout(async () => {
           try {
-            const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
-            if (!shouldExit) {
+            const exited = await handleQuitInterview();
+            if (!exited) {
               await enterFullscreen();
-              return;
             }
-
-            await discardCurrentInterview(activeSessionId);
-            await finalizeExitToGeneral();
           } finally {
             processingFullscreenExitRef.current = false;
           }
@@ -461,9 +534,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     return () =>
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [
-    discardCurrentInterview,
     enterFullscreen,
-    finalizeExitToGeneral,
+    handleQuitInterview,
     isInterviewActive,
     sessionId,
     status,
@@ -471,6 +543,10 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   useEffect(() => {
     return () => {
+      if (typeof quitConfirmResolverRef.current === "function") {
+        quitConfirmResolverRef.current(false);
+        quitConfirmResolverRef.current = null;
+      }
       if (interviewActiveRef.current && activeSessionIdRef.current) {
         interviewAPI.discardInterview(activeSessionIdRef.current).catch((err) => {
           if (isIgnorableDiscardError(err)) {
@@ -482,10 +558,23 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof registerInterviewExitHandler !== "function") {
+      return undefined;
+    }
+    registerInterviewExitHandler(isInterviewActive ? handleQuitInterview : null);
+    return () => {
+      registerInterviewExitHandler(null);
+    };
+  }, [handleQuitInterview, isInterviewActive, registerInterviewExitHandler]);
+
   const resetInterviewState = () => {
     loadingRef.current = false;
     roundFeedbackRef.current = null;
     questionRef.current = "";
+    if (answerTextAreaRef.current) {
+      answerTextAreaRef.current.style.height = "auto";
+    }
     setQuestion("");
     setAnswer("");
     setFeedback("");
@@ -506,6 +595,18 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
     setCurrentTipIndex(0);
     setPendingQuestionFeedback(null);
   };
+
+  useEffect(() => {
+    if (!answerTextAreaRef.current) return;
+    if (status !== "in_progress") return;
+
+    const el = answerTextAreaRef.current;
+    el.style.height = "auto";
+    // Keep some minimum height so the UI doesn't collapse on short answers.
+    const minHeightPx = 120;
+    const nextHeight = Math.max(minHeightPx, el.scrollHeight);
+    el.style.height = `${nextHeight}px`;
+  }, [answer, status]);
 
   const handleResumeInterview = () => {
     if (!resumeSession) return;
@@ -641,6 +742,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           setPendingQuestionFeedback({
             feedback: st.lastFeedback || "",
             score: typeof st.lastScore === "number" ? st.lastScore : null,
+            correctness: toDisplayCorrectness(st.lastCorrectness),
+            relevance: toDisplayRelevance(st.lastRelevance),
             nextQuestion: "",
             deferredRoundSummary,
           });
@@ -674,6 +777,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         setPendingQuestionFeedback({
           feedback: st.lastFeedback || "",
           score: typeof st.lastScore === "number" ? st.lastScore : null,
+          correctness: toDisplayCorrectness(st.lastCorrectness),
+          relevance: toDisplayRelevance(st.lastRelevance),
           nextQuestion: incomingQ,
           deferredRoundSummary: null,
         });
@@ -991,6 +1096,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
               setPendingQuestionFeedback({
                 feedback: data.feedback || "",
                 score: typeof data.score === "number" ? data.score : null,
+                correctness: toDisplayCorrectness(data.correctness),
+                relevance: toDisplayRelevance(data.relevance),
                 nextQuestion: "",
                 deferredRoundSummary,
               });
@@ -1018,6 +1125,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             setPendingQuestionFeedback({
               feedback: data.feedback || "",
               score: typeof data.score === "number" ? data.score : null,
+              correctness: toDisplayCorrectness(data.correctness),
+              relevance: toDisplayRelevance(data.relevance),
               nextQuestion: nextQ,
               deferredRoundSummary: null,
             });
@@ -1113,6 +1222,50 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
   return (
     <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 relative">
+      {quitConfirmOpen && (
+        <div
+          className="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quit-interview-title"
+        >
+          <div className="w-full max-w-xl rounded-2xl border border-theme-accent bg-theme-card shadow-2xl p-6 sm:p-8">
+            <p
+              id="quit-interview-title"
+              className="text-xs font-semibold uppercase tracking-[0.2em] text-theme-accent mb-2"
+            >
+              Quit interview?
+            </p>
+            <h3 className="text-2xl font-bold text-theme-primary leading-tight">
+              Your current progress will be discarded
+            </h3>
+            <p className="mt-4 text-sm sm:text-base text-theme-secondary leading-relaxed whitespace-pre-wrap">
+              {EXIT_WARNING_MESSAGE}
+            </p>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => resolveQuitConfirmation(false)}
+                className="px-5 py-3 rounded-xl border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
+              >
+                Resume interview
+              </button>
+              <button
+                type="button"
+                onClick={() => resolveQuitConfirmation(true)}
+                className="px-5 py-3 rounded-xl border border-theme text-white font-semibold transition-colors"
+                style={{
+                  backgroundColor: "var(--warning)",
+                  color: "var(--warning-foreground)",
+                }}
+              >
+                Quit and discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {pendingQuestionFeedback && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-md"
@@ -1120,26 +1273,55 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           aria-modal="true"
           aria-labelledby="question-feedback-title"
         >
-          <div className="w-full max-w-2xl max-h-[min(92vh,880px)] overflow-y-auto rounded-2xl border border-emerald-500/35 bg-theme-card shadow-2xl shadow-emerald-950/20 p-6 sm:p-10 flex flex-col gap-6">
+          <div className="w-full max-w-2xl max-h-[min(92vh,880px)] overflow-y-auto rounded-2xl border border-theme-accent bg-theme-card shadow-2xl p-6 sm:p-10 flex flex-col gap-6">
             <div>
-              <p
-                id="question-feedback-title"
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500/90 mb-2"
-              >
-                Answer feedback
-              </p>
-              <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary leading-tight">
-                Here&apos;s how you did
-              </h3>
-              {pendingQuestionFeedback.score !== null && (
-                <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme px-4 py-3">
-                  <span className="text-sm text-theme-secondary">Score</span>
-                  <span className="text-3xl font-bold tabular-nums text-emerald-500">
-                    {pendingQuestionFeedback.score}
-                    <span className="text-lg font-semibold text-theme-secondary">/10</span>
-                  </span>
+              <div className="flex items-start gap-3">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <img
+                    src={rvLogo}
+                    alt="RV College logo"
+                    className="h-full w-full object-contain"
+                  />
                 </div>
-              )}
+                <div className="min-w-0">
+                  <p
+                    id="question-feedback-title"
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-theme-accent mb-2"
+                  >
+                    Answer feedback
+                  </p>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary leading-tight">
+                    Here&apos;s how you did
+                  </h3>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {pendingQuestionFeedback.score !== null && (
+                  <div className="inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme px-4 py-3">
+                    <span className="text-sm text-theme-secondary">Score</span>
+                    <span className="text-3xl font-bold tabular-nums text-theme-accent">
+                      {pendingQuestionFeedback.score}
+                      <span className="text-lg font-semibold text-theme-secondary">/10</span>
+                    </span>
+                  </div>
+                )}
+                {pendingQuestionFeedback.correctness && (
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-theme-input border border-theme px-4 py-3">
+                    <span className="text-sm text-theme-secondary">Correctness</span>
+                    <span className="text-sm font-semibold capitalize text-theme-primary">
+                      {pendingQuestionFeedback.correctness}
+                    </span>
+                  </div>
+                )}
+                {pendingQuestionFeedback.relevance && (
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-theme-input border border-theme px-4 py-3">
+                    <span className="text-sm text-theme-secondary">Relevance</span>
+                    <span className="text-sm font-semibold capitalize text-theme-primary">
+                      {pendingQuestionFeedback.relevance}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="rounded-xl border border-theme bg-theme-input/80 p-5 sm:p-6">
               <p className="text-sm font-semibold text-theme-primary mb-2">Feedback</p>
@@ -1150,7 +1332,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             <button
               type="button"
               onClick={handleContinueToNextQuestion}
-              className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-semibold shadow-lg shadow-emerald-900/30 transition-colors"
+              className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors"
             >
               {pendingQuestionFeedback?.deferredRoundSummary
                 ? "View round summary"
@@ -1163,42 +1345,53 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       {showInterviewFinale &&
         createPortal(
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 ai-interview-backdrop backdrop-blur-md"
             role="dialog"
             aria-modal="true"
             aria-labelledby="interview-final-summary-title"
           >
-            <div className="w-full max-w-3xl max-h-[min(92vh,900px)] flex flex-col overflow-hidden rounded-2xl border border-emerald-500/35 bg-gradient-to-b from-emerald-950/30 to-theme-card shadow-2xl shadow-emerald-950/20">
-              <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-emerald-500/20 bg-emerald-500/10 shrink-0">
-                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500/95">
-                  All rounds complete
-                </p>
-                <h2
-                  id="interview-final-summary-title"
-                  className="text-xl sm:text-2xl font-bold text-theme-primary mt-1"
-                >
-                  Full interview summary
-                  {company?.name ? (
-                    <span className="text-theme-secondary font-medium"> — {company.name}</span>
-                  ) : null}
-                </h2>
-                {totalRounds > 0 ? (
-                  <p className="text-sm text-theme-primary mt-2 font-medium">
-                    You finished every round ({totalRounds}{" "}
-                    {totalRounds === 1 ? "round" : "rounds"}).
-                  </p>
-                ) : null}
-                <p className="text-sm text-theme-secondary mt-2">
-                  The detailed summary is below. When you&apos;re done reading, use End interview to
-                  leave fullscreen and return to this company&apos;s General tab.
-                </p>
+            <div className="w-full max-w-3xl max-h-[min(92vh,900px)] flex flex-col overflow-hidden rounded-2xl border border-theme-accent bg-theme-card shadow-2xl">
+              <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-theme bg-theme-input shrink-0">
+                <div className="flex items-start gap-3">
+                  <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                    <img
+                      src={rvLogo}
+                      alt="RV College logo"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-theme-accent">
+                      All rounds complete
+                    </p>
+                    <h2
+                      id="interview-final-summary-title"
+                      className="text-xl sm:text-2xl font-bold text-theme-primary mt-1"
+                    >
+                      Full interview summary
+                      {company?.name ? (
+                        <span className="text-theme-secondary font-medium"> — {company.name}</span>
+                      ) : null}
+                    </h2>
+                    {totalRounds > 0 ? (
+                      <p className="text-sm text-theme-primary mt-2 font-medium">
+                        You finished every round ({totalRounds}{" "}
+                        {totalRounds === 1 ? "round" : "rounds"}).
+                      </p>
+                    ) : null}
+                    <p className="text-sm text-theme-secondary mt-2">
+                      The detailed summary is below. When you&apos;re done reading, use End interview to
+                      leave fullscreen and return to this company&apos;s General tab.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex-1 min-h-0 overflow-y-auto">
             {report ? (
-              <div className="p-5 sm:p-8 space-y-8 text-sm border-t border-emerald-500/10">
+              <div className="p-5 sm:p-8 space-y-8 text-sm border-t border-theme">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-emerald-600/90 dark:text-emerald-400/90 mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-theme-accent mb-3">
                     Interview summary
                   </p>
                   <p className="text-sm text-theme-secondary">
@@ -1211,7 +1404,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                     <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-1">
                       Overall score
                     </p>
-                    <p className="text-4xl sm:text-5xl font-bold tabular-nums text-emerald-500">
+                    <p className="text-4xl sm:text-5xl font-bold tabular-nums text-theme-accent">
                       {report.overallScore ?? 0}
                       <span className="text-xl sm:text-2xl font-semibold text-theme-secondary">
                         /10
@@ -1221,8 +1414,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400 mb-2">
+                  <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent mb-2">
                       Overall strength
                     </p>
                     <p className="text-theme-primary leading-relaxed">
@@ -1231,8 +1424,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                         "Not enough signal to highlight a primary strength."}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-rose-500/90 mb-2">
+                  <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent mb-2">
                       Overall weakness
                     </p>
                     <p className="text-theme-primary leading-relaxed">
@@ -1255,8 +1448,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                 ) : null}
 
                 {(report.companyRoadmap || []).length > 0 ? (
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-3">
+                  <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent mb-3">
                       Roadmap for this company&apos;s interview
                     </p>
                     <ol className="list-decimal pl-5 space-y-2 text-theme-secondary">
@@ -1309,7 +1502,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             ) : (
               <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
                 <div
-                  className="h-10 w-10 rounded-full border-2 border-emerald-500/40 border-t-emerald-500 animate-spin"
+                    className="h-10 w-10 rounded-full border-2 border-theme-accent border-t-transparent animate-spin"
                   aria-hidden
                 />
                 <p className="text-sm font-medium text-theme-primary">
@@ -1323,11 +1516,11 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             )}
               </div>
 
-              <div className="px-5 py-4 sm:px-8 border-t border-emerald-500/20 bg-theme-card/95 shrink-0">
+              <div className="px-5 py-4 sm:px-8 border-t border-theme bg-theme-card shrink-0">
                 <button
                   type="button"
                   onClick={handleEndInterview}
-                  className="w-full px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-base font-semibold shadow-lg shadow-emerald-900/30 transition-colors"
+                  className="w-full px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors"
                 >
                   End interview
                 </button>
@@ -1339,31 +1532,42 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
 
       {roundFeedbackView && !interviewCompleted && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-md"
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 ai-interview-backdrop backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="round-summary-title"
         >
-          <div className="w-full max-w-3xl max-h-[min(92vh,900px)] overflow-y-auto rounded-2xl border border-indigo-500/40 bg-gradient-to-b from-indigo-950/40 to-theme-card shadow-2xl p-6 sm:p-10 flex flex-col gap-6">
+          <div className="w-full max-w-3xl max-h-[min(92vh,900px)] overflow-y-auto rounded-2xl border border-theme-accent bg-theme-card shadow-2xl p-6 sm:p-10 flex flex-col gap-6">
             <div>
-              <p
-                id="round-summary-title"
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-400 mb-2"
-              >
-                Round complete
-              </p>
-              <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary">
-                Round summary
-              </h3>
-              {roundFeedbackView.summary && (
-                <p className="mt-4 text-theme-secondary text-sm sm:text-base leading-relaxed">
-                  {roundFeedbackView.summary}
-                </p>
-              )}
+              <div className="flex items-start gap-3">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <img
+                    src={rvLogo}
+                    alt="RV College logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p
+                    id="round-summary-title"
+                    className="text-xs font-semibold uppercase tracking-[0.2em] text-theme-accent mb-2"
+                  >
+                    Round complete
+                  </p>
+                  <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary">
+                    Round summary
+                  </h3>
+                  {roundFeedbackView.summary && (
+                    <p className="mt-4 text-theme-secondary text-sm sm:text-base leading-relaxed">
+                      {roundFeedbackView.summary}
+                    </p>
+                  )}
+                </div>
+              </div>
               {roundFeedbackView.score !== null && (
-                <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-indigo-500/25 px-4 py-3">
+                <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme-accent px-4 py-3">
                   <span className="text-sm text-theme-secondary">Round score</span>
-                  <span className="text-3xl font-bold tabular-nums text-indigo-400">
+                  <span className="text-3xl font-bold tabular-nums text-theme-accent">
                     {roundFeedbackView.score}
                     <span className="text-lg font-semibold text-theme-secondary">/10</span>
                   </span>
@@ -1371,8 +1575,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
               )}
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 sm:p-5">
-                <p className="text-sm font-semibold text-emerald-500/95 mb-2">Strengths</p>
+              <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                <p className="text-sm font-semibold text-theme-accent mb-2">Strengths</p>
                 <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
                   {(roundFeedbackView.strengths || []).length ? (
                     (roundFeedbackView.strengths || []).map((item, idx) => (
@@ -1383,8 +1587,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                   )}
                 </ul>
               </div>
-              <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-4 sm:p-5">
-                <p className="text-sm font-semibold text-rose-400/95 mb-2">Areas to improve</p>
+              <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                <p className="text-sm font-semibold text-theme-accent mb-2">Areas to improve</p>
                 <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
                   {(roundFeedbackView.weaknesses || []).length ? (
                     (roundFeedbackView.weaknesses || []).map((item, idx) => (
@@ -1400,8 +1604,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
               (
                 roundFeedbackView.improvementTips
               ).length > 0 && (
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
-                  <p className="text-sm font-semibold text-amber-500/90 mb-2">Tips for next time</p>
+                <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                  <p className="text-sm font-semibold text-theme-accent mb-2">Tips for next time</p>
                   <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
                     {roundFeedbackView.improvementTips.map((item, idx) => (
                       <li key={`rf-tip-${idx}`}>{item}</li>
@@ -1414,7 +1618,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                 type="button"
                 onClick={handleStartNextRound}
                 disabled={loading}
-                className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-base font-semibold disabled:opacity-60 shadow-lg shadow-indigo-950/30 transition-colors"
+                className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold disabled:opacity-60 shadow-lg transition-colors"
               >
                 Next round
               </button>
@@ -1440,8 +1644,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
             loading ||
             (!showStartPrompt && status === "in_progress") ||
             interviewCompleted
-              ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
-              : "border border-theme-accent/40 bg-theme-hero text-theme-accent shadow-sm hover:bg-theme-card"
+              ? "bg-theme-card text-theme-muted cursor-not-allowed"
+              : "border border-theme-accent bg-theme-hero text-theme-accent shadow-sm"
           }`}
         >
           {showStartPrompt ? "Start Interview" : "Reset"}
@@ -1449,20 +1653,20 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       </div>
 
       {!user?.userId && (
-        <p className="text-sm text-amber-500 mb-3">
+        <p className="text-sm text-theme-accent mb-3">
           Please login to start your AI interview.
         </p>
       )}
 
       {hasResumableInterview && showStartPrompt && (
-        <div className="mb-4 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10">
+        <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input">
           <p className="text-sm text-theme-primary mb-2">
             You have an in-progress interview for this company.
           </p>
           <button
             onClick={handleResumeInterview}
             disabled={loading}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors disabled:opacity-60"
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-theme-accent text-white transition-colors disabled:opacity-60"
           >
             Resume Interview
           </button>
@@ -1510,28 +1714,30 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       )}
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 text-sm">
+        <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input text-theme-primary text-sm">
           {error}
         </div>
       )}
 
       {isInterviewActive && (
-        <div className="mb-4 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 flex items-center justify-between gap-3">
+        <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input flex items-center justify-between gap-3">
           <p className="text-sm text-theme-primary">
-            Interview mode is active. Press <span className="font-semibold">Esc</span> to exit (progress will be lost).
+            Interview mode is active. Press <span className="font-semibold">Esc</span> or use
+            the <span className="font-semibold">Back</span> button to quit. If you leave now,
+            this in-progress interview will be discarded and will not be saved.
           </p>
         </div>
       )}
 
       {isInterviewActive && !isInFullscreen && needsFullscreenResume && (
-        <div className="mb-4 p-3 rounded-lg border border-blue-500/40 bg-blue-500/10 flex items-center justify-between gap-3">
+        <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input flex items-center justify-between gap-3">
           <p className="text-sm text-theme-primary">
             Interview is still active. Return to fullscreen to continue.
           </p>
           <button
             type="button"
             onClick={enterFullscreen}
-            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-theme-accent text-white text-sm font-semibold transition-colors"
           >
             Return to Fullscreen
           </button>
@@ -1539,7 +1745,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
       )}
 
       {roundTransitionMessage && (
-        <div className="mb-4 p-3 rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-300 text-sm">
+        <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input text-theme-secondary text-sm">
           {roundTransitionMessage}
         </div>
       )}
@@ -1550,25 +1756,36 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
           aria-live="polite"
           aria-busy="true"
         >
-          <div className="w-full max-w-lg rounded-2xl border border-amber-500/35 bg-theme-card shadow-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-500/20 via-amber-500/5 to-transparent px-6 pt-6 pb-4 border-b border-amber-500/20">
-              <div className="flex items-center gap-3 mb-1">
-                <span
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/25 text-lg"
-                  aria-hidden
-                >
-                  ✦
-                </span>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">
-                    While you wait
-                  </p>
-                  <p className="text-lg font-bold text-theme-primary">
-                    Evaluating your answer
-                  </p>
+          <div className="w-full max-w-lg rounded-2xl border border-theme-accent bg-theme-card shadow-2xl overflow-hidden">
+            <div className="bg-theme-input px-6 pt-6 pb-4 border-b border-theme">
+              <div className="flex items-start gap-3 mb-1">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <img
+                    src={rvLogo}
+                    alt="RV College logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="min-w-0 pt-1">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-theme-accent text-lg"
+                      aria-hidden
+                    >
+                      ✦
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-theme-accent">
+                        While you wait
+                      </p>
+                      <p className="text-lg font-bold text-theme-primary">
+                        Evaluating your answer
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs text-theme-secondary ml-[52px]">
+              <p className="text-xs text-theme-secondary ml-[108px] sm:ml-[124px]">
                 This usually takes a few seconds. Take a breath and skim a tip below.
               </p>
             </div>
@@ -1579,8 +1796,8 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                     key={currentTipIndex % tips.length}
                     className="rounded-xl border border-theme bg-theme-input/90 p-4 sm:p-5 transition-all duration-300"
                   >
-                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <p className="text-xs font-semibold text-theme-accent mb-2 flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-theme-accent animate-pulse" />
                       Interview tip
                     </p>
                     <p className="text-sm sm:text-base text-theme-primary leading-relaxed whitespace-pre-wrap">
@@ -1593,7 +1810,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                         key={`tip-dot-${i}`}
                         className={`h-1.5 rounded-full transition-all duration-300 ${
                           i === currentTipIndex % tips.length
-                            ? "w-6 bg-amber-500"
+                            ? "w-6 bg-theme-accent"
                             : "w-1.5 bg-theme-muted/40"
                         }`}
                       />
@@ -1602,7 +1819,7 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
                 </>
               ) : (
                 <div className="flex flex-col items-center gap-3 py-4">
-                  <div className="h-9 w-9 rounded-full border-2 border-amber-500/40 border-t-amber-500 animate-spin" />
+                  <div className="h-9 w-9 rounded-full border-2 border-theme-accent border-t-transparent animate-spin" />
                   <p className="text-sm text-theme-secondary text-center">
                     Hang tight — scoring your response.
                   </p>
@@ -1665,49 +1882,50 @@ function AIInterviewTab({ company, onInterviewLockChange, onForceExitToGeneral }
         !roundFeedbackView &&
         !pendingQuestionFeedback &&
         !isProcessing && (
-        <div className="space-y-3">
-          <label className="block">
-            <span className="text-sm text-theme-secondary">Your Answer</span>
-            <textarea
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              rows={5}
-              className="mt-1 w-full px-3 py-2 rounded-lg bg-theme-input border border-theme-input text-theme-primary focus:outline-none focus:ring-2 focus:ring-theme-accent"
-              placeholder="Type your answer..."
-              disabled={loading}
-            />
-          </label>
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm text-theme-secondary">Your Answer</p>
+              <p className="text-xs text-theme-muted mt-1">
+                Tip: press <span className="font-semibold text-theme-accent">Ctrl + Enter</span> to submit
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-theme-muted">{answerCharCount} chars</p>
+            </div>
+          </div>
 
-          <button
-            onClick={handleSubmitAnswer}
-            disabled={!canSubmitAnswer}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              canSubmitAnswer
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                : "bg-theme-card-hover text-theme-muted cursor-not-allowed"
-            }`}
-          >
-            {loading ? "Submitting..." : "Submit Answer"}
-          </button>
+          <textarea
+            ref={answerTextAreaRef}
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            rows={5}
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                handleSubmitAnswer();
+              }
+            }}
+            className="w-full px-3 py-2 rounded-lg bg-theme-input border border-theme-input text-theme-primary focus:outline-none focus:ring-2 focus:ring-theme-accent resize-none"
+            placeholder="Type your answer..."
+            disabled={loading}
+          />
+
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <button
+              onClick={handleSubmitAnswer}
+              disabled={!canSubmitAnswer}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                canSubmitAnswer
+                  ? "bg-theme-accent text-white"
+                  : "bg-theme-card text-theme-muted cursor-not-allowed"
+              }`}
+            >
+              {loading ? "Submitting..." : "Submit Answer"}
+            </button>
+          </div>
         </div>
       )}
-      <div className="mt-8 pt-5 border-t border-theme">
-        <button
-          type="button"
-          onClick={() => {
-            if (isInterviewActive) return;
-            navigate("/interviews");
-          }}
-          disabled={isInterviewActive}
-          className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
-            isInterviewActive
-              ? "bg-theme-card-hover border-theme text-theme-muted cursor-not-allowed"
-              : "bg-theme-card border-theme text-theme-primary hover:bg-theme-nav"
-          }`}
-        >
-          View All Interviews
-        </button>
-      </div>
     </div>
   );
 }

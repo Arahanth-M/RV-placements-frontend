@@ -5,6 +5,7 @@ import appStore from "./utils/appStore";
 import { AuthProvider } from "./utils/AuthContext";
 import { PremiumProvider } from "./utils/PremiumContext";
 import { ThemeProvider } from "./utils/ThemeContext";
+import { InterviewLockProvider, useInterviewLock } from "./utils/InterviewLockContext";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./components/Home";
@@ -37,6 +38,109 @@ function ScrollToTop() {
   return null;
 }
 
+function AppShell() {
+  const { isInterviewLocked } = useInterviewLock();
+
+  return (
+    <div className="flex flex-col min-h-screen bg-theme-app text-theme-primary">
+      {!isInterviewLocked && <Header />}
+
+      <main
+        className={`flex-grow pb-2 px-2 sm:px-4 md:px-6 ${
+          isInterviewLocked ? "pt-0" : "pt-3 sm:pt-5"
+        }`}
+      >
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/companystats" element={<CompanyStats />} />
+          <Route path="/category" element={<CompanyStats />} />
+          <Route
+            path="/leaderboard"
+            element={
+              <ProtectedRoute>
+                <Leaderboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback"
+            element={
+              <ProtectedRoute>
+                <Feedback />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/companies/:id"
+            element={
+              <ProtectedRoute>
+                <CompanyDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<Login />} />
+          {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
+          {/* <Route path="/premium" element={<Premium />} /> */}
+          <Route
+            path="/resources"
+            element={
+              <ProtectedRoute>
+                <Resources />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews"
+            element={
+              <ProtectedRoute>
+                <AIInterviews />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/events"
+            element={
+              <ProtectedRoute>
+                <Events />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route path="/team" element={<Developers />} />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <StudentProfilePage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </main>
+
+      {!isInterviewLocked && <Footer />}
+      {!isInterviewLocked && <PlacementPopupWrapper />}
+    </div>
+  );
+}
+
 function App() {
   return (
     <Provider store={appStore}>
@@ -45,98 +149,9 @@ function App() {
         <AuthProvider>
           <PremiumProvider>
             <ThemeProvider>
-              <div className="flex flex-col min-h-screen bg-theme-app text-theme-primary">
-                <Header />
-
-              <main className="flex-grow pt-3 sm:pt-5 pb-2 px-2 sm:px-4 md:px-6">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  <Route path="/companystats" element={<CompanyStats />} />
-                  <Route path="/category" element={<CompanyStats />} />
-                  <Route
-                    path="/leaderboard"
-                    element={
-                      <ProtectedRoute>
-                        <Leaderboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/feedback"
-                    element={
-                      <ProtectedRoute>
-                        <Feedback />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route 
-                    path="/companies/:id" 
-                    element={
-                      <ProtectedRoute>
-                        <CompanyDetails />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/login" element={<Login />} />
-                  {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
-                  {/* <Route path="/premium" element={<Premium />} /> */}
-                  <Route 
-                    path="/resources" 
-                    element={
-                      <ProtectedRoute>
-                        <Resources />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route
-                    path="/interviews"
-                    element={
-                      <ProtectedRoute>
-                        <AIInterviews />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route 
-                    path="/events" 
-                    element={
-                      <ProtectedRoute>
-                        <Events />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/analytics" 
-                    element={
-                      <ProtectedRoute>
-                        <Analytics />
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/admin/dashboard" 
-                    element={
-                      <ProtectedAdminRoute>
-                        <AdminDashboard />
-                      </ProtectedAdminRoute>
-                    } 
-                  />
-                  <Route path="/team" element={<Developers />} />
-                  <Route 
-                    path="/profile" 
-                    element={
-                      <ProtectedRoute>
-                        <StudentProfilePage />
-                      </ProtectedRoute>
-                    } 
-                  />
-                </Routes>
-              </main>
-
-              <Footer />
-              <PlacementPopupWrapper />
-            </div>
+              <InterviewLockProvider>
+                <AppShell />
+              </InterviewLockProvider>
             </ThemeProvider>
           </PremiumProvider>
           </AuthProvider>

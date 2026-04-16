@@ -342,17 +342,32 @@ const AdminDashboard = () => {
     try {
       setApprovingCompanyIds(prev => new Set(prev).add(companyId));
       
-      await adminAPI.approveCompany(companyId);
+      const response = await adminAPI.approveCompany(companyId);
+      const alreadyApproved = response?.data?.alreadyApproved === true;
 
-      const statsResponse = await adminAPI.getStats();
-      setStats(statsResponse.data);
-      await loadPendingCompaniesList(coPendingMeta.page);
-      await loadApprovedCompaniesList(coApprovedMeta.page);
+      try {
+        const statsResponse = await adminAPI.getStats();
+        setStats(statsResponse.data);
+        await loadPendingCompaniesList(coPendingMeta.page);
+        await loadApprovedCompaniesList(coApprovedMeta.page);
+      } catch (refreshErr) {
+        console.error('Company approval refresh failed:', refreshErr);
+        alert(
+          alreadyApproved
+            ? 'Company was already approved. The dashboard refresh failed, so please reload once.'
+            : 'Company approved successfully, but the dashboard refresh failed. Please reload once.'
+        );
+        return;
+      }
 
-      alert('Company approved successfully!');
+      alert(alreadyApproved ? 'Company was already approved.' : 'Company approved successfully!');
     } catch (err) {
       console.error('Error approving company:', err);
-      alert('Failed to approve company. Please try again.');
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Failed to approve company. Please try again.';
+      alert(errorMessage);
     } finally {
       setApprovingCompanyIds(prev => {
         const newSet = new Set(prev);
@@ -568,10 +583,16 @@ const AdminDashboard = () => {
         }
       }
 
-      const statsResponse = await adminAPI.getStats();
-      setStats(statsResponse.data);
-      await loadPendingCompaniesList(coPendingMeta.page);
-      await loadApprovedCompaniesList(coApprovedMeta.page);
+      try {
+        const statsResponse = await adminAPI.getStats();
+        setStats(statsResponse.data);
+        await loadPendingCompaniesList(coPendingMeta.page);
+        await loadApprovedCompaniesList(coApprovedMeta.page);
+      } catch (refreshErr) {
+        console.error('Bulk company approval refresh failed:', refreshErr);
+        alert('Companies were processed, but the dashboard refresh failed. Please reload once.');
+        return;
+      }
 
       if (failCount === 0) {
         alert(`Successfully approved all ${successCount} company/companies! They are now visible to all users.`);

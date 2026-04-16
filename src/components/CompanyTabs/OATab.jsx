@@ -566,12 +566,14 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
                     { label: 'C', value: q.optionC },
                     { label: 'D', value: q.optionD }
                   ].map((opt) => opt.value && (
-                    <div 
+                    <div
                       key={opt.label}
-                      className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-slate-900/50 border border-slate-700/30 text-slate-400"
+                      className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-theme-input border border-theme text-theme-secondary"
                     >
-                      <span className="font-bold text-indigo-500/80 shrink-0">{opt.label}.</span>
-                      <span className="text-xs sm:text-sm leading-relaxed min-w-0">{opt.value}</span>
+                      <span className="font-bold text-theme-accent shrink-0">{opt.label}.</span>
+                      <span className="text-xs sm:text-sm leading-relaxed min-w-0 text-theme-primary">
+                        {opt.value}
+                      </span>
                     </div>
                   ))}
                 </div>

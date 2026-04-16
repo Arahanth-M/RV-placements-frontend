@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
+import rvLogo from "../../assets/logo2.png";
 
 function MustDoTab({ company = {} }) {
   const [showModal, setShowModal] = useState(false);
@@ -69,7 +70,16 @@ function MustDoTab({ company = {} }) {
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <h3 className="text-lg font-semibold mb-4 text-indigo-400">Add Must Do Topic</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                <img
+                  src={rvLogo}
+                  alt="RV College logo"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <h3 className="text-lg font-semibold text-indigo-400">Add Must Do Topic</h3>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <textarea
                 value={topic}
