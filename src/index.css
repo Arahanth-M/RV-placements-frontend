@@ -633,28 +633,6 @@ body {
   overflow-x: auto !important;
 }
 
-/* Company detail top tab buttons */
-[data-theme="light"] .company-tab-btn {
-  transition: all 0.2s ease;
-}
-
-[data-theme="light"] .company-tab-btn:hover {
-  background: rgba(61, 187, 139, 0.12) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-}
-
-[data-theme="light"] .company-tab-btn.company-tab-btn--active {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #ffffff !important;
-}
-
-[data-theme="light"] .company-tab-btn.company-tab-btn--active:hover {
-  background: var(--accent-hover) !important;
-  border-color: var(--accent-hover) !important;
-}
-
 /* Company grid: contain width on mobile/tablet; minmax(0,1fr) prevents column blowout */
 .company-grid {
   width: 100%;
