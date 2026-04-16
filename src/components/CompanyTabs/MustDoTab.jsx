@@ -39,7 +39,7 @@ function MustDoTab({ company = {} }) {
         <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
           Must Do Topics
           <button
-            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
+            className="flex items-center space-x-1.5 rounded-lg bg-theme-accent px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:opacity-90"
             onClick={() => setShowModal(true)}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +91,7 @@ function MustDoTab({ company = {} }) {
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
+                  className="rounded-lg border border-theme px-4 py-2 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
                   onClick={() => {
                     setShowModal(false);
                     setTopic("");
@@ -101,7 +101,7 @@ function MustDoTab({ company = {} }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="rounded-lg bg-theme-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                 >
                   Submit
                 </button>
