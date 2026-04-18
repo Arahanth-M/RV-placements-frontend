@@ -130,6 +130,14 @@ body {
 .nav-active-theme { background-color: var(--nav-active); }
 .border-theme-app { border-color: var(--bg-app); }
 
+/* Year stats: "2024/2025 Placement Statistics" title — black in light theme, white in dark */
+.year-stats-page-title {
+  color: #000000;
+}
+[data-theme="dark"] .year-stats-page-title {
+  color: #ffffff;
+}
+
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
