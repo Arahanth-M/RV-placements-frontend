@@ -229,7 +229,7 @@ function Analytics({ year = null, embedded = false }) {
       {show2024 && (
         <div className="mb-12">
           {!embedded && (
-            <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--primary)] mb-6 text-center">
+            <h2 className="year-stats-page-title text-2xl sm:text-3xl font-semibold mb-6 text-center">
               2024 Placement Statistics
             </h2>
           )}
@@ -278,7 +278,7 @@ function Analytics({ year = null, embedded = false }) {
       {show2025 && (
         <div className="mb-12">
           {!embedded && (
-            <h2 className="text-2xl sm:text-3xl font-semibold text-[var(--primary)] mb-6 text-center">
+            <h2 className="year-stats-page-title text-2xl sm:text-3xl font-semibold mb-6 text-center">
               2025 Placement Statistics
             </h2>
           )}
