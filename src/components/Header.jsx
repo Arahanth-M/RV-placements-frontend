@@ -33,7 +33,6 @@ const studentCornerLinks = [
   { label: "AI Interviews", path: "/interviews", icon: FaComments },
   { label: "Resources", path: "/resources", icon: FaBook },
   { label: "Leaderboard", path: "/leaderboard", icon: FaTrophy },
-  { label: "Feedback", path: "/feedback", icon: FaComments },
 ];
 
 /** Shown in header chip; admins usually have no studentData — use username or email local-part. */
@@ -337,15 +336,7 @@ const Header = () => {
             <FaComments className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">Feedback</span>
           </Link>
-          <button
-            type="button"
-            onClick={handleOpenPlacementForm}
-            className="inline-flex h-9 items-center rounded-full border border-theme bg-theme-card px-2.5 text-[11px] font-semibold text-theme-primary transition-colors hover:bg-theme-hero sm:h-10 sm:px-3.5 sm:text-xs"
-            title="Open placement data form"
-            aria-label="Open placement data form"
-          >
-            Fill the form
-          </button>
+          
         </div>
 
         <div className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col justify-center border-l border-theme py-2 pl-2 pr-2 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-2">
