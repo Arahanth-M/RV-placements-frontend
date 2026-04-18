@@ -47,6 +47,13 @@ export const MESSAGES = {
   },
 };
 
+/** Beta access request (Google Form). Set `REACT_APP_BETA_JOIN_FORM_URL` in `.env` for production. */
+export const BETA_JOIN_FORM_URL =
+  (typeof process !== "undefined" &&
+    process.env.REACT_APP_BETA_JOIN_FORM_URL &&
+    String(process.env.REACT_APP_BETA_JOIN_FORM_URL).trim()) ||
+  "https://docs.google.com/forms/d/e/1FAIpQLScRXllJ4WmuiIPicffKS4y3amX-6gjOMu31yGMu4XZeKaMukg/viewform?usp=dialog";
+
 // Configuration
 const FRONTEND_PORT = 5173;
 export const CONFIG = {
