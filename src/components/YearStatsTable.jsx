@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { FaArrowLeft, FaSearch, FaFilter } from "react-icons/fa";
 import Analytics from "./Analytics";
+
+const PAGE_SIZE = 100;
 
 function YearStatsTable({ year, data, onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -8,6 +10,7 @@ function YearStatsTable({ year, data, onBack }) {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
+  const [page, setPage] = useState(1);
 
   const toLpa = (value) => {
     if (value === null || value === undefined) return null;
@@ -121,6 +124,29 @@ function YearStatsTable({ year, data, onBack }) {
     });
   }, [data, searchTerm, categoryFilter, branchFilter, branchFieldKey]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, categoryFilter, branchFilter]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+    setPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [filteredData.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const paginatedData = useMemo(
+    () => filteredData.slice(pageStart, pageStart + PAGE_SIZE),
+    [filteredData, pageStart]
+  );
+
+  const scrollToYearStatsTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   if (!data || data.length === 0) {
     return (
       <div className="bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg p-6 sm:p-8">
@@ -168,8 +194,8 @@ function YearStatsTable({ year, data, onBack }) {
 
   const tableRows = useMemo(
     () =>
-      filteredData.map((row, index) => (
-        <tr key={row._id || index} className="hover:bg-theme-nav/80">
+      paginatedData.map((row, index) => (
+        <tr key={row._id || `${pageStart}-${index}`} className="hover:bg-theme-nav/80">
           {headers.map((header) => (
             <td
               key={header}
@@ -180,7 +206,7 @@ function YearStatsTable({ year, data, onBack }) {
           ))}
         </tr>
       )),
-    [filteredData, headers]
+    [paginatedData, headers, pageStart]
   );
 
   return (
@@ -196,7 +222,7 @@ function YearStatsTable({ year, data, onBack }) {
 
       <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-lg">
         <div className="flex flex-col items-center justify-center gap-3 text-center">
-          <h1 className="text-2xl sm:text-4xl font-semibold text-[var(--primary)]">
+          <h1 className="year-stats-page-title text-2xl sm:text-4xl font-semibold">
             {year} Placement Statistics
           </h1>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm border border-theme text-theme-secondary bg-theme-nav">
@@ -281,28 +307,109 @@ function YearStatsTable({ year, data, onBack }) {
                 </button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-fixed divide-y divide-[var(--border)]">
-                  <colgroup>
-                    {headers.map((header) => (
-                      <col key={`col-${header}`} style={{ width: `${100 / headers.length}%` }} />
-                    ))}
-                  </colgroup>
-                  <thead className="bg-theme-hero">
-                    <tr>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full table-fixed divide-y divide-[var(--border)]">
+                    <colgroup>
                       {headers.map((header) => (
-                        <th
-                          key={header}
-                          className="px-3 sm:px-5 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider"
-                        >
-                          {header.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                        </th>
+                        <col key={`col-${header}`} style={{ width: `${100 / headers.length}%` }} />
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-theme-card divide-y divide-[var(--border)]">{tableRows}</tbody>
-                </table>
-              </div>
+                    </colgroup>
+                    <thead className="bg-theme-hero">
+                      <tr>
+                        {headers.map((header) => (
+                          <th
+                            key={header}
+                            className="px-3 sm:px-5 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider"
+                          >
+                            {header.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-theme-card divide-y divide-[var(--border)]">{tableRows}</tbody>
+                  </table>
+                </div>
+                {totalPages > 1 && (
+                  <div className="border-t border-theme bg-theme-card px-2 pt-4 pb-4 sm:pt-6 sm:pb-6">
+                    <p className="text-sm text-theme-muted text-center mb-3 sm:mb-4 px-2">
+                      Showing {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filteredData.length)} of{" "}
+                      {filteredData.length} (page {currentPage} of {totalPages})
+                    </p>
+                    <div className="pagination flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPage((prev) => Math.max(prev - 1, 1));
+                          scrollToYearStatsTop();
+                        }}
+                        disabled={currentPage === 1}
+                        className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
+                      >
+                        Prev
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                          const shouldShow =
+                            pageNum === 1 ||
+                            pageNum === totalPages ||
+                            Math.abs(pageNum - currentPage) <= 1 ||
+                            (currentPage <= 3 && pageNum <= 4) ||
+                            (currentPage >= totalPages - 2 && pageNum >= totalPages - 3);
+
+                          if (!shouldShow) {
+                            if (pageNum === 2 && currentPage > 4) {
+                              return (
+                                <span key={`ellipsis-${pageNum}`} className="px-2 text-theme-muted">
+                                  ...
+                                </span>
+                              );
+                            }
+                            if (pageNum === totalPages - 1 && currentPage < totalPages - 3) {
+                              return (
+                                <span key={`ellipsis-2-${pageNum}`} className="px-2 text-theme-muted">
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          }
+
+                          return (
+                            <button
+                              type="button"
+                              key={pageNum}
+                              onClick={() => {
+                                setPage(pageNum);
+                                scrollToYearStatsTop();
+                              }}
+                              data-active={pageNum === currentPage ? "true" : undefined}
+                              className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition duration-200 text-sm sm:text-base ${
+                                pageNum === currentPage
+                                  ? "active bg-theme-accent text-white"
+                                  : "bg-theme-card border border-theme text-theme-secondary hover:bg-theme-nav"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPage((prev) => Math.min(prev + 1, totalPages));
+                          scrollToYearStatsTop();
+                        }}
+                        disabled={currentPage === totalPages}
+                        className="px-3 sm:px-4 py-2 rounded-lg disabled:opacity-50 transition duration-200 text-sm sm:text-base bg-theme-card border border-theme text-theme-secondary"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
