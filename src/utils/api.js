@@ -6,6 +6,7 @@ import {
   saveToIndexedDB,
   getCompanyDetailsOfflineEntry,
   updateCachedHelpfulCount,
+  updateCachedCompanyTotalGotIn,
   clearCompaniesListCache,
   clearCompanyDetailsCache,
 } from './companyCacheDB';
@@ -271,6 +272,18 @@ export const adminAPI = {
   updateInterviewProcess: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/interview-process/${index}`, data),
   deleteInterviewProcess: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/interview-process/${index}`),
   updateCompanyStats: (companyId, data) => API.put(`/api/admin/companies/${companyId}/stats`, data),
+  async adjustCompanyTotalGotIn(companyId, delta) {
+    const res = await API.patch(`/api/admin/companies/${companyId}/total-got-in`, { delta });
+    const newTotalGotIn = res.data?.totalGotIn;
+    if (typeof newTotalGotIn === 'number') {
+      try {
+        await updateCachedCompanyTotalGotIn(companyId, newTotalGotIn);
+      } catch (e) {
+        console.warn('IndexedDB update totalGotIn failed', e);
+      }
+    }
+    return res;
+  },
   updateCompanyRoles: (companyId, roles) => API.put(`/api/admin/companies/${companyId}/roles`, { roles }),
   updateCompanyGeneralInfo: (companyId, data) => API.put(`/api/admin/companies/${companyId}/general`, data),
 };

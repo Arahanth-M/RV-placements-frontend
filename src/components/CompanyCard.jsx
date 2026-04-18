@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaThumbsUp, FaTimes, FaEdit, FaCheck } from "react-icons/fa";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import CompanyLogo from "./CompanyLogo";
 
 function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
+  const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
   const [hasUpvoted, setHasUpvoted] = useState(false);
@@ -17,11 +19,17 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
   const [isEditingType, setIsEditingType] = useState(false);
   const [editTypeValue, setEditTypeValue] = useState("");
   const [isSavingType, setIsSavingType] = useState(false);
+  const [totalGotIn, setTotalGotIn] = useState(company.totalGotIn ?? 0);
+  const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
 
   // Update local state when company prop changes
   useEffect(() => {
     setHelpfulCount(company.helpfulCount || 0);
   }, [company.helpfulCount]);
+
+  useEffect(() => {
+    setTotalGotIn(company.totalGotIn ?? 0);
+  }, [company.totalGotIn]);
 
   // Check if user has already upvoted this company
   useEffect(() => {
@@ -53,7 +61,12 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     // Store that we're navigating from company cards view (user-specific)
     // The parent component (CompanyStats) will store the current state via useEffect cleanup
     const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
+    const currentPath = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
     sessionStorage.setItem(storageKey, 'true');
+    sessionStorage.setItem(COMPANY_DETAILS_RETURN_PATH_KEY, currentPath);
+    if (user?.userId) {
+      sessionStorage.setItem(`${COMPANY_DETAILS_RETURN_PATH_KEY}_${user.userId}`, currentPath);
+    }
     navigate(`/companies/${company._id}`);
   };
 
@@ -106,8 +119,6 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     }
   };
 
-  const totalGotIn = company.totalGotIn ?? 0;
-
   const startEditType = (e) => {
     e.stopPropagation();
     setEditTypeValue(company.type || "");
@@ -125,13 +136,32 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     try {
       const { adminAPI } = await import("../utils/api");
       await adminAPI.updateCompanyGeneralInfo(company._id, { type: editTypeValue });
-      if (onStatsUpdated) onStatsUpdated();
+      if (onStatsUpdated) onStatsUpdated(company._id, { type: editTypeValue });
       setIsEditingType(false);
     } catch (err) {
       console.error(err);
       alert("Failed to update company type");
     } finally {
       setIsSavingType(false);
+    }
+  };
+
+  const handleAdjustTotalGotIn = async (e, delta) => {
+    e.stopPropagation();
+    if (!isAdmin || isUpdatingTotalGotIn) return;
+
+    try {
+      setIsUpdatingTotalGotIn(true);
+      const { adminAPI } = await import("../utils/api");
+      const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta);
+      const updatedTotalGotIn = response.data?.totalGotIn ?? 0;
+      setTotalGotIn(updatedTotalGotIn);
+      if (onStatsUpdated) onStatsUpdated(company._id, { totalGotIn: updatedTotalGotIn });
+    } catch (err) {
+      console.error("Error updating total got in:", err);
+      alert("Failed to update Got in count");
+    } finally {
+      setIsUpdatingTotalGotIn(false);
     }
   };
 
@@ -240,9 +270,35 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
         <div className="card-footer flex items-center justify-between gap-2 overflow-hidden">
-          <p className="text-xs sm:text-sm font-semibold text-theme-secondary shrink-0">
-            Got in: <span className="text-theme-primary tabular-nums">{totalGotIn}</span>
-          </p>
+          <div className="flex items-center gap-2 shrink-0">
+            <p className="text-xs sm:text-sm font-semibold text-theme-secondary">
+              Got in: <span className="text-theme-primary tabular-nums">{totalGotIn}</span>
+            </p>
+            {isAdmin && (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={(e) => handleAdjustTotalGotIn(e, -1)}
+                  disabled={isUpdatingTotalGotIn || totalGotIn <= 0}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Decrease got in count"
+                  title="Decrease got in count"
+                >
+                  <FaMinus className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleAdjustTotalGotIn(e, 1)}
+                  disabled={isUpdatingTotalGotIn}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Increase got in count"
+                  title="Increase got in count"
+                >
+                  <FaPlus className="h-3 w-3" />
+                </button>
+              </div>
+            )}
+          </div>
 
           <button
             onClick={handleThumbsUp}

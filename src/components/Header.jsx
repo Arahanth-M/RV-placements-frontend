@@ -18,6 +18,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
+import { BASE_URL } from "../utils/constants";
 import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo2.png";
 
@@ -74,6 +75,7 @@ const dropdownItemRedClass =
   "flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-500 hover:bg-theme-nav rounded-md transition-colors";
 
 const Header = () => {
+  const placementFormEntryUrl = `${BASE_URL}/api/placement/form`;
   const { user, isAdmin, studentData, login, signup, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -114,6 +116,10 @@ const Header = () => {
     setMobileAccountMenuOpen(false);
     setDesktopAccountMenuOpen(false);
     setMobileNavOpen(false);
+  };
+
+  const handleOpenPlacementForm = () => {
+    window.open(placementFormEntryUrl, "_blank", "noopener,noreferrer");
   };
 
   useEffect(() => {
@@ -331,6 +337,15 @@ const Header = () => {
             <FaComments className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">Feedback</span>
           </Link>
+          <button
+            type="button"
+            onClick={handleOpenPlacementForm}
+            className="inline-flex h-9 items-center rounded-full border border-theme bg-theme-card px-2.5 text-[11px] font-semibold text-theme-primary transition-colors hover:bg-theme-hero sm:h-10 sm:px-3.5 sm:text-xs"
+            title="Open placement data form"
+            aria-label="Open placement data form"
+          >
+            Fill the form
+          </button>
         </div>
 
         <div className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col justify-center border-l border-theme py-2 pl-2 pr-2 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-2">
@@ -504,6 +519,16 @@ const Header = () => {
               {item.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileNavOpen(false);
+              handleOpenPlacementForm();
+            }}
+            className={mobileNavLinkClass}
+          >
+            Fill the form
+          </button>
 
           <button
             type="button"

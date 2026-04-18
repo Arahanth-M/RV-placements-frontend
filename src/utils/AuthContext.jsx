@@ -177,7 +177,9 @@ export const AuthProvider = ({ children }) => {
     
     console.log('🚀 Redirecting to login:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);
-    window.location.href = authUrl;
+    // Replace the current entry so browser back returns to the last app page,
+    // not the transient Google OAuth screen.
+    window.location.replace(authUrl);
   };
 
   const signup = () => {
@@ -186,7 +188,7 @@ export const AuthProvider = ({ children }) => {
     
     console.log('🚀 Redirecting to signup:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);
-    window.location.href = authUrl;
+    window.location.replace(authUrl);
   };
 
   const logout = useCallback(async () => {
