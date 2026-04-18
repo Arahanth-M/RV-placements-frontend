@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { FaTimes } from 'react-icons/fa';
+import { FaTimes, FaExternalLinkAlt } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
+import { BETA_JOIN_FORM_URL } from '../utils/constants';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
 const COMPANY_FIELDS = ['company1', 'company2', 'company3', 'company4', 'company5'];
-const POPUP_AUTO_DISMISS_MS = 9000;
+/** Max time the popup stays open while not hovering the card (hover pauses the timer). */
+const POPUP_MAX_ACTIVE_MS = 60_000;
 
 function normalizeCompanyName(raw) {
   if (raw == null) return '';
@@ -61,6 +63,9 @@ const PlacementPopupWrapper = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [popupVariant, setPopupVariant] = useState(null);
   const hasCheckedRef = useRef(false);
+  const hoverRef = useRef(false);
+  const lastTickRef = useRef(0);
+  const accumulatedActiveRef = useRef(0);
 
   const companyNames = useMemo(
     () => (studentData ? placementCompanyNamesFromProfile(studentData) : []),
@@ -113,13 +118,32 @@ const PlacementPopupWrapper = () => {
       }
 
       setShowPopup(true);
-
-      // Optional auto-dismiss
-      setTimeout(() => setShowPopup(false), POPUP_AUTO_DISMISS_MS);
     };
 
     maybeShowPopup();
   }, [user, studentData, location.pathname, placementNamesKey]);
+
+  // Auto-dismiss after POPUP_MAX_ACTIVE_MS of non-hover time, or when user closes manually.
+  useEffect(() => {
+    if (!showPopup) return;
+
+    accumulatedActiveRef.current = 0;
+    lastTickRef.current = Date.now();
+    hoverRef.current = false;
+
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      if (!hoverRef.current) {
+        accumulatedActiveRef.current += now - lastTickRef.current;
+        lastTickRef.current = now;
+        if (accumulatedActiveRef.current >= POPUP_MAX_ACTIVE_MS) {
+          setShowPopup(false);
+        }
+      }
+    }, 200);
+
+    return () => window.clearInterval(id);
+  }, [showPopup]);
 
   if (!user || user.fillForm === true || !showPopup || !popupVariant) {
     return null;
@@ -137,6 +161,13 @@ const PlacementPopupWrapper = () => {
           boxShadow: 'var(--shadow-soft)',
           background:
             'linear-gradient(135deg, var(--bg-card), rgba(255,255,255,0.05))',
+        }}
+        onMouseEnter={() => {
+          hoverRef.current = true;
+        }}
+        onMouseLeave={() => {
+          hoverRef.current = false;
+          lastTickRef.current = Date.now();
         }}
       >
         {/* 🌈 Accent Glow */}
@@ -171,6 +202,18 @@ const PlacementPopupWrapper = () => {
                 ? 'for successfully getting the opportunity to be part of:'
                 : 'I guess you forgot to fill the form, please go ahead and fill the form to be part of the beta test of the platform. If you are a non-CSE student, very soon we are extending to your branch. If you are a junior, dont worry we are building this platform for you... Keep preparing!!!'}
             </p>
+
+            {!isPlacementPopup ? (
+              <a
+                href={BETA_JOIN_FORM_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="mb-3 inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent shadow-sm transition-opacity hover:opacity-90"
+              >
+                Fill signup form
+                <FaExternalLinkAlt className="h-3.5 w-3.5 shrink-0" />
+              </a>
+            ) : null}
 
             {isPlacementPopup ? (
               <div className="flex flex-wrap gap-2">
