@@ -17,6 +17,9 @@ function OffCampusQuestionsTab({ company }) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
         <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+          <h2 className="text-xl font-semibold text-indigo-400 text-center mb-3">
+            Off-Campus Questions
+          </h2>
           <p className="text-slate-400 text-center py-4">
             No off-campus questions available for this company.
           </p>
@@ -28,11 +31,11 @@ function OffCampusQuestionsTab({ company }) {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
-        <div className="bg-indigo-600 px-6 py-4">
-          <h2 className="text-xl font-semibold text-white">
+        <div className="px-6 py-5 border-b border-slate-800 bg-slate-900/40">
+          <h2 className="text-xl font-semibold text-indigo-400">
             Off-Campus Questions
           </h2>
-          <p className="text-indigo-200 text-sm mt-1">
+          <p className="text-slate-400 text-sm mt-1">
             {validQuestions.length} question{validQuestions.length !== 1 ? 's' : ''} found
           </p>
         </div>

@@ -6,6 +6,7 @@ function YearStatsTable({ year, data, onBack }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("Table");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [branchFilter, setBranchFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
 
   const toLpa = (value) => {
@@ -57,6 +58,28 @@ function YearStatsTable({ year, data, onBack }) {
 
   // Filter data based on search term
   // Search in all fields, but prioritize company name fields
+  const branchFieldKey = useMemo(() => {
+    if (!data || data.length === 0) return null;
+    const keys = new Set();
+    data.forEach((row) => {
+      Object.keys(row || {}).forEach((key) => keys.add(key));
+    });
+    return Array.from(keys).find((key) => /branch/i.test(key)) || null;
+  }, [data]);
+
+  const branchOptions = useMemo(() => {
+    if (!branchFieldKey) return [];
+    const values = new Set();
+    (data || []).forEach((row) => {
+      const raw = row?.[branchFieldKey];
+      if (raw === null || raw === undefined) return;
+      const normalized = String(raw).trim();
+      if (!normalized) return;
+      values.add(normalized);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b));
+  }, [data, branchFieldKey]);
+
   const filteredData = useMemo(() => {
     const categoryFiltered = (data || []).filter((row) => {
       if (categoryFilter === "all") return true;
@@ -65,12 +88,17 @@ function YearStatsTable({ year, data, onBack }) {
       return true;
     });
 
+    const branchFiltered = categoryFiltered.filter((row) => {
+      if (branchFilter === "all" || !branchFieldKey) return true;
+      return String(row?.[branchFieldKey] ?? "").trim() === branchFilter;
+    });
+
     if (!searchTerm.trim()) {
-      return categoryFiltered;
+      return branchFiltered;
     }
 
     const searchLower = searchTerm.toLowerCase();
-    return categoryFiltered.filter((row) => {
+    return branchFiltered.filter((row) => {
       // Check all fields for the search term
       return Object.entries(row).some(([key, value]) => {
         // Skip MongoDB internal fields
@@ -91,7 +119,7 @@ function YearStatsTable({ year, data, onBack }) {
         return valueStr.includes(searchLower);
       });
     });
-  }, [data, searchTerm, categoryFilter]);
+  }, [data, searchTerm, categoryFilter, branchFilter, branchFieldKey]);
 
   if (!data || data.length === 0) {
     return (
@@ -134,7 +162,7 @@ function YearStatsTable({ year, data, onBack }) {
   };
 
   const tabActive =
-    "bg-[var(--primary)] text-white shadow-sm";
+    "bg-theme-hero text-theme-accent shadow-md";
   const tabInactive =
     "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav";
 
@@ -145,7 +173,7 @@ function YearStatsTable({ year, data, onBack }) {
           {headers.map((header) => (
             <td
               key={header}
-              className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-theme-secondary"
+              className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-theme-secondary align-top break-words"
             >
               {formatCellValue(row[header])}
             </td>
@@ -165,6 +193,17 @@ function YearStatsTable({ year, data, onBack }) {
         <FaArrowLeft className="mr-2" />
         Back to Year Selection
       </button>
+
+      <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-lg">
+        <div className="flex flex-col items-center justify-center gap-3 text-center">
+          <h1 className="text-2xl sm:text-4xl font-semibold text-[var(--primary)]">
+            {year} Placement Statistics
+          </h1>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm border border-theme text-theme-secondary bg-theme-nav">
+            {filteredData.length} Records
+          </span>
+        </div>
+      </div>
 
       {/* Tab Navigation */}
       <div className="bg-theme-card border border-theme rounded-lg p-1 flex gap-1">
@@ -187,22 +226,35 @@ function YearStatsTable({ year, data, onBack }) {
         {activeTab === "Table" && (
           <>
             <div className="p-4 sm:p-6 border-b border-theme">
-              <h2 className="text-xl font-semibold text-[var(--primary)] mb-4">
-                {year} Placement Statistics
-              </h2>
-              <div className="relative w-full sm:w-64">
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                <div className="relative w-full sm:flex-1 sm:max-w-md">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaSearch className="h-4 w-4 text-theme-muted" />
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by company name..."
+                    placeholder="Search by company name"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="block w-full pl-10 pr-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary placeholder-theme-muted focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
                   />
                 </div>
-              {(searchTerm || categoryFilter !== "all") && (
+                {branchOptions.length > 0 && (
+                  <select
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    className="w-full sm:w-52 sm:ml-auto px-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
+                  >
+                    <option value="all">All Branches</option>
+                    {branchOptions.map((branch) => (
+                      <option key={branch} value={branch}>
+                        {branch}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {(searchTerm || categoryFilter !== "all" || branchFilter !== "all") && (
                 <p className="text-sm text-theme-muted mt-2">
                   Showing {filteredData.length} of {data.length} results
                 </p>
@@ -221,6 +273,7 @@ function YearStatsTable({ year, data, onBack }) {
                   onClick={() => {
                     setSearchTerm("");
                     setCategoryFilter("all");
+                    setBranchFilter("all");
                   }}
                   className="mt-4 text-[var(--primary)] hover:opacity-90 font-medium text-sm"
                 >
@@ -229,13 +282,18 @@ function YearStatsTable({ year, data, onBack }) {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[var(--border)]">
+                <table className="min-w-full table-fixed divide-y divide-[var(--border)]">
+                  <colgroup>
+                    {headers.map((header) => (
+                      <col key={`col-${header}`} style={{ width: `${100 / headers.length}%` }} />
+                    ))}
+                  </colgroup>
                   <thead className="bg-theme-hero">
                     <tr>
                       {headers.map((header) => (
                         <th
                           key={header}
-                          className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider"
+                          className="px-3 sm:px-5 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider"
                         >
                           {header.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                         </th>

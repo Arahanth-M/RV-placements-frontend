@@ -564,6 +564,12 @@ body {
   color: var(--text-primary) !important;
 }
 
+/* Accent CTAs in company tabs: keep true white on colored backgrounds (global .text-white remap above would make label unreadable). */
+[data-theme="light"] .company-tab-content .bg-theme-accent.text-white,
+[data-theme="light"] .company-tab-content .bg-theme-accent.text-white * {
+  color: #ffffff !important;
+}
+
 [data-theme="light"] .company-tab-content .text-slate-300,
 [data-theme="light"] .company-tab-content .text-slate-400 {
   color: var(--text-secondary) !important;
