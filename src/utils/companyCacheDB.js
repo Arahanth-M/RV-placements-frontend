@@ -309,6 +309,59 @@ export function updateCachedHelpfulCount(companyId, newHelpfulCount) {
 }
 
 /**
+ * Update totalGotIn for a company in both list and details caches.
+ * @param {string} companyId
+ * @param {number} newTotalGotIn
+ */
+export function updateCachedCompanyTotalGotIn(companyId, newTotalGotIn) {
+  return openDB().then((db) => {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_LIST, STORE_DETAILS], "readwrite");
+      const listStore = tx.objectStore(STORE_LIST);
+      const detailsStore = tx.objectStore(STORE_DETAILS);
+
+      const listReq = listStore.get(LIST_KEY);
+      listReq.onsuccess = () => {
+        const listRecord = listReq.result;
+        if (listRecord && Array.isArray(listRecord.companies)) {
+          const idx = listRecord.companies.findIndex((c) => c._id === companyId);
+          if (idx !== -1) {
+            listRecord.companies[idx] = {
+              ...listRecord.companies[idx],
+              totalGotIn: newTotalGotIn,
+            };
+            listRecord.updatedAt = Date.now();
+            listStore.put(listRecord);
+          }
+        }
+
+        const detailsReq = detailsStore.get(companyId);
+        detailsReq.onsuccess = () => {
+          const detailRecord = detailsReq.result;
+          if (detailRecord && detailRecord.data) {
+            detailRecord.data.totalGotIn = newTotalGotIn;
+            detailRecord.updatedAt = Date.now();
+            detailsStore.put(detailRecord);
+          }
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+        };
+        detailsReq.onerror = () => {
+          db.close();
+          reject(detailsReq.error);
+        };
+      };
+      listReq.onerror = () => {
+        db.close();
+        reject(listReq.error);
+      };
+    });
+  });
+}
+
+/**
  * Invalidate companies list cache (e.g. after a new company is created).
  * @returns {Promise<void>}
  */
@@ -368,6 +421,7 @@ export default {
   getCachedYearStats,
   setCachedYearStats,
   updateCachedHelpfulCount,
+  updateCachedCompanyTotalGotIn,
   clearCompaniesListCache,
   clearCompanyDetailsCache,
 };

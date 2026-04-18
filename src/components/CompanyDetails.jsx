@@ -21,6 +21,7 @@ import AiInterviewExploreButton from "./AiInterviewExploreButton";
 import InternshipTab from "./CompanyTabs/InternshipTab";
 
 function CompanyDetails() {
+  const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,6 +36,14 @@ function CompanyDetails() {
   const interviewExitHandlerRef = useRef(null);
   const EXIT_WARNING_MESSAGE =
     "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
+
+  const getSessionValue = (baseKey) => {
+    const userScopedKey =
+      user && user.userId ? `${baseKey}_${user.userId}` : baseKey;
+    const userScopedValue = sessionStorage.getItem(userScopedKey);
+    if (userScopedValue !== null) return userScopedValue;
+    return sessionStorage.getItem(baseKey);
+  };
 
   useEffect(() => {
     setGlobalInterviewLocked(isInterviewLocked);
@@ -179,23 +188,25 @@ function CompanyDetails() {
     }
 
     // Check if we came from company cards view (user-specific)
-    const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
-    const selectedYearKey = user && user.userId ? `companystats_selectedYear_${user.userId}` : 'companystats_selectedYear';
-    
-    const fromCompanyCards = sessionStorage.getItem(storageKey);
+    const fromCompanyCards = getSessionValue("fromCompanyCards");
     if (fromCompanyCards === 'true') {
-      const placementTierKey =
-        user && user.userId
-          ? `companystats_placement_tier_${user.userId}`
-          : "companystats_placement_tier";
-      const storedTier = sessionStorage.getItem(placementTierKey);
+      const storedReturnPath = getSessionValue(COMPANY_DETAILS_RETURN_PATH_KEY);
+      if (
+        storedReturnPath &&
+        storedReturnPath.startsWith("/companystats")
+      ) {
+        navigate(storedReturnPath, { replace: true });
+        return;
+      }
+
+      const storedTier = getSessionValue("companystats_placement_tier");
 
       if (isPlacementTierParam(storedTier)) {
         navigate(companystatsTierListUrl(storedTier));
         return;
       }
 
-      const storedYear = sessionStorage.getItem(selectedYearKey);
+      const storedYear = getSessionValue("companystats_selectedYear");
       let yearToRestore = null;
 
       if (storedYear && storedYear !== "") {

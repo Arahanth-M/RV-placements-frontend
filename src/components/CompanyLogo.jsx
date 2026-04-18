@@ -32,6 +32,31 @@ function normalizeDomain(domain) {
   }
 }
 
+function matchesBlockedHost(hostname, blockedHosts) {
+  return blockedHosts.some(
+    (blockedHost) =>
+      hostname === blockedHost || hostname.endsWith(`.${blockedHost}`)
+  );
+}
+
+function isSocialProfileDomain(domain) {
+  const blockedHosts = [
+    "linkedin.com",
+    "lnkd.in",
+    "facebook.com",
+    "instagram.com",
+    "twitter.com",
+    "x.com",
+  ];
+  return matchesBlockedHost(domain, blockedHosts);
+}
+
+function isSocialProfileLogoUrl(url) {
+  const hostname = normalizeDomain(url);
+  if (!hostname) return false;
+  return isSocialProfileDomain(hostname);
+}
+
 /** Derive a best-effort domain from company name (e.g. "Google" -> "google.com"). */
 function domainFromName(name) {
   if (!name || typeof name !== "string") return "";
@@ -48,9 +73,15 @@ function domainFromName(name) {
  */
 function CompanyLogo({ company, className = "", alt }) {
   const name = company?.name;
-  const logoUrl = company?.logo?.trim() || "";
+  const rawLogoUrl = company?.logo?.trim() || "";
+  const logoUrl = isSocialProfileLogoUrl(rawLogoUrl) ? "" : rawLogoUrl;
   const rawDomain = company?.domain?.trim() || "";
-  const domain = normalizeDomain(rawDomain) || domainFromName(name);
+  const normalizedDomain = normalizeDomain(rawDomain);
+  const domain = (
+    normalizedDomain && !isSocialProfileDomain(normalizedDomain)
+      ? normalizedDomain
+      : ""
+  ) || domainFromName(name);
 
   const getInitialSrc = () => {
     if (domain) return `https://img.logo.dev/${domain}?token=${LOGO_DEV_PUBLIC_KEY}`;
