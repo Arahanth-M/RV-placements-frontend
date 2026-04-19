@@ -53,6 +53,9 @@ const ProtectedRoute = ({ children }) => {
               Open beta signup form
               <FaExternalLinkAlt className="h-3.5 w-3.5" />
             </a>
+            <p className="mt-4 text-xs sm:text-sm leading-relaxed text-theme-secondary">
+              After submitting the form, wait a few seconds and then log out and sign in again to activate your beta access.
+            </p>
           </div>
         </div>
       </div>

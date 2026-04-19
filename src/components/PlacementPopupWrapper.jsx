@@ -5,7 +5,21 @@ import { useAuth } from '../utils/AuthContext';
 import { BETA_JOIN_FORM_URL } from '../utils/constants';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
-const COMPANY_FIELDS = ['company1', 'company2', 'company3', 'company4', 'company5'];
+const COMPANY_FIELDS = [
+  'Summer internship Company name',
+  'FTE Company name',
+  'Only internship Company name',
+  'FTE and internship Company name',
+  '6 months Internship Company name',
+  'company1',
+  'company2',
+  'company3',
+  'company4',
+  'company5',
+  'Company',
+  'company',
+  'primaryCompanyName',
+];
 /** Max time the popup stays open while not hovering the card (hover pauses the timer). */
 const POPUP_MAX_ACTIVE_MS = 60_000;
 
@@ -15,9 +29,13 @@ function normalizeCompanyName(raw) {
 }
 
 function placementCompanyNamesFromProfile(studentData) {
-  const directCompanies = COMPANY_FIELDS.map((fieldName) =>
-    normalizeCompanyName(studentData?.[fieldName])
-  ).filter(Boolean);
+  const directKeys = studentData && typeof studentData === 'object'
+    ? Object.keys(studentData).filter((key) => /company name/i.test(key))
+    : [];
+  const candidateFields = [...new Set([...COMPANY_FIELDS, ...directKeys])];
+  const directCompanies = candidateFields
+    .map((fieldName) => normalizeCompanyName(studentData?.[fieldName]))
+    .filter(Boolean);
 
   if (directCompanies.length > 0) {
     return Array.from(new Set(directCompanies.map((name) => name.toLowerCase()))).map(
@@ -200,7 +218,7 @@ const PlacementPopupWrapper = () => {
             <p className="text-theme-secondary text-sm mb-3">
               {isPlacementPopup
                 ? 'for successfully getting the opportunity to be part of:'
-                : 'I guess you forgot to fill the form, please go ahead and fill the form to be part of the beta test of the platform. If you are a non-CSE student, very soon we are extending to your branch. If you are a junior, dont worry we are building this platform for you... Keep preparing!!!'}
+                : 'Fill the beta access form to join the platform. After submitting the form, wait a few seconds and then log out and sign in again to activate your beta access. If you are a non-CSE student, we are extending access to your branch soon.'}
             </p>
 
             {!isPlacementPopup ? (
