@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
 import AnimatedLogoGrid from "../components/AnimatedLogoGrid";
+import MissingCompanyRequestModal from "../components/MissingCompanyRequestModal";
 import YearStatsTable from "../components/YearStatsTable";
 import { YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
 import { FaFilter, FaCalendarAlt, FaArrowLeft, FaRegStar, FaMedal, FaChevronRight } from "react-icons/fa";
@@ -20,6 +21,64 @@ import {
   isPlacementTierParam,
 } from "../constants/placementTiers.js";
 
+const PROFILE_COMPANY_FIELDS = [
+  "Summer internship Company name",
+  "FTE Company name",
+  "Only internship Company name",
+  "FTE and internship Company name",
+  "6 months Internship Company name",
+  "company1",
+  "company2",
+  "company3",
+  "company4",
+  "company5",
+  "Company",
+  "company",
+  "primaryCompanyName",
+];
+
+function normalizeProfileCompanyName(raw) {
+  if (raw == null) return "";
+  return String(raw).trim();
+}
+
+function getPlacementCompanyNames(studentData) {
+  const items = studentData && typeof studentData === "object" ? studentData : {};
+  const directKeys = Object.keys(items).filter((key) => /company name/i.test(key));
+  const candidateFields = [...new Set([...PROFILE_COMPANY_FIELDS, ...directKeys])];
+  const uniqueCompanies = new Map();
+
+  for (const fieldName of candidateFields) {
+    const companyName = normalizeProfileCompanyName(items[fieldName]);
+    if (!companyName) continue;
+    const normalized = companyName.toLowerCase();
+    if (!uniqueCompanies.has(normalized)) {
+      uniqueCompanies.set(normalized, companyName);
+    }
+  }
+
+  if (uniqueCompanies.size > 0) {
+    return Array.from(uniqueCompanies.values());
+  }
+
+  const placementCompanies = Array.isArray(studentData?.placementCompanies)
+    ? studentData.placementCompanies
+    : [];
+
+  for (const item of placementCompanies) {
+    const companyName = normalizeProfileCompanyName(
+      item?.companyName ?? item?.Company ?? item?.company
+    );
+    if (!companyName) continue;
+    const normalized = companyName.toLowerCase();
+    if (!uniqueCompanies.has(normalized)) {
+      uniqueCompanies.set(normalized, companyName);
+    }
+  }
+
+  return Array.from(uniqueCompanies.values());
+}
+
 function CompanyStats() {
   // Year selection state
   const [selectedYear, setSelectedYear] = useState(null);
@@ -36,6 +95,7 @@ function CompanyStats() {
   const [summerInternshipPage, setSummerInternshipPage] = useState(1);
   const [offCampusPage, setOffCampusPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
+  const [showMissingCompanyModal, setShowMissingCompanyModal] = useState(false);
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
   const [placementTier, setPlacementTier] = useState(null);
 
@@ -44,7 +104,17 @@ function CompanyStats() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, studentData, setUser } = useAuth();
+
+  const placementCompanyNames = useMemo(
+    () => getPlacementCompanyNames(studentData),
+    [studentData]
+  );
+
+  const canRequestMissingCompany =
+    user?.isBetaListed === true &&
+    user?.hasSubmittedMissingCompanyRequest !== true &&
+    placementCompanyNames.length > 0;
 
   const handleBack = () => {
     navigate('/');
@@ -856,11 +926,22 @@ function CompanyStats() {
             <FaArrowLeft className="mr-2" />
             Back to Year Selection
           </button>
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
-            <p className="text-theme-secondary text-sm sm:text-base">
-              Choose Dream, Open dream, Internship only, Summer internship, or Off campus to browse company cards for 2026.
-            </p>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
+              <p className="text-theme-secondary text-sm sm:text-base">
+                Choose Dream, Open dream, Internship only, Summer internship, or Off campus to browse company cards for 2026.
+              </p>
+            </div>
+            {canRequestMissingCompany && (
+              <button
+                type="button"
+                onClick={() => setShowMissingCompanyModal(true)}
+                className="self-start rounded-lg border border-theme-accent/40 bg-theme-card px-4 py-2 text-sm font-semibold text-theme-accent shadow-sm transition-opacity hover:opacity-90"
+              >
+                Can&apos;t find your company?
+              </button>
+            )}
           </div>
           <div className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch">
             <button
@@ -977,6 +1058,29 @@ function CompanyStats() {
               </div>
             </button>
           </div>
+
+          <MissingCompanyRequestModal
+            isOpen={showMissingCompanyModal}
+            onClose={() => setShowMissingCompanyModal(false)}
+            onSuccess={(payload) => {
+              const nextUser = payload?.user;
+              if (!nextUser) {
+                setUser((prev) => (
+                  prev
+                    ? { ...prev, hasSubmittedMissingCompanyRequest: true }
+                    : prev
+                ));
+                return;
+              }
+
+              setUser((prev) => ({
+                ...(prev || {}),
+                ...nextUser,
+              }));
+            }}
+            userCompanies={placementCompanyNames}
+            requestCategory={placementTier || "company-listing"}
+          />
         </div>
       </div>
     );

@@ -253,8 +253,10 @@ export const leetcodeAPI = {
   getQuestion: (id) => API.get(`/api/leetcode/${id}`),
 };
 
+export const getAdminStats = () => API.get('/api/admin/stats');
+
 export const adminAPI = {
-  getStats: () => API.get('/api/admin/stats'),
+  getStats: () => getAdminStats(),
   getSubmissions: (config) => API.get('/api/admin/submissions', config),
   getSubmission: (id) => API.get(`/api/admin/submissions/${id}`),
   getUserCount: () => API.get('/api/admin/stats/users'),
@@ -286,6 +288,9 @@ export const adminAPI = {
   },
   updateCompanyRoles: (companyId, roles) => API.put(`/api/admin/companies/${companyId}/roles`, { roles }),
   updateCompanyGeneralInfo: (companyId, data) => API.put(`/api/admin/companies/${companyId}/general`, data),
+  getMissingCompanies: () => API.get('/api/admin/missing-companies'),
+  updateMissingCompanyStatus: (id, status) => API.patch(`/api/admin/missing-companies/${id}/status`, { status }),
+  deleteMissingCompany: (id) => API.delete(`/api/admin/missing-companies/${id}`),
 };
 
 export const eventAPI = {
@@ -315,6 +320,10 @@ export const studentAPI = {
   getStudentByUSN: (usn) => API.get(`/api/students/student-data/${usn}`),
   getStudentByName: (username) => API.get(`/api/students/student-data-by-name/${encodeURIComponent(username)}`),
   getProfile: () => API.get("/api/students/profile"),
+};
+
+export const submitMissingCompany = (data) => {
+  return API.post("/api/missing-companies", data);
 };
 
 export const placementAPI = {

@@ -1,25 +1,52 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { adminAPI, eventAPI } from '../utils/api';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar } from 'react-icons/fa';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle } from 'react-icons/fa';
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
 
+const InfoHint = ({ text }) => (
+  <span className="group relative inline-flex items-center">
+    <span
+      className="inline-flex h-4 w-4 cursor-help items-center justify-center text-theme-muted transition-colors hover:text-theme-accent"
+      aria-label={text}
+      title={text}
+    >
+      <FaInfoCircle className="h-3.5 w-3.5" />
+    </span>
+    <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-theme bg-theme-card px-3 py-2 text-center text-xs font-medium text-theme-secondary shadow-xl group-hover:block">
+      {text}
+    </span>
+  </span>
+);
+
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
+    dau: 0,
     totalSubmissions: 0,
     pendingSubmissions: 0,
+    dailySubmissions: 0,
     approvedSubmissions: 0,
     totalCompanies: 0,
     pendingCompanies: 0,
+    missingCompaniesCount: 0,
+    topMissingCompanies: [],
+    topSubmittedCompanies: [],
+    mostViewedCompanies: [],
+    mostHelpfulCompanies: [],
+    userGrowth: [],
+    dauTrend: [],
+    submissionAcceptanceTrend: [],
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('submissions'); // 'submissions', 'companies', 'events'
+  const [activeMainTab, setActiveMainTab] = useState('submissions'); // 'stats', 'submissions', 'companies', 'missing-companies', 'events'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
+  const [missingCompanies, setMissingCompanies] = useState([]);
   const [companiesSubTab, setCompaniesSubTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,6 +64,8 @@ const AdminDashboard = () => {
   });
   const [deletingIds, setDeletingIds] = useState(new Set());
   const [deletingCompanyIds, setDeletingCompanyIds] = useState(new Set());
+  const [updatingMissingCompanyIds, setUpdatingMissingCompanyIds] = useState(new Set());
+  const [deletingMissingCompanyIds, setDeletingMissingCompanyIds] = useState(new Set());
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [approvingAll, setApprovingAll] = useState(false);
@@ -46,6 +75,9 @@ const AdminDashboard = () => {
   const [coPendingMeta, setCoPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [coApprovedMeta, setCoApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [missingCompaniesLoaded, setMissingCompaniesLoaded] = useState(false);
+  const [missingCompaniesLoading, setMissingCompaniesLoading] = useState(false);
+  const [adminToast, setAdminToast] = useState(null);
 
   const loadPendingSubmissionsList = useCallback(async (page) => {
     const res = await adminAPI.getSubmissions({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
@@ -91,12 +123,33 @@ const AdminDashboard = () => {
     });
   }, []);
 
+  const loadMissingCompanies = useCallback(async () => {
+    setMissingCompaniesLoading(true);
+    try {
+      const res = await adminAPI.getMissingCompanies();
+      const items = Array.isArray(res.data?.items) ? res.data.items : [];
+      items.sort((a, b) => (b?.requestCount || 0) - (a?.requestCount || 0));
+      setMissingCompanies(items);
+    } finally {
+      setMissingCompaniesLoading(false);
+      setMissingCompaniesLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!adminToast) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      setAdminToast(null);
+    }, 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [adminToast]);
+
   useEffect(() => {
     const init = async () => {
       try {
         setLoading(true);
         setError(null);
-        const statsRes = await adminAPI.getStats();
+        const statsRes = await getAdminStats();
         setStats(statsRes.data);
       } catch (err) {
         console.error('Error loading admin stats:', err);
@@ -196,6 +249,23 @@ const AdminDashboard = () => {
     };
   }, [loading, activeMainTab, eventsLoaded]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'missing-companies') return;
+    if (missingCompaniesLoaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadMissingCompanies();
+      } catch (e) {
+        if (!cancelled) console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, missingCompaniesLoaded, loadMissingCompanies]);
+
   const parseContent = (contentString) => {
     try {
       return JSON.parse(contentString);
@@ -214,6 +284,38 @@ const AdminDashboard = () => {
       minute: '2-digit',
     });
   };
+
+  const sortedMissingCompanies = [...missingCompanies].sort(
+    (a, b) => (b?.requestCount || 0) - (a?.requestCount || 0)
+  );
+
+  const renderStatsList = (title, description, items, valueKey, valueLabel) => (
+    <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+      <div className="flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-theme-primary">{title}</h3>
+        <InfoHint text={description} />
+      </div>
+      {Array.isArray(items) && items.length > 0 ? (
+        <div className="mt-4 space-y-3">
+          {items.map((item) => (
+            <div
+              key={`${title}-${item._id || item.name}`}
+              className="flex items-center justify-between rounded-lg border border-theme bg-theme-hero px-4 py-3"
+            >
+              <span className="text-sm font-medium text-theme-primary">{item.name || 'N/A'}</span>
+              <span className="text-sm text-theme-secondary">
+                {valueLabel}: {item?.[valueKey] ?? 0}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-lg border border-theme bg-theme-hero px-4 py-6 text-center text-sm text-theme-secondary">
+          No data available.
+        </div>
+      )}
+    </div>
+  );
 
   const renderAdminPagination = (meta, setPage) => {
     if (meta.total <= 0) return null;
@@ -458,6 +560,66 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdateMissingCompanyStatus = async (id, status) => {
+    try {
+      setUpdatingMissingCompanyIds(prev => new Set(prev).add(id));
+      const res = await adminAPI.updateMissingCompanyStatus(id, status);
+      const updatedItem = res.data?.missingCompany;
+
+      setMissingCompanies(prev => {
+        const next = prev.map((item) =>
+          item._id === id
+            ? {
+                ...item,
+                ...(updatedItem || {}),
+                status: updatedItem?.status || status,
+              }
+            : item
+        );
+        next.sort((a, b) => (b?.requestCount || 0) - (a?.requestCount || 0));
+        return next;
+      });
+    } catch (err) {
+      console.error('Error updating missing company status:', err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Failed to update missing company status. Please try again.';
+      setAdminToast({ type: 'error', message: errorMessage });
+    } finally {
+      setUpdatingMissingCompanyIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDeleteMissingCompany = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this missing company request?')) {
+      return;
+    }
+
+    try {
+      setDeletingMissingCompanyIds(prev => new Set(prev).add(id));
+      await adminAPI.deleteMissingCompany(id);
+      setMissingCompanies(prev => prev.filter((item) => item._id !== id));
+    } catch (err) {
+      console.error('Error deleting missing company request:', err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Failed to delete missing company request. Please try again.';
+      setAdminToast({ type: 'error', message: errorMessage });
+    } finally {
+      setDeletingMissingCompanyIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
+  };
+
   const handleViewFullSubmission = async (submission) => {
     if (submission.contentTruncated) {
       try {
@@ -686,6 +848,15 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-dashboard-theme min-h-screen py-6 sm:py-8 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+      {adminToast?.message && (
+        <div
+          className={`fixed right-4 top-4 z-[90] rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-xl ${
+            adminToast.type === 'error' ? 'bg-red-600' : 'bg-green-600'
+          }`}
+        >
+          {adminToast.message}
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -814,6 +985,17 @@ const AdminDashboard = () => {
             {/* Main Tabs Navigation */}
             <div className="flex gap-2 sm:gap-4 mb-6 flex-wrap overflow-x-auto pb-2">
               <button
+                onClick={() => setActiveMainTab('stats')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'stats'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaChartLine />
+                Stats
+              </button>
+              <button
                 onClick={() => setActiveMainTab('submissions')}
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
                   activeMainTab === 'submissions'
@@ -836,6 +1018,17 @@ const AdminDashboard = () => {
                 Companies
               </button>
               <button
+                onClick={() => setActiveMainTab('missing-companies')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'missing-companies'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaBuilding />
+                Missing Companies
+              </button>
+              <button
                 onClick={() => setActiveMainTab('events')}
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
                   activeMainTab === 'events'
@@ -849,6 +1042,210 @@ const AdminDashboard = () => {
             </div>
 
             {/* Main Content Area */}
+            {activeMainTab === 'stats' && (
+              <div className="space-y-6">
+                <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-6 shadow-sm">
+                  <div className="mb-5">
+                    <h2 className="text-xl font-semibold text-theme-accent">Stats</h2>
+                    <p className="mt-1 text-sm text-theme-secondary">
+                      Platform growth, usage, and the most demanded company data in one place.
+                    </p>
+                  </div>
+
+                  {loading ? (
+                    <div className="rounded-lg border border-theme bg-theme-hero p-8 text-center">
+                      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-theme border-t-theme-accent"></div>
+                      <p className="mt-4 text-sm text-theme-secondary">Loading stats...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                      {[
+                        {
+                          label: 'Total Users',
+                          value: stats.totalUsers ?? 0,
+                          description: 'All user accounts currently stored on the platform.',
+                        },
+                        {
+                          label: 'Total Companies',
+                          value: stats.totalCompanies ?? 0,
+                          description: 'All companies currently present in the main company collection.',
+                        },
+                        {
+                          label: 'Pending Submissions',
+                          value: stats.pendingSubmissions ?? 0,
+                          description: 'User submissions still waiting for admin review and action.',
+                        },
+                        {
+                          label: 'Missing Companies',
+                          value: stats.missingCompaniesCount ?? 0,
+                          description: 'Missing-company requests submitted by users for admin review.',
+                        },
+                        {
+                          label: 'Daily Active Users',
+                          value: stats.dau ?? 0,
+                          description: 'Users with tracked activity today, based on lastActiveAt.',
+                        },
+                        {
+                          label: 'Daily Submissions',
+                          value: stats.dailySubmissions ?? 0,
+                          description: 'All submissions created by users today across every company.',
+                        },
+                      ].map((card) => (
+                        <div
+                          key={card.label}
+                          className="rounded-xl border border-theme bg-theme-hero p-4 shadow-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-theme-secondary">{card.label}</p>
+                            <InfoHint text={card.description} />
+                          </div>
+                          <p className="mt-2 text-2xl font-bold text-theme-primary">{card.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                  {renderStatsList(
+                    'Top Missing Companies',
+                    'Companies most frequently requested by users as missing from the platform.',
+                    stats.topMissingCompanies,
+                    'requestCount',
+                    'Requests'
+                  )}
+                  {renderStatsList(
+                    'Top Submitted Companies',
+                    'Companies with the highest number of user submissions overall.',
+                    stats.topSubmittedCompanies,
+                    'submissionCount',
+                    'Submissions'
+                  )}
+                  {renderStatsList(
+                    'Most Viewed Companies',
+                    'Company profiles with the highest number of detail-page views.',
+                    stats.mostViewedCompanies,
+                    'views',
+                    'Views'
+                  )}
+                  {renderStatsList(
+                    'Most Helpful Companies',
+                    'Companies that received the most helpful/upvote interactions from users.',
+                    stats.mostHelpfulCompanies,
+                    'helpfulCount',
+                    'Helpful'
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-theme-primary">User Growth (Last 7 Days)</h3>
+                      <InfoHint text="New users created each day over the last 7 days." />
+                    </div>
+                    <div className="mt-4 h-72">
+                      {Array.isArray(stats.userGrowth) && stats.userGrowth.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.userGrowth}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="count"
+                              stroke="#6366f1"
+                              strokeWidth={3}
+                              dot={{ r: 4 }}
+                              activeDot={{ r: 6 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex h-full items-center justify-center rounded-lg border border-theme bg-theme-hero text-sm text-theme-secondary">
+                          No growth data available.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-theme-primary">Daily Active Users Trend</h3>
+                      <InfoHint text="Tracked active-user counts for each of the last 7 days." />
+                    </div>
+                    <div className="mt-4 h-72">
+                      {Array.isArray(stats.dauTrend) && stats.dauTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.dauTrend}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="count"
+                              stroke="#10b981"
+                              strokeWidth={3}
+                              dot={{ r: 4 }}
+                              activeDot={{ r: 6 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex h-full items-center justify-center rounded-lg border border-theme bg-theme-hero text-sm text-theme-secondary">
+                          No DAU trend data available.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-theme-primary">Daily Submissions vs Acceptances</h3>
+                      <InfoHint text="Daily platform submissions and daily approved submissions over the last 7 days." />
+                    </div>
+                    <div className="mt-4 h-80">
+                      {Array.isArray(stats.submissionAcceptanceTrend) && stats.submissionAcceptanceTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={stats.submissionAcceptanceTrend}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Line
+                              type="monotone"
+                              dataKey="submissions"
+                              name="Submissions"
+                              stroke="#8b5cf6"
+                              strokeWidth={3}
+                              dot={{ r: 4 }}
+                              activeDot={{ r: 6 }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="acceptances"
+                              name="Acceptances"
+                              stroke="#f59e0b"
+                              strokeWidth={3}
+                              dot={{ r: 4 }}
+                              activeDot={{ r: 6 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex h-full items-center justify-center rounded-lg border border-theme bg-theme-hero text-sm text-theme-secondary">
+                          No submission trend data available.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeMainTab === 'submissions' && (
             <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700">
@@ -1339,6 +1736,132 @@ const AdminDashboard = () => {
                   </div>
                 )
                 )}
+              </div>
+            )}
+
+            {activeMainTab === 'missing-companies' && (
+              <div className="bg-theme-card border border-theme rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-theme">
+                  <div>
+                    <h2 className="text-xl font-semibold text-theme-accent">Missing Companies</h2>
+                    <p className="text-sm text-theme-secondary mt-1">
+                      Review missing company requests submitted by beta users.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="px-6 py-5">
+                  {missingCompaniesLoading ? (
+                    <div className="rounded-lg border border-theme bg-theme-hero p-6 text-center">
+                      <p className="text-theme-primary text-sm sm:text-base">Loading missing companies...</p>
+                    </div>
+                  ) : sortedMissingCompanies.length === 0 ? (
+                    <div className="rounded-lg border border-theme bg-theme-hero p-6 text-center">
+                      <p className="text-theme-secondary text-sm sm:text-base">No missing company requests found.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto -mx-2 sm:mx-0">
+                      <table className="min-w-full divide-y divide-theme">
+                        <thead className="bg-theme-hero">
+                          <tr>
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+                              Request Count
+                            </th>
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+                              Categories
+                            </th>
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+                              Status
+                            </th>
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-theme bg-theme-card">
+                          {sortedMissingCompanies.map((company) => {
+                            const isUpdating = updatingMissingCompanyIds.has(company._id);
+                            const isDeleting = deletingMissingCompanyIds.has(company._id);
+                            const isBusy = isUpdating || isDeleting;
+                            const categoriesText = Array.isArray(company.categories) && company.categories.length > 0
+                              ? company.categories.join(', ')
+                              : 'N/A';
+
+                            return (
+                              <tr key={company._id} className="hover:bg-theme-nav transition-colors">
+                                <td className="px-3 sm:px-4 py-4 text-sm font-medium text-theme-primary">
+                                  {company.name}
+                                </td>
+                                <td className="px-3 sm:px-4 py-4 text-sm text-theme-secondary">
+                                  {company.requestCount || 0}
+                                </td>
+                                <td className="px-3 sm:px-4 py-4 text-sm text-theme-secondary">
+                                  {categoriesText}
+                                </td>
+                                <td className="px-3 sm:px-4 py-4">
+                                  <span
+                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                      company.status === 'ADDED'
+                                        ? 'bg-green-600 text-white'
+                                        : company.status === 'REJECTED'
+                                          ? 'bg-red-600 text-white'
+                                          : 'bg-amber-600 text-white'
+                                    }`}
+                                  >
+                                    {company.status || 'PENDING'}
+                                  </span>
+                                </td>
+                                <td className="px-3 sm:px-4 py-4">
+                                  <div className="flex flex-col sm:flex-row gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateMissingCompanyStatus(company._id, 'ADDED')}
+                                      disabled={isBusy || company.status === 'ADDED'}
+                                      className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
+                                        isBusy || company.status === 'ADDED'
+                                          ? 'bg-theme-nav text-theme-muted cursor-not-allowed'
+                                          : 'bg-green-600 text-white hover:bg-green-700'
+                                      }`}
+                                    >
+                                      {isUpdating && company.status !== 'ADDED' ? 'Updating...' : 'Mark as Added'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateMissingCompanyStatus(company._id, 'REJECTED')}
+                                      disabled={isBusy || company.status === 'REJECTED'}
+                                      className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
+                                        isBusy || company.status === 'REJECTED'
+                                          ? 'bg-theme-nav text-theme-muted cursor-not-allowed'
+                                          : 'bg-amber-600 text-white hover:bg-amber-700'
+                                      }`}
+                                    >
+                                      {isUpdating && company.status !== 'REJECTED' ? 'Updating...' : 'Reject'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMissingCompany(company._id)}
+                                      disabled={isBusy}
+                                      className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
+                                        isBusy
+                                          ? 'bg-theme-nav text-theme-muted cursor-not-allowed'
+                                          : 'bg-red-600 text-white hover:bg-red-700'
+                                      }`}
+                                    >
+                                      {isDeleting ? 'Deleting...' : 'Delete'}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
