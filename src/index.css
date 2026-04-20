@@ -683,6 +683,18 @@ body {
   flex-wrap: wrap;
 }
 
+/* Events page: error banner (avoids dark-only red-900 panel in light mode) */
+[data-theme="light"] .events-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+[data-theme="dark"] .events-error-banner {
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid rgb(185, 28, 28);
+  color: #fecaca;
+}
+
 /* Admin dashboard + events + leaderboard/resources/feedback: reuse app light/dark theme tokens */
 [data-theme="light"] .admin-dashboard-theme,
 [data-theme="light"] .events-page-theme,

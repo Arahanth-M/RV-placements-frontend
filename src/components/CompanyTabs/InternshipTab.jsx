@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
+import rvceLogo from "../../assets/logo2.png";
 
 function InternshipTab({ company }) {
   const [showModal, setShowModal] = useState(false);
@@ -140,7 +141,14 @@ function InternshipTab({ company }) {
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <h3 className="text-lg font-semibold mb-4 text-indigo-400">Add Internship Experience</h3>
+            <div className="flex flex-col items-center text-center gap-3 mb-4">
+              <img
+                src={rvceLogo}
+                alt="RVCE"
+                className="h-11 w-auto max-w-[200px] object-contain object-center"
+              />
+              <h3 className="text-lg font-semibold text-indigo-400">Add Internship Experience</h3>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <textarea
                 value={experienceText}

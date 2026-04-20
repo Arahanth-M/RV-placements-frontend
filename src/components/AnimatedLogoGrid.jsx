@@ -62,21 +62,24 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
     return <p className="text-theme-muted text-sm italic">No logos available</p>;
   }
 
-  // Keep logo tiles inside narrow mobile cards:
-  // use fewer columns on mobile, then expand on larger breakpoints.
-  const gridClassName =
-    displayedCompanies.length >= 5
-      ? "grid-cols-3 sm:grid-cols-5"
-      : displayedCompanies.length >= 3
-        ? "grid-cols-3"
-        : displayedCompanies.length === 2
-          ? "grid-cols-2"
-          : "grid-cols-1";
+  // Mobile only: max-content columns + w-max so the logo cluster doesn’t stretch edge-to-edge.
+  // sm+: restore full-width 1fr columns so tiles stay inside category cards (max-content + w-max overflowed on laptop).
+  const n = displayedCompanies.length;
+  const gridCols =
+    n >= 5
+      ? "grid-cols-[repeat(3,max-content)] sm:grid-cols-5"
+      : n >= 3
+        ? "grid-cols-[repeat(3,max-content)] sm:grid-cols-3"
+        : n === 2
+          ? "grid-cols-[repeat(2,max-content)] sm:grid-cols-2"
+          : "grid-cols-[max-content] sm:grid-cols-1";
 
   return (
-    <div className={`grid ${gridClassName} gap-1.5 sm:gap-2 p-1.5 sm:p-2 w-full mx-auto min-h-[72px] sm:min-h-[80px] items-center justify-center overflow-hidden`}>
+    <div
+      className={`grid ${gridCols} gap-1.5 sm:gap-2 p-1.5 sm:p-2 min-h-[72px] sm:min-h-[80px] items-center justify-center justify-items-center overflow-hidden max-sm:place-content-center w-full min-w-0 max-sm:w-max max-sm:max-w-full max-sm:mx-auto`}
+    >
       {displayedCompanies.map((company, index) => (
-        <div key={index} className="relative w-10 h-10 sm:w-20 sm:h-20 mx-auto">
+        <div key={index} className="relative w-10 h-10 sm:w-20 sm:h-20 shrink-0">
           <AnimatePresence mode="wait">
             <motion.div
               key={company?._id || company?.name || index}

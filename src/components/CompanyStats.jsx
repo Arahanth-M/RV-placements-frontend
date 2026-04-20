@@ -109,6 +109,27 @@ function isOffCampusTypeOnlyInternship(company) {
   return normalizeType(company?.type) === "onlyinternship";
 }
 
+function normalizeTierCategory(tier, rawCategory) {
+  const category =
+    rawCategory === "only internship(6 months)"
+      ? "all"
+      : String(rawCategory || "all");
+
+  if (tier === PLACEMENT_TIER_OFF_CAMPUS) {
+    return ["all", "fte", "internship + fte", "only internship"].includes(category)
+      ? category
+      : "all";
+  }
+
+  if (tier === PLACEMENT_TIER_DREAM || tier === PLACEMENT_TIER_OPEN_DREAM) {
+    return ["all", "fte", "internship + fte", "others"].includes(category)
+      ? category
+      : "all";
+  }
+
+  return "all";
+}
+
 function CompanyStats() {
   // Year selection state
   const [selectedYear, setSelectedYear] = useState(null);
@@ -118,7 +139,11 @@ function CompanyStats() {
   // Company cards state (for 2026)
   const [companies, setCompanies] = useState([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
+  const [tierCategories, setTierCategories] = useState({
+    [PLACEMENT_TIER_DREAM]: "all",
+    [PLACEMENT_TIER_OPEN_DREAM]: "all",
+    [PLACEMENT_TIER_OFF_CAMPUS]: "all",
+  });
   const [dreamPage, setDreamPage] = useState(1);
   const [openDreamPage, setOpenDreamPage] = useState(1);
   const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
@@ -135,6 +160,37 @@ function CompanyStats() {
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const { user, isAdmin, studentData, setUser } = useAuth();
+
+  const activeCategory = useMemo(
+    () => normalizeTierCategory(placementTier, tierCategories[placementTier]),
+    [placementTier, tierCategories]
+  );
+
+  const setTierCategory = (tier, valueOrUpdater) => {
+    if (
+      tier !== PLACEMENT_TIER_DREAM &&
+      tier !== PLACEMENT_TIER_OPEN_DREAM &&
+      tier !== PLACEMENT_TIER_OFF_CAMPUS
+    ) {
+      return;
+    }
+
+    setTierCategories((prev) => {
+      const prevValue = normalizeTierCategory(tier, prev[tier]);
+      const nextRawValue =
+        typeof valueOrUpdater === "function" ? valueOrUpdater(prevValue) : valueOrUpdater;
+      const nextValue = normalizeTierCategory(tier, nextRawValue);
+      if (prevValue === nextValue) return prev;
+      return {
+        ...prev,
+        [tier]: nextValue,
+      };
+    });
+  };
+
+  const setActiveCategory = (valueOrUpdater) => {
+    setTierCategory(placementTier, valueOrUpdater);
+  };
 
   const placementCompanyNames = useMemo(
     () => getPlacementCompanyNames(studentData),
@@ -229,6 +285,9 @@ function CompanyStats() {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
+        'companystats_dream_category',
+        'companystats_open_dream_category',
+        'companystats_off_campus_category',
         'companystats_dream_page',
         'companystats_open_dream_page',
         'companystats_internship_only_page',
@@ -251,6 +310,9 @@ function CompanyStats() {
         'companystats_selectedYear',
         'companystats_search',
         'companystats_category',
+        'companystats_dream_category',
+        'companystats_open_dream_category',
+        'companystats_off_campus_category',
         'companystats_dream_page',
         'companystats_open_dream_page',
         'companystats_internship_only_page',
@@ -355,31 +417,9 @@ function CompanyStats() {
     if (selectedYear !== 2026) setPlacementTier(null);
   }, [selectedYear]);
 
-  // Internship-only and summer internship lists stay unfiltered by type; reset stale category state.
+  // Close the floating filter menu whenever the user changes tiers.
   useEffect(() => {
-    if (
-      placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
-      placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP
-    )
-      return;
-    setCategory("all");
     setShowFilter(false);
-  }, [placementTier]);
-
-  // Off-campus tier has its own type filter set; normalize unsupported category values.
-  useEffect(() => {
-    if (placementTier !== PLACEMENT_TIER_OFF_CAMPUS) return;
-    const allowedCategories = new Set(["all", "fte", "internship + fte", "only internship"]);
-    if (!allowedCategories.has(category)) {
-      setCategory("all");
-    }
-    setShowFilter(false);
-  }, [placementTier]);
-
-  // PPO companies live under Summer internship only; clear legacy "ppo" filter on Dream / Open dream.
-  useEffect(() => {
-    if (placementTier !== PLACEMENT_TIER_DREAM && placementTier !== PLACEMENT_TIER_OPEN_DREAM) return;
-    setCategory((prev) => (prev === "ppo" || prev === "only internship" ? "all" : prev));
   }, [placementTier]);
 
   useEffect(() => {
@@ -405,7 +445,10 @@ function CompanyStats() {
     
     if (selectedYear === 2026 && getStoredValue('fromCompanyCards') === 'true') {
       const storedSearch = getStoredValue('companystats_search');
-      const storedCategory = getStoredValue('companystats_category');
+      const storedDreamCategory = getStoredValue('companystats_dream_category');
+      const storedOpenDreamCategory = getStoredValue('companystats_open_dream_category');
+      const storedOffCampusCategory = getStoredValue('companystats_off_campus_category');
+      const legacyStoredCategory = getStoredValue('companystats_category');
       const storedDreamPage = getStoredValue('companystats_dream_page');
       const storedOpenDreamPage = getStoredValue('companystats_open_dream_page');
       const storedInternshipOnlyPage = getStoredValue('companystats_internship_only_page');
@@ -426,31 +469,23 @@ function CompanyStats() {
           : null;
 
       if (storedSearch !== null) setSearch(storedSearch);
-      if (storedCategory !== null) {
-        let cat =
-          storedCategory === "only internship(6 months)" ? "all" : storedCategory;
-        if (
-          storedTier === PLACEMENT_TIER_INTERNSHIP_ONLY ||
-          storedTier === PLACEMENT_TIER_SUMMER_INTERNSHIP
-        )
-          cat = "all";
-        if (
-          storedTier === PLACEMENT_TIER_OFF_CAMPUS &&
-          !["all", "fte", "internship + fte", "only internship"].includes(cat)
-        )
-          cat = "all";
-        if (
-          cat === "ppo" &&
-          (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM)
-        )
-          cat = "all";
-        if (
-          cat === "only internship" &&
-          (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM)
-        )
-          cat = "all";
-        setCategory(cat);
-      }
+      setTierCategories({
+        [PLACEMENT_TIER_DREAM]: normalizeTierCategory(
+          PLACEMENT_TIER_DREAM,
+          storedDreamCategory ??
+            (storedTier === PLACEMENT_TIER_DREAM ? legacyStoredCategory : "all")
+        ),
+        [PLACEMENT_TIER_OPEN_DREAM]: normalizeTierCategory(
+          PLACEMENT_TIER_OPEN_DREAM,
+          storedOpenDreamCategory ??
+            (storedTier === PLACEMENT_TIER_OPEN_DREAM ? legacyStoredCategory : "all")
+        ),
+        [PLACEMENT_TIER_OFF_CAMPUS]: normalizeTierCategory(
+          PLACEMENT_TIER_OFF_CAMPUS,
+          storedOffCampusCategory ??
+            (storedTier === PLACEMENT_TIER_OFF_CAMPUS ? legacyStoredCategory : "all")
+        ),
+      });
       if (storedDreamPage !== null) setDreamPage(parseInt(storedDreamPage, 10) || 1);
       else setDreamPage(fallbackPage);
       if (storedOpenDreamPage !== null) setOpenDreamPage(parseInt(storedOpenDreamPage, 10) || 1);
@@ -476,14 +511,26 @@ function CompanyStats() {
   useEffect(() => {
     if (selectedYear === 2026 && user && user.userId) {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
-      sessionStorage.setItem(getStorageKey('companystats_category'), category);
+      sessionStorage.setItem(
+        getStorageKey('companystats_dream_category'),
+        normalizeTierCategory(PLACEMENT_TIER_DREAM, tierCategories[PLACEMENT_TIER_DREAM])
+      );
+      sessionStorage.setItem(
+        getStorageKey('companystats_open_dream_category'),
+        normalizeTierCategory(PLACEMENT_TIER_OPEN_DREAM, tierCategories[PLACEMENT_TIER_OPEN_DREAM])
+      );
+      sessionStorage.setItem(
+        getStorageKey('companystats_off_campus_category'),
+        normalizeTierCategory(PLACEMENT_TIER_OFF_CAMPUS, tierCategories[PLACEMENT_TIER_OFF_CAMPUS])
+      );
+      sessionStorage.removeItem(getStorageKey('companystats_category'));
       sessionStorage.setItem(getStorageKey('companystats_dream_page'), String(dreamPage));
       sessionStorage.setItem(getStorageKey('companystats_open_dream_page'), String(openDreamPage));
       sessionStorage.setItem(getStorageKey('companystats_internship_only_page'), String(internshipOnlyPage));
       sessionStorage.setItem(getStorageKey('companystats_summer_internship_page'), String(summerInternshipPage));
       sessionStorage.setItem(getStorageKey('companystats_off_campus_page'), String(offCampusPage));
     }
-  }, [selectedYear, search, category, dreamPage, openDreamPage, internshipOnlyPage, summerInternshipPage, offCampusPage, user]);
+  }, [selectedYear, search, tierCategories, dreamPage, openDreamPage, internshipOnlyPage, summerInternshipPage, offCampusPage, user]);
 
   // Fetch companies only when 2026 is selected
   useEffect(() => {
@@ -548,24 +595,24 @@ function CompanyStats() {
   const filteredCompanies = orderedCompanies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
-      if (category === "all") return true;
+      if (activeCategory === "all") return true;
 
       const typeLower = normalizeType(c.type);
 
       if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
-        if (category === "fte") return isOffCampusTypeFte(c);
-        if (category === "internship + fte") return isOffCampusTypeInternshipAndFte(c);
-        if (category === "only internship") return isOffCampusTypeOnlyInternship(c);
+        if (activeCategory === "fte") return isOffCampusTypeFte(c);
+        if (activeCategory === "internship + fte") return isOffCampusTypeInternshipAndFte(c);
+        if (activeCategory === "only internship") return isOffCampusTypeOnlyInternship(c);
         return true;
       }
 
-      if (category === "ppo") {
+      if (activeCategory === "ppo") {
         return typeLower.includes("ppo");
       }
-      if (category === "internship + fte") {
+      if (activeCategory === "internship + fte") {
         return typeLower.includes("internship") && typeLower.includes("fte");
       }
-      if (category === "others") {
+      if (activeCategory === "others") {
         const isFte = typeLower === "fte";
         const isOnlyInternship = typeLower === "only internship(6 months)";
         const isPpo = typeLower.includes("ppo");
@@ -573,7 +620,7 @@ function CompanyStats() {
         return !isFte && !isOnlyInternship && !isPpo && !isInternshipFte;
       }
       
-      return typeLower === category.toLowerCase();
+      return typeLower === activeCategory.toLowerCase();
     });
 
 
@@ -970,7 +1017,11 @@ function CompanyStats() {
             onClick={() => {
               setCompanies([]);
               setSearch("");
-              setCategory("all");
+              setTierCategories({
+                [PLACEMENT_TIER_DREAM]: "all",
+                [PLACEMENT_TIER_OPEN_DREAM]: "all",
+                [PLACEMENT_TIER_OFF_CAMPUS]: "all",
+              });
               resetListPages();
               setPlacementTier(null);
               setSelectedYear(null);
@@ -1253,36 +1304,36 @@ function CompanyStats() {
             <div className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0">
               <button
                 onClick={() => {
-                  setCategory("all");
+                  setActiveCategory("all");
                   setShowFilter(false);
                   resetListPages();
                 }}
                 className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                  category === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                  activeCategory === "all" ? "font-semibold nav-active-theme text-theme-primary" : ""
                 }`}
               >
                 All
               </button>
               <button
                 onClick={() => {
-                  setCategory("fte");
+                  setActiveCategory("fte");
                   setShowFilter(false);
                   resetListPages();
                 }}
                 className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                  category === "fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                  activeCategory === "fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
                 }`}
               >
                 FTE
               </button>
               <button
                 onClick={() => {
-                  setCategory("internship + fte");
+                  setActiveCategory("internship + fte");
                   setShowFilter(false);
                   resetListPages();
                 }}
                 className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                  category === "internship + fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                  activeCategory === "internship + fte" ? "font-semibold nav-active-theme text-theme-primary" : ""
                 }`}
               >
                 Internship + FTE
@@ -1290,12 +1341,12 @@ function CompanyStats() {
               {placementTier === PLACEMENT_TIER_OFF_CAMPUS ? (
                 <button
                   onClick={() => {
-                    setCategory("only internship");
+                    setActiveCategory("only internship");
                     setShowFilter(false);
                     resetListPages();
                   }}
                   className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    category === "only internship" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                    activeCategory === "only internship" ? "font-semibold nav-active-theme text-theme-primary" : ""
                   }`}
                 >
                   Only Internship
@@ -1303,12 +1354,12 @@ function CompanyStats() {
               ) : (
                 <button
                   onClick={() => {
-                    setCategory("others");
+                    setActiveCategory("others");
                     setShowFilter(false);
                     resetListPages();
                   }}
                   className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    category === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                    activeCategory === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
                   }`}
                 >
                   Others
