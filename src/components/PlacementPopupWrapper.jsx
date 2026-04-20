@@ -11,6 +11,8 @@ const COMPANY_FIELDS = [
   'Only internship Company name',
   'FTE and internship Company name',
   '6 months Internship Company name',
+  'Company name',
+  'Name of Company',
   'company1',
   'company2',
   'company3',
@@ -28,9 +30,13 @@ function normalizeCompanyName(raw) {
   return String(raw).trim();
 }
 
+function isPlacementCompanyField(fieldName) {
+  return /company name|name of company/i.test(fieldName);
+}
+
 function placementCompanyNamesFromProfile(studentData) {
   const directKeys = studentData && typeof studentData === 'object'
-    ? Object.keys(studentData).filter((key) => /company name/i.test(key))
+    ? Object.keys(studentData).filter((key) => isPlacementCompanyField(key))
     : [];
   const candidateFields = [...new Set([...COMPANY_FIELDS, ...directKeys])];
   const directCompanies = candidateFields

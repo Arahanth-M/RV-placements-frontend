@@ -2,6 +2,33 @@ import React, { useState } from 'react';
 import { studentAPI } from '../utils/api';
 import { FaCheck, FaTimes, FaSpinner } from 'react-icons/fa';
 
+const COMPANY_FIELDS = [
+  'Summer internship Company name',
+  'FTE Company name',
+  'Only internship Company name',
+  'FTE and internship Company name',
+  '6 months Internship Company name',
+  'Company name',
+  'Name of Company',
+  'Company Name',
+  'Placed Company',
+  'Company',
+  'company',
+];
+
+function getStudentCompanyName(studentData) {
+  if (!studentData || typeof studentData !== 'object') return 'Not Placed';
+
+  for (const fieldName of COMPANY_FIELDS) {
+    const value = studentData[fieldName];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return studentData.placedCompany || 'Not Placed';
+}
+
 const USNEntry = ({ onConfirm, onCancel, googleUsername }) => {
   const [usn, setUsn] = useState('');
   const [studentData, setStudentData] = useState(null);
@@ -173,12 +200,7 @@ const USNEntry = ({ onConfirm, onCancel, googleUsername }) => {
                       Company:
                     </span>
                     <span className="text-white text-sm sm:text-base font-semibold">
-                      {studentData.Company || 
-                       studentData['Placed Company'] || 
-                       studentData['Company Name'] ||
-                       studentData.company ||
-                       studentData.placedCompany ||
-                       'Not Placed'}
+                      {getStudentCompanyName(studentData)}
                     </span>
                   </div>
 

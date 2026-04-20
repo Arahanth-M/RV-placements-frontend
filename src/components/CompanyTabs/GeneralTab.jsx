@@ -23,6 +23,7 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [editEligibility, setEditEligibility] = useState(company.eligibility || "");
   const [editBusinessModel, setEditBusinessModel] = useState(company.business_model || "");
+  const [editOffCampus, setEditOffCampus] = useState(company.offCampus === true);
 
   const isInternshipOnlyCompany = (() => {
     const typeLower = (company?.type || "").toLowerCase();
@@ -115,6 +116,7 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
                 if (!isEditingGeneral) {
                   setEditEligibility(company.eligibility || "");
                   setEditBusinessModel(company.business_model || "");
+                  setEditOffCampus(company.offCampus === true);
                 }
                 setIsEditingGeneral((prev) => !prev);
               }}
@@ -140,6 +142,13 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
                 {company.business_model ?? "Not provided"}
               </p>
             </div>
+
+            <div className="bg-slate-800/60 rounded-lg p-4">
+              <p className="text-slate-400 text-sm">Off Campus</p>
+              <p className="text-slate-200 mt-1">
+                {company.offCampus === true ? "Yes" : "No"}
+              </p>
+            </div>
           </div>
         ) : (
           <form
@@ -150,6 +159,7 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
                 await adminAPI.updateCompanyGeneralInfo(company._id, {
                   eligibility: editEligibility,
                   business_model: editBusinessModel,
+                  offCampus: editOffCampus,
                 });
                 if (typeof onRolesUpdated === "function") {
                   await onRolesUpdated();
@@ -192,6 +202,18 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
                   className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="e.g. Product-based, Fintech..."
                 />
+              </div>
+              <div className="flex items-center gap-3 rounded-md border border-slate-700 bg-slate-800/60 px-4 py-3">
+                <input
+                  id="off-campus-toggle"
+                  type="checkbox"
+                  checked={editOffCampus}
+                  onChange={(e) => setEditOffCampus(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-indigo-500 focus:ring-indigo-500"
+                />
+                <label htmlFor="off-campus-toggle" className="text-slate-300 text-sm">
+                  Mark this company as off campus
+                </label>
               </div>
             </div>
             <div className="flex items-center gap-3 pt-2">

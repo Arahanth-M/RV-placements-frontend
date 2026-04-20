@@ -27,6 +27,8 @@ const PROFILE_COMPANY_FIELDS = [
   "Only internship Company name",
   "FTE and internship Company name",
   "6 months Internship Company name",
+  "Company name",
+  "Name of Company",
   "company1",
   "company2",
   "company3",
@@ -37,6 +39,10 @@ const PROFILE_COMPANY_FIELDS = [
   "primaryCompanyName",
 ];
 
+function isPlacementCompanyField(fieldName) {
+  return /company name|name of company/i.test(fieldName);
+}
+
 function normalizeProfileCompanyName(raw) {
   if (raw == null) return "";
   return String(raw).trim();
@@ -44,7 +50,7 @@ function normalizeProfileCompanyName(raw) {
 
 function getPlacementCompanyNames(studentData) {
   const items = studentData && typeof studentData === "object" ? studentData : {};
-  const directKeys = Object.keys(items).filter((key) => /company name/i.test(key));
+  const directKeys = Object.keys(items).filter((key) => isPlacementCompanyField(key));
   const candidateFields = [...new Set([...PROFILE_COMPANY_FIELDS, ...directKeys])];
   const uniqueCompanies = new Map();
 
@@ -77,6 +83,30 @@ function getPlacementCompanyNames(studentData) {
   }
 
   return Array.from(uniqueCompanies.values());
+}
+
+function normalizeType(type) {
+  return String(type || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+function isCompanyMarkedOffCampus(company) {
+  return company?.offCampus === true;
+}
+
+function isOffCampusTypeFte(company) {
+  return normalizeType(company?.type) === "fte";
+}
+
+function isOffCampusTypeInternshipAndFte(company) {
+  const type = normalizeType(company?.type);
+  return type === "internship+fte" || type === "internship(pbc)+fte";
+}
+
+function isOffCampusTypeOnlyInternship(company) {
+  return normalizeType(company?.type) === "onlyinternship";
 }
 
 function CompanyStats() {
@@ -325,22 +355,31 @@ function CompanyStats() {
     if (selectedYear !== 2026) setPlacementTier(null);
   }, [selectedYear]);
 
-  // Internship-only / summer internship lists are pre-bucketed; hide type filter and avoid stale category emptying the grid.
+  // Internship-only and summer internship lists stay unfiltered by type; reset stale category state.
   useEffect(() => {
     if (
       placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
-      placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP &&
-      placementTier !== PLACEMENT_TIER_OFF_CAMPUS
+      placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP
     )
       return;
     setCategory("all");
     setShowFilter(false);
   }, [placementTier]);
 
+  // Off-campus tier has its own type filter set; normalize unsupported category values.
+  useEffect(() => {
+    if (placementTier !== PLACEMENT_TIER_OFF_CAMPUS) return;
+    const allowedCategories = new Set(["all", "fte", "internship + fte", "only internship"]);
+    if (!allowedCategories.has(category)) {
+      setCategory("all");
+    }
+    setShowFilter(false);
+  }, [placementTier]);
+
   // PPO companies live under Summer internship only; clear legacy "ppo" filter on Dream / Open dream.
   useEffect(() => {
     if (placementTier !== PLACEMENT_TIER_DREAM && placementTier !== PLACEMENT_TIER_OPEN_DREAM) return;
-    setCategory((prev) => (prev === "ppo" ? "all" : prev));
+    setCategory((prev) => (prev === "ppo" || prev === "only internship" ? "all" : prev));
   }, [placementTier]);
 
   useEffect(() => {
@@ -396,7 +435,17 @@ function CompanyStats() {
         )
           cat = "all";
         if (
+          storedTier === PLACEMENT_TIER_OFF_CAMPUS &&
+          !["all", "fte", "internship + fte", "only internship"].includes(cat)
+        )
+          cat = "all";
+        if (
           cat === "ppo" &&
+          (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM)
+        )
+          cat = "all";
+        if (
+          cat === "only internship" &&
           (storedTier === PLACEMENT_TIER_DREAM || storedTier === PLACEMENT_TIER_OPEN_DREAM)
         )
           cat = "all";
@@ -500,8 +549,15 @@ function CompanyStats() {
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
       if (category === "all") return true;
-      
-      const typeLower = (c.type || "").toLowerCase();
+
+      const typeLower = normalizeType(c.type);
+
+      if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
+        if (category === "fte") return isOffCampusTypeFte(c);
+        if (category === "internship + fte") return isOffCampusTypeInternshipAndFte(c);
+        if (category === "only internship") return isOffCampusTypeOnlyInternship(c);
+        return true;
+      }
 
       if (category === "ppo") {
         return typeLower.includes("ppo");
@@ -576,13 +632,12 @@ function CompanyStats() {
   };
 
   const isPpoCompany = (company) => {
-    const typeLower = (company?.type || "").toLowerCase();
+    const typeLower = normalizeType(company?.type);
     return typeLower.includes("ppo");
   };
 
   const isOffCampusCompany = (company) => {
-    const typeLower = (company?.type || "").toLowerCase();
-    return /off[\s-]*campus/i.test(typeLower);
+    return isCompanyMarkedOffCampus(company);
   };
 
   const summerInternshipCompanies = filteredCompanies.filter(
@@ -1184,8 +1239,7 @@ function CompanyStats() {
       </section>
 
       {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
-        placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP &&
-        placementTier !== PLACEMENT_TIER_OFF_CAMPUS && (
+        placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP && (
         <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
           <button
             onClick={() => setShowFilter((prev) => !prev)}
@@ -1233,18 +1287,33 @@ function CompanyStats() {
               >
                 Internship + FTE
               </button>
-              <button
-                onClick={() => {
-                  setCategory("others");
-                  setShowFilter(false);
-                  resetListPages();
-                }}
-                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                  category === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                }`}
-              >
-                Others
-              </button>
+              {placementTier === PLACEMENT_TIER_OFF_CAMPUS ? (
+                <button
+                  onClick={() => {
+                    setCategory("only internship");
+                    setShowFilter(false);
+                    resetListPages();
+                  }}
+                  className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                    category === "only internship" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                  }`}
+                >
+                  Only Internship
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setCategory("others");
+                    setShowFilter(false);
+                    resetListPages();
+                  }}
+                  className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                    category === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
+                  }`}
+                >
+                  Others
+                </button>
+              )}
             </div>
           )}
         </div>
