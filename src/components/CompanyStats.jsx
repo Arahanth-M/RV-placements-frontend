@@ -36,7 +36,6 @@ const PROFILE_COMPANY_FIELDS = [
   "company5",
   "Company",
   "company",
-  "primaryCompanyName",
 ];
 
 function isPlacementCompanyField(fieldName) {
@@ -1033,10 +1032,15 @@ function CompanyStats() {
             Back to Year Selection
           </button>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-theme-primary mb-2">Select category</h2>
-              <p className="text-theme-secondary text-sm sm:text-base">
+            <div className="flex-1">
+              <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
+                Select category
+              </h2>
+              <p className="mx-auto mt-2 text-center text-base text-theme-secondary whitespace-nowrap sm:text-lg">
                 Choose Dream, Open dream, Internship only, Summer internship, or Off campus to browse company cards for 2026.
+              </p>
+              <p className="mx-auto mt-1 max-w-xl text-center text-xs text-theme-muted sm:text-sm">
+                Note: Dream means CTC below 10 LPA, and Open dream means CTC above 10 LPA.
               </p>
             </div>
             {canRequestMissingCompany && (

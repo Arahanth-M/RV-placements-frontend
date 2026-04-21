@@ -142,13 +142,6 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
                 {company.business_model ?? "Not provided"}
               </p>
             </div>
-
-            <div className="bg-slate-800/60 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Off Campus</p>
-              <p className="text-slate-200 mt-1">
-                {company.offCampus === true ? "Yes" : "No"}
-              </p>
-            </div>
           </div>
         ) : (
           <form

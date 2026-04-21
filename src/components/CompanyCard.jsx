@@ -146,6 +146,11 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     }
   };
 
+  const visitDateStr =
+    company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
+  const showDateOfVisit =
+    visitDateStr.length > 0 && !/^(tba|tbd)$/i.test(visitDateStr);
+
   const handleAdjustTotalGotIn = async (e, delta) => {
     e.stopPropagation();
     if (!isAdmin || isUpdatingTotalGotIn) return;
@@ -221,10 +226,12 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
 
       {/* Middle Section: Main info - Flex grow to push footer down */}
       <div className="flex-1 flex flex-col min-w-0 gap-3">
-        <div className="company-info text-sm flex-shrink-0 leading-relaxed break-words">
-          <span className="font-semibold text-theme-secondary">Date of visit: </span>
-          <span className="text-theme-muted">{company.date_of_visit || "TBA"}</span>
-        </div>
+        {showDateOfVisit && (
+          <div className="company-info text-sm flex-shrink-0 leading-relaxed break-words">
+            <span className="font-semibold text-theme-secondary">Date of visit: </span>
+            <span className="text-theme-muted">{visitDateStr}</span>
+          </div>
+        )}
 
         <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
           <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>

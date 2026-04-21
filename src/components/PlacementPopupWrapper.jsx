@@ -20,7 +20,6 @@ const COMPANY_FIELDS = [
   'company5',
   'Company',
   'company',
-  'primaryCompanyName',
 ];
 /** Max time the popup stays open while not hovering the card (hover pauses the timer). */
 const POPUP_MAX_ACTIVE_MS = 60_000;
