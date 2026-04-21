@@ -62,11 +62,6 @@ export const PremiumProvider = ({ children }) => {
     setLoading(false);
   };
 
-  const hasVideoAccess = () => {
-    return isPremium;
-  };
-
-
   // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
   const refreshPremiumStatus = async () => {
     // Only refresh if user is logged in
@@ -120,7 +115,6 @@ export const PremiumProvider = ({ children }) => {
     isPremium,
     membershipType,
     loading,
-    hasVideoAccess,
     refreshPremiumStatus,
   };
 
