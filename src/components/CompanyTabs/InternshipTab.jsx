@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import rvceLogo from "../../assets/logo2.png";
+import rvLogo from "../../assets/logo2.png";
+import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
 function InternshipTab({ company }) {
   const [showModal, setShowModal] = useState(false);
   const [experienceText, setExperienceText] = useState("");
+  const [submissionFeedback, setSubmissionFeedback] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,13 +25,19 @@ function InternshipTab({ company }) {
 
       if (!res.ok) throw new Error("Failed to submit");
       const data = await res.json();
-      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setSubmissionFeedback({
+        variant: "success",
+        message: data.message || MESSAGES.SUBMISSION_SUCCESS,
+      });
 
       setExperienceText("");
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      alert(MESSAGES.SUBMISSION_ERROR);
+      setSubmissionFeedback({
+        variant: "error",
+        message: MESSAGES.SUBMISSION_ERROR,
+      });
     }
   };
 
@@ -141,12 +149,14 @@ function InternshipTab({ company }) {
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <div className="flex flex-col items-center text-center gap-3 mb-4">
-              <img
-                src={rvceLogo}
-                alt="RVCE"
-                className="h-11 w-auto max-w-[200px] object-contain object-center"
-              />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                <img
+                  src={rvLogo}
+                  alt="RV College logo"
+                  className="h-full w-full object-contain"
+                />
+              </div>
               <h3 className="text-lg font-semibold text-indigo-400">Add Internship Experience</h3>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -176,6 +186,13 @@ function InternshipTab({ company }) {
           </div>
         </div>
       )}
+
+      <SubmissionFeedbackModal
+        open={submissionFeedback !== null}
+        onClose={() => setSubmissionFeedback(null)}
+        variant={submissionFeedback?.variant}
+        statusMessage={submissionFeedback?.message}
+      />
     </div>
   );
 }

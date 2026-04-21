@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import rvLogo from "../../assets/logo2.png";
+import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
 function MustDoTab({ company = {} }) {
   const [showModal, setShowModal] = useState(false);
   const [topic, setTopic] = useState("");
+  const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const topics = company.Must_Do_Topics ?? [];
 
   const handleSubmit = async (e) => {
@@ -23,13 +25,19 @@ function MustDoTab({ company = {} }) {
 
       if (!res.ok) throw new Error("Failed to submit");
       const data = await res.json();
-      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setSubmissionFeedback({
+        variant: "success",
+        message: data.message || MESSAGES.SUBMISSION_SUCCESS,
+      });
 
       setTopic("");
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      alert(MESSAGES.SUBMISSION_ERROR);
+      setSubmissionFeedback({
+        variant: "error",
+        message: MESSAGES.SUBMISSION_ERROR,
+      });
     }
   };
 
@@ -110,6 +118,13 @@ function MustDoTab({ company = {} }) {
           </div>
         </div>
       )}
+
+      <SubmissionFeedbackModal
+        open={submissionFeedback !== null}
+        onClose={() => setSubmissionFeedback(null)}
+        variant={submissionFeedback?.variant}
+        statusMessage={submissionFeedback?.message}
+      />
     </div>
   );
 }

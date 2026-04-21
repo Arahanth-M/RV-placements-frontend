@@ -14,7 +14,6 @@ import OATab from "./CompanyTabs/OATab";
 import CodingTab from "./CompanyTabs/CodingTab";
 import InterviewTab from "./CompanyTabs/InterviewTab";
 import MustDoTab from "./CompanyTabs/MustDoTab";
-import VideoTab from "./CompanyTabs/VideoTab";
 import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
@@ -183,7 +182,6 @@ function CompanyDetails() {
     { id: "mustdo", label: "Must Do Topics" },
   ];
   const optionalCompanyNavTabs = [];
-  if (company.videoUrl) optionalCompanyNavTabs.push({ id: "video", label: "Video" });
   if (hasInterviewQuestions) {
     optionalCompanyNavTabs.push({ id: "offcampus", label: "Off-Campus Questions" });
   }
@@ -350,7 +348,6 @@ function CompanyDetails() {
           />
         )}
         {activeTab === "mustdo" && <MustDoTab company={company} />}
-        {activeTab === "video" && <VideoTab videoUrl={company.videoUrl} />}
         {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
       </div>
     </div>

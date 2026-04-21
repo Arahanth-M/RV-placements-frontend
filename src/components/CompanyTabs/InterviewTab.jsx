@@ -90,6 +90,7 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.png";
 
 function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
@@ -107,6 +108,7 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   const [editIPIndex, setEditIPIndex] = useState(null);
   const [editIPContent, setEditIPContent] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [submissionFeedback, setSubmissionFeedback] = useState(null);
 
   // Normalize interview questions
   const interviewQuestions = Array.isArray(company.interviewQuestions)
@@ -449,13 +451,19 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
 
       if (!res.ok) throw new Error("Failed to submit interview question");
       const data = await res.json();
-      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setSubmissionFeedback({
+        variant: "success",
+        message: data.message || MESSAGES.SUBMISSION_SUCCESS,
+      });
       setNewInterviewQuestion("");
       setNewInterviewSolution("");
       setShowAddQuestionModal(false);
     } catch (err) {
       console.error(err);
-      alert(MESSAGES.SUBMISSION_ERROR);
+      setSubmissionFeedback({
+        variant: "error",
+        message: MESSAGES.SUBMISSION_ERROR,
+      });
     }
   };
 
@@ -475,12 +483,18 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
 
       if (!res.ok) throw new Error("Failed to submit interview process");
       const data = await res.json();
-      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setSubmissionFeedback({
+        variant: "success",
+        message: data.message || MESSAGES.SUBMISSION_SUCCESS,
+      });
       setNewInterviewProcess("");
       setShowAddProcessModal(false);
     } catch (err) {
       console.error(err);
-      alert(MESSAGES.SUBMISSION_ERROR);
+      setSubmissionFeedback({
+        variant: "error",
+        message: MESSAGES.SUBMISSION_ERROR,
+      });
     }
   };
 
@@ -881,6 +895,13 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
           </div>
         </div>
       )}
+
+      <SubmissionFeedbackModal
+        open={submissionFeedback !== null}
+        onClose={() => setSubmissionFeedback(null)}
+        variant={submissionFeedback?.variant}
+        statusMessage={submissionFeedback?.message}
+      />
     </div>
   );
 }

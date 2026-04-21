@@ -273,6 +273,7 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.png";
 
 function OATab({ company, isAdmin, onCompanyUpdate }) {
@@ -286,6 +287,7 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
   const [editQuestion, setEditQuestion] = useState("");
   const [editSolution, setEditSolution] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [submissionFeedback, setSubmissionFeedback] = useState(null);
 
   const safeCompany = company || {};
 
@@ -305,14 +307,20 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
 
       if (!res.ok) throw new Error("Failed to submit");
       const data = await res.json();
-      alert(data.message || MESSAGES.SUBMISSION_SUCCESS);
+      setSubmissionFeedback({
+        variant: "success",
+        message: data.message || MESSAGES.SUBMISSION_SUCCESS,
+      });
 
       setQuestion("");
       setSolution("");
       setShowModal(false);
     } catch (err) {
       console.error(err);
-      alert(MESSAGES.SUBMISSION_ERROR);
+      setSubmissionFeedback({
+        variant: "error",
+        message: MESSAGES.SUBMISSION_ERROR,
+      });
     }
   };
 
@@ -804,6 +812,13 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
           </div>
         </div>
       )}
+
+      <SubmissionFeedbackModal
+        open={submissionFeedback !== null}
+        onClose={() => setSubmissionFeedback(null)}
+        variant={submissionFeedback?.variant}
+        statusMessage={submissionFeedback?.message}
+      />
     </div>
   );
 }

@@ -34,6 +34,9 @@ export const API_ENDPOINTS = {
 export const MESSAGES = {
   BACKEND_PORT_ERROR: (port) => `❌ Error: ${createError()}\n\nPlease check if the backend server is running on port ${port}.`,
   SUBMISSION_SUCCESS: "Submission received and pending approval.",
+  /** Shown in the submission success dialog alongside the server status message. */
+  SUBMISSION_CONTRIBUTION_NOTE:
+    "Your contribution is highly valued. Thousands of RVCEians will benefit from your response.",
   SUBMISSION_ERROR: "Something went wrong. Try again.",
   VALIDATION_ERRORS: {
     COMPANY_NAME: "Invalid company name. Use 2–50 letters/numbers only.",
