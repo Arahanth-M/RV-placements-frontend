@@ -275,6 +275,7 @@ import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.png";
+import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
 function OATab({ company, isAdmin, onCompanyUpdate }) {
   const [showModal, setShowModal] = useState(false);
@@ -480,30 +481,6 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
           return obj[otherKeys[0]];
         }
         return JSON.stringify(obj);
-      };
-
-      // Helper to extract solution from string if it contains both
-      const stripQuestionMarkers = (str) => {
-        if (typeof str !== "string") return str;
-        
-        // Common patterns where both question and solution are in the same string
-        // Case-insensitive search for "Solution:", "Answer:", etc.
-        const markers = [
-          /\bsolution\s*[:=-]\s*/i,
-          /\banswer\s*[:=-]\s*/i,
-          /\bans\s*[:=-]\s*/i,
-          /\boutput\s*[:=-]\s*/i,
-          /\bcode\s*[:=-]\s*/i,
-        ];
-
-        for (const marker of markers) {
-          const match = str.match(marker);
-          if (match) {
-            // Take everything AFTER the marker
-            return str.substring(match.index + match[0].length).trim();
-          }
-        }
-        return str;
       };
 
       // Handle different input formats

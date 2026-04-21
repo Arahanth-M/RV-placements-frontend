@@ -92,6 +92,7 @@ import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.png";
+import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
 function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
@@ -275,12 +276,13 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
             } catch {
               // If still can't parse, try regex extraction of answer/answers
               const extracted = extractAnswerFromJsonish(trimmed);
-              processedSol = extracted || trimmed.slice(1, -1);
+              processedSol =
+                extracted || stripQuestionMarkers(trimmed.slice(1, -1));
             }
           } else {
             // Try regex extraction of answer/answers before falling back
             const extracted = extractAnswerFromJsonish(sol);
-            processedSol = extracted || sol;
+            processedSol = extracted || stripQuestionMarkers(sol);
           }
         }
       } else if (Array.isArray(sol) && sol.length > 0) {
