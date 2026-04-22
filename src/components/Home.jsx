@@ -193,7 +193,7 @@ function Home() {
     },
     {
       title: "Performance Analysis",
-      text: "Get the performance analysis of the students in the interviews along with the strengths and weaknesses.",
+      text: "Get the performance analysis in the interviews along with the strengths and weaknesses.",
     },
     {
       title: "Company Stats",
@@ -211,7 +211,7 @@ function Home() {
   const stats = [
     { value: 100, suffix: "+", label: "Companies Listed", duration: 1600 },
     { value: 200, suffix: "+", label: "Interview Experiences and Questions", duration: 1800 },
-    { value: 3, suffix: "+", label: "Years of Data", duration: 1000 },
+    { value: 2, suffix: "+", label: "Years of Data", duration: 1000 },
     { value: 4, suffix: "+", label: "Active Features", duration: 1000 },
   ];
 
@@ -264,8 +264,7 @@ function Home() {
                 <span className="text-theme-accent">Placement Dashboard</span>{" "}
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-theme-secondary leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8">
-                Company insights, interview experiences, curated resources, and
-                senior guidance. Everything you need to ace placements at RVCE.
+                Your all-in-one placement companion at RVCE. Access company insights, real interview experiences, curated resources and AI-powered mock interviews to prepare smarter.
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <a
@@ -341,7 +340,7 @@ function Home() {
             kicker="The Problem"
             title="Challenges Students"
             titleAccent="Face"
-            subtitle="Placement prep shouldn’t be a guessing game. Here’s what gets in the way—and why we built this dashboard."
+            subtitle="Placement prep shouldn’t be a guessing game. Here’s what gets in the way and why we built this dashboard."
             id="home-problem-heading"
           />
           <div className="grid sm:grid-cols-2 gap-6 sm:gap-8">
@@ -396,7 +395,7 @@ function Home() {
             kicker="Our Solution"
             title="What We"
             titleAccent="Provide"
-            subtitle="Tools built around real interview data and community—so you prepare with context, not guesswork."
+            subtitle="Tools built around real interview data and community, so that you prepare with context, not guesswork."
             id="home-solution-heading"
           />
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -430,7 +429,7 @@ function Home() {
         <div className="py-10 sm:py-14 overflow-hidden bg-theme-card border-y border-theme">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <h3 className="text-center text-xl sm:text-2xl font-bold text-theme-primary mb-8">
-              Recruiters
+              Companies
             </h3>
           </div>
           <div className="relative w-full overflow-hidden">
@@ -489,7 +488,7 @@ function Home() {
             kicker="What's Next"
             title="Our Future"
             titleAccent="Vision"
-            subtitle="We’re not done—here’s what we’re working toward to keep the platform indispensable for every batch."
+            subtitle="We’re not done, here’s what we’re working toward to keep the platform indispensable for every batch."
             id="home-next-heading"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 max-w-5xl mx-auto">
