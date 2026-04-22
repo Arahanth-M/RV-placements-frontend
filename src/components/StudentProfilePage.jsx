@@ -51,12 +51,21 @@ const StudentProfilePage = () => {
 
   // Format key for display (convert camelCase/PascalCase to readable format)
   const formatKey = (key) => {
-    // Replace underscores and convert to title case
-    return key
+    const spaced = String(key || "")
       .replace(/_/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .trim();
+
+    if (!spaced) return '';
+
+    return spaced
+      .split(/\s+/)
+      .map((word) => {
+        // Preserve acronyms like USN, CGPA, DOB.
+        if (/^[A-Z0-9]{2,}$/.test(word)) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
   };
 
   // Get display value
@@ -67,12 +76,38 @@ const StudentProfilePage = () => {
     return String(value);
   };
 
-  // Filter keys as requested
-  const validKeys = Object.keys(profileData).filter(key => key && key !== "_id" && key !== "__v");
-
   // Never show internal / redundant fields in the profile UI
-  const hiddenProfileKeys = new Set(["companyid", "placementcompanies"]);
-  const isHiddenProfileKey = (key) => hiddenProfileKeys.has(String(key).toLowerCase());
+  const hiddenProfileKeys = new Set([
+    "companyid",
+    "placementcompanies",
+    "primarycompanyname",
+    "company",
+  ]);
+  const normalizeProfileKey = (key) =>
+    String(key || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const isHiddenProfileKey = (key) => hiddenProfileKeys.has(normalizeProfileKey(key));
+
+  const isFieldAvailable = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === "string") return value.trim().length > 0;
+    if (Array.isArray(value)) return value.some((item) => isFieldAvailable(item));
+    if (typeof value === "object") {
+      return Object.values(value).some((item) => isFieldAvailable(item));
+    }
+    return true;
+  };
+
+  // Show only meaningful, non-empty fields
+  const validKeys = Object.keys(profileData).filter(
+    (key) =>
+      key &&
+      key !== "_id" &&
+      key !== "__v" &&
+      !isHiddenProfileKey(key) &&
+      isFieldAvailable(profileData[key])
+  );
 
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
@@ -80,7 +115,6 @@ const StudentProfilePage = () => {
   
   const otherFields = validKeys.filter(
     key =>
-      !isHiddenProfileKey(key) &&
       !personalInfoFields.some(f => key.toLowerCase().includes(f.toLowerCase())) &&
       !academicFields.some(f => key.toLowerCase().includes(f.toLowerCase()))
   );

@@ -11,12 +11,21 @@ const StudentProfile = ({ studentData, onClose }) => {
     // Skip MongoDB internal fields
     if (key === '_id' || key === '__v') return null;
     
-    // Replace underscores and convert to title case
-    return key
+    const spaced = String(key || '')
       .replace(/_/g, ' ')
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
       .trim();
+
+    if (!spaced) return null;
+
+    return spaced
+      .split(/\s+/)
+      .map((word) => {
+        // Preserve acronyms like USN, CGPA, DOB.
+        if (/^[A-Z0-9]{2,}$/.test(word)) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
   };
 
   // Get display value
@@ -27,11 +36,35 @@ const StudentProfile = ({ studentData, onClose }) => {
     return String(value);
   };
 
+  // Never show internal/redundant company fields in profile UI
+  const hiddenProfileKeys = new Set([
+    'companyid',
+    'placementcompanies',
+    'primarycompanyname',
+    'company',
+  ]);
+  const normalizeProfileKey = (key) =>
+    String(key || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  const isHiddenProfileKey = (key) => hiddenProfileKeys.has(normalizeProfileKey(key));
+  const isFieldAvailable = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (Array.isArray(value)) return value.some((item) => isFieldAvailable(item));
+    if (typeof value === 'object') {
+      return Object.values(value).some((item) => isFieldAvailable(item));
+    }
+    return true;
+  };
+
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
   const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
   const otherFields = Object.keys(studentData).filter(
-    key => !['_id', '__v'].includes(key) && 
+    key => !['_id', '__v'].includes(key) &&
+    !isHiddenProfileKey(key) &&
+    isFieldAvailable(studentData[key]) &&
     !personalInfoFields.some(f => key.toLowerCase().includes(f.toLowerCase())) &&
     !academicFields.some(f => key.toLowerCase().includes(f.toLowerCase()))
   );
@@ -83,7 +116,9 @@ const StudentProfile = ({ studentData, onClose }) => {
         <div className="overflow-y-auto flex-1 p-6">
           <div className="space-y-6">
             {/* Personal Information Section */}
-            {Object.keys(studentData).some(key => getFieldCategory(key) === 'personal') && (
+            {Object.keys(studentData).some(
+              key => !isHiddenProfileKey(key) && isFieldAvailable(studentData[key]) && getFieldCategory(key) === 'personal'
+            ) && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <FaIdCard className="text-indigo-400" />
@@ -91,7 +126,7 @@ const StudentProfile = ({ studentData, onClose }) => {
                 </div>
                 <div className="space-y-3">
                   {Object.entries(studentData)
-                    .filter(([key]) => getFieldCategory(key) === 'personal')
+                    .filter(([key, value]) => !isHiddenProfileKey(key) && isFieldAvailable(value) && getFieldCategory(key) === 'personal')
                     .map(([key, value]) => renderField(key, value))
                   }
                 </div>
@@ -99,7 +134,9 @@ const StudentProfile = ({ studentData, onClose }) => {
             )}
 
             {/* Academic Information Section */}
-            {Object.keys(studentData).some(key => getFieldCategory(key) === 'academic') && (
+            {Object.keys(studentData).some(
+              key => !isHiddenProfileKey(key) && isFieldAvailable(studentData[key]) && getFieldCategory(key) === 'academic'
+            ) && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <FaGraduationCap className="text-indigo-400" />
@@ -107,7 +144,7 @@ const StudentProfile = ({ studentData, onClose }) => {
                 </div>
                 <div className="space-y-3">
                   {Object.entries(studentData)
-                    .filter(([key]) => getFieldCategory(key) === 'academic')
+                    .filter(([key, value]) => !isHiddenProfileKey(key) && isFieldAvailable(value) && getFieldCategory(key) === 'academic')
                     .map(([key, value]) => renderField(key, value))
                   }
                 </div>
