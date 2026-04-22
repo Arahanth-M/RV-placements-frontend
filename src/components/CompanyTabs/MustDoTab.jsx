@@ -47,7 +47,8 @@ function MustDoTab({ company = {} }) {
         <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
           Must Do Topics
           <button
-            className="flex items-center space-x-1.5 rounded-lg bg-theme-accent px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:opacity-90"
+            type="button"
+            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium"
             onClick={() => setShowModal(true)}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

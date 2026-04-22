@@ -1640,12 +1640,12 @@ function AIInterviewTab({
             (!showStartPrompt && status === "in_progress") ||
             interviewCompleted
           }
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+          className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium ${
             loading ||
             (!showStartPrompt && status === "in_progress") ||
             interviewCompleted
-              ? "bg-theme-card text-theme-muted cursor-not-allowed"
-              : "border border-theme-accent bg-theme-hero text-theme-accent shadow-sm"
+              ? "bg-slate-700 text-slate-400 cursor-not-allowed shadow-none"
+              : "bg-indigo-600 hover:bg-indigo-700 text-white"
           }`}
         >
           {showStartPrompt ? "Start Interview" : "Reset"}
