@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser } from "react-icons/fa";
+import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaBookOpen, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser } from "react-icons/fa";
 import { useTheme } from "../utils/ThemeContext";
 import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.png";
@@ -419,6 +419,17 @@ const Sidebar = () => {
                   >
                     <FaTrophy className="w-4 h-4 mr-2" />
                     Leaderboard
+                  </Link>
+                  <Link
+                    to="/user-manual"
+                    onClick={() => {
+                      setShowStudentsCornerMenu(false);
+                      setIsVisible(false);
+                    }}
+                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                  >
+                    <FaBookOpen className="w-4 h-4 mr-2" />
+                    User Manual
                   </Link>
                   <Link
                     to="/feedback"

@@ -1,8 +1,7 @@
 import React from "react";
 import { FaArrowLeft, FaExternalLinkAlt, FaComments } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-
-const DUMMY_FEEDBACK_FORM_URL = "https://forms.google.com/dummy-feedback-link";
+import { FEEDBACK_FORM_URL } from "../utils/constants";
 
 function Feedback() {
   const navigate = useNavigate();
@@ -43,7 +42,7 @@ function Feedback() {
               your thoughts.
             </p>
             <a
-              href={DUMMY_FEEDBACK_FORM_URL}
+              href={FEEDBACK_FORM_URL}
               target="_blank"
               rel="noreferrer"
               className="mt-4 inline-flex items-center gap-2 rounded-lg border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent shadow-sm transition-colors hover:opacity-90 transition-opacity shadow-lg"

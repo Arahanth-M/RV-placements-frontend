@@ -28,6 +28,7 @@ import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
 import Feedback from "./components/Feedback";
+import UserManual from "./components/UserManual";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
 function ScrollToTop() {
@@ -63,14 +64,8 @@ function AppShell() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/feedback"
-            element={
-              <ProtectedRoute>
-                <Feedback />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/feedback" element={<Feedback />} />
+          <Route path="/user-manual" element={<UserManual />} />
           <Route
             path="/companies/:id"
             element={

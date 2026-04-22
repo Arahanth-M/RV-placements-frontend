@@ -57,6 +57,13 @@ export const BETA_JOIN_FORM_URL =
     String(process.env.REACT_APP_BETA_JOIN_FORM_URL).trim()) ||
   "https://docs.google.com/forms/d/e/1FAIpQLScRXllJ4WmuiIPicffKS4y3amX-6gjOMu31yGMu4XZeKaMukg/viewform?usp=dialog";
 
+/** Student feedback (Google Form). Set `REACT_APP_FEEDBACK_FORM_URL` in `.env` to override. */
+export const FEEDBACK_FORM_URL =
+  (typeof process !== "undefined" &&
+    process.env.REACT_APP_FEEDBACK_FORM_URL &&
+    String(process.env.REACT_APP_FEEDBACK_FORM_URL).trim()) ||
+  "https://docs.google.com/forms/d/e/1FAIpQLSfiUSw6yFFy-id7_jRv-GKGS3cBcvYPKY-zN7NalR7TqZxvIQ/viewform?usp=publish-editor";
+
 // Configuration
 const FRONTEND_PORT = 5173;
 export const CONFIG = {

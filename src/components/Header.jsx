@@ -11,6 +11,7 @@ import {
   FaBook,
   FaComments,
   FaTrophy,
+  FaBookOpen,
   FaUserShield,
   FaTachometerAlt,
   FaExclamationCircle,
@@ -33,6 +34,7 @@ const studentCornerLinks = [
   { label: "AI Interviews", path: "/interviews", icon: FaComments },
   { label: "Resources", path: "/resources", icon: FaBook },
   { label: "Leaderboard", path: "/leaderboard", icon: FaTrophy },
+  { label: "User Manual", path: "/user-manual", icon: FaBookOpen },
 ];
 
 /** Shown in header chip; admins usually have no studentData — use username or email local-part. */
