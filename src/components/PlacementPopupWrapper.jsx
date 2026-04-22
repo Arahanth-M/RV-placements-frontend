@@ -223,7 +223,7 @@ const PlacementPopupWrapper = () => {
             <p className="text-theme-secondary text-sm mb-3">
               {isPlacementPopup
                 ? 'for successfully getting the opportunity to be part of:'
-                : 'Fill the beta access form to join the platform. After submitting the form, wait a few seconds and then log out and sign in again to activate your beta access. If you are a non-CSE student, we are extending access to your branch soon.'}
+                : 'Fill the beta access form to join the platform. After submitting the form, wait a few seconds and then log out and sign in again to activate your beta access. If you are a non-CSE student, we are extending access to your branch soon. A beta test is going on for the 22 batch, other batches can start using the platform very shortly'}
             </p>
 
             {!isPlacementPopup ? (
@@ -243,13 +243,15 @@ const PlacementPopupWrapper = () => {
                 {companyNames.map((name, idx) => (
                   <span
                     key={`${name}-${idx}`}
-                    className="px-3 py-1 text-xs rounded-full border transition hover:scale-105"
+                    className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 hover:scale-105 hover:-translate-y-0.5"
                     style={{
                       background:
-                        'color-mix(in srgb, var(--accent) 12%, transparent)',
+                        'color-mix(in srgb, var(--accent) 22%, transparent)',
                       borderColor:
-                        'color-mix(in srgb, var(--accent) 35%, transparent)',
-                      color: 'var(--text-primary)',
+                        'color-mix(in srgb, var(--accent) 55%, transparent)',
+                      color: 'var(--accent)',
+                      boxShadow:
+                        '0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent)',
                     }}
                   >
                     {name}
