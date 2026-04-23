@@ -282,7 +282,15 @@ function NotificationBell() {
               </div>
             ) : (
               <div className="divide-y divide-theme">
-                {notifications.map((notification) => (
+                {notifications.map((notification) => {
+                  const isCompanyApproved = notification.type === "COMPANY_APPROVED";
+                  const companyNameOnly = (() => {
+                    const raw = notification.payload?.companyName;
+                    if (typeof raw === "string" && raw.trim()) return raw.trim();
+                    const t = String(notification.title || "").trim();
+                    return t.replace(/\s+approved\s*$/i, "").trim() || t;
+                  })();
+                  return (
                   <div
                     key={notification._id}
                     className={`px-3 sm:px-4 py-3.5 sm:py-4 hover:bg-theme-card-hover transition-colors cursor-pointer group ${
@@ -298,11 +306,37 @@ function NotificationBell() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2">
-                          <p className={`font-semibold text-[13px] sm:text-sm leading-tight transition-colors ${
-                            !notification.isSeen ? "text-theme-primary" : "text-theme-secondary"
-                          }`}>
-                            {notification.title}
-                          </p>
+                          {isCompanyApproved ? (
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-[15px] sm:text-base font-bold leading-snug tracking-tight ${
+                                  !notification.isSeen
+                                    ? "text-theme-primary"
+                                    : "text-theme-secondary"
+                                }`}
+                              >
+                                {companyNameOnly}
+                              </p>
+                              <p
+                                className={`mt-1.5 text-[13px] sm:text-sm leading-relaxed ${
+                                  !notification.isSeen
+                                    ? "text-theme-secondary"
+                                    : "text-theme-muted"
+                                }`}
+                              >
+                                It is approved. A new company has been added — please check
+                                it out.
+                              </p>
+                            </div>
+                          ) : (
+                            <p
+                              className={`font-semibold text-[13px] sm:text-sm leading-tight transition-colors ${
+                                !notification.isSeen ? "text-theme-primary" : "text-theme-secondary"
+                              }`}
+                            >
+                              {notification.title}
+                            </p>
+                          )}
                           <button
                             onClick={(e) => handleDeleteNotification(notification._id, e)}
                             className="flex-shrink-0 text-theme-muted hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100"
@@ -311,28 +345,33 @@ function NotificationBell() {
                             <FaTimes className="w-3 h-3" />
                           </button>
                         </div>
-                        <p className="text-theme-secondary text-[13px] sm:text-sm mt-1 leading-relaxed">
-                          {notification.message ||
-                            notification.body ||
-                            (notification.payload?.companyName
-                              ? `${notification.payload.companyName} is now available`
-                              : "")}
-                        </p>
-                        <p className="text-[10px] text-theme-muted mt-2 font-medium uppercase tracking-wider">
-                          {new Date(notification.createdAt).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }
-                          )}
-                        </p>
+                        {!isCompanyApproved && (
+                          <>
+                            <p className="text-theme-secondary text-[13px] sm:text-sm mt-1 leading-relaxed">
+                              {notification.message ||
+                                notification.body ||
+                                (notification.payload?.companyName
+                                  ? `${notification.payload.companyName} is now available`
+                                  : "")}
+                            </p>
+                            <p className="text-[10px] text-theme-muted mt-2 font-medium uppercase tracking-wider">
+                              {new Date(notification.createdAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

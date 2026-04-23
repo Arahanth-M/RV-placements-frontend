@@ -405,21 +405,38 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
     }
   };
 
+  /** React cannot render objects/arrays as text; keeps DB payload unchanged, only coerces for display. */
+  const normalizeOaDisplayString = (value) => {
+    if (value == null) return "";
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return String(value);
+      }
+    }
+    return String(value);
+  };
+
   // Normalize questions & solutions
   const parsedQuestions =
     safeCompany.onlineQuestions?.map((qa) => {
       if (!qa) return "";
-      if (typeof qa === "string") return qa;
-      if (typeof qa === "object" && qa.question) return qa.question;
+      if (typeof qa === "string") return normalizeOaDisplayString(qa);
+      if (typeof qa === "object" && qa != null && qa.question != null) {
+        return normalizeOaDisplayString(qa.question);
+      }
       try {
         const parsed = JSON.parse(qa);
-        if (typeof parsed === "string") return parsed;
-        if (parsed && typeof parsed === "object" && parsed.question) {
-          return parsed.question;
+        if (typeof parsed === "string") return normalizeOaDisplayString(parsed);
+        if (parsed && typeof parsed === "object" && parsed.question != null) {
+          return normalizeOaDisplayString(parsed.question);
         }
-        return String(qa);
+        return normalizeOaDisplayString(String(qa));
       } catch {
-        return String(qa);
+        return normalizeOaDisplayString(qa);
       }
     }) || [];
 
@@ -513,8 +530,12 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
       } else {
         processedSol = String(sol);
       }
-      
-      return unescapeString(processedSol);
+
+      const afterUnescape =
+        typeof processedSol === "string"
+          ? unescapeString(processedSol)
+          : processedSol;
+      return normalizeOaDisplayString(afterUnescape);
     }) || [];
 
   return (

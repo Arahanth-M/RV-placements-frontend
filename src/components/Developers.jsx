@@ -1,19 +1,38 @@
 import React from "react";
-import {
-  FaUser,
-  FaLinkedin,
-  FaGithub,
-  FaEnvelope,
-  FaGlobe,
-} from "react-icons/fa";
+import { FaUser, FaLinkedin, FaGithub } from "react-icons/fa";
 
 const developers = [
   {
-    name: "Arahanth M",
-    photo: "/developers/arahanth.jpg",
+    name: "Akshatha A",
+    role: "Frontend developer",
+    photo: "/developers/akshatha.jpeg",
     social: {
-      linkedin: "https://www.linkedin.com/in/arahanth-m-4379731b5",
+      linkedin: "https://www.linkedin.com/in/akshatha-anil-871b5825b/",
+      github: "https://github.com/akshatha-anil07",
+      email: "",
+      website: "",
+    },
+  },
+  {
+    name: "Arahanth M",
+    role: "Software Product Developer",
+    photo: "/developers/arahanth.jpeg",
+    social: {
+      linkedin: "https://www.linkedin.com/in/arahanth-m-4379731b5/",
       github: "https://github.com/Arahanth-M",
+      email: "",
+      website: "",
+    },
+  },
+  {
+    name: "Darshan Kashyap N",
+    role: "Business Development & Outreach",
+    photo: "/developers/darshan.jpeg",
+    /** Favor lower half of image (crop more from top) */
+    photoObjectClass: "object-bottom",
+    social: {
+      linkedin: "https://www.linkedin.com/in/darshan-kashyap-n-5032012a4/",
+      github: "https://github.com/darshankashyapn",
       email: "",
       website: "",
     },
@@ -30,22 +49,28 @@ function initialsFromName(name) {
     .toUpperCase();
 }
 
-function DevCardHero({ name, photo }) {
+/** Fixed height so every card shows the same photo area size. */
+const PHOTO_H = "h-[240px] min-h-[240px] sm:h-[280px] sm:min-h-[280px]";
+
+function DevCardHero({ name, photo, photoObjectClass }) {
   const [imageFailed, setImageFailed] = React.useState(false);
   const showPhoto = Boolean(photo) && !imageFailed;
+  const positionClass = photoObjectClass?.trim() || "object-center";
 
   return (
-    <div className="relative min-h-0 flex-1 w-full bg-neutral-200">
+    <div
+      className={`relative w-full shrink-0 overflow-hidden border-b border-theme bg-theme-hero ${PHOTO_H}`}
+    >
       {showPhoto ? (
         <img
           src={photo}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-top"
+          alt={name}
+          className={`h-full w-full object-cover ${positionClass}`}
           onError={() => setImageFailed(true)}
         />
       ) : (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-violet-600 text-5xl font-bold text-white sm:text-6xl"
+          className="flex h-full w-full items-center justify-center bg-theme-accent/90 text-5xl font-bold text-white sm:text-6xl"
           aria-hidden
         >
           {initialsFromName(name)}
@@ -64,66 +89,41 @@ function normalizeWebHref(raw) {
   return `https://${s}`;
 }
 
-function DevSocialRow({ social }) {
-  const items = [
-    {
-      key: "linkedin",
-      href: normalizeWebHref(social?.linkedin),
-      Icon: FaLinkedin,
-      label: "LinkedIn",
-    },
-    {
-      key: "github",
-      href: normalizeWebHref(social?.github),
-      Icon: FaGithub,
-      label: "GitHub",
-    },
-    {
-      key: "email",
-      href: (() => {
-        const raw = social?.email?.trim() ?? "";
-        if (!raw) return "";
-        return raw.startsWith("mailto:") ? raw : `mailto:${raw}`;
-      })(),
-      Icon: FaEnvelope,
-      label: "Email",
-    },
-    {
-      key: "website",
-      href: normalizeWebHref(social?.website),
-      Icon: FaGlobe,
-      label: "Website",
-    },
-  ];
+function DevSocialLinks({ social }) {
+  const linkedin = normalizeWebHref(social?.linkedin);
+  const github = normalizeWebHref(social?.github);
 
   return (
-    <div className="flex shrink-0 items-center gap-4 sm:gap-5 text-neutral-900">
-      {items.map(({ key, href, Icon, label }) => {
-        const icon = (
-          <Icon className="h-5 w-5 sm:h-[22px] sm:w-[22px]" aria-hidden />
-        );
-        if (!href) {
-          return (
-            <span key={key} className="opacity-25" aria-hidden>
-              {icon}
-            </span>
-          );
-        }
-        const isMail = href.startsWith("mailto:");
-        return (
-          <a
-            key={key}
-            href={href}
-            {...(isMail
-              ? {}
-              : { target: "_blank", rel: "noopener noreferrer" })}
-            aria-label={label}
-            className="transition-opacity hover:opacity-65"
-          >
-            {icon}
-          </a>
-        );
-      })}
+    <div
+      className="mt-4 flex w-full flex-wrap items-center justify-center gap-2.5 border-t border-theme pt-4"
+      role="list"
+    >
+      {linkedin ? (
+        <a
+          href={linkedin}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={linkedin}
+          aria-label={`Open LinkedIn: ${linkedin}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#0A66C2] text-white shadow-sm ring-1 ring-black/10 transition hover:scale-105 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A66C2] dark:ring-white/10"
+          role="listitem"
+        >
+          <FaLinkedin className="h-4 w-4" aria-hidden />
+        </a>
+      ) : null}
+      {github ? (
+        <a
+          href={github}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={github}
+          aria-label={`Open GitHub: ${github}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 text-white shadow-sm ring-1 ring-black/10 transition hover:scale-105 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-600 dark:bg-zinc-200 dark:text-zinc-900 dark:ring-white/20 dark:focus-visible:outline-zinc-300"
+          role="listitem"
+        >
+          <FaGithub className="h-4 w-4" aria-hidden />
+        </a>
+      ) : null}
     </div>
   );
 }
@@ -132,15 +132,24 @@ function DeveloperProfileCard({ developer }) {
   const { social } = developer;
 
   return (
-    <article className="flex h-[min(520px,calc(100svh-14rem))] sm:h-[min(560px,calc(100svh-13rem))] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 transition-shadow hover:shadow-xl mx-auto">
-      <DevCardHero name={developer.name} photo={developer.photo} />
+    <article className="mx-auto flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card text-center shadow-[var(--shadow-soft)] transition-shadow hover:shadow-md">
+      <DevCardHero
+        name={developer.name}
+        photo={developer.photo}
+        photoObjectClass={developer.photoObjectClass}
+      />
 
-      <footer className="flex min-h-[4.25rem] shrink-0 flex-col items-start gap-2 bg-white px-4 py-3 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
-        <h2 className="w-full text-base font-semibold tracking-tight text-neutral-900 sm:w-auto sm:text-lg">
+      <footer className="flex shrink-0 flex-col items-center bg-theme-card px-4 py-5 sm:px-6">
+        <h2 className="text-2xl font-bold tracking-tight text-theme-primary sm:text-[1.65rem]">
           {developer.name}
         </h2>
-        <div className="w-full sm:w-auto">
-          <DevSocialRow social={social} />
+        {developer.role ? (
+          <p className="mt-2 text-base font-medium leading-snug text-theme-secondary sm:text-lg">
+            {developer.role}
+          </p>
+        ) : null}
+        <div className="w-full max-w-full">
+          <DevSocialLinks social={social} />
         </div>
       </footer>
     </article>
@@ -176,7 +185,7 @@ function Developers() {
             </div>
           </div>
         ) : (
-          <div className="grid flex-1 grid-cols-1 content-start justify-items-center gap-8 lg:grid-cols-2 lg:gap-10">
+          <div className="grid flex-1 grid-cols-1 content-start justify-items-center gap-8 sm:grid-cols-2 xl:grid-cols-3 xl:gap-10">
             {developers.map((developer) => (
               <DeveloperProfileCard
                 key={developer.name}
