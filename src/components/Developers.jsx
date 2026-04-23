@@ -1,5 +1,5 @@
 import React from "react";
-import { FaUser, FaLinkedin, FaGithub } from "react-icons/fa";
+import { FaUser, FaLinkedin, FaEnvelope } from "react-icons/fa";
 
 const developers = [
   {
@@ -8,8 +8,7 @@ const developers = [
     photo: "/developers/akshatha.jpeg",
     social: {
       linkedin: "https://www.linkedin.com/in/akshatha-anil-871b5825b/",
-      github: "https://github.com/akshatha-anil07",
-      email: "",
+      email: "akshathaa.cs22@rvce.edu.in",
       website: "",
     },
   },
@@ -19,8 +18,7 @@ const developers = [
     photo: "/developers/arahanth.jpeg",
     social: {
       linkedin: "https://www.linkedin.com/in/arahanth-m-4379731b5/",
-      github: "https://github.com/Arahanth-M",
-      email: "",
+      email: "arahanthm.cs22@rvce.edu.in",
       website: "",
     },
   },
@@ -32,8 +30,7 @@ const developers = [
     photoObjectClass: "object-bottom",
     social: {
       linkedin: "https://www.linkedin.com/in/darshan-kashyap-n-5032012a4/",
-      github: "https://github.com/darshankashyapn",
-      email: "",
+      email: "darshankn.cs22@rvce.edu.in",
       website: "",
     },
   },
@@ -89,9 +86,17 @@ function normalizeWebHref(raw) {
   return `https://${s}`;
 }
 
+function normalizeEmailHref(raw) {
+  const s = raw?.trim() ?? "";
+  if (!s) return "";
+  if (s.toLowerCase().startsWith("mailto:")) return s;
+  return `mailto:${s}`;
+}
+
 function DevSocialLinks({ social }) {
   const linkedin = normalizeWebHref(social?.linkedin);
-  const github = normalizeWebHref(social?.github);
+  const email = (social?.email || "").trim();
+  const emailHref = normalizeEmailHref(email);
 
   return (
     <div
@@ -111,17 +116,15 @@ function DevSocialLinks({ social }) {
           <FaLinkedin className="h-4 w-4" aria-hidden />
         </a>
       ) : null}
-      {github ? (
+      {email && emailHref ? (
         <a
-          href={github}
-          target="_blank"
-          rel="noopener noreferrer"
-          title={github}
-          aria-label={`Open GitHub: ${github}`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 text-white shadow-sm ring-1 ring-black/10 transition hover:scale-105 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-600 dark:bg-zinc-200 dark:text-zinc-900 dark:ring-white/20 dark:focus-visible:outline-zinc-300"
+          href={emailHref}
+          title={email}
+          aria-label={`Email ${email}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-theme-accent text-white shadow-sm ring-1 ring-black/10 transition hover:scale-105 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-theme-accent dark:ring-white/10"
           role="listitem"
         >
-          <FaGithub className="h-4 w-4" aria-hidden />
+          <FaEnvelope className="h-4 w-4" aria-hidden />
         </a>
       ) : null}
     </div>

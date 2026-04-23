@@ -504,7 +504,14 @@ function Home() {
         </div>
       </section>
 
-    
+      {/* ── EDUCATIONAL DISCLAIMER MARQUEE ── */}
+      <div className="overflow-hidden border-y border-theme bg-theme-card py-3">
+        <div className="animate-marquee-full whitespace-nowrap text-sm font-semibold text-theme-secondary">
+          <span className="inline-block px-6">
+            This platform is intended strictly for educational and placement preparation purposes only.
+          </span>
+        </div>
+      </div>
 
     </div>
   );

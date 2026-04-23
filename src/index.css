@@ -970,11 +970,30 @@ html, body, #root {
   }
 
   .animate-marquee {
-    animation: marquee 40s linear infinite;
+    animation: marquee 18s linear infinite;
     display: flex;
   }
 
   .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee-full {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  .animate-marquee-full {
+    display: inline-block;
+    min-width: 100%;
+    animation: marquee-full 18s linear infinite;
+  }
+
+  .animate-marquee-full:hover {
     animation-play-state: paused;
   }
 
