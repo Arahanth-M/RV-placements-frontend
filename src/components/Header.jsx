@@ -101,7 +101,11 @@ const Header = () => {
 
   const isPathActive = (path) => {
     if (path === "/companystats") {
-      return location.pathname === path || location.pathname.startsWith("/companies");
+      return (
+        location.pathname === path ||
+        location.pathname === "/category" ||
+        location.pathname.startsWith("/companies")
+      );
     }
     return location.pathname === path;
   };

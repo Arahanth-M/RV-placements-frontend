@@ -6,7 +6,17 @@ import AnimatedLogoGrid from "../components/AnimatedLogoGrid";
 import MissingCompanyRequestModal from "../components/MissingCompanyRequestModal";
 import YearStatsTable from "../components/YearStatsTable";
 import { YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
-import { FaFilter, FaCalendarAlt, FaArrowLeft, FaRegStar, FaMedal, FaChevronRight } from "react-icons/fa";
+import {
+  FaFilter,
+  FaCalendarAlt,
+  FaArrowLeft,
+  FaRegStar,
+  FaMedal,
+  FaChevronRight,
+  FaLaptopCode,
+  FaBolt,
+  FaCogs,
+} from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
 import {
@@ -17,8 +27,13 @@ import {
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
   PATH_COMPANY_CATEGORY,
   PATH_COMPANY_STATS,
+  PLACEMENT_CLUSTER_CS,
+  PLACEMENT_CLUSTER_EC,
+  PLACEMENT_CLUSTER_ME,
+  companystatsClusterCategoryUrl,
   companystatsTierListUrl,
   isPlacementTierParam,
+  normalizeClusterParam,
 } from "../constants/placementTiers.js";
 
 const PROFILE_COMPANY_FIELDS = [
@@ -158,6 +173,7 @@ function CompanyStats() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
+  const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
   const { user, isAdmin, studentData, setUser } = useAuth();
 
   const activeCategory = useMemo(
@@ -992,20 +1008,58 @@ function CompanyStats() {
     );
   }
 
-  // 2026: choose Dream / Open dream / Internship only / Summer internship / Off campus — /category only
+  const clusterHubBullets = {
+    [PLACEMENT_CLUSTER_EC]: [
+      "Electronics & Communication cluster hub.",
+      "Company cards and resources scoped to EC.",
+      "Aligned with the same card layout as year selection.",
+    ],
+    [PLACEMENT_CLUSTER_ME]: [
+      "Mechanical cluster hub.",
+      "Company cards and resources scoped to ME.",
+      "Same navigation style as the rest of the app.",
+    ],
+    [PLACEMENT_CLUSTER_CS]: [
+      "Computer Science & Engineering cluster.",
+      "Dream, open dream, internships, and off-campus lists.",
+      "OA questions, interviews, and company-wise prep.",
+    ],
+  };
+
+  // 2026 /category (no cluster): pick EC / ME / CS — cards match year selection styling
   if (
     selectedYear === 2026 &&
     placementTier === null &&
-    location.pathname === PATH_COMPANY_CATEGORY
+    location.pathname === PATH_COMPANY_CATEGORY &&
+    clusterParam === null
   ) {
-    const dreamLogoPreview = allDreamCompanies.slice(0, 5);
-    const openDreamLogoPreview = allOpenDreamCompanies.slice(0, 5);
-    const internshipOnlyLogoPreview = allInternshipOnlyCompanies.slice(0, 5);
-    const offCampusLogoPreview = allOffCampusCompanies.slice(0, 5);
+    const clusters = [
+      {
+        id: PLACEMENT_CLUSTER_EC,
+        title: "EC cluster",
+        subtitle: "Electronics & Communication",
+        icon: FaBolt,
+        bullets: clusterHubBullets[PLACEMENT_CLUSTER_EC],
+      },
+      {
+        id: PLACEMENT_CLUSTER_ME,
+        title: "ME cluster",
+        subtitle: "Mechanical Engineering",
+        icon: FaCogs,
+        bullets: clusterHubBullets[PLACEMENT_CLUSTER_ME],
+      },
+      {
+        id: PLACEMENT_CLUSTER_CS,
+        title: "CS cluster",
+        subtitle: "Computer Science & Engineering",
+        icon: FaLaptopCode,
+        bullets: clusterHubBullets[PLACEMENT_CLUSTER_CS],
+      },
+    ];
 
     return (
-      <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen overflow-x-hidden bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-6xl min-w-0">
           <button
             type="button"
             onClick={() => {
@@ -1025,6 +1079,110 @@ function CompanyStats() {
           >
             <FaArrowLeft className="mr-2" />
             Back to Year Selection
+          </button>
+          <div className="mb-8">
+            <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
+              Choose your cluster
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
+              Pick your branch cluster for the 2026 company hub.
+            </p>
+            <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
+              {clusters.map((c) => {
+                const Icon = c.icon;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => navigate(companystatsClusterCategoryUrl(c.id))}
+                    className="company-card group flex min-h-0 w-full min-w-0 flex-col rounded-2xl border-2 border-theme bg-theme-card p-6 text-left shadow-lg transition-[transform,box-shadow,border-color] duration-300 sm:p-7 motion-reduce:transition-none hover:-translate-y-1 hover:border-theme-accent hover:shadow-2xl motion-reduce:hover:translate-y-0"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <div className="mb-4 flex justify-center">
+                        <div className="rounded-2xl border border-theme-accent/35 bg-theme-accent/10 p-4 text-theme-accent sm:p-5">
+                          <Icon className="text-3xl sm:text-4xl" aria-hidden />
+                        </div>
+                      </div>
+                      <h3 className="text-center text-xl font-bold text-theme-primary sm:text-2xl">{c.title}</h3>
+                      <p className="mb-4 text-center text-sm text-theme-secondary sm:text-base">{c.subtitle}</p>
+                      <ul className="w-full min-w-0 flex-1 list-outside list-disc space-y-2 pl-5 text-left text-sm leading-relaxed text-theme-secondary sm:pl-6 sm:text-base [&>li]:pl-1 marker:text-theme-accent">
+                        {c.bullets.map((line, i) => (
+                          <li key={`${c.id}-${i}`}>{line}</li>
+                        ))}
+                      </ul>
+                      <div className="mt-5 flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
+                        <span>Open</span>
+                        <FaChevronRight
+                          className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                          aria-hidden
+                        />
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // EC / ME: placeholder until cluster-specific data exists
+  if (
+    selectedYear === 2026 &&
+    placementTier === null &&
+    location.pathname === PATH_COMPANY_CATEGORY &&
+    (clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME)
+  ) {
+    const clusterLabel = clusterParam === PLACEMENT_CLUSTER_EC ? "EC cluster" : "ME cluster";
+    return (
+      <div className="min-h-screen overflow-x-hidden bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-2xl min-w-0">
+          <button
+            type="button"
+            onClick={() => navigate(PATH_COMPANY_CATEGORY, { replace: true })}
+            className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
+          >
+            <FaArrowLeft className="mr-2" />
+            Back to cluster selection
+          </button>
+          <div className="company-card rounded-2xl border-2 border-theme bg-theme-card p-8 text-center shadow-lg sm:p-10">
+            <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
+            <p className="mt-4 text-base text-theme-secondary sm:text-lg">Under development</p>
+            <p className="mx-auto mt-2 max-w-md text-sm text-theme-muted">
+              This cluster&apos;s company hub is not available yet. Please use the CS cluster for 2026 listings, or check back later.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2026 CS cluster: Dream / Open dream / Internship only / Summer internship / Off campus — /category?cluster=cs
+  if (
+    selectedYear === 2026 &&
+    placementTier === null &&
+    location.pathname === PATH_COMPANY_CATEGORY &&
+    clusterParam === PLACEMENT_CLUSTER_CS
+  ) {
+    const dreamLogoPreview = allDreamCompanies.slice(0, 5);
+    const openDreamLogoPreview = allOpenDreamCompanies.slice(0, 5);
+    const internshipOnlyLogoPreview = allInternshipOnlyCompanies.slice(0, 5);
+    const offCampusLogoPreview = allOffCampusCompanies.slice(0, 5);
+
+    return (
+      <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
+        <div className="max-w-7xl mx-auto">
+          <button
+            type="button"
+            onClick={() => {
+              navigate(PATH_COMPANY_CATEGORY, { replace: true });
+            }}
+            className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
+          >
+            <FaArrowLeft className="mr-2" />
+            Back to cluster selection
           </button>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
@@ -1236,7 +1394,7 @@ function CompanyStats() {
           type="button"
           onClick={() => {
             resetListPages();
-            navigate(PATH_COMPANY_CATEGORY);
+            navigate(companystatsClusterCategoryUrl(PLACEMENT_CLUSTER_CS));
           }}
           className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
         >
