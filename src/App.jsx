@@ -29,6 +29,8 @@ import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
 import Feedback from "./components/Feedback";
 import UserManual from "./components/UserManual";
+import ResumeBuilderPage from "./components/ResumeBuilderPage";
+import { RESUME_BUILDER_ENABLED } from "./utils/constants";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
 function ScrollToTop() {
@@ -127,6 +129,16 @@ function AppShell() {
               </ProtectedRoute>
             }
           />
+          {RESUME_BUILDER_ENABLED ? (
+            <Route
+              path="/resume-builder"
+              element={
+                <ProtectedRoute>
+                  <ResumeBuilderPage />
+                </ProtectedRoute>
+              }
+            />
+          ) : null}
         </Routes>
       </main>
 

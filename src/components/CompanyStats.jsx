@@ -44,6 +44,7 @@ const PROFILE_COMPANY_FIELDS = [
   "FTE and internship Company name",
   "6 months Internship Company name",
   "Company name",
+  "Company_Name",
   "Name of Company",
   "company1",
   "company2",
@@ -55,7 +56,11 @@ const PROFILE_COMPANY_FIELDS = [
 ];
 
 function isPlacementCompanyField(fieldName) {
-  return /company name|name of company/i.test(fieldName);
+  const k = String(fieldName || "");
+  return (
+    /company\s*name|name\s*of\s*company/i.test(k) ||
+    /company[_\s]+name/i.test(k)
+  );
 }
 
 function normalizeProfileCompanyName(raw) {

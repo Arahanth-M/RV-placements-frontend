@@ -94,7 +94,7 @@ import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.png";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
-function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
+function InterviewTab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 }) {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
   const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
@@ -370,7 +370,12 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
     if (editIQIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateInterviewQuestion(company._id, editIQIndex, { question: editIQQuestion, solution: editIQSolution });
+      await adminAPI.updateInterviewQuestion(
+        company._id,
+        editIQIndex,
+        { question: editIQQuestion, solution: editIQSolution },
+        { year: placementYear }
+      );
       if (onCompanyUpdate) onCompanyUpdate();
       setEditIQIndex(null);
       setEditIQQuestion("");
@@ -387,7 +392,7 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
     if (!company?._id || !window.confirm("Delete this interview question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewQuestion(company._id, index);
+      await adminAPI.deleteInterviewQuestion(company._id, index, { year: placementYear });
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenIndexQ(null);
     } catch (err) {
@@ -408,7 +413,12 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
     if (editIPIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateInterviewProcess(company._id, editIPIndex, { content: editIPContent });
+      await adminAPI.updateInterviewProcess(
+        company._id,
+        editIPIndex,
+        { content: editIPContent },
+        { year: placementYear }
+      );
       if (onCompanyUpdate) onCompanyUpdate();
       setEditIPIndex(null);
       setEditIPContent("");
@@ -424,7 +434,7 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
     if (!company?._id || !window.confirm("Delete this interview process entry?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewProcess(company._id, index);
+      await adminAPI.deleteInterviewProcess(company._id, index, { year: placementYear });
       if (onCompanyUpdate) onCompanyUpdate();
     } catch (err) {
       console.error(err);
@@ -448,6 +458,7 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
             question: newInterviewQuestion,
             solution: newInterviewSolution,
           }),
+          placementYear,
         }),
       });
 
@@ -480,6 +491,7 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate }) {
           companyId: company?._id,
           type: "interviewProcess",
           content: newInterviewProcess,
+          placementYear,
         }),
       });
 

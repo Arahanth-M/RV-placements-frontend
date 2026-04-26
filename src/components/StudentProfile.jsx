@@ -41,13 +41,15 @@ const StudentProfile = ({ studentData, onClose }) => {
     'companyid',
     'placementcompanies',
     'primarycompanyname',
-    'company',
   ]);
   const normalizeProfileKey = (key) =>
     String(key || '')
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '');
-  const isHiddenProfileKey = (key) => hiddenProfileKeys.has(normalizeProfileKey(key));
+  const isHiddenProfileKey = (key) => {
+    if (key === 'company') return true;
+    return hiddenProfileKeys.has(normalizeProfileKey(key));
+  };
   const isFieldAvailable = (value) => {
     if (value === null || value === undefined) return false;
     if (typeof value === 'string') return value.trim().length > 0;
@@ -61,19 +63,41 @@ const StudentProfile = ({ studentData, onClose }) => {
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
   const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
+
+  const matchesPersonalField = (key) => {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey.includes('company')) return false;
+    return personalInfoFields.some((f) => lowerKey.includes(f.toLowerCase()));
+  };
+
+  const matchesAcademicField = (key) => {
+    const lowerKey = key.toLowerCase();
+    return academicFields.some((f) => lowerKey.includes(f.toLowerCase()));
+  };
+
+  const companyDisplay = String(studentData?.Company || "").trim().toLowerCase();
+  const companyNameRoster = String(studentData?.Company_Name || "")
+    .trim()
+    .toLowerCase();
+  const hideDuplicateCompanyName =
+    Boolean(companyDisplay) &&
+    Boolean(companyNameRoster) &&
+    companyDisplay === companyNameRoster;
+
   const otherFields = Object.keys(studentData).filter(
-    key => !['_id', '__v'].includes(key) &&
-    !isHiddenProfileKey(key) &&
-    isFieldAvailable(studentData[key]) &&
-    !personalInfoFields.some(f => key.toLowerCase().includes(f.toLowerCase())) &&
-    !academicFields.some(f => key.toLowerCase().includes(f.toLowerCase()))
+    (key) =>
+      !["_id", "__v"].includes(key) &&
+      !isHiddenProfileKey(key) &&
+      !(hideDuplicateCompanyName && key === "Company_Name") &&
+      isFieldAvailable(studentData[key]) &&
+      !matchesPersonalField(key) &&
+      !matchesAcademicField(key)
   );
 
   const getFieldCategory = (key) => {
-    const lowerKey = key.toLowerCase();
-    if (personalInfoFields.some(f => lowerKey.includes(f.toLowerCase()))) return 'personal';
-    if (academicFields.some(f => lowerKey.includes(f.toLowerCase()))) return 'academic';
-    return 'other';
+    if (matchesPersonalField(key)) return "personal";
+    if (matchesAcademicField(key)) return "academic";
+    return "other";
   };
 
   const renderField = (key, value) => {

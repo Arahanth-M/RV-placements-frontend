@@ -1219,6 +1219,20 @@ html, body, #root {
   transform: translate(0);
 }
 
+/* Resume Builder: keep form controls compact and consistent */
+.resume-builder-form .resume-field {
+  height: 2.5rem !important;
+  min-height: 2.5rem !important;
+  line-height: 1.25rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.resume-builder-form .resume-select {
+  height: 2.5rem !important;
+  min-height: 2.5rem !important;
+}
+
 /* Global smooth hover transitions for card-like surfaces across routes */
 :where(
   .company-card,

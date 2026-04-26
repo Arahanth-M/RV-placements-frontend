@@ -12,6 +12,7 @@ const COMPANY_FIELDS = [
   'FTE and internship Company name',
   '6 months Internship Company name',
   'Company name',
+  'Company_Name',
   'Name of Company',
   'company1',
   'company2',
@@ -30,7 +31,11 @@ function normalizeCompanyName(raw) {
 }
 
 function isPlacementCompanyField(fieldName) {
-  return /company name|name of company/i.test(fieldName);
+  const k = String(fieldName || '');
+  return (
+    /company\s*name|name\s*of\s*company/i.test(k) ||
+    /company[_\s]+name/i.test(k)
+  );
 }
 
 function placementCompanyNamesFromProfile(studentData) {
@@ -73,7 +78,9 @@ function placementCompanyNamesFromProfile(studentData) {
   }
 
   const single = normalizeCompanyName(
-    studentData?.Company ?? studentData?.company
+    studentData?.Company ??
+      studentData?.company ??
+      studentData?.Company_Name
   );
 
   return single ? [single] : [];
@@ -216,14 +223,14 @@ const PlacementPopupWrapper = () => {
                   <span className="inline-block animate-bounce">🎉</span>
                 </>
               ) : (
-                <>Hey {user?.username || 'there'}, part of 2026 Computer science?</>
+                <>Hey {user?.username || 'there'}</>
               )}
             </h3>
 
             <p className="text-theme-secondary text-sm mb-3">
               {isPlacementPopup
                 ? 'for successfully getting the opportunity to be part of:'
-                : 'Fill the beta access form to join the platform. After submitting the form, wait a few seconds and then log out and sign in again to activate your beta access. If you are a non-CSE student, we are extending access to your branch soon. A beta test is going on for the 22 batch, other batches can start using the platform very shortly'}
+                : 'Fill the beta access form to join the platform. After submitting the form, wait a few seconds and then log out and sign in again to activate your beta access. If you are a non-CSE student, we are extending access to your branch soon.'}
             </p>
 
             {!isPlacementPopup ? (

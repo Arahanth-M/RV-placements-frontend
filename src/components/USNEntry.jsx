@@ -9,6 +9,7 @@ const COMPANY_FIELDS = [
   'FTE and internship Company name',
   '6 months Internship Company name',
   'Company name',
+  'Company_Name',
   'Name of Company',
   'Company Name',
   'Placed Company',

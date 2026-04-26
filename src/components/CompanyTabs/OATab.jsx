@@ -277,7 +277,7 @@ import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.png";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
-function OATab({ company, isAdmin, onCompanyUpdate }) {
+function OATab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 }) {
   const [showModal, setShowModal] = useState(false);
   const [question, setQuestion] = useState("");
   const [solution, setSolution] = useState("");
@@ -303,6 +303,7 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
           companyId: safeCompany._id,
           type: "onlineQuestions",
           content: JSON.stringify({ question, solution }),
+          placementYear,
         }),
       });
 
@@ -364,7 +365,7 @@ function OATab({ company, isAdmin, onCompanyUpdate }) {
     if (!safeCompany._id || !window.confirm("Delete this OA question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteOAQuestion(safeCompany._id, index);
+      await adminAPI.deleteOAQuestion(safeCompany._id, index, { year: placementYear });
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenQuestionIndex(null);
     } catch (err) {

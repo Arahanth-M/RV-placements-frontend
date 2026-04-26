@@ -19,6 +19,8 @@ import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
 import InternshipTab from "./CompanyTabs/InternshipTab";
 
+const PLACEMENT_YEAR_CHOICES = [2026, 2027];
+
 function CompanyDetails() {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const { id } = useParams();
@@ -32,6 +34,10 @@ function CompanyDetails() {
   const [loadError, setLoadError] = useState(null); // 'offline' | 'error' | null
   const [loading, setLoading] = useState(true);
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
+  const [placementYear, setPlacementYear] = useState(2026);
+  const [placementYearLoading, setPlacementYearLoading] = useState(false);
+  const detailFetchIdRef = useRef(null);
+  const skipNextPlacementYearEffectRef = useRef(false);
   const interviewExitHandlerRef = useRef(null);
   const EXIT_WARNING_MESSAGE =
     "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
@@ -55,15 +61,43 @@ function CompanyDetails() {
     if (!id) return;
     if (user?.betaAccess === false) {
       setLoading(false);
+      setPlacementYearLoading(false);
       return;
     }
-    setLoading(true);
-    setLoadError(null);
-    setCompany(null);
+
+    if (skipNextPlacementYearEffectRef.current) {
+      skipNextPlacementYearEffectRef.current = false;
+      return;
+    }
+
+    const switchedCompany = detailFetchIdRef.current !== id;
+    let yearForRequest = placementYear;
+
+    if (switchedCompany) {
+      detailFetchIdRef.current = id;
+      yearForRequest = 2026;
+      if (placementYear !== 2026) {
+        skipNextPlacementYearEffectRef.current = true;
+        setPlacementYear(2026);
+      }
+      setPlacementYearLoading(false);
+      setLoading(true);
+      setLoadError(null);
+      setCompany(null);
+    } else {
+      yearForRequest = placementYear;
+      setPlacementYearLoading(true);
+      setLoadError(null);
+    }
+
     companyAPI
-      .getCompany(id)
+      .getCompany(id, { year: yearForRequest })
       .then((res) => {
         setCompany(res.data);
+        const py = res.data?.placementVisitYear;
+        if (typeof py === "number" && !Number.isNaN(py)) {
+          setPlacementYear(py);
+        }
         setLoadError(null);
       })
       .catch((err) => {
@@ -76,8 +110,11 @@ function CompanyDetails() {
           (err.response == null && err.request != null);
         setLoadError(isOffline || networkError ? "offline" : "error");
       })
-      .finally(() => setLoading(false));
-  }, [id, user?.betaAccess]);
+      .finally(() => {
+        setLoading(false);
+        setPlacementYearLoading(false);
+      });
+  }, [id, user?.betaAccess, placementYear]);
 
   const openTabFromNav = location.state?.openTab;
 
@@ -93,7 +130,7 @@ function CompanyDetails() {
     if (user?.betaAccess === false) return;
     setIsRefreshing(true);
     companyAPI
-      .refreshCompany(id)
+      .refreshCompany(id, { year: placementYear })
       .then((res) => setCompany(res.data))
       .catch((err) => console.error("❌ Error refreshing company:", err))
       .finally(() => setIsRefreshing(false));
@@ -295,6 +332,46 @@ function CompanyDetails() {
           </div>
         </div>
       </div>
+
+      <div className="mb-4 sm:mb-6 rounded-xl border border-theme bg-theme-card px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+            General, Must Do, Coding &amp; OA — placement year
+          </p>
+          {placementYearLoading ? (
+            <span className="text-xs text-theme-secondary">Updating…</span>
+          ) : null}
+        </div>
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label="Placement year (2026 or 2027)"
+        >
+          {PLACEMENT_YEAR_CHOICES.map((y) => {
+            const hasApproved =
+              Array.isArray(company.placementYearsAvailable) &&
+              company.placementYearsAvailable.includes(y);
+            const selected = placementYear === y;
+            return (
+              <button
+                key={y}
+                type="button"
+                onClick={() => setPlacementYear(y)}
+                disabled={placementYearLoading}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-60 ${
+                  selected
+                    ? "bg-theme-hero text-theme-accent shadow-md"
+                    : "bg-theme-nav text-theme-secondary hover:text-theme-primary border border-theme"
+                } ${!hasApproved ? "opacity-80" : ""}`}
+              >
+                {y}
+                {!hasApproved ? " · no visit yet" : ""}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="mb-4 sm:mb-6 min-w-0">
         <div
           className="flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl md:gap-1.5 md:p-1.5"
@@ -325,18 +402,29 @@ function CompanyDetails() {
             company={company}
             isAdmin={isAdmin}
             onRolesUpdated={handleRefresh}
+            placementYear={placementYear}
           />
         )}
-        {activeTab === "oa" && <OATab company={company} isAdmin={isAdmin} onCompanyUpdate={handleRefresh} />}
+        {activeTab === "oa" && (
+          <OATab
+            company={company}
+            isAdmin={isAdmin}
+            onCompanyUpdate={handleRefresh}
+            placementYear={placementYear}
+          />
+        )}
         {activeTab === "coding" && <CodingTab company={company} />}
         {activeTab === "interview" && (
           <InterviewTab 
             company={company} 
             isAdmin={isAdmin} 
-            onCompanyUpdate={handleRefresh} 
+            onCompanyUpdate={handleRefresh}
+            placementYear={placementYear}
           />
         )}
-        {activeTab === "internship" && <InternshipTab company={company} />}
+        {activeTab === "internship" && (
+          <InternshipTab company={company} placementYear={placementYear} />
+        )}
         {activeTab === "aiinterview" && (
           <AIInterviewTab
             company={company}
@@ -347,7 +435,9 @@ function CompanyDetails() {
             }}
           />
         )}
-        {activeTab === "mustdo" && <MustDoTab company={company} />}
+        {activeTab === "mustdo" && (
+          <MustDoTab company={company} placementYear={placementYear} />
+        )}
         {activeTab === "offcampus" && <OffCampusQuestionsTab company={company} />}
       </div>
     </div>

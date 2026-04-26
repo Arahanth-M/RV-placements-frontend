@@ -55,7 +55,7 @@ export const BETA_JOIN_FORM_URL =
   (typeof process !== "undefined" &&
     process.env.REACT_APP_BETA_JOIN_FORM_URL &&
     String(process.env.REACT_APP_BETA_JOIN_FORM_URL).trim()) ||
-  "https://docs.google.com/forms/d/e/1FAIpQLScRXllJ4WmuiIPicffKS4y3amX-6gjOMu31yGMu4XZeKaMukg/viewform?usp=dialog";
+  "https://docs.google.com/forms/d/e/1FAIpQLScZX_N1LSAM1vb8OXYKCA9HkAjAs2ZCFzN-HMZFT7kUK3erOg/viewform?usp=dialog";
 
 /** Student feedback (Google Form). Set `REACT_APP_FEEDBACK_FORM_URL` in `.env` to override. */
 export const FEEDBACK_FORM_URL =
@@ -63,6 +63,13 @@ export const FEEDBACK_FORM_URL =
     process.env.REACT_APP_FEEDBACK_FORM_URL &&
     String(process.env.REACT_APP_FEEDBACK_FORM_URL).trim()) ||
   "https://docs.google.com/forms/d/e/1FAIpQLSfiUSw6yFFy-id7_jRv-GKGS3cBcvYPKY-zN7NalR7TqZxvIQ/viewform?usp=publish-editor";
+
+/** Feature flag for gradual production rollout of resume builder. */
+export const RESUME_BUILDER_ENABLED =
+  (typeof process !== "undefined" &&
+    String(process.env.REACT_APP_ENABLE_RESUME_BUILDER || "").trim() === "1") ||
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
 
 // Configuration
 const FRONTEND_PORT = 5173;

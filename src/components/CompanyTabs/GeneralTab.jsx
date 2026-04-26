@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { adminAPI } from "../../utils/api";
 
-function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
+function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYear = 2026 }) {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
@@ -149,11 +149,15 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
               e.preventDefault();
               try {
                 setSavingGeneral(true);
-                await adminAPI.updateCompanyGeneralInfo(company._id, {
-                  eligibility: editEligibility,
-                  business_model: editBusinessModel,
-                  offCampus: editOffCampus,
-                });
+                await adminAPI.updateCompanyGeneralInfo(
+                  company._id,
+                  {
+                    eligibility: editEligibility,
+                    business_model: editBusinessModel,
+                    offCampus: editOffCampus,
+                  },
+                  { year: placementYear }
+                );
                 if (typeof onRolesUpdated === "function") {
                   await onRolesUpdated();
                 }
@@ -292,7 +296,7 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated }) {
               e.preventDefault();
               try {
                 setSavingRoles(true);
-                await adminAPI.updateCompanyRoles(company._id, rolesDraft);
+                await adminAPI.updateCompanyRoles(company._id, rolesDraft, { year: placementYear });
                 if (typeof onRolesUpdated === "function") {
                   await onRolesUpdated();
                 }

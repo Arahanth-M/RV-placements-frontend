@@ -12,6 +12,7 @@ import {
   FaComments,
   FaTrophy,
   FaBookOpen,
+  FaFileAlt,
   FaUserShield,
   FaTachometerAlt,
   FaExclamationCircle,
@@ -19,7 +20,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
-import { BASE_URL } from "../utils/constants";
+import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
 import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo2.png";
 
@@ -33,6 +34,7 @@ const studentCornerLinks = [
   { label: "Company Stats", path: "/companystats", icon: FaChartBar },
   { label: "AI Interviews", path: "/interviews", icon: FaComments },
   { label: "Resources", path: "/resources", icon: FaBook },
+  ...(RESUME_BUILDER_ENABLED ? [{ label: "Resume Builder", path: "/resume-builder", icon: FaFileAlt }] : []),
   { label: "Leaderboard", path: "/leaderboard", icon: FaTrophy },
   { label: "User Manual", path: "/user-manual", icon: FaBookOpen },
 ];

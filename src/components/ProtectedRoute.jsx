@@ -32,14 +32,12 @@ const ProtectedRoute = ({ children }) => {
             Access restricted to beta users
           </h2>
           <p className="text-theme-secondary text-sm sm:text-base leading-relaxed">
-            This section is currently available only for users included in the beta test. If you are part of 2026 Computer Science, you can request access using the form below.
+            This section is currently available only for users included in the beta test.
           </p>
           <p className="mt-4 text-sm sm:text-base leading-relaxed text-theme-secondary">
             If you are from another branch, please wait. We are extending to your branch as well. Right now access is only for CS.
           </p>
-          <p className="mt-3 text-sm sm:text-base leading-relaxed text-theme-secondary">
-            {`A beta test is going on for the 22 batch, other batches can start using the platform very shortly.`}
-          </p>
+          
           <div className="mt-6 rounded-xl border border-theme bg-theme-hero p-4 sm:p-5 text-left">
             <p className="text-sm text-theme-secondary sm:text-base">
               Request beta access by filling out the short Google Form (opens in a new tab).

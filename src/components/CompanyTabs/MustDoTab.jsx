@@ -3,7 +3,7 @@ import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import rvLogo from "../../assets/logo2.png";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
-function MustDoTab({ company = {} }) {
+function MustDoTab({ company = {}, placementYear = 2026 }) {
   const [showModal, setShowModal] = useState(false);
   const [topic, setTopic] = useState("");
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
@@ -20,6 +20,7 @@ function MustDoTab({ company = {} }) {
           companyId: company._id,
           type: "mustDoTopics",
           content: topic,
+          placementYear,
         }),
       });
 

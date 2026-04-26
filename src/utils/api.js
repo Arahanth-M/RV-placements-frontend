@@ -75,18 +75,26 @@ export const companyAPI = {
   /** 2026 category tiles: small counts + 5 logo rows per bucket (does not block on full /api/companies) */
   getPreviewLogos: () => API.get('/api/companies/preview-logos'),
 
-  async getCompany(id) {
+  /**
+   * @param {string} id
+   * @param {{ year?: number }} [options] placement visit year (2026 / 2027); defaults to 2026
+   */
+  async getCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
 
-    if (!companyDetailsPromises.has(id)) {
+    let year = options.year != null ? Number(options.year) : 2026;
+    if (!Number.isFinite(year)) year = 2026;
+    const dedupeKey = `${id}:y${year}`;
+
+    if (!companyDetailsPromises.has(dedupeKey)) {
       companyDetailsPromises.set(
-        id,
-        API.get(`/api/companies/${id}`).finally(() => {
-          companyDetailsPromises.delete(id);
+        dedupeKey,
+        API.get(`/api/companies/${id}`, { params: { year } }).finally(() => {
+          companyDetailsPromises.delete(dedupeKey);
         })
       );
     }
-    return companyDetailsPromises.get(id);
+    return companyDetailsPromises.get(dedupeKey);
   },
 
   async prefetchCompany(id) {
@@ -98,9 +106,15 @@ export const companyAPI = {
     }
   },
 
-  async refreshCompany(id) {
+  /**
+   * @param {string} id
+   * @param {{ year?: number }} [options] placement visit year (must match selected year on detail page)
+   */
+  async refreshCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
-    return API.get(`/api/companies/${id}`);
+    let year = options.year != null ? Number(options.year) : 2026;
+    if (!Number.isFinite(year)) year = 2026;
+    return API.get(`/api/companies/${id}`, { params: { year } });
   },
 
   createCompany: (data) =>
@@ -125,6 +139,12 @@ export const leetcodeAPI = {
 
 export const getAdminStats = () => API.get('/api/admin/stats');
 
+function adminPlacementYearParams(opts = {}) {
+  let year = opts.year != null ? Number(opts.year) : 2026;
+  if (!Number.isFinite(year)) year = 2026;
+  return { year };
+}
+
 export const adminAPI = {
   getStats: () => getAdminStats(),
   getSubmissions: (config) => API.get('/api/admin/submissions', config),
@@ -134,20 +154,44 @@ export const adminAPI = {
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
   deleteApprovedSubmission: (id) => API.delete(`/api/admin/submissions/${id}/delete`),
   getCompanies: (config) => API.get('/api/admin/companies', config),
-  approveCompany: (id) => API.post(`/api/admin/companies/${id}/approve`),
+  approveCompany: (id, opts = {}) =>
+    API.post(`/api/admin/companies/${id}/approve`, null, { params: adminPlacementYearParams(opts) }),
   rejectCompany: (id) => API.delete(`/api/admin/companies/${id}/reject`),
   deleteApprovedCompany: (id) => API.delete(`/api/admin/companies/${id}/delete`),
-  updateOAQuestion: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/oa-questions/${index}`, data),
-  deleteOAQuestion: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/oa-questions/${index}`),
-  updateInterviewQuestion: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/interview-questions/${index}`, data),
-  deleteInterviewQuestion: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/interview-questions/${index}`),
-  updateInterviewProcess: (companyId, index, data) => API.put(`/api/admin/companies/${companyId}/interview-process/${index}`, data),
-  deleteInterviewProcess: (companyId, index) => API.delete(`/api/admin/companies/${companyId}/interview-process/${index}`),
-  updateCompanyStats: (companyId, data) => API.put(`/api/admin/companies/${companyId}/stats`, data),
-  adjustCompanyTotalGotIn: (companyId, delta) =>
-    API.patch(`/api/admin/companies/${companyId}/total-got-in`, { delta }),
-  updateCompanyRoles: (companyId, roles) => API.put(`/api/admin/companies/${companyId}/roles`, { roles }),
-  updateCompanyGeneralInfo: (companyId, data) => API.put(`/api/admin/companies/${companyId}/general`, data),
+  updateOAQuestion: (companyId, index, data, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/oa-questions/${index}`, data, {
+      params: adminPlacementYearParams(opts),
+    }),
+  deleteOAQuestion: (companyId, index, opts = {}) =>
+    API.delete(`/api/admin/companies/${companyId}/oa-questions/${index}`, {
+      params: adminPlacementYearParams(opts),
+    }),
+  updateInterviewQuestion: (companyId, index, data, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/interview-questions/${index}`, data, {
+      params: adminPlacementYearParams(opts),
+    }),
+  deleteInterviewQuestion: (companyId, index, opts = {}) =>
+    API.delete(`/api/admin/companies/${companyId}/interview-questions/${index}`, {
+      params: adminPlacementYearParams(opts),
+    }),
+  updateInterviewProcess: (companyId, index, data, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/interview-process/${index}`, data, {
+      params: adminPlacementYearParams(opts),
+    }),
+  deleteInterviewProcess: (companyId, index, opts = {}) =>
+    API.delete(`/api/admin/companies/${companyId}/interview-process/${index}`, {
+      params: adminPlacementYearParams(opts),
+    }),
+  updateCompanyStats: (companyId, data, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/stats`, data, { params: adminPlacementYearParams(opts) }),
+  adjustCompanyTotalGotIn: (companyId, delta, opts = {}) =>
+    API.patch(`/api/admin/companies/${companyId}/total-got-in`, { delta }, {
+      params: adminPlacementYearParams(opts),
+    }),
+  updateCompanyRoles: (companyId, roles, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/roles`, { roles }, { params: adminPlacementYearParams(opts) }),
+  updateCompanyGeneralInfo: (companyId, data, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/general`, data, { params: adminPlacementYearParams(opts) }),
   getMissingCompanies: () => API.get('/api/admin/missing-companies'),
   updateMissingCompanyStatus: (id, status) => API.patch(`/api/admin/missing-companies/${id}/status`, { status }),
   deleteMissingCompany: (id) => API.delete(`/api/admin/missing-companies/${id}`),
@@ -180,6 +224,13 @@ export const studentAPI = {
   getStudentByUSN: (usn) => API.get(`/api/students/student-data/${usn}`),
   getStudentByName: (username) => API.get(`/api/students/student-data-by-name/${encodeURIComponent(username)}`),
   getProfile: () => API.get("/api/students/profile"),
+};
+
+export const resumeAPI = {
+  getDraft: () => API.get("/api/resume/draft"),
+  saveDraft: ({ payload, version }) => API.put("/api/resume/draft", { payload, version }),
+  exportPdf: (payload) =>
+    API.post("/api/resume/export", { payload }, { responseType: "blob" }),
 };
 
 export const submitMissingCompany = (data) => {

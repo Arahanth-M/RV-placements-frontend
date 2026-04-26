@@ -3,7 +3,7 @@ import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import rvLogo from "../../assets/logo2.png";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
-function InternshipTab({ company }) {
+function InternshipTab({ company, placementYear = 2026 }) {
   const [showModal, setShowModal] = useState(false);
   const [experienceText, setExperienceText] = useState("");
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
@@ -20,6 +20,7 @@ function InternshipTab({ company }) {
           type: "internshipExperience",
           content: JSON.stringify({ experience: experienceText }),
           isAnonymous: false,
+          placementYear,
         }),
       });
 

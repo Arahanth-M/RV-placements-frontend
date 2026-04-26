@@ -13,13 +13,32 @@ const StudentProfilePage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    studentAPI.getProfile()
+    studentAPI
+      .getProfile()
       .then((response) => {
         setProfileData(response.data);
         setLoading(false);
       })
       .catch((err) => {
-        setError("Profile not found. Contact placement team.");
+        const status = err?.response?.status;
+        const serverMsg =
+          err?.response?.data?.message || err?.response?.data?.error;
+        if (status === 403) {
+          setError(
+            serverMsg ||
+              "Access restricted. Your account may not have beta access yet."
+          );
+        } else if (status === 404) {
+          setError(
+            serverMsg ||
+              "No roster row found for your login email in the placement database. Contact the placement team."
+          );
+        } else {
+          setError(
+            serverMsg ||
+              "Could not load profile. Try logging out and back in, or contact support."
+          );
+        }
         setLoading(false);
       });
   }, []);
@@ -77,17 +96,20 @@ const StudentProfilePage = () => {
   };
 
   // Never show internal / redundant fields in the profile UI
+  // Do not list "company" here: normalizeProfileKey("Company") === "company" and would hide the real company field.
   const hiddenProfileKeys = new Set([
     "companyid",
     "placementcompanies",
     "primarycompanyname",
-    "company",
   ]);
   const normalizeProfileKey = (key) =>
     String(key || "")
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
-  const isHiddenProfileKey = (key) => hiddenProfileKeys.has(normalizeProfileKey(key));
+  const isHiddenProfileKey = (key) => {
+    if (key === "company") return true; // legacy lowercase duplicate only
+    return hiddenProfileKeys.has(normalizeProfileKey(key));
+  };
 
   const isFieldAvailable = (value) => {
     if (value === null || value === undefined) return false;
@@ -99,6 +121,15 @@ const StudentProfilePage = () => {
     return true;
   };
 
+  const companyDisplay = String(profileData?.Company || "").trim().toLowerCase();
+  const companyNameRoster = String(profileData?.Company_Name || "")
+    .trim()
+    .toLowerCase();
+  const hideDuplicateCompanyName =
+    Boolean(companyDisplay) &&
+    Boolean(companyNameRoster) &&
+    companyDisplay === companyNameRoster;
+
   // Show only meaningful, non-empty fields
   const validKeys = Object.keys(profileData).filter(
     (key) =>
@@ -106,24 +137,33 @@ const StudentProfilePage = () => {
       key !== "_id" &&
       key !== "__v" &&
       !isHiddenProfileKey(key) &&
+      !(hideDuplicateCompanyName && key === "Company_Name") &&
       isFieldAvailable(profileData[key])
   );
 
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
   const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
-  
+
+  const matchesPersonalField = (key) => {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey.includes("company")) return false; // e.g. Company_Name must not match "Name"
+    return personalInfoFields.some((f) => lowerKey.includes(f.toLowerCase()));
+  };
+
+  const matchesAcademicField = (key) => {
+    const lowerKey = key.toLowerCase();
+    return academicFields.some((f) => lowerKey.includes(f.toLowerCase()));
+  };
+
   const otherFields = validKeys.filter(
-    key =>
-      !personalInfoFields.some(f => key.toLowerCase().includes(f.toLowerCase())) &&
-      !academicFields.some(f => key.toLowerCase().includes(f.toLowerCase()))
+    (key) => !matchesPersonalField(key) && !matchesAcademicField(key)
   );
 
   const getFieldCategory = (key) => {
-    const lowerKey = key.toLowerCase();
-    if (personalInfoFields.some(f => lowerKey.includes(f.toLowerCase()))) return 'personal';
-    if (academicFields.some(f => lowerKey.includes(f.toLowerCase()))) return 'academic';
-    return 'other';
+    if (matchesPersonalField(key)) return "personal";
+    if (matchesAcademicField(key)) return "academic";
+    return "other";
   };
 
   const renderField = (key, value) => {
