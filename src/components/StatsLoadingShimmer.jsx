@@ -1,5 +1,50 @@
 import React from "react";
 
+const DEFAULT_COMPANY_CARD_SHIMMER_COUNT = 9;
+
+/**
+ * Skeleton grid for CompanyStats tier lists — matches the company card grid (1 / 2 / 3 columns).
+ * @param {{ count?: number, className?: string }} [props]
+ */
+export function CompanyCardGridShimmer({
+  count = DEFAULT_COMPANY_CARD_SHIMMER_COUNT,
+  className = "",
+}) {
+  return (
+    <div
+      className={`company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr col-span-full ${className}`.trim()}
+      aria-busy="true"
+      aria-label="Loading companies"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full flex flex-col bg-theme-card border-2 border-theme pointer-events-none"
+        >
+          <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex-shrink-0 stats-shimmer border border-theme" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="h-6 sm:h-7 w-full max-w-[14rem] stats-shimmer rounded-lg" />
+              <div className="h-4 w-2/3 max-w-[10rem] stats-shimmer rounded opacity-90" />
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col gap-3 min-w-0">
+            <div className="h-4 w-4/5 stats-shimmer rounded" />
+            <div className="h-3 w-full stats-shimmer rounded opacity-80" />
+            <div className="h-3 w-5/6 stats-shimmer rounded opacity-80" />
+            <div className="mt-2 h-3 w-2/3 stats-shimmer rounded opacity-70" />
+          </div>
+          <div className="mt-4 space-y-3 flex-shrink-0">
+            <div className="h-10 w-full stats-shimmer rounded-xl" />
+            <div className="h-px w-full border-t border-theme opacity-40" />
+            <div className="h-4 w-1/2 stats-shimmer rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Theme-aware shimmer blocks for year stats table + analytics loading states */
 export function YearStatsTableShimmer({ yearLabel = "" }) {
   return (

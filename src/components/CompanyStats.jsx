@@ -5,7 +5,7 @@ import CompanyLogo from "../components/CompanyLogo";
 import AnimatedLogoGrid from "../components/AnimatedLogoGrid";
 import MissingCompanyRequestModal from "../components/MissingCompanyRequestModal";
 import YearStatsTable from "../components/YearStatsTable";
-import { YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
+import { CompanyCardGridShimmer, YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
 import {
   FaFilter,
   FaCalendarAlt,
@@ -16,6 +16,7 @@ import {
   FaLaptopCode,
   FaBolt,
   FaCogs,
+  FaSearch,
 } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
@@ -152,23 +153,27 @@ function CompanyStats() {
 
   // Company cards state (for 2026)
   const [companies, setCompanies] = useState([]);
+  /** Until full GET /api/companies resolves, category tiles can use GET /api/companies/preview-logos */
+  const [categoryPreview, setCategoryPreview] = useState(null);
+  /** False until the first 2026 companies list fetch finishes (success or error). Drives tier-list skeletons. */
+  const [companiesFetchDone, setCompaniesFetchDone] = useState(false);
   const [search, setSearch] = useState("");
   const [tierCategories, setTierCategories] = useState({
     [PLACEMENT_TIER_DREAM]: "all",
     [PLACEMENT_TIER_OPEN_DREAM]: "all",
     [PLACEMENT_TIER_OFF_CAMPUS]: "all",
   });
-  const [dreamPage, setDreamPage] = useState(1);
-  const [openDreamPage, setOpenDreamPage] = useState(1);
-  const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
-  const [summerInternshipPage, setSummerInternshipPage] = useState(1);
-  const [offCampusPage, setOffCampusPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   const [showMissingCompanyModal, setShowMissingCompanyModal] = useState(false);
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
   const [placementTier, setPlacementTier] = useState(null);
 
   const companiesPerPage = 9;
+  const [dreamPage, setDreamPage] = useState(1);
+  const [openDreamPage, setOpenDreamPage] = useState(1);
+  const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
+  const [summerInternshipPage, setSummerInternshipPage] = useState(1);
+  const [offCampusPage, setOffCampusPage] = useState(1);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -263,15 +268,23 @@ function CompanyStats() {
       const aMessageTs = toTimestamp(a?.messageDate ?? a?.messagedate ?? a?.message_date);
       const bMessageTs = toTimestamp(b?.messageDate ?? b?.messagedate ?? b?.message_date);
 
-      if (aMessageTs !== null && bMessageTs !== null) return aMessageTs - bMessageTs;
-      if (aMessageTs !== null) return -1;
-      if (bMessageTs !== null) return 1;
+      if (aMessageTs !== null && bMessageTs !== null && aMessageTs !== bMessageTs) {
+        return aMessageTs - bMessageTs;
+      }
+      if (aMessageTs !== null && bMessageTs === null) return -1;
+      if (aMessageTs === null && bMessageTs !== null) return 1;
 
-      const aUpdatedTs = toTimestamp(a?.updatedAt) ?? toTimestamp(a?.createdAt) ?? 0;
-      const bUpdatedTs = toTimestamp(b?.updatedAt) ?? toTimestamp(b?.createdAt) ?? 0;
-      if (aUpdatedTs !== bUpdatedTs) return aUpdatedTs - bUpdatedTs;
+      // Do not use updatedAt/createdAt — they change when opening a company (views) and
+      // re-fetching would reshuffle the grid. date_of_visit is stable for ordering.
+      const aVisit = toTimestamp(a?.date_of_visit);
+      const bVisit = toTimestamp(b?.date_of_visit);
+      if (aVisit != null && bVisit != null && aVisit !== bVisit) return aVisit - bVisit;
+      if (aVisit != null && bVisit == null) return -1;
+      if (aVisit == null && bVisit != null) return 1;
 
-      return (a?.name || "").localeCompare(b?.name || "");
+      const byName = (a?.name || "").localeCompare(b?.name || "");
+      if (byName !== 0) return byName;
+      return String(a?._id || "").localeCompare(String(b?._id || ""));
     });
   }, [companies]);
 
@@ -303,6 +316,11 @@ function CompanyStats() {
         'companystats_internship_only_page',
         'companystats_summer_internship_page',
         'companystats_off_campus_page',
+        'companystats_dream_list_count',
+        'companystats_open_dream_list_count',
+        'companystats_internship_only_list_count',
+        'companystats_summer_internship_list_count',
+        'companystats_off_campus_list_count',
         'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
@@ -328,6 +346,11 @@ function CompanyStats() {
         'companystats_internship_only_page',
         'companystats_summer_internship_page',
         'companystats_off_campus_page',
+        'companystats_dream_list_count',
+        'companystats_open_dream_list_count',
+        'companystats_internship_only_list_count',
+        'companystats_summer_internship_list_count',
+        'companystats_off_campus_list_count',
         'companystats_placement_tier',
         'companystats_page',
         'fromCompanyCards'
@@ -459,14 +482,33 @@ function CompanyStats() {
       const storedOpenDreamCategory = getStoredValue('companystats_open_dream_category');
       const storedOffCampusCategory = getStoredValue('companystats_off_campus_category');
       const legacyStoredCategory = getStoredValue('companystats_category');
-      const storedDreamPage = getStoredValue('companystats_dream_page');
-      const storedOpenDreamPage = getStoredValue('companystats_open_dream_page');
-      const storedInternshipOnlyPage = getStoredValue('companystats_internship_only_page');
-      const storedSummerInternshipPage = getStoredValue('companystats_summer_internship_page');
-      const storedOffCampusPage = getStoredValue('companystats_off_campus_page');
-      const legacyPage = getStoredValue('companystats_page');
+      const storedDreamPage = getStoredValue("companystats_dream_page");
+      const storedOpenDreamPage = getStoredValue("companystats_open_dream_page");
+      const storedInternshipOnlyPage = getStoredValue("companystats_internship_only_page");
+      const storedSummerInternshipPage = getStoredValue("companystats_summer_internship_page");
+      const storedOffCampusPage = getStoredValue("companystats_off_campus_page");
+      const storedDreamListCount = getStoredValue("companystats_dream_list_count");
+      const storedOpenDreamListCount = getStoredValue("companystats_open_dream_list_count");
+      const storedInternListCount = getStoredValue("companystats_internship_only_list_count");
+      const storedSummerListCount = getStoredValue("companystats_summer_internship_list_count");
+      const storedOffListCount = getStoredValue("companystats_off_campus_list_count");
+      const legacyPage = getStoredValue("companystats_page");
       const parsedLegacy = legacyPage != null ? parseInt(legacyPage, 10) : NaN;
       const fallbackPage = Number.isFinite(parsedLegacy) && parsedLegacy > 0 ? parsedLegacy : 1;
+      /** @param {string|null|undefined} pageRaw @param {string|null|undefined} listCountRaw */
+      const pageFromSession = (pageRaw, listCountRaw) => {
+        if (pageRaw != null) {
+          const p = parseInt(String(pageRaw), 10);
+          if (Number.isFinite(p) && p > 0) return p;
+        }
+        if (listCountRaw != null) {
+          const n = parseInt(String(listCountRaw), 10);
+          if (Number.isFinite(n) && n > 0) {
+            return Math.max(1, Math.ceil(n / companiesPerPage));
+          }
+        }
+        return fallbackPage;
+      };
 
       const storedTierRaw = getStoredValue("companystats_placement_tier");
       const storedTier =
@@ -496,17 +538,11 @@ function CompanyStats() {
             (storedTier === PLACEMENT_TIER_OFF_CAMPUS ? legacyStoredCategory : "all")
         ),
       });
-      if (storedDreamPage !== null) setDreamPage(parseInt(storedDreamPage, 10) || 1);
-      else setDreamPage(fallbackPage);
-      if (storedOpenDreamPage !== null) setOpenDreamPage(parseInt(storedOpenDreamPage, 10) || 1);
-      else setOpenDreamPage(fallbackPage);
-      if (storedInternshipOnlyPage !== null) setInternshipOnlyPage(parseInt(storedInternshipOnlyPage, 10) || 1);
-      else setInternshipOnlyPage(fallbackPage);
-      if (storedSummerInternshipPage !== null)
-        setSummerInternshipPage(parseInt(storedSummerInternshipPage, 10) || 1);
-      else setSummerInternshipPage(fallbackPage);
-      if (storedOffCampusPage !== null) setOffCampusPage(parseInt(storedOffCampusPage, 10) || 1);
-      else setOffCampusPage(fallbackPage);
+      setDreamPage(pageFromSession(storedDreamPage, storedDreamListCount));
+      setOpenDreamPage(pageFromSession(storedOpenDreamPage, storedOpenDreamListCount));
+      setInternshipOnlyPage(pageFromSession(storedInternshipOnlyPage, storedInternListCount));
+      setSummerInternshipPage(pageFromSession(storedSummerInternshipPage, storedSummerListCount));
+      setOffCampusPage(pageFromSession(storedOffCampusPage, storedOffListCount));
 
       if (storedTier) {
         setPlacementTier(storedTier);
@@ -540,30 +576,50 @@ function CompanyStats() {
       sessionStorage.setItem(getStorageKey('companystats_summer_internship_page'), String(summerInternshipPage));
       sessionStorage.setItem(getStorageKey('companystats_off_campus_page'), String(offCampusPage));
     }
-  }, [selectedYear, search, tierCategories, dreamPage, openDreamPage, internshipOnlyPage, summerInternshipPage, offCampusPage, user]);
+  }, [
+    selectedYear,
+    search,
+    tierCategories,
+    dreamPage,
+    openDreamPage,
+    internshipOnlyPage,
+    summerInternshipPage,
+    offCampusPage,
+    user,
+  ]);
 
-  // Fetch companies only when 2026 is selected
+  // Fetch companies when 2026 is selected; preview-logos in parallel for fast category-tile paint
   useEffect(() => {
+    let cancelled = false;
     if (selectedYear === 2026) {
-      // Set localStorage flag for chatbot visibility
       localStorage.setItem('companystats_selectedYear', '2026');
-      
-      const fetchCompanies = async () => {
+      setCompaniesFetchDone(false);
+      (async () => {
+        try {
+          const res = await companyAPI.getPreviewLogos();
+          if (!cancelled) setCategoryPreview(res.data || null);
+        } catch (err) {
+          console.error("❌ Error fetching category preview:", err);
+        }
+      })();
+      (async () => {
         try {
           const res = await companyAPI.getAllCompanies();
-          setCompanies(res.data || []);
+          if (!cancelled) setCompanies(res.data || []);
         } catch (err) {
           console.error("❌ Error fetching companies:", err);
+        } finally {
+          if (!cancelled) setCompaniesFetchDone(true);
         }
-      };
-      fetchCompanies();
+      })();
     } else {
-      // Clear the flag when not on 2026
       localStorage.setItem('companystats_selectedYear', selectedYear ? String(selectedYear) : '');
+      setCategoryPreview(null);
+      setCompaniesFetchDone(false);
     }
 
-    // Cleanup: clear localStorage when component unmounts
     return () => {
+      cancelled = true;
       if (selectedYear !== 2026) {
         localStorage.removeItem('companystats_selectedYear');
       }
@@ -775,10 +831,10 @@ function CompanyStats() {
   };
 
   const renderTierPagination = (totalItems, page, setPage) => {
-    const totalPages = Math.ceil(totalItems / companiesPerPage);
-    if (totalItems <= companiesPerPage) return null;
+    if (totalItems <= 0) return null;
+    const totalPages = Math.max(1, Math.ceil(totalItems / companiesPerPage));
     return (
-      <div className="pagination flex items-center justify-center gap-1 sm:gap-2 mt-4 sm:mt-6 flex-wrap px-2">
+      <div className="pagination relative z-10 flex items-center justify-center gap-1 sm:gap-2 mt-6 sm:mt-8 mb-2 flex-wrap px-2 py-2">
         <button
           type="button"
           onClick={() => {
@@ -839,6 +895,26 @@ function CompanyStats() {
       </div>
     );
   };
+
+  useEffect(() => {
+    const cap = (p, len) => {
+      if (len === 0) return 1;
+      const totalPages = Math.max(1, Math.ceil(len / companiesPerPage));
+      return Math.min(Math.max(1, p), totalPages);
+    };
+    setDreamPage((p) => cap(p, dreamCompanies.length));
+    setOpenDreamPage((p) => cap(p, openDreamCompanies.length));
+    setInternshipOnlyPage((p) => cap(p, internshipOnlyCompanies.length));
+    setSummerInternshipPage((p) => cap(p, summerInternshipCompanies.length));
+    setOffCampusPage((p) => cap(p, offCampusCompanies.length));
+  }, [
+    companiesPerPage,
+    dreamCompanies.length,
+    openDreamCompanies.length,
+    internshipOnlyCompanies.length,
+    summerInternshipCompanies.length,
+    offCampusCompanies.length,
+  ]);
 
   const resetListPages = () => {
     setDreamPage(1);
@@ -1166,10 +1242,38 @@ function CompanyStats() {
     location.pathname === PATH_COMPANY_CATEGORY &&
     clusterParam === PLACEMENT_CLUSTER_CS
   ) {
-    const dreamLogoPreview = allDreamCompanies.slice(0, 5);
-    const openDreamLogoPreview = allOpenDreamCompanies.slice(0, 5);
-    const internshipOnlyLogoPreview = allInternshipOnlyCompanies.slice(0, 5);
-    const offCampusLogoPreview = allOffCampusCompanies.slice(0, 5);
+    const useFullListForCategoryTiles = companies.length > 0;
+    const p = categoryPreview;
+    const dreamLogoPreview = useFullListForCategoryTiles
+      ? allDreamCompanies.slice(0, 5)
+      : p?.logos?.dream ?? [];
+    const openDreamLogoPreview = useFullListForCategoryTiles
+      ? allOpenDreamCompanies.slice(0, 5)
+      : p?.logos?.openDream ?? [];
+    const internshipOnlyLogoPreview = useFullListForCategoryTiles
+      ? allInternshipOnlyCompanies.slice(0, 5)
+      : p?.logos?.internshipOnly ?? [];
+    const offCampusLogoPreview = useFullListForCategoryTiles
+      ? allOffCampusCompanies.slice(0, 5)
+      : p?.logos?.offCampus ?? [];
+    const summerLogoPreview = useFullListForCategoryTiles
+      ? allSummerInternshipCompanies.slice(0, 5)
+      : p?.logos?.summerInternship ?? [];
+    const dreamCount = useFullListForCategoryTiles
+      ? allDreamCompanies.length
+      : p?.counts?.dream ?? 0;
+    const openDreamCount = useFullListForCategoryTiles
+      ? allOpenDreamCompanies.length
+      : p?.counts?.openDream ?? 0;
+    const internshipOnlyCount = useFullListForCategoryTiles
+      ? allInternshipOnlyCompanies.length
+      : p?.counts?.internshipOnly ?? 0;
+    const summerCount = useFullListForCategoryTiles
+      ? allSummerInternshipCompanies.length
+      : p?.counts?.summerInternship ?? 0;
+    const offCampusCount = useFullListForCategoryTiles
+      ? allOffCampusCompanies.length
+      : p?.counts?.offCampus ?? 0;
 
     return (
       <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
@@ -1216,7 +1320,7 @@ function CompanyStats() {
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{allDreamCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{dreamCount} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -1239,7 +1343,7 @@ function CompanyStats() {
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{allOpenDreamCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{openDreamCount} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -1262,7 +1366,7 @@ function CompanyStats() {
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{allInternshipOnlyCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -1278,13 +1382,13 @@ function CompanyStats() {
                 </h3>
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
-                    companies={allSummerInternshipCompanies.slice(0, 5)}
+                    companies={summerLogoPreview}
                     gridSize={5}
                     interval={3200}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{allSummerInternshipCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{summerCount} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -1306,7 +1410,7 @@ function CompanyStats() {
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{allOffCampusCompanies.length} companies</span>
+                  <span className="text-sm sm:text-base">{offCampusCount} companies</span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
@@ -1386,6 +1490,8 @@ function CompanyStats() {
     tierListPage = summerInternshipPage;
     setTierListPage = setSummerInternshipPage;
   }
+  const tierListTotal = tierListPool.length;
+  const tierListTotalPages = Math.max(1, Math.ceil(tierListTotal / companiesPerPage));
 
   return (
     <div className="page-container px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
@@ -1426,7 +1532,9 @@ function CompanyStats() {
 
       <section className="mb-6 sm:mb-10 w-full max-w-full min-w-0">
         <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr">
-          {tierListSlice.length > 0 ? (
+          {!companiesFetchDone ? (
+            <CompanyCardGridShimmer count={companiesPerPage} />
+          ) : tierListSlice.length > 0 ? (
             tierListSlice.map((c) => (
               <CompanyCard
                 key={c._id}
@@ -1436,12 +1544,27 @@ function CompanyStats() {
               />
             ))
           ) : (
-            <p className="text-theme-muted col-span-full text-center py-8">
-              No companies match your search or filters.
-            </p>
+            <div
+              className="col-span-full flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-theme bg-theme-card/40 px-6 py-12 sm:py-14 text-center"
+              role="status"
+            >
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-theme bg-theme-input text-theme-muted">
+                <FaSearch className="h-6 w-6" aria-hidden />
+              </div>
+              <p className="text-base font-medium text-theme-primary sm:text-lg">No matches</p>
+              <p className="mt-1 max-w-sm text-sm text-theme-secondary">
+                Try a different search term or filter — companies will show here when they match.
+              </p>
+            </div>
           )}
         </div>
-        {renderTierPagination(tierListPool.length, tierListPage, setTierListPage)}
+        {renderTierPagination(tierListTotal, tierListPage, setTierListPage)}
+        {companiesFetchDone && tierListTotal > 0 && (
+          <p className="mt-2 text-center text-sm text-theme-muted" aria-live="polite">
+            Page {tierListPage} of {tierListTotalPages} · {tierListTotal}{" "}
+            {tierListTotal === 1 ? "company" : "companies"}
+          </p>
+        )}
       </section>
 
       <MissingCompanyRequestModal

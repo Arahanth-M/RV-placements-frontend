@@ -72,6 +72,9 @@ export const companyAPI = {
     return companiesListPromise;
   },
 
+  /** 2026 category tiles: small counts + 5 logo rows per bucket (does not block on full /api/companies) */
+  getPreviewLogos: () => API.get('/api/companies/preview-logos'),
+
   async getCompany(id) {
     if (!id) return Promise.reject(new Error('Company id is required'));
 
