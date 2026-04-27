@@ -125,10 +125,14 @@ export const companyAPI = {
     return companyDetailsPromises.get(dedupeKey);
   },
 
-  async prefetchCompany(id) {
+  /**
+   * @param {string} id
+   * @param {{ year?: number }} [options] optional placement year to warm cache for category deep links
+   */
+  async prefetchCompany(id, options = {}) {
     if (!id) return;
     try {
-      await companyAPI.getCompany(id);
+      await companyAPI.getCompany(id, options);
     } catch {
       // Best-effort prefetch; navigation path handles errors.
     }

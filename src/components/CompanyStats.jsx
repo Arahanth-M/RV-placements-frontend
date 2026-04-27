@@ -772,8 +772,29 @@ function CompanyStats() {
     return isCompanyMarkedOffCampus(company);
   };
 
-  const summerInternshipCompanies = filteredCompanies.filter(
-    (company) => isPpoCompany(company) && !isOffCampusCompany(company)
+  /** PPO on any placement year (2026/2027), or legacy single-year primary visit. */
+  const qualifiesSummerInternshipTile = (company) => {
+    if (company.placementAnyYearPpoOnCampus === true) return true;
+    if (company.placementAnyYearPpoOnCampus === false) return false;
+    return isPpoCompany(company) && !isOffCampusCompany(company);
+  };
+
+  /**
+   * Dream / Open dream list membership: any year can supply a non-PPO on-campus FTE-style visit,
+   * even when the hub’s primary row is a different year’s PPO.
+   */
+  const dreamTierListBase = (company) => {
+    if (company.placementHasDreamTierVisit === true) return !isOffCampusCompany(company);
+    if (company.placementHasDreamTierVisit === false) return false;
+    return (
+      !isOffCampusCompany(company) &&
+      !isPpoCompany(company) &&
+      !isInternshipOnlyCompany(company)
+    );
+  };
+
+  const summerInternshipCompanies = filteredCompanies.filter((company) =>
+    qualifiesSummerInternshipTile(company)
   );
   const offCampusCompanies = filteredCompanies.filter(isOffCampusCompany);
   const internshipOnlyCompanies = filteredCompanies.filter(
@@ -783,22 +804,14 @@ function CompanyStats() {
       !isOffCampusCompany(company)
   );
   const dreamCompanies = filteredCompanies.filter(
-    (company) =>
-      !isOffCampusCompany(company) &&
-      !isPpoCompany(company) &&
-      company.category !== "open dream" &&
-      !isInternshipOnlyCompany(company)
+    (company) => dreamTierListBase(company) && company.category !== "open dream"
   );
   const openDreamCompanies = filteredCompanies.filter(
-    (company) =>
-      !isOffCampusCompany(company) &&
-      !isPpoCompany(company) &&
-      company.category === "open dream" &&
-      !isInternshipOnlyCompany(company)
+    (company) => dreamTierListBase(company) && company.category === "open dream"
   );
   // Category cards must always represent full 2026 data, independent of list search/filter state.
-  const allSummerInternshipCompanies = orderedCompanies.filter(
-    (company) => isPpoCompany(company) && !isOffCampusCompany(company)
+  const allSummerInternshipCompanies = orderedCompanies.filter((company) =>
+    qualifiesSummerInternshipTile(company)
   );
   const allOffCampusCompanies = orderedCompanies.filter(isOffCampusCompany);
   const allInternshipOnlyCompanies = orderedCompanies.filter(
@@ -808,18 +821,10 @@ function CompanyStats() {
       !isOffCampusCompany(company)
   );
   const allDreamCompanies = orderedCompanies.filter(
-    (company) =>
-      !isOffCampusCompany(company) &&
-      !isPpoCompany(company) &&
-      company.category !== "open dream" &&
-      !isInternshipOnlyCompany(company)
+    (company) => dreamTierListBase(company) && company.category !== "open dream"
   );
   const allOpenDreamCompanies = orderedCompanies.filter(
-    (company) =>
-      !isOffCampusCompany(company) &&
-      !isPpoCompany(company) &&
-      company.category === "open dream" &&
-      !isInternshipOnlyCompany(company)
+    (company) => dreamTierListBase(company) && company.category === "open dream"
   );
 
   const dreamSlice = dreamCompanies.slice(
@@ -1566,14 +1571,33 @@ function CompanyStats() {
           {!companiesFetchDone ? (
             <CompanyCardGridShimmer count={companiesPerPage} />
           ) : tierListSlice.length > 0 ? (
-            tierListSlice.map((c) => (
-              <CompanyCard
-                key={c._id}
-                company={c}
-                isAdmin={isAdmin}
-                onStatsUpdated={handleCompanyCardUpdated}
-              />
-            ))
+            tierListSlice.map((c) => {
+              let typeDisplayLabel;
+              let detailDefaultYear;
+              if (placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
+                typeDisplayLabel = c.placementSummerDisplayType ?? c.type;
+                detailDefaultYear = c.placementSummerDetailYear;
+              } else if (
+                placementTier === PLACEMENT_TIER_DREAM ||
+                placementTier === PLACEMENT_TIER_OPEN_DREAM
+              ) {
+                typeDisplayLabel = c.placementDreamDisplayType ?? c.type;
+                detailDefaultYear = c.placementDreamDetailYear;
+              }
+              if (detailDefaultYear !== 2026 && detailDefaultYear !== 2027) {
+                detailDefaultYear = undefined;
+              }
+              return (
+                <CompanyCard
+                  key={c._id}
+                  company={c}
+                  typeDisplayLabel={typeDisplayLabel}
+                  detailDefaultYear={detailDefaultYear}
+                  isAdmin={isAdmin}
+                  onStatsUpdated={handleCompanyCardUpdated}
+                />
+              );
+            })
           ) : (
             <div
               className="col-span-full flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-theme bg-theme-card/40 px-6 py-12 sm:py-14 text-center"

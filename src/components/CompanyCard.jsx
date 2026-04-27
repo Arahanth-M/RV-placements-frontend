@@ -5,7 +5,14 @@ import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import CompanyLogo from "./CompanyLogo";
 
-function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
+function CompanyCard({
+  company,
+  onUpdate,
+  isAdmin,
+  onStatsUpdated,
+  typeDisplayLabel,
+  detailDefaultYear,
+}) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
   const location = useLocation();
@@ -57,6 +64,14 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     checkUpvoteStatus();
   }, [company._id, user]);
 
+  const companyDetailPath = (() => {
+    const cid = company._id;
+    if (detailDefaultYear === 2026 || detailDefaultYear === 2027) {
+      return `/companies/${cid}?year=${detailDefaultYear}`;
+    }
+    return `/companies/${cid}`;
+  })();
+
   const handleCardClick = () => {
     // Store that we're navigating from company cards view (user-specific)
     // The parent component (CompanyStats) will store the current state via useEffect cleanup
@@ -67,7 +82,11 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     if (user?.userId) {
       sessionStorage.setItem(`${COMPANY_DETAILS_RETURN_PATH_KEY}_${user.userId}`, currentPath);
     }
-    navigate(`/companies/${company._id}`);
+    const navState =
+      detailDefaultYear === 2026 || detailDefaultYear === 2027
+        ? { defaultPlacementYear: detailDefaultYear }
+        : undefined;
+    navigate(companyDetailPath, { state: navState });
   };
 
   const handleViewDetailsClick = (e) => {
@@ -78,7 +97,11 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
   const prefetchDetails = () => {
     if (hasPrefetchedRef.current || !company?._id) return;
     hasPrefetchedRef.current = true;
-    companyAPI.prefetchCompany(company._id);
+    const prefetchOpts =
+      detailDefaultYear === 2026 || detailDefaultYear === 2027
+        ? { year: detailDefaultYear }
+        : {};
+    companyAPI.prefetchCompany(company._id, prefetchOpts);
   };
 
   const handleThumbsUp = async (e) => {
@@ -146,6 +169,8 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
     }
   };
 
+  const typeShown = typeDisplayLabel ?? company.type;
+
   const visitDateStr =
     company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
   const showDateOfVisit =
@@ -195,7 +220,7 @@ function CompanyCard({ company, onUpdate, isAdmin, onStatsUpdated }) {
             {!isEditingType ? (
               <>
                 <p className="company-role text-xs sm:text-sm text-theme-secondary italic truncate">
-                  {company.type || "Placement Drive"}
+                  {typeShown || "Placement Drive"}
                 </p>
                 {isAdmin && (
                   <button onClick={startEditType} className="text-theme-muted hover:text-theme-accent transition-colors" aria-label="Edit type" title="Edit company type">

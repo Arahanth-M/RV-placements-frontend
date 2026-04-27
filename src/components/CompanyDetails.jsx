@@ -21,6 +21,20 @@ import InternshipTab from "./CompanyTabs/InternshipTab";
 
 const PLACEMENT_YEAR_CHOICES = [2026, 2027];
 
+/** First load year: `?year=` on the URL, then optional navigation state (category cards). */
+function readPreferredPlacementYearFromLocation(location) {
+  try {
+    const params = new URLSearchParams(location.search || "");
+    const q = Number(params.get("year"));
+    if (q === 2026 || q === 2027) return q;
+  } catch {
+    // ignore
+  }
+  const s = location.state?.defaultPlacementYear;
+  if (s === 2026 || s === 2027) return s;
+  return null;
+}
+
 function CompanyDetails() {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const { id } = useParams();
@@ -75,10 +89,11 @@ function CompanyDetails() {
 
     if (switchedCompany) {
       detailFetchIdRef.current = id;
-      yearForRequest = 2026;
-      if (placementYear !== 2026) {
+      const preferred = readPreferredPlacementYearFromLocation(location) ?? 2026;
+      yearForRequest = preferred;
+      if (placementYear !== preferred) {
         skipNextPlacementYearEffectRef.current = true;
-        setPlacementYear(2026);
+        setPlacementYear(preferred);
       }
       setPlacementYearLoading(false);
       setLoading(true);
