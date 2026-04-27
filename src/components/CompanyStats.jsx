@@ -187,6 +187,17 @@ function CompanyStats() {
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
   const { user, isAdmin, studentData, setUser } = useAuth();
 
+  const getPersistedPlacementCardsYear = () => {
+    const fromSession = user?.userId
+      ? sessionStorage.getItem(`companystats_selectedYear_${user.userId}`)
+      : null;
+    const fromSessionFallback = sessionStorage.getItem("companystats_selectedYear");
+    const fromLocal = localStorage.getItem("companystats_selectedYear");
+    const raw = fromSession ?? fromSessionFallback ?? fromLocal;
+    const parsed = parseInt(String(raw || ""), 10);
+    return parsed === 2027 ? 2027 : 2026;
+  };
+
   const activeCategory = useMemo(
     () => normalizeTierCategory(placementTier, tierCategories[placementTier]),
     [placementTier, tierCategories]
@@ -372,18 +383,19 @@ function CompanyStats() {
     }
   }, [user]);
 
-  // URL is source of truth for 2026 flow: /category (picker) vs /companystats?tier=… (list)
+  // URL is source of truth for placement-card flow: /category (picker) vs /companystats?tier=… (list)
   useEffect(() => {
+    const resolvedCardsYear = getPersistedPlacementCardsYear();
     if (location.pathname === PATH_COMPANY_CATEGORY) {
-      setSelectedYear(2026);
+      setSelectedYear(resolvedCardsYear);
       setPlacementTier(null);
       return;
     }
     if (location.pathname === PATH_COMPANY_STATS && isPlacementTierParam(tierQuery)) {
-      setSelectedYear(2026);
+      setSelectedYear(resolvedCardsYear);
       setPlacementTier(tierQuery);
     }
-  }, [location.pathname, tierQuery]);
+  }, [location.pathname, tierQuery, user?.userId]);
 
   // Check for navigation state or sessionStorage to restore selectedYear (non-2026 only on hub)
   useEffect(() => {
@@ -991,7 +1003,7 @@ function CompanyStats() {
               Select Year
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
-              Pick a batch to open placement stats or the 2026 company hub.
+              Pick a batch to open placement stats or the company hub.
             </p>
           <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
             {[2024, 2025, 2026].map((year) => {
@@ -1008,6 +1020,16 @@ function CompanyStats() {
                       return;
                     }
                     if (year === 2026) {
+                      setSelectedYear(year);
+                      if (user?.userId) {
+                        sessionStorage.setItem(
+                          getStorageKey("companystats_selectedYear"),
+                          String(year)
+                        );
+                      } else {
+                        sessionStorage.setItem("companystats_selectedYear", String(year));
+                      }
+                      localStorage.setItem("companystats_selectedYear", String(year));
                       sessionStorage.setItem(getStorageKey("companystats_placement_tier"), "");
                       navigate(PATH_COMPANY_CATEGORY);
                       return;
@@ -1034,10 +1056,12 @@ function CompanyStats() {
                       </div>
                     </div>
                     <h3 className="text-center text-xl font-bold text-theme-primary sm:text-2xl">
-                      {year} Stats
+                      {year === 2026 ? "2026 Onwards" : `${year} Stats`}
                     </h3>
                     <p className="mb-4 text-center text-sm text-theme-secondary sm:text-base">
-                      {year === 2026 ? "View company cards" : "View statistics table"}
+                      {year === 2026
+                        ? "View company cards"
+                        : "View statistics table"}
                     </p>
                     <ul className="w-full min-w-0 flex-1 list-outside list-disc space-y-2 pl-5 text-left text-sm leading-relaxed text-theme-secondary sm:pl-6 sm:text-base [&>li]:pl-1 marker:text-theme-accent">
                       {bullets.map((line, i) => (
