@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { adminAPI } from "../../utils/api";
 
 function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYear = 2026 }) {
-  const [aboutOpen, setAboutOpen] = useState(false);
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
   const [rolesDraft, setRolesDraft] = useState(() =>
@@ -37,72 +36,9 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
     return value;
   };
 
-  const formatAboutCompany = (text) => {
-    if (!text) return null;
-
-    const normalized = text.replace(/\\n/g, "\n");
-
-    return normalized.split(/\n+/).map((line, idx) => {
-      const trimmed = line.trim();
-      if (!trimmed) return null;
-
-      if (/^\d+\.\s+.+?:$/.test(trimmed) || /^[A-Za-z].+?:$/.test(trimmed)) {
-        return (
-          <h3
-            key={idx}
-            className="mt-4 text-indigo-400 font-semibold text-lg"
-          >
-            {trimmed}
-          </h3>
-        );
-      }
-
-      if (/^[-•]/.test(trimmed)) {
-        return (
-          <p
-            key={idx}
-            className="ml-4 text-slate-300 leading-relaxed"
-          >
-            {trimmed}
-          </p>
-        );
-      }
-
-      return (
-        <p
-          key={idx}
-          className="text-slate-300 leading-relaxed"
-        >
-          {trimmed}
-        </p>
-      );
-    });
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
       
-      {/* ABOUT COMPANY */}
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <button
-          onClick={() => setAboutOpen(!aboutOpen)}
-          className="w-full flex justify-between items-center"
-        >
-          <h2 className="text-xl font-semibold text-indigo-400">
-            About the Company
-          </h2>
-          <span className="text-slate-400">
-            {aboutOpen ? "−" : "+"}
-          </span>
-        </button>
-
-        {aboutOpen && (
-          <div className="mt-4 max-h-[500px] overflow-y-auto pr-2 space-y-2">
-            {formatAboutCompany(company["About The Company"])}
-          </div>
-        )}
-      </div>
-
       {/* GENERAL INFO */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">

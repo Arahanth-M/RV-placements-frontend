@@ -975,7 +975,7 @@ function CompanyStats() {
       "Company-wise AI mock interviews.",
       "Past coding questions per company, with intuition.",
       "Must-do topics tailored per company.",
-      "CTC split by role—and more in each profile.",
+      "CTC split by role and more in each profile.",
       "Companies sorted by the date they arrived on campus.",
     ],
   };

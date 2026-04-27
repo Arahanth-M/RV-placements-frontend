@@ -5,6 +5,20 @@ import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import CompanyLogo from "./CompanyLogo";
 
+const GOT_IN_DISPLAY_YEARS = [2026, 2027];
+
+function normalizeTotalGotInByYear(company) {
+  const d = company?.totalGotInByYear;
+  if (d && typeof d === "object") {
+    return {
+      2026: Number(d[2026]) || 0,
+      2027: Number(d[2027]) || 0,
+    };
+  }
+  const legacy = Number(company?.totalGotIn) || 0;
+  return { 2026: legacy, 2027: 0 };
+}
+
 function CompanyCard({
   company,
   onUpdate,
@@ -26,7 +40,9 @@ function CompanyCard({
   const [isEditingType, setIsEditingType] = useState(false);
   const [editTypeValue, setEditTypeValue] = useState("");
   const [isSavingType, setIsSavingType] = useState(false);
-  const [totalGotIn, setTotalGotIn] = useState(company.totalGotIn ?? 0);
+  const [totalGotInByYear, setTotalGotInByYear] = useState(() =>
+    normalizeTotalGotInByYear(company)
+  );
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
 
   // Update local state when company prop changes
@@ -35,8 +51,8 @@ function CompanyCard({
   }, [company.helpfulCount]);
 
   useEffect(() => {
-    setTotalGotIn(company.totalGotIn ?? 0);
-  }, [company.totalGotIn]);
+    setTotalGotInByYear(normalizeTotalGotInByYear(company));
+  }, [company.totalGotIn, company.totalGotInByYear]);
 
   // Check if user has already upvoted this company
   useEffect(() => {
@@ -176,6 +192,9 @@ function CompanyCard({
   const showDateOfVisit =
     visitDateStr.length > 0 && !/^(tba|tbd)$/i.test(visitDateStr);
 
+  const adminGotInYear = detailDefaultYear === 2027 ? 2027 : 2026;
+  const adminYearGotIn = totalGotInByYear[adminGotInYear] ?? 0;
+
   const handleAdjustTotalGotIn = async (e, delta) => {
     e.stopPropagation();
     if (!isAdmin || isUpdatingTotalGotIn) return;
@@ -183,10 +202,27 @@ function CompanyCard({
     try {
       setIsUpdatingTotalGotIn(true);
       const { adminAPI } = await import("../utils/api");
-      const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta);
-      const updatedTotalGotIn = response.data?.totalGotIn ?? 0;
-      setTotalGotIn(updatedTotalGotIn);
-      if (onStatsUpdated) onStatsUpdated(company._id, { totalGotIn: updatedTotalGotIn });
+      const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta, {
+        year: adminGotInYear,
+      });
+      const nextByYear =
+        response.data?.totalGotInByYear != null &&
+        typeof response.data.totalGotInByYear === "object"
+          ? {
+              2026: Number(response.data.totalGotInByYear[2026]) || 0,
+              2027: Number(response.data.totalGotInByYear[2027]) || 0,
+            }
+          : {
+              ...totalGotInByYear,
+              [adminGotInYear]: response.data?.totalGotIn ?? 0,
+            };
+      setTotalGotInByYear(nextByYear);
+      if (onStatsUpdated) {
+        onStatsUpdated(company._id, {
+          totalGotInByYear: nextByYear,
+          totalGotIn: nextByYear[adminGotInYear],
+        });
+      }
     } catch (err) {
       console.error("Error updating total got in:", err);
       alert("Failed to update Got in count");
@@ -251,13 +287,7 @@ function CompanyCard({
 
       {/* Middle Section: Main info - Flex grow to push footer down */}
       <div className="flex-1 flex flex-col min-w-0 gap-3">
-        {showDateOfVisit && (
-          <div className="company-info text-sm flex-shrink-0 leading-relaxed break-words">
-            <span className="font-semibold text-theme-secondary">Date of visit: </span>
-            <span className="text-theme-muted">{visitDateStr}</span>
-          </div>
-        )}
-
+        
         <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
           <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
           <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed break-words">
@@ -302,16 +332,21 @@ function CompanyCard({
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
         <div className="card-footer flex items-center justify-between gap-2 overflow-hidden">
-          <div className="flex items-center gap-2 shrink-0">
-            <p className="text-xs sm:text-sm font-semibold text-theme-secondary">
-              Got in: <span className="text-theme-primary tabular-nums">{totalGotIn}</span>
-            </p>
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
+              <span className="block">Got in</span>
+              {GOT_IN_DISPLAY_YEARS.map((y) => (
+                <span key={y} className="block text-theme-primary tabular-nums">
+                  {y}: {totalGotInByYear[y] ?? 0}
+                </span>
+              ))}
+            </div>
             {isAdmin && (
               <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
                   onClick={(e) => handleAdjustTotalGotIn(e, -1)}
-                  disabled={isUpdatingTotalGotIn || totalGotIn <= 0}
+                  disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
                   className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Decrease got in count"
                   title="Decrease got in count"

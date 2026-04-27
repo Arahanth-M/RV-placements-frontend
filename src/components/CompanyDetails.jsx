@@ -9,6 +9,7 @@ import {
 } from "../constants/placementTiers.js";
 import CompanyLogo from "./CompanyLogo";
 
+import AboutTab from "./CompanyTabs/AboutTab";
 import GeneralTab from "./CompanyTabs/GeneralTab";
 import OATab from "./CompanyTabs/OATab";
 import CodingTab from "./CompanyTabs/CodingTab";
@@ -43,7 +44,7 @@ function CompanyDetails() {
   const { user, isAdmin } = useAuth();
   const { setIsInterviewLocked: setGlobalInterviewLocked } = useInterviewLock();
   const [company, setCompany] = useState(null);
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState("about");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null); // 'offline' | 'error' | null
   const [loading, setLoading] = useState(true);
@@ -226,7 +227,8 @@ function CompanyDetails() {
     });
 
   const companyNavTabs = [
-    { id: "general", label: "General" },
+    { id: "about", label: "About" },
+    { id: "general", label: "Roles & Info" },
     { id: "oa", label: "OA Questions" },
     { id: "coding", label: "Coding" },
     { id: "interview", label: "Interview Experience" },
@@ -248,7 +250,7 @@ function CompanyDetails() {
       const shouldExit = window.confirm(EXIT_WARNING_MESSAGE);
       if (!shouldExit) return;
       setIsInterviewLocked(false);
-      setActiveTab("general");
+      setActiveTab("about");
       return;
     }
 
@@ -348,45 +350,6 @@ function CompanyDetails() {
         </div>
       </div>
 
-      <div className="mb-4 sm:mb-6 rounded-xl border border-theme bg-theme-card px-4 py-3 sm:px-5">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-            General, Must Do, Coding &amp; OA — placement year
-          </p>
-          {placementYearLoading ? (
-            <span className="text-xs text-theme-secondary">Updating…</span>
-          ) : null}
-        </div>
-        <div
-          className="flex flex-wrap gap-2"
-          role="group"
-          aria-label="Placement year (2026 or 2027)"
-        >
-          {PLACEMENT_YEAR_CHOICES.map((y) => {
-            const hasApproved =
-              Array.isArray(company.placementYearsAvailable) &&
-              company.placementYearsAvailable.includes(y);
-            const selected = placementYear === y;
-            return (
-              <button
-                key={y}
-                type="button"
-                onClick={() => setPlacementYear(y)}
-                disabled={placementYearLoading}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 disabled:opacity-60 ${
-                  selected
-                    ? "bg-theme-hero text-theme-accent shadow-md"
-                    : "bg-theme-nav text-theme-secondary hover:text-theme-primary border border-theme"
-                } ${!hasApproved ? "opacity-80" : ""}`}
-              >
-                {y}
-                {!hasApproved ? " · no visit yet" : ""}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="mb-4 sm:mb-6 min-w-0">
         <div
           className="flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl md:gap-1.5 md:p-1.5"
@@ -411,7 +374,45 @@ function CompanyDetails() {
           ))}
         </div>
       </div>
+
+      {["general", "oa", "interview", "internship"].includes(activeTab) && (
+        <div className="mb-4 sm:mb-6 rounded-xl border border-theme bg-theme-card px-4 py-2 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="text-sm font-semibold text-theme-secondary whitespace-nowrap">Placement Year:</span>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Placement year (2026 or 2027)"
+          >
+            {PLACEMENT_YEAR_CHOICES.map((y) => {
+              const hasApproved =
+                Array.isArray(company.placementYearsAvailable) &&
+                company.placementYearsAvailable.includes(y);
+              const selected = placementYear === y;
+              return (
+                <button
+                  key={y}
+                  type="button"
+                  onClick={() => setPlacementYear(y)}
+                  disabled={placementYearLoading}
+                  className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 disabled:opacity-60 ${
+                    selected
+                      ? "bg-theme-hero text-theme-accent shadow-md"
+                      : "bg-theme-nav text-theme-secondary hover:text-theme-primary border border-theme"
+                  } ${!hasApproved ? "opacity-80" : ""}`}
+                >
+                  {y}
+                  {!hasApproved ? " · no visit yet" : ""}
+                </button>
+              );
+            })}
+            {placementYearLoading && (
+              <span className="text-xs text-theme-secondary ml-2 animate-pulse">Updating…</span>
+            )}
+          </div>
+        </div>
+      )}
       <div className="company-tab-content">
+        {activeTab === "about" && <AboutTab company={company} />}
         {activeTab === "general" && (
           <GeneralTab
             company={company}

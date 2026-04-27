@@ -98,7 +98,10 @@ describe("CompanyCard admin got in controls", () => {
   it("updates the got in count from the admin controls", async () => {
     const onStatsUpdated = vi.fn();
     mockAdjustCompanyTotalGotIn.mockResolvedValue({
-      data: { totalGotIn: 4 },
+      data: {
+        totalGotIn: 4,
+        totalGotInByYear: { 2026: 4, 2027: 0 },
+      },
     });
 
     renderCard({ isAdmin: true, onStatsUpdated });
@@ -110,16 +113,49 @@ describe("CompanyCard admin got in controls", () => {
     await waitFor(() => {
       expect(mockAdjustCompanyTotalGotIn).toHaveBeenCalledWith(
         baseCompany._id,
-        1
+        1,
+        { year: 2026 }
       );
     });
 
     await waitFor(() => {
-      expect(screen.getByText("4")).toBeInTheDocument();
+      expect(screen.getByText(/2026:\s*4/)).toBeInTheDocument();
     });
 
     expect(onStatsUpdated).toHaveBeenCalledWith(baseCompany._id, {
       totalGotIn: 4,
+      totalGotInByYear: { 2026: 4, 2027: 0 },
+    });
+  });
+
+  it("sends year 2027 when adjusting got in on a 2027-scoped card", async () => {
+    mockAdjustCompanyTotalGotIn.mockResolvedValue({
+      data: {
+        totalGotIn: 2,
+        totalGotInByYear: { 2026: 0, 2027: 2 },
+      },
+    });
+
+    renderCard({
+      isAdmin: true,
+      detailDefaultYear: 2027,
+      company: {
+        ...baseCompany,
+        totalGotInByYear: { 2026: 0, 2027: 1 },
+        totalGotIn: 1,
+      },
+    });
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /increase got in count/i })
+    );
+
+    await waitFor(() => {
+      expect(mockAdjustCompanyTotalGotIn).toHaveBeenCalledWith(
+        baseCompany._id,
+        1,
+        { year: 2027 }
+      );
     });
   });
 });
