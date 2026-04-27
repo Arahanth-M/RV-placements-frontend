@@ -160,8 +160,9 @@ function CompanyStats() {
   const [companies, setCompanies] = useState([]);
   /** Until full GET /api/companies resolves, category tiles can use GET /api/companies/preview-logos */
   const [categoryPreview, setCategoryPreview] = useState(null);
-  /** False until the first 2026 companies list fetch finishes (success or error). Drives tier-list skeletons. */
+  /** False until the first placement-card year list fetch finishes (success or error). Drives tier-list skeletons. */
   const [companiesFetchDone, setCompaniesFetchDone] = useState(false);
+  const isPlacementCardsYear = selectedYear === 2026 || selectedYear === 2027;
   const [search, setSearch] = useState("");
   const [tierCategories, setTierCategories] = useState({
     [PLACEMENT_TIER_DREAM]: "all",
@@ -422,7 +423,7 @@ function CompanyStats() {
     }
   }, [location.state, location.pathname, tierQuery, user, navigate]);
 
-  // Persist hub year (2024/2025 only). 2026 flow uses /category and ?tier= URLs only.
+  // Persist hub year (2024/2025 only). Placement-card years use /category and ?tier= URLs.
   useEffect(() => {
     if (!user?.userId) return;
     if (selectedYear === null || selectedYear === 2026) {
@@ -433,26 +434,26 @@ function CompanyStats() {
   }, [selectedYear, user]);
 
   useEffect(() => {
-    if (selectedYear !== 2026 || !placementTier) return;
+    if (!isPlacementCardsYear || !placementTier) return;
     if (location.pathname !== PATH_COMPANY_STATS) return;
     if (tierQuery !== placementTier) {
       navigate(companystatsTierListUrl(placementTier), { replace: true });
     }
-  }, [selectedYear, placementTier, location.pathname, tierQuery, navigate]);
+  }, [isPlacementCardsYear, placementTier, location.pathname, tierQuery, navigate]);
 
   useEffect(() => {
     if (location.pathname !== PATH_COMPANY_STATS) return;
     if (isPlacementTierParam(tierQuery)) return;
-    if (selectedYear === 2026 && placementTier === null) {
+    if (isPlacementCardsYear && placementTier === null) {
       navigate(PATH_COMPANY_CATEGORY, { replace: true });
     }
-  }, [location.pathname, tierQuery, selectedYear, placementTier, navigate]);
+  }, [location.pathname, tierQuery, isPlacementCardsYear, placementTier, navigate]);
 
-  // Only clear tier when leaving 2026 for a concrete other year — not when selectedYear is still null on first paint
+  // Only clear tier when leaving placement-card years for a concrete other year.
   // (otherwise this runs before URL sync and wipes tier after /companystats?tier= navigation → infinite "Loading…").
   useEffect(() => {
     if (selectedYear == null) return;
-    if (selectedYear !== 2026) setPlacementTier(null);
+    if (selectedYear !== 2026 && selectedYear !== 2027) setPlacementTier(null);
   }, [selectedYear]);
 
   // Close the floating filter menu whenever the user changes tiers.
@@ -462,7 +463,7 @@ function CompanyStats() {
 
   useEffect(() => {
     const key = getStorageKey("companystats_placement_tier");
-    if (selectedYear === 2026) {
+    if (isPlacementCardsYear) {
       const v =
         placementTier === PLACEMENT_TIER_DREAM ||
         placementTier === PLACEMENT_TIER_OPEN_DREAM ||
@@ -475,13 +476,13 @@ function CompanyStats() {
     } else {
       sessionStorage.removeItem(key);
     }
-  }, [selectedYear, placementTier, user]);
+  }, [isPlacementCardsYear, selectedYear, placementTier, user]);
 
   // Restore company cards state if coming back from company details
   useEffect(() => {
     if (!user) return;
     
-    if (selectedYear === 2026 && getStoredValue('fromCompanyCards') === 'true') {
+    if (isPlacementCardsYear && getStoredValue('fromCompanyCards') === 'true') {
       const storedSearch = getStoredValue('companystats_search');
       const storedDreamCategory = getStoredValue('companystats_dream_category');
       const storedOpenDreamCategory = getStoredValue('companystats_open_dream_category');
@@ -556,11 +557,11 @@ function CompanyStats() {
       // Clear the flag after restoring
       sessionStorage.removeItem(getStorageKey('fromCompanyCards'));
     }
-  }, [selectedYear, user]);
+  }, [isPlacementCardsYear, selectedYear, user]);
 
   // Store company cards state whenever it changes (for restoring after navigation)
   useEffect(() => {
-    if (selectedYear === 2026 && user && user.userId) {
+    if (isPlacementCardsYear && user && user.userId) {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
       sessionStorage.setItem(
         getStorageKey('companystats_dream_category'),
@@ -582,6 +583,7 @@ function CompanyStats() {
       sessionStorage.setItem(getStorageKey('companystats_off_campus_page'), String(offCampusPage));
     }
   }, [
+    isPlacementCardsYear,
     selectedYear,
     search,
     tierCategories,
@@ -593,15 +595,15 @@ function CompanyStats() {
     user,
   ]);
 
-  // Fetch companies when 2026 is selected; preview-logos in parallel for fast category-tile paint
+  // Fetch companies for year-based cards (currently 2026/2027); preview-logos in parallel.
   useEffect(() => {
     let cancelled = false;
-    if (selectedYear === 2026) {
-      localStorage.setItem('companystats_selectedYear', '2026');
+    if (selectedYear === 2026 || selectedYear === 2027) {
+      localStorage.setItem('companystats_selectedYear', String(selectedYear));
       setCompaniesFetchDone(false);
       (async () => {
         try {
-          const res = await companyAPI.getPreviewLogos();
+          const res = await companyAPI.getPreviewLogos({ year: selectedYear });
           if (!cancelled) setCategoryPreview(res.data || null);
         } catch (err) {
           console.error("❌ Error fetching category preview:", err);
@@ -609,7 +611,7 @@ function CompanyStats() {
       })();
       (async () => {
         try {
-          const res = await companyAPI.getAllCompanies();
+          const res = await companyAPI.getAllCompanies({ year: selectedYear });
           if (!cancelled) setCompanies(res.data || []);
         } catch (err) {
           console.error("❌ Error fetching companies:", err);
@@ -625,7 +627,7 @@ function CompanyStats() {
 
     return () => {
       cancelled = true;
-      if (selectedYear !== 2026) {
+      if (selectedYear !== 2026 && selectedYear !== 2027) {
         localStorage.removeItem('companystats_selectedYear');
       }
     };
@@ -1107,9 +1109,9 @@ function CompanyStats() {
     ],
   };
 
-  // 2026 /category (no cluster): pick EC / ME / CS — cards match year selection styling
+  // Placement-card year /category (no cluster): pick EC / ME / CS.
   if (
-    selectedYear === 2026 &&
+    isPlacementCardsYear &&
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY &&
     clusterParam === null
@@ -1166,7 +1168,7 @@ function CompanyStats() {
               Choose your cluster
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
-              Pick your branch cluster for the 2026 company hub.
+              Pick your branch cluster for the selected year company hub.
             </p>
             <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
               {clusters.map((c) => {
@@ -1211,7 +1213,7 @@ function CompanyStats() {
 
   // EC / ME: placeholder until cluster-specific data exists
   if (
-    selectedYear === 2026 &&
+    isPlacementCardsYear &&
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY &&
     (clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME)
@@ -1232,7 +1234,7 @@ function CompanyStats() {
             <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
             <p className="mt-4 text-base text-theme-secondary sm:text-lg">Under development</p>
             <p className="mx-auto mt-2 max-w-md text-sm text-theme-muted">
-              This cluster&apos;s company hub is not available yet. Please use the CS cluster for 2026 listings, or check back later.
+              This cluster&apos;s company hub is not available yet. Please use the CS cluster listings, or check back later.
             </p>
           </div>
         </div>
@@ -1240,9 +1242,9 @@ function CompanyStats() {
     );
   }
 
-  // 2026 CS cluster: Dream / Open dream / Internship only / Summer internship / Off campus — /category?cluster=cs
+  // CS cluster: Dream / Open dream / Internship only / Summer internship / Off campus — /category?cluster=cs
   if (
-    selectedYear === 2026 &&
+    isPlacementCardsYear &&
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY &&
     clusterParam === PLACEMENT_CLUSTER_CS
@@ -1452,7 +1454,7 @@ function CompanyStats() {
   // Company cards list: /companystats?tier=dream|open_dream|internship_only|summer_internship|off_campus
   if (
     !(
-      selectedYear === 2026 &&
+      isPlacementCardsYear &&
       placementTier &&
       location.pathname === PATH_COMPANY_STATS &&
       tierQuery === placementTier

@@ -9,6 +9,7 @@ const API = axios.create({
 // In-flight promise deduplication: only one network request for companies list at a time
 let companiesListPromise = null;
 const companyDetailsPromises = new Map();
+const previewLogosPromises = new Map();
 
 const INTERVIEW_SUMMARY_CACHE_TTL_MS = 30 * 1000;
 const INTERVIEW_DETAIL_CACHE_TTL_MS = 120 * 1000;
@@ -57,23 +58,50 @@ export const authAPI = {
 };
 
 export const companyAPI = {
-  async getAllCompanies() {
-    if (!companiesListPromise) {
-      companiesListPromise = (async () => {
+  async getAllCompanies(options = {}) {
+    let year = options.year != null ? Number(options.year) : null;
+    if (year != null && !Number.isFinite(year)) year = null;
+    const key = year == null ? "all" : `y${year}`;
+    if (!companiesListPromise) companiesListPromise = new Map();
+    if (!companiesListPromise.has(key)) {
+      companiesListPromise.set(
+        key,
+        (async () => {
         try {
-          const res = await API.get('/api/companies');
+          const res = await API.get('/api/companies', {
+            params: year == null ? undefined : { year },
+          });
           const list = Array.isArray(res.data) ? res.data : [];
           return { data: list };
         } finally {
-          companiesListPromise = null;
+          companiesListPromise.delete(key);
+          if (companiesListPromise.size === 0) {
+            companiesListPromise = null;
+          }
         }
-      })();
+      })()
+      );
     }
-    return companiesListPromise;
+    return companiesListPromise.get(key);
   },
 
-  /** 2026 category tiles: small counts + 5 logo rows per bucket (does not block on full /api/companies) */
-  getPreviewLogos: () => API.get('/api/companies/preview-logos'),
+  /** Year-aware category tiles: small counts + 5 logo rows per bucket. */
+  getPreviewLogos: (options = {}) => {
+    let year = options.year != null ? Number(options.year) : null;
+    if (year != null && !Number.isFinite(year)) year = null;
+    const key = year == null ? "all" : `y${year}`;
+    if (!previewLogosPromises.has(key)) {
+      previewLogosPromises.set(
+        key,
+        API.get('/api/companies/preview-logos', {
+          params: year == null ? undefined : { year },
+        }).finally(() => {
+          previewLogosPromises.delete(key);
+        })
+      );
+    }
+    return previewLogosPromises.get(key);
+  },
 
   /**
    * @param {string} id
