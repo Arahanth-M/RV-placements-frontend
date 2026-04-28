@@ -274,7 +274,7 @@ import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
-import rvLogo from "../../assets/logo2.png";
+import rvLogo from "../../assets/logo2.webp";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
 function OATab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 }) {

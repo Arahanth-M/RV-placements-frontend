@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import rvLogo from "../../assets/logo2.png";
+import rvLogo from "../../assets/logo2.webp";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
 function InternshipTab({ company, placementYear = 2026 }) {

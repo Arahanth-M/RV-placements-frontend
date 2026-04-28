@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaBookOpen, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser } from "react-icons/fa";
 import { useTheme } from "../utils/ThemeContext";
 import { adminAPI, eventAPI } from "../utils/api";
-import logo from "../assets/logo2.png";
+import logo from "../assets/logo2.webp";
 import NotificationBell from "./NotificationBell";
 
 const Sidebar = () => {

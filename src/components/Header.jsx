@@ -22,7 +22,7 @@ import {
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
 import NotificationBell from "./NotificationBell";
-import logo from "../assets/logo2.png";
+import logo from "../assets/logo2.webp";
 
 const primaryLinks = [
   { label: "Home", path: "/" },

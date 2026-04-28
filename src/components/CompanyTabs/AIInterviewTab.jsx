@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { interviewAPI } from "../../utils/api";
-import rvLogo from "../../assets/logo2.png";
+import rvLogo from "../../assets/logo2.webp";
 
 const EXIT_WARNING_MESSAGE =
   "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";

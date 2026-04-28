@@ -2,10 +2,10 @@
 import { Link } from "react-router-dom";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
-import aeroplane from "../assets/home5.png";
-import building from "../assets/rv_image.png";
+import aeroplane from "../assets/home5.webp";
+import building from "../assets/rv_image.webp";
 import CompanyLogo from "./CompanyLogo";
-import entrance from "../assets/new.jpeg";
+import entrance from "../assets/new.webp";
 
 /* ── tiny hook: count up when element enters viewport ── */
 function useCountUp(target, duration = 1800) {
@@ -114,8 +114,6 @@ function Home() {
   const { user } = useAuth();
   const images = useMemo(() => [aeroplane, entrance, building], []);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [imageRatios, setImageRatios] = useState({});
-  const [loadedSlides, setLoadedSlides] = useState({});
   const [companyLogos, setCompanyLogos] = useState([]);
   const [showBetaPopup, setShowBetaPopup] = useState(false);
 
@@ -127,29 +125,17 @@ function Home() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => {
-        const next = (prev + 1) % images.length;
-        // Skip swap until next slide is decoded to avoid border flash.
-        return loadedSlides[next] ? next : prev;
-      });
+      setCurrentIndex((prev) => (prev + 1) % images.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [images.length, loadedSlides]);
+  }, [images.length]);
 
   useEffect(() => {
-    images.forEach((src, index) => {
+    // Keep the first slide as the only LCP-critical request, then warm the cache for later slides after mount.
+    const preloadImages = images.slice(1);
+
+    preloadImages.forEach((src) => {
       const img = new Image();
-      img.onload = () => {
-        if (!img.naturalWidth || !img.naturalHeight) return;
-        setImageRatios((prev) => ({
-          ...prev,
-          [index]: img.naturalWidth / img.naturalHeight,
-        }));
-        setLoadedSlides((prev) => ({
-          ...prev,
-          [index]: true,
-        }));
-      };
       img.src = src;
     });
   }, [images]);
@@ -215,13 +201,6 @@ function Home() {
     { value: 4, suffix: "+", label: "Active Features", duration: 1000 },
   ];
 
-  const slideshowRatio = useMemo(() => {
-    const ratios = Object.values(imageRatios);
-    if (!ratios.length) return 16 / 9;
-    // Keep a stable frame to avoid layout jumps during slide switches.
-    return Math.max(...ratios);
-  }, [imageRatios]);
-
   return (
     <div className="min-h-screen bg-theme-app">
       {showBetaPopup && (
@@ -279,28 +258,24 @@ function Home() {
 <div className="flex-1 w-full lg:w-auto">
   <div
     className="relative w-full rounded-2xl overflow-hidden shadow-2xl bg-theme-card"
-    style={{ aspectRatio: slideshowRatio }}
+    style={{ aspectRatio: 16 / 9 }}
   >
-    
-    {/* Slides */}
-    {images.map((image, index) => (
-      <div
-        key={index}
-        className="absolute inset-0 transition-opacity duration-500 ease-in-out will-change-opacity"
-        style={{ opacity: index === currentIndex ? 1 : 0 }}
-      >
-        <img
-          src={image}
-          alt={`Slide ${index + 1}`}
-          className="w-full h-full object-cover"
-          style={{ height: "100%" }}
-          loading="eager"
-          decoding="sync"
-        />
-      </div>
-    ))}
-
-   
+    {/* Background preloading happens after mount, so later slides are cached without competing with the first paint. */}
+    <div className="w-full h-full">
+      {/* Render a single slide so the browser avoids decoding multiple hero images and keeps the DOM light. */}
+      {/* Only the first slide is eager/high-priority because it is the LCP candidate; later slides can stay lazy. */}
+      <img
+        src={images[currentIndex]}
+        alt={`Slide ${currentIndex + 1}`}
+        className="w-full h-full object-cover"
+        style={{ height: "100%" }}
+        width="1920"
+        height="1080"
+        loading={currentIndex === 0 ? "eager" : "lazy"}
+        fetchPriority={currentIndex === 0 ? "high" : "auto"}
+        decoding="async"
+      />
+    </div>
   </div>
 </div>
 </div>

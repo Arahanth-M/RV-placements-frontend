@@ -5,7 +5,7 @@ const developers = [
   {
     name: "Akshatha A",
     role: "Frontend developer",
-    photo: "/developers/akshatha.jpeg",
+    photo: "/developers/akshatha.webp",
     social: {
       linkedin: "https://www.linkedin.com/in/akshatha-anil-871b5825b/",
       email: "akshathaa.cs22@rvce.edu.in",
@@ -15,7 +15,7 @@ const developers = [
   {
     name: "Arahanth M",
     role: "Software Product Developer",
-    photo: "/developers/arahanth.jpeg",
+    photo: "/developers/arahanth.webp",
     social: {
       linkedin: "https://www.linkedin.com/in/arahanth-m-4379731b5/",
       email: "arahanthm.cs22@rvce.edu.in",
@@ -25,7 +25,7 @@ const developers = [
   {
     name: "Darshan Kashyap N",
     role: "Business Development & Outreach",
-    photo: "/developers/darshan.jpeg",
+    photo: "/developers/darshan.webp",
     /** Favor lower half of image (crop more from top) */
     photoObjectClass: "object-bottom",
     social: {
