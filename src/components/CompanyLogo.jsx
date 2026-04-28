@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-
-const LOGO_DEV_PUBLIC_KEY = "pk_B8XNckD9R3eqItbtBQtP3g";
+import { BASE_URL } from "../utils/constants";
 
 function getCompanyInitials(name) {
   if (!name || !name.trim()) return "XX";
@@ -51,12 +50,6 @@ function isSocialProfileDomain(domain) {
   return matchesBlockedHost(domain, blockedHosts);
 }
 
-function isSocialProfileLogoUrl(url) {
-  const hostname = normalizeDomain(url);
-  if (!hostname) return false;
-  return isSocialProfileDomain(hostname);
-}
-
 /** Derive a best-effort domain from company name (e.g. "Google" -> "google.com"). */
 function domainFromName(name) {
   if (!name || typeof name !== "string") return "";
@@ -65,16 +58,14 @@ function domainFromName(name) {
 }
 
 /**
- * Renders a company logo using logo.dev when domain is available,
- * otherwise falls back to company.logo or initials.
- * @param {Object} company - { name, logo?, domain? }
+ * Renders a company logo through the backend logo proxy so the browser
+ * no longer calls logo.dev directly from every card/detail view.
+ * @param {Object} company - { name, domain? }
  * @param {string} [className] - applied to the img
  * @param {string} [alt] - alt text (defaults to company name or "Company logo")
  */
 function CompanyLogo({ company, className = "", alt }) {
   const name = company?.name;
-  const rawLogoUrl = company?.logo?.trim() || "";
-  const logoUrl = isSocialProfileLogoUrl(rawLogoUrl) ? "" : rawLogoUrl;
   const rawDomain = company?.domain?.trim() || "";
   const normalizedDomain = normalizeDomain(rawDomain);
   const domain = (
@@ -84,8 +75,8 @@ function CompanyLogo({ company, className = "", alt }) {
   ) || domainFromName(name);
 
   const getInitialSrc = () => {
-    if (domain) return `https://img.logo.dev/${domain}?token=${LOGO_DEV_PUBLIC_KEY}`;
-    if (logoUrl) return logoUrl;
+    // The backend proxy adds centralized caching and avoids direct client-side logo.dev requests.
+    if (domain) return `${BASE_URL}/api/logo?domain=${encodeURIComponent(domain)}`;
     return getDefaultLogoSrc(name);
   };
 
@@ -93,18 +84,12 @@ function CompanyLogo({ company, className = "", alt }) {
 
   useEffect(() => {
     setSrc(getInitialSrc());
-  }, [company?._id, name, logoUrl, domain]);
+  }, [company?._id, name, domain]);
 
   const fallbackLogoSrc = useMemo(() => getDefaultLogoSrc(name), [name]);
 
   const handleError = () => {
-    setSrc((current) => {
-      if (domain && current.includes("logo.dev")) {
-        if (logoUrl) return logoUrl;
-        return fallbackLogoSrc;
-      }
-      return fallbackLogoSrc;
-    });
+    setSrc(fallbackLogoSrc);
   };
 
   return (
@@ -112,6 +97,8 @@ function CompanyLogo({ company, className = "", alt }) {
       src={src}
       alt={alt ?? name ?? "Company logo"}
       className={className}
+      loading="lazy"
+      decoding="async"
       onError={handleError}
     />
   );
