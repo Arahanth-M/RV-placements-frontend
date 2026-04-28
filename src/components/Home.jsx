@@ -246,12 +246,12 @@ function Home() {
                 Your all-in-one placement companion at RVCE. Access company insights, real interview experiences, curated resources and AI-powered mock interviews to prepare smarter.
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
-                <a
-                  href="/companystats"
+                <Link
+                  to="/companystats"
                   className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
                 >
                   Explore Companies →
-                </a>
+                </Link>
               </div>
             </div>
 {/*slideshow*/}

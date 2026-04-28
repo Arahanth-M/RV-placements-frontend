@@ -158,6 +158,9 @@ export const companyAPI = {
   incrementHelpfulCount: (id) => API.post(`/api/companies/${id}/helpful`),
 
   getHelpfulStatus: (id) => API.get(`/api/companies/${id}/helpful/status`),
+
+  getHelpfulStatusBatch: (companyIds) =>
+    API.post('/api/companies/helpful/status/batch', { companyIds }),
 };
 
 export const experienceAPI = {

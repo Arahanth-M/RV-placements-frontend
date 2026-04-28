@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -26,10 +26,9 @@ const GoogleIcon = () => (
 );
 
 const Login = () => {
-  const { login, user, isAdmin, refreshUser } = useAuth();
+  const { login, user, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const handledOAuthQueryRef = useRef(false);
   const isAdminRoute = location.pathname.includes("/admin");
 
   const handleGoogleSignIn = () => {
@@ -55,42 +54,6 @@ const Login = () => {
       navigate(safeRedirect, { replace: true });
     }
   }, [user, isAdmin, navigate]);
-
-  useEffect(() => {
-    if (handledOAuthQueryRef.current) return;
-    const urlParams = new URLSearchParams(window.location.search);
-    const oauthSuccess =
-      urlParams.get("login") === "success" || urlParams.get("signup") === "success";
-    if (!oauthSuccess) return;
-
-    handledOAuthQueryRef.current = true;
-
-    const finalizeOAuthOnLoginPage = async () => {
-      let refreshedUser = null;
-      const maxAttempts = 5;
-      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-        refreshedUser = await refreshUser({ force: true });
-        if (refreshedUser) break;
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
-      if (refreshedUser) {
-        const adminFlag = urlParams.get("admin") === "true";
-        if (adminFlag) {
-          window.location.replace("/admin/dashboard");
-          return;
-        }
-        const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
-        const safeRedirect =
-          storedRedirect && storedRedirect.startsWith("/") ? storedRedirect : "/";
-        sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-        window.location.replace(safeRedirect);
-      }
-    };
-
-    finalizeOAuthOnLoginPage().catch((err) => {
-      console.error("OAuth completion from /login failed:", err);
-    });
-  }, [refreshUser]);
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center px-4 pt-8 pb-10 sm:px-6 sm:pt-10 lg:px-8 bg-theme-app text-theme-primary">

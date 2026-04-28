@@ -24,15 +24,10 @@ const AuthCallback = () => {
       
       if (urlParams.get('login') === 'success' || urlParams.get('signup') === 'success') {
         try {
-          // Cookie/JWT propagation can be slightly delayed after OAuth redirect.
-          // Retry briefly before treating auth as failed.
-          let fetchedUserData = null;
-          const maxAttempts = 5;
-          for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-            fetchedUserData = await refreshUser({ force: true });
-            if (fetchedUserData) break;
-            await new Promise((resolve) => setTimeout(resolve, 350));
-          }
+          // Give the JWT cookie a brief moment to settle after the OAuth redirect,
+          // then fetch the authenticated user once without retrying.
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          const fetchedUserData = await refreshUser();
           
           if (fetchedUserData) {
             const signupFlag = urlParams.get('signup') === 'success';

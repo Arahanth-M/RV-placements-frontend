@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { resourceCategories, iconMap } from '../data/resourcesData';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 
 const colorMap = [
@@ -473,8 +473,8 @@ const Resources = () => {
           <p className="text-slate-400" style={{ fontSize: '16px', marginBottom: '1.75rem', lineHeight: 1.65 }}>
             Begin your journey with these carefully curated resources and boost your placement preparation
           </p>
-          <a
-            href="/companystats"
+          <Link
+            to="/companystats"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               background: '#4F46E5', color: '#fff',
@@ -487,7 +487,7 @@ const Resources = () => {
             onMouseOut={(e) => e.currentTarget.style.background = '#4F46E5'}
           >
             Explore company stats <span style={{ fontSize: '18px' }}>→</span>
-          </a>
+          </Link>
         </div>
 
       </div>

@@ -26,15 +26,16 @@ function CompanyCard({
   onStatsUpdated,
   typeDisplayLabel,
   detailDefaultYear,
+  helpfulStatus,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
-  const [hasUpvoted, setHasUpvoted] = useState(false);
+  const [hasUpvoted, setHasUpvoted] = useState(helpfulStatus?.hasUpvoted === true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(Boolean(user) && !helpfulStatus);
   const hasPrefetchedRef = useRef(false);
 
   const [isEditingType, setIsEditingType] = useState(false);
@@ -51,34 +52,25 @@ function CompanyCard({
   }, [company.helpfulCount]);
 
   useEffect(() => {
+    if (!user) {
+      setHasUpvoted(false);
+      setIsCheckingStatus(false);
+      return;
+    }
+    if (!helpfulStatus) {
+      setIsCheckingStatus(true);
+      return;
+    }
+    setHasUpvoted(helpfulStatus.hasUpvoted === true);
+    if (helpfulStatus.helpfulCount !== undefined) {
+      setHelpfulCount(helpfulStatus.helpfulCount);
+    }
+    setIsCheckingStatus(false);
+  }, [helpfulStatus, user]);
+
+  useEffect(() => {
     setTotalGotInByYear(normalizeTotalGotInByYear(company));
   }, [company.totalGotIn, company.totalGotInByYear]);
-
-  // Check if user has already upvoted this company
-  useEffect(() => {
-    const checkUpvoteStatus = async () => {
-      if (!user) {
-        setIsCheckingStatus(false);
-        return;
-      }
-
-      try {
-        const response = await companyAPI.getHelpfulStatus(company._id);
-        setHasUpvoted(response.data.hasUpvoted || false);
-        if (response.data.helpfulCount !== undefined) {
-          setHelpfulCount(response.data.helpfulCount);
-        }
-      } catch (err) {
-        console.error("Error checking upvote status:", err);
-        // If user is not logged in, just set hasUpvoted to false
-        setHasUpvoted(false);
-      } finally {
-        setIsCheckingStatus(false);
-      }
-    };
-
-    checkUpvoteStatus();
-  }, [company._id, user]);
 
   const companyDetailPath = (() => {
     const cid = company._id;
@@ -138,7 +130,7 @@ function CompanyCard({
       
       // Notify parent component to update the company list if callback provided
       if (onUpdate) {
-        onUpdate(company._id, response.data.helpfulCount);
+        onUpdate(company._id, { helpfulCount: response.data.helpfulCount });
       }
     } catch (err) {
       console.error("Error updating helpful count:", err);
@@ -403,4 +395,4 @@ function CompanyCard({
   );
 }
 
-export default CompanyCard;
+export default React.memo(CompanyCard);

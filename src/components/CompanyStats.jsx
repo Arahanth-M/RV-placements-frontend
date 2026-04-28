@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
@@ -20,6 +20,12 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
+import {
+  getCachedCompanies,
+  getCachedCompanyPreview,
+  setCachedCompanies,
+  setCachedCompanyPreview,
+} from "../utils/companyListCache";
 import {
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_INTERNSHIP_ONLY,
@@ -171,6 +177,7 @@ function CompanyStats() {
   });
   const [showFilter, setShowFilter] = useState(false);
   const [showMissingCompanyModal, setShowMissingCompanyModal] = useState(false);
+  const [helpfulStatusByCompanyId, setHelpfulStatusByCompanyId] = useState({});
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
   const [placementTier, setPlacementTier] = useState(null);
 
@@ -237,6 +244,13 @@ function CompanyStats() {
   const handleBack = () => {
     navigate('/');
   };  
+
+  const openPlacementTierList = useCallback((tier) => {
+    const resolvedCardsYear = getPersistedPlacementCardsYear();
+    setSelectedYear(resolvedCardsYear);
+    setPlacementTier(tier);
+    navigate(companystatsTierListUrl(tier));
+  }, [navigate, user?.userId]);
 
   const toTimestamp = (value) => {
     if (value === null || value === undefined) return null;
@@ -612,19 +626,50 @@ function CompanyStats() {
     let cancelled = false;
     if (selectedYear === 2026 || selectedYear === 2027) {
       localStorage.setItem('companystats_selectedYear', String(selectedYear));
-      setCompaniesFetchDone(false);
-      (async () => {
-        try {
-          const res = await companyAPI.getPreviewLogos({ year: selectedYear });
-          if (!cancelled) setCategoryPreview(res.data || null);
-        } catch (err) {
-          console.error("❌ Error fetching category preview:", err);
+      const cachedCompanies = getCachedCompanies(selectedYear);
+      if (cachedCompanies) {
+        setCompanies(cachedCompanies);
+        setCompaniesFetchDone(true);
+      } else {
+        setCompaniesFetchDone(false);
+      }
+      const shouldFetchCategoryPreview =
+        location.pathname === PATH_COMPANY_CATEGORY &&
+        placementTier === null &&
+        clusterParam === PLACEMENT_CLUSTER_CS;
+      if (shouldFetchCategoryPreview) {
+        const cachedPreview = getCachedCompanyPreview(selectedYear);
+        if (cachedPreview) {
+          setCategoryPreview(cachedPreview);
+        } else {
+          setCategoryPreview(null);
         }
-      })();
+        if (!cachedPreview) {
+          (async () => {
+            try {
+              const res = await companyAPI.getPreviewLogos({ year: selectedYear });
+              if (!cancelled) {
+                const nextPreview = res.data || null;
+                setCategoryPreview(nextPreview);
+                if (nextPreview) setCachedCompanyPreview(selectedYear, nextPreview);
+              }
+            } catch (err) {
+              console.error("❌ Error fetching category preview:", err);
+            }
+          })();
+        }
+      } else {
+        setCategoryPreview(null);
+      }
       (async () => {
+        if (cachedCompanies) return;
         try {
           const res = await companyAPI.getAllCompanies({ year: selectedYear });
-          if (!cancelled) setCompanies(res.data || []);
+          if (!cancelled) {
+            const nextCompanies = res.data || [];
+            setCompanies(nextCompanies);
+            setCachedCompanies(selectedYear, nextCompanies);
+          }
         } catch (err) {
           console.error("❌ Error fetching companies:", err);
         } finally {
@@ -634,6 +679,7 @@ function CompanyStats() {
     } else {
       localStorage.setItem('companystats_selectedYear', selectedYear ? String(selectedYear) : '');
       setCategoryPreview(null);
+      setHelpfulStatusByCompanyId({});
       setCompaniesFetchDone(false);
     }
 
@@ -643,7 +689,7 @@ function CompanyStats() {
         localStorage.removeItem('companystats_selectedYear');
       }
     };
-  }, [selectedYear]);
+  }, [selectedYear, location.pathname, placementTier, clusterParam]);
 
   // Fetch year stats when 2024 or 2025 is selected
   useEffect(() => {
@@ -848,6 +894,107 @@ function CompanyStats() {
     offCampusPage * companiesPerPage
   );
 
+  const tierListConfig = useMemo(() => {
+    if (placementTier === PLACEMENT_TIER_DREAM) {
+      return {
+        slice: dreamSlice,
+        pool: dreamCompanies,
+        page: dreamPage,
+        setPage: setDreamPage,
+      };
+    }
+    if (placementTier === PLACEMENT_TIER_OPEN_DREAM) {
+      return {
+        slice: openDreamSlice,
+        pool: openDreamCompanies,
+        page: openDreamPage,
+        setPage: setOpenDreamPage,
+      };
+    }
+    if (placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY) {
+      return {
+        slice: internshipOnlySlice,
+        pool: internshipOnlyCompanies,
+        page: internshipOnlyPage,
+        setPage: setInternshipOnlyPage,
+      };
+    }
+    if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
+      return {
+        slice: offCampusSlice,
+        pool: offCampusCompanies,
+        page: offCampusPage,
+        setPage: setOffCampusPage,
+      };
+    }
+    return {
+      slice: summerInternshipSlice,
+      pool: summerInternshipCompanies,
+      page: summerInternshipPage,
+      setPage: setSummerInternshipPage,
+    };
+  }, [
+    placementTier,
+    dreamSlice,
+    dreamCompanies,
+    dreamPage,
+    openDreamSlice,
+    openDreamCompanies,
+    openDreamPage,
+    internshipOnlySlice,
+    internshipOnlyCompanies,
+    internshipOnlyPage,
+    offCampusSlice,
+    offCampusCompanies,
+    offCampusPage,
+    summerInternshipSlice,
+    summerInternshipCompanies,
+    summerInternshipPage,
+  ]);
+
+  const visibleCompanyIds = useMemo(
+    () => tierListConfig.slice.map((company) => company?._id).filter(Boolean),
+    [tierListConfig]
+  );
+  const visibleCompanyIdsKey = useMemo(
+    () => visibleCompanyIds.join("|"),
+    [visibleCompanyIds]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      !user ||
+      !isPlacementCardsYear ||
+      !placementTier ||
+      visibleCompanyIds.length === 0
+    ) {
+      setHelpfulStatusByCompanyId({});
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    (async () => {
+      try {
+        const response = await companyAPI.getHelpfulStatusBatch(visibleCompanyIds);
+        if (!cancelled) {
+          setHelpfulStatusByCompanyId(response.data?.statuses || {});
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("❌ Error fetching helpful status batch:", err);
+          setHelpfulStatusByCompanyId({});
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.userId, isPlacementCardsYear, placementTier, visibleCompanyIds, visibleCompanyIdsKey]);
+
   const scrollToCompanyListTop = () => {
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -948,14 +1095,32 @@ function CompanyStats() {
     setOffCampusPage(1);
   };
 
-  const handleCompanyCardUpdated = (companyId, updates = {}) => {
+  const handleCompanyCardUpdated = useCallback((companyId, updates = {}) => {
     if (!companyId || !updates || typeof updates !== "object") return;
-    setCompanies((prevCompanies) =>
-      prevCompanies.map((company) =>
+    setCompanies((prevCompanies) => {
+      const nextCompanies = prevCompanies.map((company) =>
         company._id === companyId ? { ...company, ...updates } : company
-      )
-    );
-  };
+      );
+      if (selectedYear === 2026 || selectedYear === 2027) {
+        setCachedCompanies(selectedYear, nextCompanies);
+      }
+      return nextCompanies;
+    });
+    setHelpfulStatusByCompanyId((prev) => {
+      const current = prev[companyId];
+      if (!current && updates.helpfulCount === undefined) return prev;
+      return {
+        ...prev,
+        [companyId]: {
+          hasUpvoted: current?.hasUpvoted === true,
+          helpfulCount:
+            updates.helpfulCount !== undefined
+              ? updates.helpfulCount
+              : current?.helpfulCount ?? 0,
+        },
+      };
+    });
+  }, [selectedYear]);
 
   const yearStatsHubBullets = {
     2024: [
@@ -1340,7 +1505,7 @@ function CompanyStats() {
           <div className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch">
             <button
               type="button"
-              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_DREAM))}
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_DREAM)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -1363,7 +1528,7 @@ function CompanyStats() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_OPEN_DREAM))}
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_OPEN_DREAM)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -1386,7 +1551,7 @@ function CompanyStats() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_INTERNSHIP_ONLY))}
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -1409,7 +1574,7 @@ function CompanyStats() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_SUMMER_INTERNSHIP))}
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -1431,7 +1596,7 @@ function CompanyStats() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(companystatsTierListUrl(PLACEMENT_TIER_OFF_CAMPUS))}
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -1496,36 +1661,10 @@ function CompanyStats() {
     );
   }
 
-  let tierListSlice;
-  let tierListPool;
-  let tierListPage;
-  let setTierListPage;
-  if (placementTier === PLACEMENT_TIER_DREAM) {
-    tierListSlice = dreamSlice;
-    tierListPool = dreamCompanies;
-    tierListPage = dreamPage;
-    setTierListPage = setDreamPage;
-  } else if (placementTier === PLACEMENT_TIER_OPEN_DREAM) {
-    tierListSlice = openDreamSlice;
-    tierListPool = openDreamCompanies;
-    tierListPage = openDreamPage;
-    setTierListPage = setOpenDreamPage;
-  } else if (placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY) {
-    tierListSlice = internshipOnlySlice;
-    tierListPool = internshipOnlyCompanies;
-    tierListPage = internshipOnlyPage;
-    setTierListPage = setInternshipOnlyPage;
-  } else if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
-    tierListSlice = offCampusSlice;
-    tierListPool = offCampusCompanies;
-    tierListPage = offCampusPage;
-    setTierListPage = setOffCampusPage;
-  } else {
-    tierListSlice = summerInternshipSlice;
-    tierListPool = summerInternshipCompanies;
-    tierListPage = summerInternshipPage;
-    setTierListPage = setSummerInternshipPage;
-  }
+  const tierListSlice = tierListConfig.slice;
+  const tierListPool = tierListConfig.pool;
+  const tierListPage = tierListConfig.page;
+  const setTierListPage = tierListConfig.setPage;
   const tierListTotal = tierListPool.length;
   const tierListTotalPages = Math.max(1, Math.ceil(tierListTotal / companiesPerPage));
 
@@ -1593,7 +1732,9 @@ function CompanyStats() {
                   company={c}
                   typeDisplayLabel={typeDisplayLabel}
                   detailDefaultYear={detailDefaultYear}
+                  helpfulStatus={helpfulStatusByCompanyId[c._id]}
                   isAdmin={isAdmin}
+                  onUpdate={handleCompanyCardUpdated}
                   onStatsUpdated={handleCompanyCardUpdated}
                 />
               );
