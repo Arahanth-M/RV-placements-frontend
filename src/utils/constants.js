@@ -55,7 +55,7 @@ export const BETA_JOIN_FORM_URL =
   (typeof process !== "undefined" &&
     process.env.REACT_APP_BETA_JOIN_FORM_URL &&
     String(process.env.REACT_APP_BETA_JOIN_FORM_URL).trim()) ||
-  "https://docs.google.com/forms/d/e/1FAIpQLScZX_N1LSAM1vb8OXYKCA9HkAjAs2ZCFzN-HMZFT7kUK3erOg/viewform?usp=dialog";
+  "https://docs.google.com/forms/d/e/1FAIpQLSc0i2msKF5OqypG5lnYjnU_CppSQpfYZfZNqDAjCxQPKiyDPw/viewform";
 
 /** Student feedback (Google Form). Set `REACT_APP_FEEDBACK_FORM_URL` in `.env` to override. */
 export const FEEDBACK_FORM_URL =
