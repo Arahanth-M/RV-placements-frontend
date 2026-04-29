@@ -559,20 +559,29 @@ const Sidebar = () => {
                         <button
                           onClick={() => {
                             setShowAccountMenu(false);
-                            signup();
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
-                        >
-                          Switch Account
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowAccountMenu(false);
                             navigate('/profile');
                           }}
                           className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
                         >
                           View Profile
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAccountMenu(false);
+                            navigate('/my-submissions');
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
+                        >
+                          My Submissions
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAccountMenu(false);
+                            signup();
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
+                        >
+                          Switch Account
                         </button>
                         <button
                           onClick={() => {

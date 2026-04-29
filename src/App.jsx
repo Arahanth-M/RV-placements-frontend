@@ -24,6 +24,7 @@ import Events from "./components/Events";
 import Analytics from "./components/Analytics";
 import Developers from "./components/Developers";
 import StudentProfilePage from "./components/StudentProfilePage";
+import MySubmissionsPage from "./components/MySubmissionsPage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
@@ -126,6 +127,14 @@ function AppShell() {
             element={
               <ProtectedRoute>
                 <StudentProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-submissions"
+            element={
+              <ProtectedRoute>
+                <MySubmissionsPage />
               </ProtectedRoute>
             }
           />

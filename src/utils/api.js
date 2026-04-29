@@ -261,6 +261,10 @@ export const studentAPI = {
   getProfile: () => API.get("/api/students/profile"),
 };
 
+export const submissionAPI = {
+  getMine: () => API.get("/api/submissions/mine"),
+};
+
 export const resumeAPI = {
   getDraft: () => API.get("/api/resume/draft"),
   saveDraft: ({ payload, version }) => API.put("/api/resume/draft", { payload, version }),

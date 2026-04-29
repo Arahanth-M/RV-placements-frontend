@@ -301,6 +301,12 @@ const Header = () => {
                   View Profile
                 </button>
                 <button
+                  onClick={() => { setAccountMenuOpen(false); navigate("/my-submissions"); }}
+                  className={dropdownItemClass}
+                >
+                  My Submissions
+                </button>
+                <button
                   onClick={() => { setAccountMenuOpen(false); signup(); }}
                   className={dropdownItemClass}
                 >

@@ -285,6 +285,9 @@ function YearStatsTable({ year, data, onBack }) {
                   Showing {filteredData.length} of {data.length} results
                 </p>
               )}
+              <p className="text-sm text-theme-muted mt-2">
+                Pagination: 100 rows per page
+              </p>
             </div>
 
             {filteredData.length === 0 ? (
