@@ -158,4 +158,19 @@ describe("CompanyCard admin got in controls", () => {
       );
     });
   });
+
+  it("maps legacy totalGotIn to placement year 2027", async () => {
+    renderCard({
+      isAdmin: true,
+      placementYear: 2027,
+      company: {
+        ...baseCompany,
+        totalGotIn: 5,
+        totalGotInByYear: undefined,
+      },
+    });
+
+    expect(await screen.findByText(/2027:\s*5/)).toBeInTheDocument();
+    expect(screen.getByText(/2026:\s*0/)).toBeInTheDocument();
+  });
 });

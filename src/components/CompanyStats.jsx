@@ -644,25 +644,22 @@ function CompanyStats() {
         } else {
           setCategoryPreview(null);
         }
-        if (!cachedPreview) {
-          (async () => {
-            try {
-              const res = await companyAPI.getPreviewLogos({ year: selectedYear });
-              if (!cancelled) {
-                const nextPreview = res.data || null;
-                setCategoryPreview(nextPreview);
-                if (nextPreview) setCachedCompanyPreview(selectedYear, nextPreview);
-              }
-            } catch (err) {
-              console.error("❌ Error fetching category preview:", err);
+        (async () => {
+          try {
+            const res = await companyAPI.getPreviewLogos({ year: selectedYear });
+            if (!cancelled) {
+              const nextPreview = res.data || null;
+              setCategoryPreview(nextPreview);
+              if (nextPreview) setCachedCompanyPreview(selectedYear, nextPreview);
             }
-          })();
-        }
+          } catch (err) {
+            console.error("❌ Error fetching category preview:", err);
+          }
+        })();
       } else {
         setCategoryPreview(null);
       }
       (async () => {
-        if (cachedCompanies) return;
         try {
           const res = await companyAPI.getAllCompanies({ year: selectedYear });
           if (!cancelled) {
@@ -1732,6 +1729,7 @@ function CompanyStats() {
                   company={c}
                   typeDisplayLabel={typeDisplayLabel}
                   detailDefaultYear={detailDefaultYear}
+                  placementYear={selectedYear}
                   helpfulStatus={helpfulStatusByCompanyId[c._id]}
                   isAdmin={isAdmin}
                   onUpdate={handleCompanyCardUpdated}

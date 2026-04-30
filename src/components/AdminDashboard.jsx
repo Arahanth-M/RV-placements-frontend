@@ -5,6 +5,11 @@ import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, F
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
+const ADMIN_COMPANY_YEARS = [
+  { value: 'all', label: 'All years' },
+  { value: '2026', label: '2026' },
+  { value: '2027', label: '2027' },
+];
 
 const InfoHint = ({ text }) => (
   <span className="group relative inline-flex items-center">
@@ -46,6 +51,7 @@ const AdminDashboard = () => {
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
+  const [selectedCompanyYear, setSelectedCompanyYear] = useState('all');
   const [missingCompanies, setMissingCompanies] = useState([]);
   const [companiesSubTab, setCompaniesSubTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
@@ -101,8 +107,19 @@ const AdminDashboard = () => {
     });
   }, []);
 
+  const companyYearLabel = selectedCompanyYear === 'all' ? 'all years' : selectedCompanyYear;
+  const resolveCompanyActionYear = (placementYear) => {
+    if (placementYear != null && placementYear !== '') return String(placementYear);
+    if (selectedCompanyYear !== 'all') return String(selectedCompanyYear);
+    return '2026';
+  };
+  const getCompanyActionKey = (companyId, placementYear) =>
+    `${companyId}:${resolveCompanyActionYear(placementYear)}`;
+
   const loadPendingCompaniesList = useCallback(async (page) => {
-    const res = await adminAPI.getCompanies({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
+    const res = await adminAPI.getCompanies({
+      params: { status: 'pending', year: selectedCompanyYear, page, limit: ADMIN_PAGE_SIZE },
+    });
     const d = res.data;
     setCompanies(d.items || []);
     setCoPendingMeta({
@@ -110,10 +127,12 @@ const AdminDashboard = () => {
       total: d.total ?? 0,
       totalPages: Math.max(1, d.totalPages || 1),
     });
-  }, []);
+  }, [selectedCompanyYear]);
 
   const loadApprovedCompaniesList = useCallback(async (page) => {
-    const res = await adminAPI.getCompanies({ params: { status: 'approved', page, limit: ADMIN_PAGE_SIZE } });
+    const res = await adminAPI.getCompanies({
+      params: { status: 'approved', year: selectedCompanyYear, page, limit: ADMIN_PAGE_SIZE },
+    });
     const d = res.data;
     setApprovedCompanies(d.items || []);
     setCoApprovedMeta({
@@ -121,7 +140,7 @@ const AdminDashboard = () => {
       total: d.total ?? 0,
       totalPages: Math.max(1, d.totalPages || 1),
     });
-  }, []);
+  }, [selectedCompanyYear]);
 
   const loadMissingCompanies = useCallback(async () => {
     setMissingCompaniesLoading(true);
@@ -436,15 +455,17 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApproveCompany = async (companyId) => {
-    if (!window.confirm('Are you sure you want to approve this company? It will be visible to all users.')) {
+  const handleApproveCompany = async (companyId, placementYear) => {
+    const companyYear = resolveCompanyActionYear(placementYear);
+    const actionKey = getCompanyActionKey(companyId, placementYear);
+    if (!window.confirm(`Are you sure you want to approve this company for ${companyYear}? It will be visible to all users for that placement year.`)) {
       return;
     }
 
     try {
-      setApprovingCompanyIds(prev => new Set(prev).add(companyId));
+      setApprovingCompanyIds(prev => new Set(prev).add(actionKey));
       
-      const response = await adminAPI.approveCompany(companyId);
+      const response = await adminAPI.approveCompany(companyId, { year: companyYear });
       const alreadyApproved = response?.data?.alreadyApproved === true;
 
       try {
@@ -462,7 +483,11 @@ const AdminDashboard = () => {
         return;
       }
 
-      alert(alreadyApproved ? 'Company was already approved.' : 'Company approved successfully!');
+      alert(
+        alreadyApproved
+          ? `Company was already approved for ${companyYear}.`
+          : `Company approved successfully for ${companyYear}!`
+      );
     } catch (err) {
       console.error('Error approving company:', err);
       const errorMessage =
@@ -473,34 +498,36 @@ const AdminDashboard = () => {
     } finally {
       setApprovingCompanyIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(companyId);
+        newSet.delete(actionKey);
         return newSet;
       });
     }
   };
 
-  const handleRejectCompany = async (companyId) => {
-    if (!window.confirm('Are you sure you want to reject this company? This will permanently delete it from the database.')) {
+  const handleRejectCompany = async (companyId, placementYear) => {
+    const companyYear = resolveCompanyActionYear(placementYear);
+    const actionKey = getCompanyActionKey(companyId, placementYear);
+    if (!window.confirm(`Are you sure you want to reject this company for ${companyYear}? This removes only the selected year's company visit.`)) {
       return;
     }
 
     try {
-      setRejectingCompanyIds(prev => new Set(prev).add(companyId));
+      setRejectingCompanyIds(prev => new Set(prev).add(actionKey));
       
-      await adminAPI.rejectCompany(companyId);
+      await adminAPI.rejectCompany(companyId, { year: companyYear });
 
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
       await loadPendingCompaniesList(coPendingMeta.page);
 
-      alert('Company rejected and deleted successfully!');
+      alert(`Company visit rejected successfully for ${companyYear}!`);
     } catch (err) {
       console.error('Error rejecting company:', err);
       alert('Failed to reject company. Please try again.');
     } finally {
       setRejectingCompanyIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(companyId);
+        newSet.delete(actionKey);
         return newSet;
       });
     }
@@ -533,28 +560,30 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteApprovedCompany = async (companyId) => {
-    if (!window.confirm('Are you sure you want to delete this approved company? This will permanently remove it from the database.')) {
+  const handleDeleteApprovedCompany = async (companyId, placementYear) => {
+    const companyYear = resolveCompanyActionYear(placementYear);
+    const actionKey = getCompanyActionKey(companyId, placementYear);
+    if (!window.confirm(`Are you sure you want to delete this approved company for ${companyYear}? This removes only the selected year's company visit.`)) {
       return;
     }
 
     try {
-      setDeletingCompanyIds(prev => new Set(prev).add(companyId));
+      setDeletingCompanyIds(prev => new Set(prev).add(actionKey));
       
-      await adminAPI.deleteApprovedCompany(companyId);
+      await adminAPI.deleteApprovedCompany(companyId, { year: companyYear });
 
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
       await loadApprovedCompaniesList(coApprovedMeta.page);
 
-      alert('Approved company deleted successfully!');
+      alert(`Approved company visit deleted successfully for ${companyYear}!`);
     } catch (err) {
       console.error('Error deleting approved company:', err);
       alert('Failed to delete approved company. Please try again.');
     } finally {
       setDeletingCompanyIds(prev => {
         const newSet = new Set(prev);
-        newSet.delete(companyId);
+        newSet.delete(actionKey);
         return newSet;
       });
     }
@@ -706,7 +735,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const confirmMessage = `Approve all ${companies.length} pending company/companies on this page? (Loads up to ${ADMIN_BULK_FETCH_LIMIT} if more exist.) They will be visible to all users.`;
+    const confirmMessage = `Approve all ${companies.length} pending company/companies for ${companyYearLabel} on this page? (Loads up to ${ADMIN_BULK_FETCH_LIMIT} if more exist.) They will be visible to all users for the matching placement year on each row.`;
     if (!window.confirm(confirmMessage)) {
       return;
     }
@@ -720,15 +749,18 @@ const AdminDashboard = () => {
       let bulkCompanies = companies;
       if (coPendingMeta.total > companies.length) {
         const bulkRes = await adminAPI.getCompanies({
-          params: { status: 'pending', page: 1, limit: ADMIN_BULK_FETCH_LIMIT },
+          params: { status: 'pending', year: selectedCompanyYear, page: 1, limit: ADMIN_BULK_FETCH_LIMIT },
         });
         bulkCompanies = bulkRes.data.items || [];
       }
 
       for (const company of bulkCompanies) {
+        const actionKey = getCompanyActionKey(company._id, company.placementYear);
         try {
-          setApprovingCompanyIds(prev => new Set(prev).add(company._id));
-          await adminAPI.approveCompany(company._id);
+          setApprovingCompanyIds(prev => new Set(prev).add(actionKey));
+          await adminAPI.approveCompany(company._id, {
+            year: resolveCompanyActionYear(company.placementYear),
+          });
 
           successCount++;
         } catch (err) {
@@ -739,7 +771,7 @@ const AdminDashboard = () => {
         } finally {
           setApprovingCompanyIds(prev => {
             const newSet = new Set(prev);
-            newSet.delete(company._id);
+            newSet.delete(actionKey);
             return newSet;
           });
         }
@@ -757,7 +789,7 @@ const AdminDashboard = () => {
       }
 
       if (failCount === 0) {
-        alert(`Successfully approved all ${successCount} company/companies! They are now visible to all users.`);
+        alert(`Successfully approved all ${successCount} company/companies for ${companyYearLabel}! They are now visible to all users.`);
       } else {
         const errorSummary = errors.slice(0, 5).join('\n');
         const moreErrors = errors.length > 5 ? `\n... and ${errors.length - 5} more error(s)` : '';
@@ -1541,9 +1573,28 @@ const AdminDashboard = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                       <h2 className="text-xl font-semibold text-indigo-400">Companies Management</h2>
-                      <p className="text-sm text-slate-400 mt-1">Review and approve company submissions</p>
+                      <p className="text-sm text-slate-400 mt-1">Review and approve company submissions by placement year</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
+                      <label className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-300">
+                        <span>Year</span>
+                        <select
+                          value={selectedCompanyYear}
+                          onChange={(e) => {
+                            const nextYear = e.target.value || 'all';
+                            setSelectedCompanyYear(nextYear);
+                            setCoPendingMeta((m) => ({ ...m, page: 1 }));
+                            setCoApprovedMeta((m) => ({ ...m, page: 1 }));
+                          }}
+                          className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-200"
+                        >
+                          {ADMIN_COMPANY_YEARS.map((year) => (
+                            <option key={year.value} value={year.value}>
+                              {year.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                       {companiesSubTab === 'pending' && companies.length > 0 && (
                       <button
                         onClick={handleApproveAllCompanies}
@@ -1570,7 +1621,7 @@ const AdminDashboard = () => {
                             : 'text-slate-300 hover:bg-slate-700'
                         }`}
                       >
-                        Pending ({stats.pendingCompanies || 0})
+                        Pending ({coPendingMeta.total || 0})
                       </button>
                       <button
                           type="button"
@@ -1584,7 +1635,7 @@ const AdminDashboard = () => {
                             : 'text-slate-300 hover:bg-slate-700'
                         }`}
                       >
-                        Approved ({stats.totalCompanies || 0})
+                        Approved ({coApprovedMeta.total || 0})
                       </button>
                     </div>
                   </div>
@@ -1594,18 +1645,19 @@ const AdminDashboard = () => {
                 {companiesSubTab === 'pending' ? (
                 companies.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
-                    <p className="text-slate-400 text-sm sm:text-base">No pending companies found.</p>
+                    <p className="text-slate-400 text-sm sm:text-base">No pending companies found for {companyYearLabel}.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
                     <div className="inline-block min-w-full align-middle">
                       <div className="p-4 sm:p-6 space-y-4">
                         {companies.map((company) => (
-                          <div key={company._id} className="border border-slate-700 rounded-lg p-4 sm:p-6 bg-slate-800/60 hover:bg-slate-800">
+                          <div key={`${company._id}-${company.placementYear || 'na'}`} className="border border-slate-700 rounded-lg p-4 sm:p-6 bg-slate-800/60 hover:bg-slate-800">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                               <div className="flex-1">
                                 <h3 className="text-lg sm:text-xl font-bold text-slate-200 mb-2">{company.name}</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-400">
+                                  <p><span className="font-medium">Year:</span> {company.placementYear || 'N/A'}</p>
                                   <p><span className="font-medium">Type:</span> {company.type || 'N/A'}</p>
                                   <p><span className="font-medium">Count:</span> {company.count || 'N/A'}</p>
                                   {company.submittedBy && (
@@ -1616,30 +1668,35 @@ const AdminDashboard = () => {
                                   )}
                                 </div>
                               </div>
+                              {(() => {
+                                const companyActionKey = getCompanyActionKey(company._id, company.placementYear);
+                                return (
                               <div className="flex items-center gap-2 flex-col sm:flex-row w-full sm:w-auto">
                                 <button
-                                  onClick={() => handleApproveCompany(company._id)}
-                                  disabled={approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)}
+                                  onClick={() => handleApproveCompany(company._id, company.placementYear)}
+                                  disabled={approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)}
                                   className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
-                                    approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)
+                                    approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)
                                       ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-green-600 text-white hover:bg-green-700'
                                   }`}
                                 >
-                                  {approvingCompanyIds.has(company._id) ? 'Approving...' : 'Approve'}
+                                  {approvingCompanyIds.has(companyActionKey) ? 'Approving...' : 'Approve'}
                                 </button>
                                 <button
-                                  onClick={() => handleRejectCompany(company._id)}
-                                  disabled={approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)}
+                                  onClick={() => handleRejectCompany(company._id, company.placementYear)}
+                                  disabled={approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)}
                                   className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
-                                    approvingCompanyIds.has(company._id) || rejectingCompanyIds.has(company._id)
+                                    approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)
                                       ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-red-600 text-white hover:bg-red-700'
                                   }`}
                                 >
-                                  {rejectingCompanyIds.has(company._id) ? 'Rejecting...' : 'Reject'}
+                                  {rejectingCompanyIds.has(companyActionKey) ? 'Rejecting...' : 'Reject'}
                                 </button>
                               </div>
+                                );
+                              })()}
                             </div>
                             
                             {/* Company Details */}
@@ -1697,7 +1754,7 @@ const AdminDashboard = () => {
               ) : (
                 approvedCompanies.length === 0 ? (
                   <div className="p-8 sm:p-12 text-center">
-                    <p className="text-slate-400 text-sm sm:text-base">No approved companies found.</p>
+                    <p className="text-slate-400 text-sm sm:text-base">No approved companies found for {companyYearLabel}.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -1705,26 +1762,34 @@ const AdminDashboard = () => {
                       <div className="p-4 sm:p-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {approvedCompanies.map((company) => (
-                            <div key={company._id} className="border border-slate-700 rounded-lg p-4 bg-slate-800/60">
+                            <div key={`${company._id}-${company.placementYear || 'na'}`} className="border border-slate-700 rounded-lg p-4 bg-slate-800/60">
+                              {(() => {
+                                const companyActionKey = getCompanyActionKey(company._id, company.placementYear);
+                                return (
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2 flex-1">
-                                  <h3 className="text-base sm:text-lg font-semibold text-slate-200">{company.name}</h3>
+                                  <div className="flex-1">
+                                    <h3 className="text-base sm:text-lg font-semibold text-slate-200">{company.name}</h3>
+                                    <p className="text-xs text-slate-400 mt-1">Year: {company.placementYear || 'N/A'}</p>
+                                  </div>
                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-600 text-white">
                                     Approved
                                   </span>
                                 </div>
                                 <button
-                                  onClick={() => handleDeleteApprovedCompany(company._id)}
-                                  disabled={deletingCompanyIds.has(company._id)}
+                                  onClick={() => handleDeleteApprovedCompany(company._id, company.placementYear)}
+                                  disabled={deletingCompanyIds.has(companyActionKey)}
                                   className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
-                                    deletingCompanyIds.has(company._id)
+                                    deletingCompanyIds.has(companyActionKey)
                                       ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                                       : 'bg-red-600 text-white hover:bg-red-700'
                                   }`}
                                 >
-                                  {deletingCompanyIds.has(company._id) ? 'Deleting...' : <FaTrash />}
+                                  {deletingCompanyIds.has(companyActionKey) ? 'Deleting...' : <FaTrash />}
                                 </button>
                               </div>
+                                );
+                              })()}
                             </div>
                           ))}
                         </div>

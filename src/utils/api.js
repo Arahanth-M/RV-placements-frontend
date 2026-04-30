@@ -191,8 +191,10 @@ export const adminAPI = {
   getCompanies: (config) => API.get('/api/admin/companies', config),
   approveCompany: (id, opts = {}) =>
     API.post(`/api/admin/companies/${id}/approve`, null, { params: adminPlacementYearParams(opts) }),
-  rejectCompany: (id) => API.delete(`/api/admin/companies/${id}/reject`),
-  deleteApprovedCompany: (id) => API.delete(`/api/admin/companies/${id}/delete`),
+  rejectCompany: (id, opts = {}) =>
+    API.delete(`/api/admin/companies/${id}/reject`, { params: adminPlacementYearParams(opts) }),
+  deleteApprovedCompany: (id, opts = {}) =>
+    API.delete(`/api/admin/companies/${id}/delete`, { params: adminPlacementYearParams(opts) }),
   updateOAQuestion: (companyId, index, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/oa-questions/${index}`, data, {
       params: adminPlacementYearParams(opts),

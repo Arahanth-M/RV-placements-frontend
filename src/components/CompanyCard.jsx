@@ -7,7 +7,7 @@ import CompanyLogo from "./CompanyLogo";
 
 const GOT_IN_DISPLAY_YEARS = [2026, 2027];
 
-function normalizeTotalGotInByYear(company) {
+function normalizeTotalGotInByYear(company, fallbackYear = 2026) {
   const d = company?.totalGotInByYear;
   if (d && typeof d === "object") {
     return {
@@ -16,7 +16,10 @@ function normalizeTotalGotInByYear(company) {
     };
   }
   const legacy = Number(company?.totalGotIn) || 0;
-  return { 2026: legacy, 2027: 0 };
+  return {
+    2026: fallbackYear === 2026 ? legacy : 0,
+    2027: fallbackYear === 2027 ? legacy : 0,
+  };
 }
 
 function CompanyCard({
@@ -26,6 +29,7 @@ function CompanyCard({
   onStatsUpdated,
   typeDisplayLabel,
   detailDefaultYear,
+  placementYear,
   helpfulStatus,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
@@ -38,11 +42,18 @@ function CompanyCard({
   const [isCheckingStatus, setIsCheckingStatus] = useState(Boolean(user) && !helpfulStatus);
   const hasPrefetchedRef = useRef(false);
 
+  const cardPlacementYear =
+    detailDefaultYear === 2026 || detailDefaultYear === 2027
+      ? detailDefaultYear
+      : placementYear === 2026 || placementYear === 2027
+        ? placementYear
+        : 2026;
+
   const [isEditingType, setIsEditingType] = useState(false);
   const [editTypeValue, setEditTypeValue] = useState("");
   const [isSavingType, setIsSavingType] = useState(false);
   const [totalGotInByYear, setTotalGotInByYear] = useState(() =>
-    normalizeTotalGotInByYear(company)
+    normalizeTotalGotInByYear(company, cardPlacementYear)
   );
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
 
@@ -69,8 +80,8 @@ function CompanyCard({
   }, [helpfulStatus, user]);
 
   useEffect(() => {
-    setTotalGotInByYear(normalizeTotalGotInByYear(company));
-  }, [company.totalGotIn, company.totalGotInByYear]);
+    setTotalGotInByYear(normalizeTotalGotInByYear(company, cardPlacementYear));
+  }, [company.totalGotIn, company.totalGotInByYear, cardPlacementYear]);
 
   const companyDetailPath = (() => {
     const cid = company._id;
@@ -184,7 +195,7 @@ function CompanyCard({
   const showDateOfVisit =
     visitDateStr.length > 0 && !/^(tba|tbd)$/i.test(visitDateStr);
 
-  const adminGotInYear = detailDefaultYear === 2027 ? 2027 : 2026;
+  const adminGotInYear = cardPlacementYear;
   const adminYearGotIn = totalGotInByYear[adminGotInYear] ?? 0;
 
   const handleAdjustTotalGotIn = async (e, delta) => {
