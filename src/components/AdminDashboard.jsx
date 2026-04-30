@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown } from 'react-icons/fa';
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
@@ -1576,24 +1576,31 @@ const AdminDashboard = () => {
                       <p className="text-sm text-slate-400 mt-1">Review and approve company submissions by placement year</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                      <label className="flex items-center gap-2 rounded-md border border-slate-700 bg-slate-800/60 px-3 py-2 text-sm text-slate-300">
-                        <span>Year</span>
-                        <select
-                          value={selectedCompanyYear}
-                          onChange={(e) => {
-                            const nextYear = e.target.value || 'all';
-                            setSelectedCompanyYear(nextYear);
-                            setCoPendingMeta((m) => ({ ...m, page: 1 }));
-                            setCoApprovedMeta((m) => ({ ...m, page: 1 }));
-                          }}
-                          className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-sm text-slate-200"
-                        >
-                          {ADMIN_COMPANY_YEARS.map((year) => (
-                            <option key={year.value} value={year.value}>
-                              {year.label}
-                            </option>
-                          ))}
-                        </select>
+                      <label className="min-w-[170px] rounded-xl border border-theme bg-theme-card px-3 py-2.5 shadow-sm">
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
+                          Placement year
+                        </span>
+                        <div className="relative">
+                          <select
+                            value={selectedCompanyYear}
+                            onChange={(e) => {
+                              const nextYear = e.target.value || 'all';
+                              setSelectedCompanyYear(nextYear);
+                              setCoPendingMeta((m) => ({ ...m, page: 1 }));
+                              setCoApprovedMeta((m) => ({ ...m, page: 1 }));
+                            }}
+                            className="w-full appearance-none rounded-xl border border-theme-input bg-theme-input px-3 py-2.5 pr-10 text-sm font-medium text-theme-primary shadow-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-theme-accent focus:border-theme-accent"
+                          >
+                            {ADMIN_COMPANY_YEARS.map((year) => (
+                              <option key={year.value} value={year.value}>
+                                {year.label}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-theme-muted">
+                            <FaChevronDown className="h-3.5 w-3.5" />
+                          </span>
+                        </div>
                       </label>
                       {companiesSubTab === 'pending' && companies.length > 0 && (
                       <button
