@@ -42,6 +42,7 @@ export const AuthProvider = ({ children }) => {
   const LOGIN_TIMESTAMP_KEY = 'loginTimestamp';
   const LAST_USER_KEY = 'lastUser';
   const LAST_USER_IS_ADMIN_KEY = 'lastUserIsAdmin';
+  const LOGIN_INTENT_KEY = 'loginIntent';
 
   // Check if session has expired
   const isSessionExpired = () => {
@@ -169,11 +170,17 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = (isAdmin = false) => {
+  const login = (isAdmin = false, options = {}) => {
     // ✅ Use consistent BASE_URL for all API calls
     const authUrl = isAdmin 
       ? `${BASE_URL}/api/auth/google/admin`
       : `${BASE_URL}/api/auth/google`;
+
+    if (options?.intent === 'spc') {
+      sessionStorage.setItem(LOGIN_INTENT_KEY, 'spc');
+    } else {
+      sessionStorage.removeItem(LOGIN_INTENT_KEY);
+    }
     
     console.log('🚀 Redirecting to login:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);

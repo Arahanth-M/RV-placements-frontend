@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield } from 'react-icons/fa';
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
@@ -84,6 +84,12 @@ const AdminDashboard = () => {
   const [missingCompaniesLoaded, setMissingCompaniesLoaded] = useState(false);
   const [missingCompaniesLoading, setMissingCompaniesLoading] = useState(false);
   const [adminToast, setAdminToast] = useState(null);
+  const [spcForm, setSpcForm] = useState({ email: '', usn: '' });
+  const [assigningSpc, setAssigningSpc] = useState(false);
+  const [spcUsers, setSpcUsers] = useState([]);
+  const [spcUsersLoading, setSpcUsersLoading] = useState(false);
+  const [spcUsersLoaded, setSpcUsersLoaded] = useState(false);
+  const [revokingSpcIds, setRevokingSpcIds] = useState(new Set());
 
   const loadPendingSubmissionsList = useCallback(async (page) => {
     const res = await adminAPI.getSubmissions({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
@@ -162,6 +168,72 @@ const AdminDashboard = () => {
     }, 3000);
     return () => window.clearTimeout(timeoutId);
   }, [adminToast]);
+
+  const loadSpcUsers = useCallback(async () => {
+    setSpcUsersLoading(true);
+    try {
+      const response = await adminAPI.getSpcs();
+      setSpcUsers(Array.isArray(response.data?.items) ? response.data.items : []);
+      setSpcUsersLoaded(true);
+    } finally {
+      setSpcUsersLoading(false);
+    }
+  }, []);
+
+  const handleAssignSpc = async (event) => {
+    event.preventDefault();
+    const email = String(spcForm.email || '').trim().toLowerCase();
+    const usn = String(spcForm.usn || '').trim().toUpperCase();
+
+    if (!email || !usn) {
+      setAdminToast({ type: 'error', message: 'Email and USN are required to assign SPC access.' });
+      return;
+    }
+
+    try {
+      setAssigningSpc(true);
+      await adminAPI.assignSpc({ email, usn });
+      setSpcForm({ email: '', usn: '' });
+      setAdminToast({ type: 'success', message: `SPC role assigned successfully for ${email}.` });
+      await loadSpcUsers();
+    } catch (assignError) {
+      const errorMessage =
+        assignError?.response?.data?.error ||
+        assignError?.response?.data?.message ||
+        'Failed to assign SPC role.';
+      setAdminToast({ type: 'error', message: errorMessage });
+    } finally {
+      setAssigningSpc(false);
+    }
+  };
+
+  const handleRevokeSpc = async (spcUser) => {
+    if (!window.confirm(`Revoke SPC access for ${spcUser?.email || 'this user'}?`)) {
+      return;
+    }
+
+    try {
+      setRevokingSpcIds((prev) => new Set(prev).add(String(spcUser._id)));
+      await adminAPI.revokeSpc(spcUser._id);
+      setSpcUsers((prev) => prev.filter((item) => item._id !== spcUser._id));
+      setAdminToast({
+        type: 'success',
+        message: `SPC access revoked successfully for ${spcUser?.email || 'user'}.`,
+      });
+    } catch (revokeError) {
+      const errorMessage =
+        revokeError?.response?.data?.error ||
+        revokeError?.response?.data?.message ||
+        'Failed to revoke SPC access.';
+      setAdminToast({ type: 'error', message: errorMessage });
+    } finally {
+      setRevokingSpcIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(spcUser._id));
+        return next;
+      });
+    }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -267,6 +339,29 @@ const AdminDashboard = () => {
       cancelled = true;
     };
   }, [loading, activeMainTab, eventsLoaded]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'assign-spc') return;
+    if (spcUsersLoaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await loadSpcUsers();
+      } catch (e) {
+        if (!cancelled) {
+          const errorMessage =
+            e?.response?.data?.error ||
+            e?.response?.data?.message ||
+            'Failed to load SPC users.';
+          setAdminToast({ type: 'error', message: errorMessage });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab, spcUsersLoaded, loadSpcUsers]);
 
   useEffect(() => {
     if (loading) return;
@@ -1071,6 +1166,17 @@ const AdminDashboard = () => {
                 <FaCalendar />
                 Events
               </button>
+              <button
+                onClick={() => setActiveMainTab('assign-spc')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'assign-spc'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaUserShield />
+                Assign SPC
+              </button>
             </div>
 
             {/* Main Content Area */}
@@ -1274,6 +1380,124 @@ const AdminDashboard = () => {
                       )}
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeMainTab === 'assign-spc' && (
+              <div className="space-y-6">
+                <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                  <div className="mb-5">
+                    <h2 className="text-xl font-semibold text-theme-accent">Assign SPC Access</h2>
+                    <p className="mt-1 text-sm text-theme-secondary">
+                      Assign SPC access by validating the student email ID and USN, then manage all current SPC users from the same place.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleAssignSpc} className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px_auto] md:items-end">
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-medium text-theme-primary">Student Email ID</span>
+                      <input
+                        type="email"
+                        value={spcForm.email}
+                        onChange={(event) =>
+                          setSpcForm((prev) => ({ ...prev, email: event.target.value }))
+                        }
+                        placeholder="student@rvce.edu.in"
+                        className="w-full rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-medium text-theme-primary">USN</span>
+                      <input
+                        type="text"
+                        value={spcForm.usn}
+                        onChange={(event) =>
+                          setSpcForm((prev) => ({ ...prev, usn: event.target.value.toUpperCase() }))
+                        }
+                        placeholder="1RV22CS001"
+                        className="w-full rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      disabled={assigningSpc}
+                      className="rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {assigningSpc ? 'Assigning...' : 'Assign SPC'}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-theme-primary">Assigned SPC Users</h3>
+                      <p className="mt-1 text-sm text-theme-secondary">
+                        Review all current SPC users and revoke access when needed.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={loadSpcUsers}
+                      disabled={spcUsersLoading}
+                      className="rounded-lg border border-theme px-4 py-2 text-sm font-medium text-theme-primary transition hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {spcUsersLoading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  {spcUsersLoading && !spcUsersLoaded ? (
+                    <div className="rounded-lg border border-theme bg-theme-hero p-8 text-center text-sm text-theme-secondary">
+                      Loading SPC users...
+                    </div>
+                  ) : spcUsers.length === 0 ? (
+                    <div className="rounded-lg border border-theme bg-theme-hero p-8 text-center text-sm text-theme-secondary">
+                      No SPC users assigned yet.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-theme">
+                        <thead>
+                          <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                            <th className="px-4 py-3">Name</th>
+                            <th className="px-4 py-3">Email</th>
+                            <th className="px-4 py-3">Assigned Role</th>
+                            <th className="px-4 py-3">Created</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-theme">
+                          {spcUsers.map((spcUser) => (
+                            <tr key={spcUser._id} className="text-sm text-theme-primary">
+                              <td className="px-4 py-3">{spcUser.username || '-'}</td>
+                              <td className="px-4 py-3">{spcUser.email || '-'}</td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex rounded-full bg-indigo-600/15 px-2.5 py-1 text-xs font-semibold text-indigo-400">
+                                  {spcUser.role}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                {spcUser.createdAt ? new Date(spcUser.createdAt).toLocaleDateString() : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRevokeSpc(spcUser)}
+                                  disabled={revokingSpcIds.has(String(spcUser._id))}
+                                  className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {revokingSpcIds.has(String(spcUser._id)) ? 'Revoking...' : 'Revoke Access'}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1817,7 +2041,7 @@ const AdminDashboard = () => {
                   <div>
                     <h2 className="text-xl font-semibold text-theme-accent">Missing Companies</h2>
                     <p className="text-sm text-theme-secondary mt-1">
-                      Review missing company requests submitted by beta users.
+                      Review missing company requests submitted by students.
                     </p>
                   </div>
                 </div>

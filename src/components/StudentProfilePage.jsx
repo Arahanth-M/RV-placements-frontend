@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
-import { FaArrowLeft, FaUser, FaIdCard, FaGraduationCap } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaIdCard, FaGraduationCap, FaBriefcase } from 'react-icons/fa';
 import { studentAPI } from '../utils/api';
 
 const StudentProfilePage = () => {
@@ -23,15 +23,10 @@ const StudentProfilePage = () => {
         const status = err?.response?.status;
         const serverMsg =
           err?.response?.data?.message || err?.response?.data?.error;
-        if (status === 403) {
+        if (status === 404) {
           setError(
             serverMsg ||
-              "Access restricted. Your account may not have beta access yet."
-          );
-        } else if (status === 404) {
-          setError(
-            serverMsg ||
-              "No roster row found for your login email in the placement database. Contact the placement team."
+              "No student record found for your login email in the students collection."
           );
         } else {
           setError(
@@ -68,7 +63,9 @@ const StudentProfilePage = () => {
     );
   }
 
-  // Format key for display (convert camelCase/PascalCase to readable format)
+  const student = profileData?.student || {};
+  const placements = Array.isArray(profileData?.placements) ? profileData.placements : [];
+
   const formatKey = (key) => {
     const spaced = String(key || "")
       .replace(/_/g, ' ')
@@ -95,22 +92,6 @@ const StudentProfilePage = () => {
     return String(value);
   };
 
-  // Never show internal / redundant fields in the profile UI
-  // Do not list "company" here: normalizeProfileKey("Company") === "company" and would hide the real company field.
-  const hiddenProfileKeys = new Set([
-    "companyid",
-    "placementcompanies",
-    "primarycompanyname",
-  ]);
-  const normalizeProfileKey = (key) =>
-    String(key || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-  const isHiddenProfileKey = (key) => {
-    if (key === "company") return true; // legacy lowercase duplicate only
-    return hiddenProfileKeys.has(normalizeProfileKey(key));
-  };
-
   const isFieldAvailable = (value) => {
     if (value === null || value === undefined) return false;
     if (typeof value === "string") return value.trim().length > 0;
@@ -121,42 +102,30 @@ const StudentProfilePage = () => {
     return true;
   };
 
-  const companyDisplay = String(profileData?.Company || "").trim().toLowerCase();
-  const companyNameRoster = String(profileData?.Company_Name || "")
-    .trim()
-    .toLowerCase();
-  const hideDuplicateCompanyName =
-    Boolean(companyDisplay) &&
-    Boolean(companyNameRoster) &&
-    companyDisplay === companyNameRoster;
-
-  // Show only meaningful, non-empty fields
-  const validKeys = Object.keys(profileData).filter(
+  const validStudentKeys = Object.keys(student).filter(
     (key) =>
       key &&
       key !== "_id" &&
       key !== "__v" &&
-      !isHiddenProfileKey(key) &&
-      !(hideDuplicateCompanyName && key === "Company_Name") &&
-      isFieldAvailable(profileData[key])
+      key !== "createdAt" &&
+      key !== "updatedAt" &&
+      isFieldAvailable(student[key])
   );
 
-  // Group fields into sections for better organization
-  const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
-  const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
+  const personalInfoFields = ['usn', 'name', 'email', 'phonenumber'];
+  const academicFields = [];
 
   const matchesPersonalField = (key) => {
     const lowerKey = key.toLowerCase();
-    if (lowerKey.includes("company")) return false; // e.g. Company_Name must not match "Name"
-    return personalInfoFields.some((f) => lowerKey.includes(f.toLowerCase()));
+    return personalInfoFields.includes(lowerKey);
   };
 
   const matchesAcademicField = (key) => {
     const lowerKey = key.toLowerCase();
-    return academicFields.some((f) => lowerKey.includes(f.toLowerCase()));
+    return academicFields.includes(lowerKey);
   };
 
-  const otherFields = validKeys.filter(
+  const otherFields = validStudentKeys.filter(
     (key) => !matchesPersonalField(key) && !matchesAcademicField(key)
   );
 
@@ -220,32 +189,32 @@ const StudentProfilePage = () => {
         {/* Content */}
         <div className="space-y-6">
           {/* Personal Information Section */}
-          {validKeys.some(key => getFieldCategory(key) === 'personal') && (
+          {validStudentKeys.some(key => getFieldCategory(key) === 'personal') && (
             <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
               <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
                 <FaIdCard className="text-theme-accent text-xl" />
                 <h2 className="text-xl font-semibold text-theme-primary">Personal Information</h2>
               </div>
               <div className="space-y-3 pt-2">
-                {validKeys
+                {validStudentKeys
                   .filter((key) => getFieldCategory(key) === 'personal')
-                  .map((key) => renderField(key, profileData[key]))
+                  .map((key) => renderField(key, student[key]))
                 }
               </div>
             </div>
           )}
 
           {/* Academic Information Section */}
-          {validKeys.some(key => getFieldCategory(key) === 'academic') && (
+          {validStudentKeys.some(key => getFieldCategory(key) === 'academic') && (
             <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
               <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
                 <FaGraduationCap className="text-theme-accent text-xl" />
                 <h2 className="text-xl font-semibold text-theme-primary">Academic Information</h2>
               </div>
               <div className="space-y-3 pt-2">
-                {validKeys
+                {validStudentKeys
                   .filter((key) => getFieldCategory(key) === 'academic')
-                  .map((key) => renderField(key, profileData[key]))
+                  .map((key) => renderField(key, student[key]))
                 }
               </div>
             </div>
@@ -258,10 +227,46 @@ const StudentProfilePage = () => {
                 <h2 className="text-xl font-semibold text-theme-primary">Additional Information</h2>
               </div>
               <div className="space-y-3 pt-2">
-                {otherFields.map(key => renderField(key, profileData[key]))}
+                {otherFields.map(key => renderField(key, student[key]))}
               </div>
             </div>
           )}
+
+          <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
+            <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+              <FaBriefcase className="text-theme-accent text-xl" />
+              <h2 className="text-xl font-semibold text-theme-primary">Placement Records</h2>
+            </div>
+
+            {placements.length === 0 ? (
+              <p className="text-theme-secondary text-sm sm:text-base">
+                No placement records found for your account yet.
+              </p>
+            ) : (
+              <div className="space-y-4 pt-2">
+                {placements.map((placement) => (
+                  <div
+                    key={placement._id}
+                    className="rounded-xl border border-theme bg-theme-app/40 p-4"
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {renderField('companyPlaced', placement.companyPlaced)}
+                      {renderField('typeOfOffer', placement.typeOfOffer)}
+                      {placement.createdAt
+                        ? renderField(
+                            'addedOn',
+                            new Date(placement.createdAt).toLocaleString()
+                          )
+                        : null}
+                      {placement.createdBy
+                        ? renderField('createdBy', placement.createdBy)
+                        : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

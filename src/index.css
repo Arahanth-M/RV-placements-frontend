@@ -1233,6 +1233,15 @@ html, body, #root {
   min-height: 2.5rem !important;
 }
 
+/* SPC placement form: keep inputs at standard control height */
+.spc-placement-form .spc-form-field {
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  line-height: 1.25rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
 /* Global smooth hover transitions for card-like surfaces across routes */
 :where(
   .company-card,

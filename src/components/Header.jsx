@@ -18,6 +18,7 @@ import {
   FaExclamationCircle,
   FaBars,
   FaTimes,
+  FaBriefcase,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -28,6 +29,11 @@ const primaryLinks = [
   { label: "Home", path: "/" },
   { label: "Events", path: "/events" },
   { label: "Contact", path: "/contact" },
+];
+
+const spcCornerLinks = [
+  { label: "SPC Dashboard", path: "/spc-dashboard", icon: FaTachometerAlt },
+  { label: "Add Placement Data", path: "/spc/form", icon: FaFileAlt },
 ];
 
 const studentCornerLinks = [
@@ -41,7 +47,8 @@ const studentCornerLinks = [
 
 /** Shown in header chip; admins usually have no studentData — use username or email local-part. */
 function accountDisplayName(user, studentData) {
-  const fromStudent = studentData?.name?.trim();
+  const fromStudent =
+    studentData?.student?.name?.trim() || studentData?.name?.trim();
   if (fromStudent) return fromStudent;
   const u = user?.username?.trim();
   if (u) return u;
@@ -85,6 +92,8 @@ const Header = () => {
   const location = useLocation();
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
   const [mobileStudentCornerOpen, setMobileStudentCornerOpen] = useState(false);
+  const [spcMenuOpen, setSpcMenuOpen] = useState(false);
+  const [mobileSpcCornerOpen, setMobileSpcCornerOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [mobileAccountMenuOpen, setMobileAccountMenuOpen] = useState(false);
   const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
@@ -92,6 +101,7 @@ const Header = () => {
   const [hasPendingItems, setHasPendingItems] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const studentMenuRef = useRef(null);
+  const spcMenuRef = useRef(null);
   const adminMenuRef = useRef(null);
   const mobileAccountMenuRef = useRef(null);
   const desktopAccountMenuRef = useRef(null);
@@ -116,6 +126,10 @@ const Header = () => {
   const headerInitial = user ? accountInitialLetter(user, headerDisplayName) : "U";
 
   const isStudentCornerActive = studentCornerLinks.some((l) => isPathActive(l.path));
+  const isSpcUser = user?.role === "spc";
+  const isSpcCornerActive =
+    isSpcUser &&
+    (location.pathname === "/spc-dashboard" || location.pathname.startsWith("/spc/"));
 
   const handleLogout = async () => {
     await logout();
@@ -132,6 +146,7 @@ const Header = () => {
   useEffect(() => {
     setMobileNavOpen(false);
     setMobileStudentCornerOpen(false);
+    setMobileSpcCornerOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -152,6 +167,9 @@ const Header = () => {
       }
       if (studentMenuRef.current && !studentMenuRef.current.contains(el)) {
         setStudentMenuOpen(false);
+      }
+      if (spcMenuRef.current && !spcMenuRef.current.contains(el)) {
+        setSpcMenuOpen(false);
       }
       if (adminMenuRef.current && !adminMenuRef.current.contains(el)) {
         setAdminMenuOpen(false);
@@ -283,6 +301,12 @@ const Header = () => {
                   Login as Student
                 </button>
                 <button
+                  onClick={() => { setAccountMenuOpen(false); login(false, { intent: "spc" }); }}
+                  className={dropdownItemClass}
+                >
+                  Login as SPC
+                </button>
+                <button
                   onClick={() => { setAccountMenuOpen(false); login(true); }}
                   className={dropdownItemClass}
                 >
@@ -376,7 +400,10 @@ const Header = () => {
               onClick={() =>
                 setMobileNavOpen((open) => {
                   const next = !open;
-                  if (next) setMobileStudentCornerOpen(false);
+                  if (next) {
+                    setMobileStudentCornerOpen(false);
+                    setMobileSpcCornerOpen(false);
+                  }
                   return next;
                 })
               }
@@ -446,6 +473,48 @@ const Header = () => {
                 </div>
               )}
             </div>
+
+            {isSpcUser && (
+              <div className="relative shrink-0" ref={spcMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setSpcMenuOpen((prev) => !prev)}
+                  aria-label="SPC Corner"
+                  className={`inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base ${
+                    isSpcCornerActive
+                      ? "border-theme-accent bg-theme-accent text-white"
+                      : spcMenuOpen
+                        ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
+                        : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                  }`}
+                >
+                  <FaBriefcase className={`h-4 w-4 shrink-0 ${isSpcCornerActive ? "text-white" : "opacity-90"}`} />
+                  <span>SPC Corner</span>
+                  <FaChevronDown
+                    className={`h-3 w-3 transition ${spcMenuOpen ? "rotate-180" : ""} ${isSpcCornerActive ? "text-white/90" : ""}`}
+                  />
+                </button>
+
+                {spcMenuOpen && (
+                  <div className="absolute left-0 top-full z-[100] mt-1 w-56 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
+                    {spcCornerLinks.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setSpcMenuOpen(false)}
+                          className={dropdownItemClass}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {isAdmin && (
               <div className="relative shrink-0" ref={adminMenuRef}>
@@ -576,6 +645,53 @@ const Header = () => {
                 );
               })}
             </div>
+          )}
+
+          {isSpcUser && (
+            <>
+              <button
+                type="button"
+                onClick={() => setMobileSpcCornerOpen((prev) => !prev)}
+                aria-expanded={mobileSpcCornerOpen}
+                className={`flex w-full items-center justify-between gap-3 border-b border-theme px-4 py-3.5 text-left text-base font-semibold transition-colors ${
+                  isSpcCornerActive || mobileSpcCornerOpen
+                    ? "bg-theme-accent/10 text-theme-primary"
+                    : "text-theme-primary hover:bg-theme-hero"
+                }`}
+              >
+                <span className="flex items-center gap-2.5">
+                  <FaBriefcase className="h-4 w-4 shrink-0 opacity-80" />
+                  SPC Corner
+                </span>
+                <FaChevronDown
+                  className={`h-3 w-3 shrink-0 transition ${mobileSpcCornerOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {mobileSpcCornerOpen && (
+                <div className="border-b border-theme bg-theme-nav/30">
+                  {spcCornerLinks.map((item) => {
+                    const Icon = item.icon;
+                    const active = isPathActive(item.path);
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => {
+                          setMobileNavOpen(false);
+                          setMobileSpcCornerOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 px-6 py-3 text-[15px] font-medium transition-colors ${
+                          active ? "text-theme-accent bg-theme-accent/10" : "text-theme-secondary hover:text-theme-primary hover:bg-theme-hero"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
 
           {isAdmin && (

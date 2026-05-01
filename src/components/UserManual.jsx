@@ -1,7 +1,6 @@
 import React from "react";
-import { FaArrowLeft, FaBookOpen, FaExternalLinkAlt } from "react-icons/fa";
+import { FaArrowLeft, FaBookOpen } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { BETA_JOIN_FORM_URL } from "../utils/constants";
 
 function UserManual() {
   const navigate = useNavigate();
@@ -29,7 +28,7 @@ function UserManual() {
           <h1 className="text-2xl font-bold text-theme-primary sm:text-3xl">User Manual</h1>
           <p className="mt-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
             This guide walks you through the platform in the order you will typically use it: signing
-            in (including beta access), exploring companies, reading interview content, contributing
+            in, exploring companies, reading interview content, contributing
             your own experience, requesting a missing company, and using AI mock interviews.
           </p>
 
@@ -59,48 +58,6 @@ function UserManual() {
               <strong className="text-theme-primary">shortly</strong> as we extend the rollout—check
               announcements or this manual again for updates.
             </p>
-          </section>
-
-          <hr className="my-8 border-theme" />
-
-          <section className="space-y-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
-            <h2 className="text-base font-bold text-theme-primary sm:text-lg">
-              If you are not a beta user yet
-            </h2>
-            <p>
-              Some features are limited until your account is on the{" "}
-              <strong className="text-theme-primary">beta access list</strong>. If you sign in but do
-              not have beta access yet, follow this flow:
-            </p>
-            <ol className="list-decimal space-y-2 pl-5 marker:text-theme-accent">
-              <li>
-                <strong className="text-theme-primary">Fill the beta signup form</strong> (the official
-                request form linked from the platform when prompted).
-              </li>
-              <li>
-                <strong className="text-theme-primary">Wait a short time</strong> while access is
-                applied on the server side—there is no instant toggle on your device alone.
-              </li>
-              <li>
-                <strong className="text-theme-primary">Log out</strong>, then{" "}
-                <strong className="text-theme-primary">sign in again</strong> so your new permissions load
-                into a fresh session. Skipping the re-login step can leave you seeing the old,
-                restricted experience even after you have been approved.
-              </li>
-            </ol>
-            <p>
-              After you complete those steps, you should see the same student flows (company stats,
-              interviews, resources, and so on) as other beta-enabled accounts.
-            </p>
-            <a
-              href={BETA_JOIN_FORM_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent shadow-sm transition-opacity hover:opacity-90"
-            >
-              Open beta access form
-              <FaExternalLinkAlt className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            </a>
           </section>
 
           <hr className="my-8 border-theme" />

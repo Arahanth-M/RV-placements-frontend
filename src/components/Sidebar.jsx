@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaBookOpen, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser } from "react-icons/fa";
+import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaBookOpen, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser, FaFileAlt } from "react-icons/fa";
 import { useTheme } from "../utils/ThemeContext";
 import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.webp";
@@ -14,6 +14,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [showStudentsCornerMenu, setShowStudentsCornerMenu] = useState(false);
+  const [showSpcCornerMenu, setShowSpcCornerMenu] = useState(false);
   const [showAdminsCornerMenu, setShowAdminsCornerMenu] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showLoginMenu, setShowLoginMenu] = useState(false);
@@ -446,6 +447,52 @@ const Sidebar = () => {
               )}
             </div>
 
+            {/* SPC Corner — only students with SPC role */}
+            {user?.role === "spc" && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSpcCornerMenu(!showSpcCornerMenu)}
+                  className="w-full nav-link flex items-center justify-between text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                >
+                  <div className="flex items-center">
+                    <FaBriefcase className="w-5 h-5 mr-3" />
+                    SPC Corner
+                  </div>
+                  <svg className="w-4 h-4 text-theme-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showSpcCornerMenu ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"} />
+                  </svg>
+                </button>
+
+                {showSpcCornerMenu && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    <Link
+                      to="/spc-dashboard"
+                      onClick={() => {
+                        setShowSpcCornerMenu(false);
+                        setIsVisible(false);
+                      }}
+                      className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                    >
+                      <FaTachometerAlt className="w-4 h-4 mr-2" />
+                      SPC Dashboard
+                    </Link>
+                    <Link
+                      to="/spc/form"
+                      onClick={() => {
+                        setShowSpcCornerMenu(false);
+                        setIsVisible(false);
+                      }}
+                      className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                    >
+                      <FaFileAlt className="w-4 h-4 mr-2" />
+                      Add Placement Data
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Admins Corner */}
             {isAdmin && (
               <div className="relative" ref={adminsCornerMenuRef}>
@@ -620,6 +667,15 @@ const Sidebar = () => {
                         className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav"
                       >
                         Login as Student
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowLoginMenu(false);
+                          login(false, { intent: 'spc' });
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav"
+                      >
+                        Login as SPC
                       </button>
                       <button
                         onClick={() => {
