@@ -105,19 +105,26 @@ export const companyAPI = {
 
   /**
    * @param {string} id
-   * @param {{ year?: number }} [options] placement visit year (2026 / 2027); defaults to 2026
+   * @param {{ year?: number, placementContext?: string }} [options] placement visit year (2026 / 2027); optional list context for multi-slot years
    */
   async getCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
 
     let year = options.year != null ? Number(options.year) : 2026;
     if (!Number.isFinite(year)) year = 2026;
-    const dedupeKey = `${id}:y${year}`;
+    const ctxRaw =
+      typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
+    const dedupeKey = `${id}:y${year}:pc:${ctxRaw || '_'}`;
 
     if (!companyDetailsPromises.has(dedupeKey)) {
       companyDetailsPromises.set(
         dedupeKey,
-        API.get(`/api/companies/${id}`, { params: { year } }).finally(() => {
+        API.get(`/api/companies/${id}`, {
+          params: {
+            year,
+            ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+          },
+        }).finally(() => {
           companyDetailsPromises.delete(dedupeKey);
         })
       );
@@ -140,13 +147,20 @@ export const companyAPI = {
 
   /**
    * @param {string} id
-   * @param {{ year?: number }} [options] placement visit year (must match selected year on detail page)
+   * @param {{ year?: number, placementContext?: string }} [options] placement visit year (must match selected year on detail page)
    */
   async refreshCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
     let year = options.year != null ? Number(options.year) : 2026;
     if (!Number.isFinite(year)) year = 2026;
-    return API.get(`/api/companies/${id}`, { params: { year } });
+    const ctxRaw =
+      typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
+    return API.get(`/api/companies/${id}`, {
+      params: {
+        year,
+        ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+      },
+    });
   },
 
   createCompany: (data) =>

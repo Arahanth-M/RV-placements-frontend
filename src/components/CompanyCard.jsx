@@ -33,6 +33,8 @@ function CompanyCard({
   helpfulStatus,
   /** Summer internship list: hide placement + PPO “got in” counts on the card */
   hidePlacementGotInCounts = false,
+  /** Dream / Open dream / Summer internship lists — drives detail-page subtitle framing */
+  placementListContext,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
@@ -94,10 +96,15 @@ function CompanyCard({
 
   const companyDetailPath = (() => {
     const cid = company._id;
+    const params = new URLSearchParams();
     if (detailDefaultYear === 2026 || detailDefaultYear === 2027) {
-      return `/companies/${cid}?year=${detailDefaultYear}`;
+      params.set("year", String(detailDefaultYear));
     }
-    return `/companies/${cid}`;
+    if (placementListContext) {
+      params.set("placementContext", placementListContext);
+    }
+    const q = params.toString();
+    return q ? `/companies/${cid}?${q}` : `/companies/${cid}`;
   })();
 
   const handleCardClick = () => {
@@ -110,10 +117,25 @@ function CompanyCard({
     if (user?.userId) {
       sessionStorage.setItem(`${COMPANY_DETAILS_RETURN_PATH_KEY}_${user.userId}`, currentPath);
     }
+    if (company._id) {
+      if (placementListContext) {
+        sessionStorage.setItem(
+          `company_detail_placement_ctx:${company._id}`,
+          placementListContext
+        );
+      } else {
+        sessionStorage.removeItem(`company_detail_placement_ctx:${company._id}`);
+      }
+    }
     const navState =
       detailDefaultYear === 2026 || detailDefaultYear === 2027
-        ? { defaultPlacementYear: detailDefaultYear }
-        : undefined;
+        ? {
+            defaultPlacementYear: detailDefaultYear,
+            ...(placementListContext ? { placementListContext } : {}),
+          }
+        : placementListContext
+          ? { placementListContext }
+          : undefined;
     navigate(companyDetailPath, { state: navState });
   };
 
@@ -125,10 +147,13 @@ function CompanyCard({
   const prefetchDetails = () => {
     if (hasPrefetchedRef.current || !company?._id) return;
     hasPrefetchedRef.current = true;
-    const prefetchOpts =
-      detailDefaultYear === 2026 || detailDefaultYear === 2027
-        ? { year: detailDefaultYear }
-        : {};
+    const prefetchOpts = {};
+    if (detailDefaultYear === 2026 || detailDefaultYear === 2027) {
+      prefetchOpts.year = detailDefaultYear;
+    }
+    if (placementListContext) {
+      prefetchOpts.placementContext = placementListContext;
+    }
     companyAPI.prefetchCompany(company._id, prefetchOpts);
   };
 

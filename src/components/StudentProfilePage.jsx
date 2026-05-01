@@ -16,6 +16,10 @@ import {
   getProfileFieldCategory,
   getStudentProfileValidKeys,
 } from "../utils/studentProfileView";
+import {
+  CompensationAsterisk,
+  CompensationDisclaimerFootnote,
+} from "./PlacementCompensationNote.jsx";
 
 const StudentProfilePage = () => {
   const navigate = useNavigate();
@@ -110,8 +114,11 @@ const StudentProfilePage = () => {
     const display = String(value).trim();
     return (
       <div className="flex flex-col sm:flex-row sm:items-start gap-2 pb-3 border-b border-theme last:border-0">
-        <span className="text-theme-secondary font-medium text-sm sm:text-base min-w-[150px] sm:min-w-[180px]">
-          {label}:
+        <span className="text-theme-secondary font-medium text-sm sm:text-base min-w-[150px] sm:min-w-[180px] inline-flex items-baseline gap-1 flex-wrap">
+          <span>{label}</span>
+          <span aria-hidden className="select-none">
+            :
+          </span>
         </span>
         <span className="text-theme-primary font-medium text-sm sm:text-base flex-1 break-words whitespace-pre-line">
           {display}
@@ -205,7 +212,9 @@ const StudentProfilePage = () => {
                       <div key={p?._id ?? `placement-${idx}`}>
                         {hasDisplayValue(p?.companyPlaced ?? p?.company ?? p?.Company) ||
                         hasDisplayValue(p?.typeOfOffer ?? p?.offerType ?? p?.offer) ||
-                        hasDisplayValue(p?.stipend ?? p?.Stipend) ? (
+                        hasDisplayValue(p?.stipend ?? p?.Stipend) ||
+                        hasDisplayValue(p?.base) ||
+                        hasDisplayValue(p?.ctc) ? (
                           <div
                             className={`space-y-3 ${idx > 0 ? "pt-4 mt-4 border-t border-theme" : ""}`}
                           >
@@ -223,8 +232,25 @@ const StudentProfilePage = () => {
                               p?.typeOfOffer ?? p?.offerType ?? p?.offer
                             )}
                             {renderSplitRow(
-                              "Stipend",
+                              <>
+                                Stipend
+                                <CompensationAsterisk />
+                              </>,
                               p?.stipend ?? p?.Stipend
+                            )}
+                            {renderSplitRow(
+                              <>
+                                Base
+                                <CompensationAsterisk />
+                              </>,
+                              p?.base
+                            )}
+                            {renderSplitRow(
+                              <>
+                                CTC
+                                <CompensationAsterisk />
+                              </>,
+                              p?.ctc
                             )}
                           </div>
                         ) : null}
@@ -235,6 +261,16 @@ const StudentProfilePage = () => {
                       No additional placement details available yet.
                     </p>
                   )}
+                  {Array.isArray(profileData.placements) &&
+                  profileData.placements.some((p) =>
+                    [
+                      p?.stipend ?? p?.Stipend,
+                      p?.base,
+                      p?.ctc,
+                    ].some((v) => hasDisplayValue(v))
+                  ) ? (
+                    <CompensationDisclaimerFootnote className="text-[11px] sm:text-xs text-theme-muted mt-3 italic leading-snug" />
+                  ) : null}
                 </div>
               </div>
             </>

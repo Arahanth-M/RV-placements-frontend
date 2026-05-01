@@ -103,11 +103,17 @@ function formatPlacementRecord(obj) {
   const offer =
     obj.typeOfOffer ?? obj.offerType ?? obj.offer ?? obj.type ?? "";
   const stipend = obj.stipend ?? obj.Stipend;
+  const baseVal = obj.base ?? obj.Base;
+  const ctcVal = obj.ctc ?? obj.CTC;
   const parts = [String(company).trim()];
   if (offer) parts.push(`(${String(offer).trim()})`);
   let line = parts.filter(Boolean).join(" ");
   if (stipend != null && String(stipend).trim())
     line += ` · Stipend: ${String(stipend).trim()}`;
+  if (baseVal != null && String(baseVal).trim())
+    line += ` · Base: ${String(baseVal).trim()}`;
+  if (ctcVal != null && String(ctcVal).trim())
+    line += ` · CTC: ${String(ctcVal).trim()}`;
   return line || "—";
 }
 

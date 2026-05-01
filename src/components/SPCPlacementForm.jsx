@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { spcAPI } from "../utils/api";
+import {
+  CompensationAsterisk,
+  CompensationDisclaimerFootnote,
+} from "./PlacementCompensationNote.jsx";
 
 const INITIAL_FORM = {
   email: "",
@@ -8,12 +12,34 @@ const INITIAL_FORM = {
   usn: "",
   companyPlaced: "",
   typeOfOffer: "",
+  stipend: "",
+  base: "",
+  ctc: "",
 };
 
-function Field({ label, name, value, onChange, type = "text", placeholder = "" }) {
+/** Allowed values for SPC submission — matches company visit type vocabulary */
+const SPC_TYPE_OF_OFFER_OPTIONS = [
+  "Internship(PPO)",
+  "FTE",
+  "Internship+FTE",
+  "Internship + FTE (PBC)",
+];
+
+function Field({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+  compensationMarker = false,
+}) {
   return (
     <label className="block w-full space-y-2">
-      <span className="text-sm font-medium text-theme-primary">{label}</span>
+      <span className="text-sm font-medium text-theme-primary inline-flex items-baseline gap-1 flex-wrap">
+        {label}
+        {compensationMarker ? <CompensationAsterisk /> : null}
+      </span>
       <input
         type={type}
         name={name}
@@ -142,14 +168,54 @@ export default function SPCPlacementForm() {
                   onChange={handleChange}
                   placeholder="Enter company name"
                 />
+                <label className="block w-full space-y-2">
+                  <span className="text-sm font-medium text-theme-primary">
+                    Type of offer
+                  </span>
+                  <select
+                    name="typeOfOffer"
+                    value={form.typeOfOffer}
+                    onChange={handleChange}
+                    required
+                    className="spc-form-field w-full rounded-xl border border-theme bg-theme-app px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
+                  >
+                    <option value="">Select type of offer</option>
+                    {SPC_TYPE_OF_OFFER_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <Field
-                  label="Type of offer"
-                  name="typeOfOffer"
-                  value={form.typeOfOffer}
+                  label="Stipend"
+                  name="stipend"
+                  value={form.stipend}
                   onChange={handleChange}
-                  placeholder="FTE / Internship / PPO / etc."
+                  placeholder="e.g. ₹ 50,000 / month"
+                  compensationMarker
+                />
+                <Field
+                  label="Base"
+                  name="base"
+                  value={form.base}
+                  onChange={handleChange}
+                  placeholder="e.g. base component of package"
+                  compensationMarker
+                />
+                <Field
+                  label="CTC"
+                  name="ctc"
+                  value={form.ctc}
+                  onChange={handleChange}
+                  placeholder="e.g. 18 LPA or breakdown"
+                  compensationMarker
                 />
               </div>
+              <CompensationDisclaimerFootnote className="text-[11px] sm:text-xs text-theme-muted mt-1 italic leading-snug" />
             </section>
 
             <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">

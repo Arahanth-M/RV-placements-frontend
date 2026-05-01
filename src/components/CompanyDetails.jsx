@@ -6,6 +6,9 @@ import { companyAPI } from "../utils/api";
 import {
   companystatsTierListUrl,
   isPlacementTierParam,
+  PLACEMENT_TIER_DREAM,
+  PLACEMENT_TIER_OPEN_DREAM,
+  PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../constants/placementTiers.js";
 import CompanyLogo from "./CompanyLogo";
 
@@ -35,6 +38,81 @@ function readPreferredPlacementYearFromLocation(location) {
   const s = location.state?.defaultPlacementYear;
   if (s === 2026 || s === 2027) return s;
   return null;
+}
+
+function parseTierContext(raw) {
+  if (
+    raw === PLACEMENT_TIER_SUMMER_INTERNSHIP ||
+    raw === PLACEMENT_TIER_DREAM ||
+    raw === PLACEMENT_TIER_OPEN_DREAM
+  ) {
+    return raw;
+  }
+  return undefined;
+}
+
+/**
+ * Router state is cleared on refresh — persist tier when opening from CompanyStats cards so subtitles stay correct.
+ */
+function readPlacementListContext(location, companyId) {
+  const fromState = parseTierContext(location?.state?.placementListContext);
+  if (fromState) return fromState;
+  try {
+    const q = new URLSearchParams(location.search || "").get("placementContext");
+    const fromQuery = parseTierContext(q);
+    if (fromQuery) return fromQuery;
+  } catch {
+    // ignore
+  }
+  if (!companyId) return undefined;
+  try {
+    return parseTierContext(sessionStorage.getItem(`company_detail_placement_ctx:${companyId}`));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Client fallback when API cache lacked placementDetailHeadlineType — mirrors backend hybrid heuristic. */
+function inferDreamHeadlineFallback(company) {
+  const raw = typeof company?.type === "string" ? company.type.trim() : "";
+  const norm = raw.replace(/\s+/g, "").toLowerCase();
+  if (!norm.includes("ppo")) return null;
+  if (norm.includes("fte")) {
+    return norm.includes("internship") ? "Internship + FTE" : "FTE";
+  }
+  const roles = company?.roles;
+  if (!Array.isArray(roles)) return null;
+  for (const role of roles) {
+    const ctc = role?.ctc;
+    if (!ctc || typeof ctc !== "object") continue;
+    for (const v of Object.values(ctc)) {
+      if (typeof v === "number" && Number.isFinite(v) && v > 0) return "FTE";
+      if (typeof v === "string") {
+        const s = v.trim();
+        if (s !== "" && s !== "0") return "FTE";
+      }
+    }
+  }
+  return null;
+}
+
+/** Summer internship → raw visit type (e.g. PPO); Dream / Open dream → FTE-aware headline; otherwise friendly default. */
+function resolveCompanyHeadlineSubtitle(company, placementListContext) {
+  if (!company) return "";
+  const raw =
+    typeof company.type === "string" && company.type.trim()
+      ? company.type.trim()
+      : "";
+  const apiHeadline =
+    typeof company.placementDetailHeadlineType === "string"
+      ? company.placementDetailHeadlineType.trim()
+      : "";
+
+  if (placementListContext === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
+    return raw || apiHeadline || "";
+  }
+
+  return apiHeadline || inferDreamHeadlineFallback(company) || raw || "";
 }
 
 function ChevronIcon({ className }) {
@@ -70,11 +148,14 @@ function CompanyDetails() {
   const [placementYearLoading, setPlacementYearLoading] = useState(false);
   const [openDropdownTab, setOpenDropdownTab] = useState(null);
   const detailFetchIdRef = useRef(null);
-  const skipNextPlacementYearEffectRef = useRef(false);
+  /** Increments per fetch so older responses cannot overwrite newer ones (race when year switches quickly). */
+  const companyDetailFetchGenRef = useRef(0);
   const interviewExitHandlerRef = useRef(null);
   const dropdownRef = useRef(null);
   const EXIT_WARNING_MESSAGE =
     "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
+
+  const placementContextForApi = readPlacementListContext(location, id);
 
   const getSessionValue = (baseKey) => {
     const userScopedKey =
@@ -110,43 +191,38 @@ function CompanyDetails() {
       return;
     }
 
-    if (skipNextPlacementYearEffectRef.current) {
-      skipNextPlacementYearEffectRef.current = false;
-      return;
-    }
-
+    const preferredYear = readPreferredPlacementYearFromLocation(location);
     const switchedCompany = detailFetchIdRef.current !== id;
-    let yearForRequest = placementYear;
 
+    let yearForRequest;
     if (switchedCompany) {
       detailFetchIdRef.current = id;
-      const preferred = readPreferredPlacementYearFromLocation(location) ?? 2026;
-      yearForRequest = preferred;
-      if (placementYear !== preferred) {
-        skipNextPlacementYearEffectRef.current = true;
-        setPlacementYear(preferred);
-      }
+      yearForRequest = preferredYear ?? 2026;
       setPlacementYearLoading(false);
       setLoading(true);
       setLoadError(null);
       setCompany(null);
     } else {
-      yearForRequest = placementYear;
+      yearForRequest = preferredYear ?? placementYear;
       setPlacementYearLoading(true);
       setLoadError(null);
     }
 
+    const fetchGen = ++companyDetailFetchGenRef.current;
+
     companyAPI
-      .getCompany(id, { year: yearForRequest })
+      .getCompany(id, {
+        year: yearForRequest,
+        ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
+      })
       .then((res) => {
+        if (fetchGen !== companyDetailFetchGenRef.current) return;
         setCompany(res.data);
-        const py = res.data?.placementVisitYear;
-        if (typeof py === "number" && !Number.isNaN(py)) {
-          setPlacementYear(py);
-        }
+        setPlacementYear(yearForRequest);
         setLoadError(null);
       })
       .catch((err) => {
+        if (fetchGen !== companyDetailFetchGenRef.current) return;
         console.error("❌ Error fetching company details:", err);
         const isOffline =
           typeof navigator !== "undefined" && !navigator.onLine;
@@ -157,10 +233,19 @@ function CompanyDetails() {
         setLoadError(isOffline || networkError ? "offline" : "error");
       })
       .finally(() => {
+        if (fetchGen !== companyDetailFetchGenRef.current) return;
         setLoading(false);
         setPlacementYearLoading(false);
       });
-  }, [id, user?.betaAccess, placementYear]);
+  }, [
+    id,
+    user?.betaAccess,
+    placementYear,
+    location.pathname,
+    location.search,
+    location.state?.defaultPlacementYear,
+    placementContextForApi,
+  ]);
 
   const openTabFromNav = location.state?.openTab;
 
@@ -176,7 +261,10 @@ function CompanyDetails() {
     if (user?.betaAccess === false) return;
     setIsRefreshing(true);
     companyAPI
-      .refreshCompany(id, { year: placementYear })
+      .refreshCompany(id, {
+        year: placementYear,
+        ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
+      })
       .then((res) => setCompany(res.data))
       .catch((err) => console.error("❌ Error refreshing company:", err))
       .finally(() => setIsRefreshing(false));
@@ -373,9 +461,16 @@ function CompanyDetails() {
 
   // Called when user picks a year from the dropdown
   const handleYearPick = (tabId, year) => {
-    setPlacementYear(year);
     setOpenDropdownTab(null);
     setActiveTab(tabId);
+    const params = new URLSearchParams();
+    params.set("year", String(year));
+    const ctx = readPlacementListContext(location, id);
+    if (ctx) params.set("placementContext", ctx);
+    navigate(`/companies/${id}?${params.toString()}`, {
+      replace: true,
+      state: location.state ?? {},
+    });
   };
 
   return (
@@ -423,7 +518,10 @@ function CompanyDetails() {
                 {company.name}
               </h1>
               <p className="mt-2 sm:mt-3 text-lg sm:text-xl md:text-2xl text-theme-secondary font-medium break-words">
-                {company.type}
+                {resolveCompanyHeadlineSubtitle(
+                  company,
+                  readPlacementListContext(location, id)
+                ) || "Placement Drive"}
               </p>
             </div>
           </div>

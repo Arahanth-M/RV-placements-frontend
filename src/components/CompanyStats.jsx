@@ -1723,6 +1723,14 @@ function CompanyStats() {
               if (detailDefaultYear !== 2026 && detailDefaultYear !== 2027) {
                 detailDefaultYear = undefined;
               }
+              const placementListContext =
+                placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP
+                  ? PLACEMENT_TIER_SUMMER_INTERNSHIP
+                  : placementTier === PLACEMENT_TIER_DREAM ||
+                      placementTier === PLACEMENT_TIER_OPEN_DREAM
+                    ? placementTier
+                    : undefined;
+
               return (
                 <CompanyCard
                   key={c._id}
@@ -1735,6 +1743,7 @@ function CompanyStats() {
                   onUpdate={handleCompanyCardUpdated}
                   onStatsUpdated={handleCompanyCardUpdated}
                   hidePlacementGotInCounts={placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP}
+                  placementListContext={placementListContext}
                 />
               );
             })

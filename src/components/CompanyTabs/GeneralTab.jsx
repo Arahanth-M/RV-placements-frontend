@@ -2,6 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { adminAPI } from "../../utils/api";
+import {
+  CompensationAsterisk,
+  CompensationDisclaimerFootnote,
+} from "../PlacementCompensationNote.jsx";
 
 function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYear = 2026 }) {
   const [isEditingRoles, setIsEditingRoles] = useState(false);
@@ -270,7 +274,12 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
               onClick={() => setIsEditingRoles((prev) => !prev)}
               className="px-3 py-1 text-sm rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-600"
             >
-              {isEditingRoles ? "Cancel" : "Edit roles & CTC"}
+              {isEditingRoles ? "Cancel" : (
+                <>
+                  Edit roles &amp; CTC
+                  <CompensationAsterisk className="text-slate-400" />
+                </>
+              )}
             </button>
           )}
         </div>
@@ -291,8 +300,9 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                   {Object.entries(role.ctc).map(([key, value]) => (
                     <div key={key} className="bg-slate-800 rounded-lg p-4">
-                      <p className="text-slate-400 text-xs uppercase">
-                        {key.replace(/_/g, " ")}
+                      <p className="text-slate-400 text-xs uppercase inline-flex items-baseline gap-0 flex-wrap">
+                        <span>{key.replace(/_/g, " ")}</span>
+                        <CompensationAsterisk className="text-slate-500" />
                       </p>
                       <p className="text-slate-200 font-medium mt-1">
                         {formatCTCValue(value)}
@@ -304,7 +314,10 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
 
               {/* Stipend */}
               <div className="bg-slate-800 rounded-lg p-4 w-fit">
-                <p className="text-slate-400 text-xs">Internship Stipend</p>
+                <p className="text-slate-400 text-xs inline-flex items-baseline gap-0 flex-wrap">
+                  <span>Internship Stipend</span>
+                  <CompensationAsterisk className="text-slate-500" />
+                </p>
                 <p className="text-slate-200 font-medium mt-1">
                   ₹ {role.internshipStipend ?? 0}
                 </p>
@@ -359,8 +372,9 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-300 text-sm mb-1">
-                      Internship stipend (₹)
+                    <label className="block text-slate-300 text-sm mb-1 inline-flex items-baseline gap-0 flex-wrap">
+                      <span>Internship stipend (₹)</span>
+                      <CompensationAsterisk className="text-slate-400" />
                     </label>
                     <input
                       type="number"
@@ -380,8 +394,9 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 text-sm mb-2">
-                    CTC components (key → value)
+                  <label className="block text-slate-300 text-sm mb-2 inline-flex items-baseline gap-0 flex-wrap">
+                    <span>CTC components (key → value)</span>
+                    <CompensationAsterisk className="text-slate-400" />
                   </label>
                   <div className="space-y-2">
                     {Object.entries(role.ctc).map(([key, value]) => (
@@ -459,6 +474,10 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
               </div>
             ))}
 
+            {(isEditingRoles || (company.roles ?? []).length > 0) && (
+              <CompensationDisclaimerFootnote className="text-[11px] sm:text-xs text-slate-500 mt-4 italic leading-snug" />
+            )}
+
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="submit"
@@ -477,6 +496,10 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
               </button>
             </div>
           </form>
+        )}
+
+        {(isEditingRoles || (company.roles ?? []).length > 0) && (
+          <CompensationDisclaimerFootnote className="text-[11px] sm:text-xs text-slate-500 mt-4 italic leading-snug" />
         )}
       </div>
 
