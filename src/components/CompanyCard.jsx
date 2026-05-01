@@ -31,6 +31,8 @@ function CompanyCard({
   detailDefaultYear,
   placementYear,
   helpfulStatus,
+  /** Summer internship list: hide placement + PPO “got in” counts on the card */
+  hidePlacementGotInCounts = false,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
@@ -56,6 +58,13 @@ function CompanyCard({
     normalizeTotalGotInByYear(company, cardPlacementYear)
   );
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
+  const [isEditingPpoConversion, setIsEditingPpoConversion] = useState(false);
+  const [isSavingPpoConversion, setIsSavingPpoConversion] = useState(false);
+  const [ppoConversionDraft, setPpoConversionDraft] = useState({
+    gotIn: 0,
+    converted: 0,
+    conversionType: "",
+  });
 
   // Update local state when company prop changes
   useEffect(() => {
@@ -189,6 +198,17 @@ function CompanyCard({
   };
 
   const typeShown = typeDisplayLabel ?? company.type;
+  const isPpoCard = String(typeShown || company.type || "")
+    .toLowerCase()
+    .includes("ppo");
+
+  const ppoGotIn = Number(company.ppoConversionGotIn) || 0;
+  const ppoConverted = Number(company.ppoConversionConverted) || 0;
+  const ppoAcceptanceRate =
+    ppoGotIn > 0
+      ? Number(((ppoConverted / ppoGotIn) * 100).toFixed(2))
+      : Number(company.ppoConversionAcceptanceRate) || 0;
+  const ppoConversionType = String(company.ppoConversionType || "").trim();
 
   const visitDateStr =
     company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
@@ -231,6 +251,61 @@ function CompanyCard({
       alert("Failed to update Got in count");
     } finally {
       setIsUpdatingTotalGotIn(false);
+    }
+  };
+
+  const startEditPpoConversion = (e) => {
+    e.stopPropagation();
+    setPpoConversionDraft({
+      gotIn: ppoGotIn,
+      converted: ppoConverted,
+      conversionType: ppoConversionType,
+    });
+    setIsEditingPpoConversion(true);
+  };
+
+  const cancelEditPpoConversion = (e) => {
+    e.stopPropagation();
+    setIsEditingPpoConversion(false);
+  };
+
+  const savePpoConversion = async (e) => {
+    e.stopPropagation();
+    if (!isAdmin || isSavingPpoConversion) return;
+    const gotIn = hidePlacementGotInCounts
+      ? Math.max(0, Number(ppoGotIn) || 0)
+      : Math.max(0, Number(ppoConversionDraft.gotIn) || 0);
+    const converted = Math.max(0, Number(ppoConversionDraft.converted) || 0);
+    const acceptanceRate =
+      gotIn > 0 ? Number(((converted / gotIn) * 100).toFixed(2)) : 0;
+
+    try {
+      setIsSavingPpoConversion(true);
+      const { adminAPI } = await import("../utils/api");
+      await adminAPI.updateCompanyStats(
+        company._id,
+        {
+          ppoConversionGotIn: gotIn,
+          ppoConversionConverted: converted,
+          ppoConversionAcceptanceRate: acceptanceRate,
+          ppoConversionType: ppoConversionDraft.conversionType || "",
+        },
+        { year: cardPlacementYear }
+      );
+      if (onStatsUpdated) {
+        onStatsUpdated(company._id, {
+          ppoConversionGotIn: gotIn,
+          ppoConversionConverted: converted,
+          ppoConversionAcceptanceRate: acceptanceRate,
+          ppoConversionType: ppoConversionDraft.conversionType || "",
+        });
+      }
+      setIsEditingPpoConversion(false);
+    } catch (err) {
+      console.error("Error updating PPO conversion stats:", err);
+      alert("Failed to update PPO conversion stats");
+    } finally {
+      setIsSavingPpoConversion(false);
     }
   };
 
@@ -334,41 +409,166 @@ function CompanyCard({
 
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
-        <div className="card-footer flex items-center justify-between gap-2 overflow-hidden">
-          <div className="flex items-center gap-2 shrink-0 min-w-0">
-            <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
-              <span className="block">Got in</span>
-              {GOT_IN_DISPLAY_YEARS.map((y) => (
-                <span key={y} className="block text-theme-primary tabular-nums">
-                  {y}: {totalGotInByYear[y] ?? 0}
-                </span>
-              ))}
+        {/* {isPpoCard && (
+          <div className="mb-4 rounded-xl border border-theme bg-theme-input p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                Stats & conversion
+              </span>
+              {isAdmin && !isEditingPpoConversion && (
+                <button
+                  type="button"
+                  onClick={startEditPpoConversion}
+                  className="text-theme-muted hover:text-theme-accent transition-colors"
+                  aria-label="Edit PPO conversion stats"
+                  title="Edit PPO conversion stats"
+                >
+                  <FaEdit className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-            {isAdmin && (
-              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                <button
-                  type="button"
-                  onClick={(e) => handleAdjustTotalGotIn(e, -1)}
-                  disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Decrease got in count"
-                  title="Decrease got in count"
+
+            {!isEditingPpoConversion ? (
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:text-sm text-theme-primary">
+                {!hidePlacementGotInCounts ? (
+                  <span>Got in: {ppoGotIn}</span>
+                ) : null}
+                <span>Converted: {ppoConverted}</span>
+                <span>Acceptance: {ppoAcceptanceRate.toFixed(2)}%</span>
+                <span className="truncate" title={ppoConversionType || "N/A"}>
+                  Type: {ppoConversionType || "N/A"}
+                </span>
+              </div>
+            ) : (
+              <div
+                className="space-y-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className={`grid gap-2 ${hidePlacementGotInCounts ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2"}`}
                 >
-                  <FaMinus className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleAdjustTotalGotIn(e, 1)}
-                  disabled={isUpdatingTotalGotIn}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Increase got in count"
-                  title="Increase got in count"
-                >
-                  <FaPlus className="h-3 w-3" />
-                </button>
+                  {!hidePlacementGotInCounts ? (
+                    <input
+                      type="number"
+                      min="0"
+                      value={ppoConversionDraft.gotIn}
+                      onChange={(e) =>
+                        setPpoConversionDraft((prev) => ({
+                          ...prev,
+                          gotIn: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-theme bg-theme-card px-2 py-1.5 text-xs text-theme-primary focus:outline-none focus:ring-1 focus:ring-theme-accent"
+                      placeholder="Got in"
+                    />
+                  ) : null}
+                  <input
+                    type="number"
+                    min="0"
+                    value={ppoConversionDraft.converted}
+                    onChange={(e) =>
+                      setPpoConversionDraft((prev) => ({
+                        ...prev,
+                        converted: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-theme bg-theme-card px-2 py-1.5 text-xs text-theme-primary focus:outline-none focus:ring-1 focus:ring-theme-accent"
+                    placeholder="Converted"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={ppoConversionDraft.conversionType}
+                  onChange={(e) =>
+                    setPpoConversionDraft((prev) => ({
+                      ...prev,
+                      conversionType: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-theme bg-theme-card px-2 py-1.5 text-xs text-theme-primary focus:outline-none focus:ring-1 focus:ring-theme-accent"
+                  placeholder="Type of conversion"
+                />
+                <p className="text-[11px] text-theme-secondary">
+                  Acceptance rate:{" "}
+                  {(() => {
+                    const gotIn = Math.max(0, Number(ppoConversionDraft.gotIn) || 0);
+                    const converted = Math.max(
+                      0,
+                      Number(ppoConversionDraft.converted) || 0
+                    );
+                    const rate =
+                      gotIn > 0 ? Number(((converted / gotIn) * 100).toFixed(2)) : 0;
+                    return `${rate.toFixed(2)}%`;
+                  })()}
+                </p>
+                <div className="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={savePpoConversion}
+                    disabled={isSavingPpoConversion}
+                    className="text-green-500 hover:text-green-400 p-1 rounded transition-colors disabled:opacity-50"
+                    aria-label="Save PPO conversion stats"
+                    title="Save PPO conversion stats"
+                  >
+                    <FaCheck className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEditPpoConversion}
+                    disabled={isSavingPpoConversion}
+                    className="text-red-500 hover:text-red-400 p-1 rounded transition-colors disabled:opacity-50"
+                    aria-label="Cancel PPO conversion stats edit"
+                    title="Cancel PPO conversion stats edit"
+                  >
+                    <FaTimes className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
+        )} */}
+
+        <div
+          className={`card-footer flex items-center gap-2 overflow-hidden ${
+            hidePlacementGotInCounts ? "justify-end" : "justify-between"
+          }`}
+        >
+          {!hidePlacementGotInCounts ? (
+            <div className="flex items-center gap-2 shrink-0 min-w-0">
+              <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
+                <span className="block">Got in</span>
+                {GOT_IN_DISPLAY_YEARS.map((y) => (
+                  <span key={y} className="block text-theme-primary tabular-nums">
+                    {y}: {totalGotInByYear[y] ?? 0}
+                  </span>
+                ))}
+              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => handleAdjustTotalGotIn(e, -1)}
+                    disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Decrease got in count"
+                    title="Decrease got in count"
+                  >
+                    <FaMinus className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleAdjustTotalGotIn(e, 1)}
+                    disabled={isUpdatingTotalGotIn}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Increase got in count"
+                    title="Increase got in count"
+                  >
+                    <FaPlus className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           <button
             onClick={handleThumbsUp}

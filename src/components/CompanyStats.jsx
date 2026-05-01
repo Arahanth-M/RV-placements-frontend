@@ -1734,6 +1734,7 @@ function CompanyStats() {
                   isAdmin={isAdmin}
                   onUpdate={handleCompanyCardUpdated}
                   onStatsUpdated={handleCompanyCardUpdated}
+                  hidePlacementGotInCounts={placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP}
                 />
               );
             })
