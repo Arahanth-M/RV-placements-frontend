@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaTimes, FaUser, FaIdCard, FaGraduationCap } from 'react-icons/fa';
+import { FaTimes, FaUser, FaIdCard, FaGraduationCap, FaBuilding } from 'react-icons/fa';
 
 const StudentProfile = ({ studentData, onClose }) => {
   if (!studentData) {
@@ -28,12 +28,21 @@ const StudentProfile = ({ studentData, onClose }) => {
       .join(' ');
   };
 
+  const unwrapDisplayString = (s) => {
+    if (typeof s !== 'string') return s;
+    let t = s.trim();
+    if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+      t = t.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'");
+    }
+    return t;
+  };
+
   // Get display value
   const getDisplayValue = (value) => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'object') return JSON.stringify(value, null, 2);
-    return String(value);
+    return String(unwrapDisplayString(value));
   };
 
   // Never show internal/redundant company fields in profile UI
@@ -64,8 +73,79 @@ const StudentProfile = ({ studentData, onClose }) => {
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
   const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
 
+  const normFieldKey = (key) =>
+    String(key || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  const PRIMARY_COMPANY_KEY_NORMALS = new Set([
+    "company",
+    "companyname",
+    "nameofcompany",
+  ]);
+  const isPrimaryCompanySemanticKey = (key) =>
+    PRIMARY_COMPANY_KEY_NORMALS.has(normFieldKey(key));
+  const isPrimaryCompanyDuplicateCandidate = isPrimaryCompanySemanticKey;
+  const PRIMARY_COMPANY_CANONICAL_PRIORITY = ["company", "companyname", "nameofcompany"];
+  const normalizeCompanyValueForDedupe = (v) =>
+    String(unwrapDisplayString(v) ?? "").trim().toLowerCase();
+  const getCanonicalPrimaryCompanyKey = (data) => {
+    const keys = Object.keys(data).filter(
+      (k) => isPrimaryCompanyDuplicateCandidate(k) && isFieldAvailable(data[k])
+    );
+    if (keys.length === 0) return null;
+    for (const norm of PRIMARY_COMPANY_CANONICAL_PRIORITY) {
+      const hit = keys.find((k) => normFieldKey(k) === norm);
+      if (hit) return hit;
+    }
+    return keys[0];
+  };
+  const shouldHideDuplicateCompanyField = (data, key) => {
+    if (!isPrimaryCompanyDuplicateCandidate(key)) return false;
+    const canonical = getCanonicalPrimaryCompanyKey(data);
+    if (!canonical || key === canonical) return false;
+    return (
+      normalizeCompanyValueForDedupe(data[key]) ===
+      normalizeCompanyValueForDedupe(data[canonical])
+    );
+  };
+
+  const EMAIL_KEY_NORMALS = new Set([
+    "email",
+    "emailaddress",
+    "studentemail",
+    "collegeemail",
+  ]);
+  const EMAIL_CANONICAL_PRIORITY = ["email", "emailaddress", "studentemail", "collegeemail"];
+  const isEmailDuplicateCandidate = (key) => EMAIL_KEY_NORMALS.has(normFieldKey(key));
+  const normalizeEmailValueForDedupe = (v) =>
+    String(unwrapDisplayString(v) ?? "").trim().toLowerCase();
+  const getCanonicalEmailKey = (data) => {
+    const keys = Object.keys(data).filter(
+      (k) => isEmailDuplicateCandidate(k) && isFieldAvailable(data[k])
+    );
+    if (keys.length === 0) return null;
+    for (const norm of EMAIL_CANONICAL_PRIORITY) {
+      const hit = keys.find((k) => normFieldKey(k) === norm);
+      if (hit) return hit;
+    }
+    return keys[0];
+  };
+  const shouldHideDuplicateEmailField = (data, key) => {
+    if (!isEmailDuplicateCandidate(key)) return false;
+    const canonical = getCanonicalEmailKey(data);
+    if (!canonical || key === canonical) return false;
+    return (
+      normalizeEmailValueForDedupe(data[key]) ===
+      normalizeEmailValueForDedupe(data[canonical])
+    );
+  };
+
+  const shouldHideDuplicateProfileField = (data, key) =>
+    shouldHideDuplicateCompanyField(data, key) || shouldHideDuplicateEmailField(data, key);
+
   const matchesPersonalField = (key) => {
     const lowerKey = key.toLowerCase();
+    if (isPrimaryCompanySemanticKey(key)) return false;
     if (lowerKey.includes('company')) return false;
     return personalInfoFields.some((f) => lowerKey.includes(f.toLowerCase()));
   };
@@ -75,29 +155,10 @@ const StudentProfile = ({ studentData, onClose }) => {
     return academicFields.some((f) => lowerKey.includes(f.toLowerCase()));
   };
 
-  const companyDisplay = String(studentData?.Company || "").trim().toLowerCase();
-  const companyNameRoster = String(studentData?.Company_Name || "")
-    .trim()
-    .toLowerCase();
-  const hideDuplicateCompanyName =
-    Boolean(companyDisplay) &&
-    Boolean(companyNameRoster) &&
-    companyDisplay === companyNameRoster;
-
-  const otherFields = Object.keys(studentData).filter(
-    (key) =>
-      !["_id", "__v"].includes(key) &&
-      !isHiddenProfileKey(key) &&
-      !(hideDuplicateCompanyName && key === "Company_Name") &&
-      isFieldAvailable(studentData[key]) &&
-      !matchesPersonalField(key) &&
-      !matchesAcademicField(key)
-  );
-
   const getFieldCategory = (key) => {
     if (matchesPersonalField(key)) return "personal";
     if (matchesAcademicField(key)) return "academic";
-    return "other";
+    return "company";
   };
 
   const renderField = (key, value) => {
@@ -141,7 +202,11 @@ const StudentProfile = ({ studentData, onClose }) => {
           <div className="space-y-6">
             {/* Personal Information Section */}
             {Object.keys(studentData).some(
-              key => !isHiddenProfileKey(key) && isFieldAvailable(studentData[key]) && getFieldCategory(key) === 'personal'
+              (key) =>
+                !isHiddenProfileKey(key) &&
+                !shouldHideDuplicateProfileField(studentData, key) &&
+                isFieldAvailable(studentData[key]) &&
+                getFieldCategory(key) === 'personal'
             ) && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -150,7 +215,13 @@ const StudentProfile = ({ studentData, onClose }) => {
                 </div>
                 <div className="space-y-3">
                   {Object.entries(studentData)
-                    .filter(([key, value]) => !isHiddenProfileKey(key) && isFieldAvailable(value) && getFieldCategory(key) === 'personal')
+                    .filter(
+                      ([key, value]) =>
+                        !isHiddenProfileKey(key) &&
+                        !shouldHideDuplicateProfileField(studentData, key) &&
+                        isFieldAvailable(value) &&
+                        getFieldCategory(key) === 'personal'
+                    )
                     .map(([key, value]) => renderField(key, value))
                   }
                 </div>
@@ -159,7 +230,11 @@ const StudentProfile = ({ studentData, onClose }) => {
 
             {/* Academic Information Section */}
             {Object.keys(studentData).some(
-              key => !isHiddenProfileKey(key) && isFieldAvailable(studentData[key]) && getFieldCategory(key) === 'academic'
+              (key) =>
+                !isHiddenProfileKey(key) &&
+                !shouldHideDuplicateProfileField(studentData, key) &&
+                isFieldAvailable(studentData[key]) &&
+                getFieldCategory(key) === 'academic'
             ) && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -168,22 +243,46 @@ const StudentProfile = ({ studentData, onClose }) => {
                 </div>
                 <div className="space-y-3">
                   {Object.entries(studentData)
-                    .filter(([key, value]) => !isHiddenProfileKey(key) && isFieldAvailable(value) && getFieldCategory(key) === 'academic')
+                    .filter(
+                      ([key, value]) =>
+                        !isHiddenProfileKey(key) &&
+                        !shouldHideDuplicateProfileField(studentData, key) &&
+                        isFieldAvailable(value) &&
+                        getFieldCategory(key) === 'academic'
+                    )
                     .map(([key, value]) => renderField(key, value))
                   }
                 </div>
               </div>
             )}
 
-            {/* Other Information Section */}
-            {otherFields.length > 0 && (
+            {/* Company Information */}
+            {Object.keys(studentData).some(
+              (key) =>
+                !isHiddenProfileKey(key) &&
+                !shouldHideDuplicateProfileField(studentData, key) &&
+                isFieldAvailable(studentData[key]) &&
+                getFieldCategory(key) === 'company'
+            ) && (
               <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg font-semibold text-indigo-400 mb-4">Additional Information</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <FaBuilding className="text-indigo-400" />
+                  <h3 className="text-lg font-semibold text-indigo-400">Company Information</h3>
+                </div>
                 <div className="space-y-3">
-                  {otherFields.map(key => renderField(key, studentData[key]))}
+                  {Object.entries(studentData)
+                    .filter(
+                      ([key, value]) =>
+                        !isHiddenProfileKey(key) &&
+                        !shouldHideDuplicateProfileField(studentData, key) &&
+                        isFieldAvailable(value) &&
+                        getFieldCategory(key) === 'company'
+                    )
+                    .map(([key, value]) => renderField(key, value))}
                 </div>
               </div>
             )}
+
           </div>
         </div>
 

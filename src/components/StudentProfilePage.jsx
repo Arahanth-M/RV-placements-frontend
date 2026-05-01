@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
-import { FaArrowLeft, FaUser, FaIdCard, FaGraduationCap } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaIdCard, FaGraduationCap, FaBuilding } from 'react-icons/fa';
 import { studentAPI } from '../utils/api';
 
 const StudentProfilePage = () => {
@@ -87,12 +87,21 @@ const StudentProfilePage = () => {
       .join(' ');
   };
 
+  const unwrapDisplayString = (s) => {
+    if (typeof s !== 'string') return s;
+    let t = s.trim();
+    if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+      t = t.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'");
+    }
+    return t;
+  };
+
   // Get display value
   const getDisplayValue = (value) => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'object') return JSON.stringify(value, null, 2);
-    return String(value);
+    return String(unwrapDisplayString(value));
   };
 
   // Never show internal / redundant fields in the profile UI
@@ -121,14 +130,79 @@ const StudentProfilePage = () => {
     return true;
   };
 
-  const companyDisplay = String(profileData?.Company || "").trim().toLowerCase();
-  const companyNameRoster = String(profileData?.Company_Name || "")
-    .trim()
-    .toLowerCase();
-  const hideDuplicateCompanyName =
-    Boolean(companyDisplay) &&
-    Boolean(companyNameRoster) &&
-    companyDisplay === companyNameRoster;
+  /**
+   * Roster columns differ by spelling/casing. Match by normalized key for dedupe and grouping.
+   */
+  const normFieldKey = (key) =>
+    String(key || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+  /** Semantic "primary company" fields only (not "FTE Company name", etc.). */
+  const PRIMARY_COMPANY_KEY_NORMALS = new Set([
+    "company",
+    "companyname",
+    "nameofcompany",
+  ]);
+  const isPrimaryCompanySemanticKey = (key) =>
+    PRIMARY_COMPANY_KEY_NORMALS.has(normFieldKey(key));
+  const isPrimaryCompanyDuplicateCandidate = isPrimaryCompanySemanticKey;
+  const PRIMARY_COMPANY_CANONICAL_PRIORITY = ["company", "companyname", "nameofcompany"];
+  const normalizeCompanyValueForDedupe = (v) =>
+    String(unwrapDisplayString(v) ?? "").trim().toLowerCase();
+  const getCanonicalPrimaryCompanyKey = (data) => {
+    const keys = Object.keys(data).filter(
+      (k) => isPrimaryCompanyDuplicateCandidate(k) && isFieldAvailable(data[k])
+    );
+    if (keys.length === 0) return null;
+    for (const norm of PRIMARY_COMPANY_CANONICAL_PRIORITY) {
+      const hit = keys.find((k) => normFieldKey(k) === norm);
+      if (hit) return hit;
+    }
+    return keys[0];
+  };
+  const shouldHideDuplicateCompanyField = (data, key) => {
+    if (!isPrimaryCompanyDuplicateCandidate(key)) return false;
+    const canonical = getCanonicalPrimaryCompanyKey(data);
+    if (!canonical || key === canonical) return false;
+    return (
+      normalizeCompanyValueForDedupe(data[key]) ===
+      normalizeCompanyValueForDedupe(data[canonical])
+    );
+  };
+
+  const EMAIL_KEY_NORMALS = new Set([
+    "email",
+    "emailaddress",
+    "studentemail",
+    "collegeemail",
+  ]);
+  const EMAIL_CANONICAL_PRIORITY = ["email", "emailaddress", "studentemail", "collegeemail"];
+  const isEmailDuplicateCandidate = (key) => EMAIL_KEY_NORMALS.has(normFieldKey(key));
+  const normalizeEmailValueForDedupe = (v) =>
+    String(unwrapDisplayString(v) ?? "").trim().toLowerCase();
+  const getCanonicalEmailKey = (data) => {
+    const keys = Object.keys(data).filter(
+      (k) => isEmailDuplicateCandidate(k) && isFieldAvailable(data[k])
+    );
+    if (keys.length === 0) return null;
+    for (const norm of EMAIL_CANONICAL_PRIORITY) {
+      const hit = keys.find((k) => normFieldKey(k) === norm);
+      if (hit) return hit;
+    }
+    return keys[0];
+  };
+  const shouldHideDuplicateEmailField = (data, key) => {
+    if (!isEmailDuplicateCandidate(key)) return false;
+    const canonical = getCanonicalEmailKey(data);
+    if (!canonical || key === canonical) return false;
+    return (
+      normalizeEmailValueForDedupe(data[key]) ===
+      normalizeEmailValueForDedupe(data[canonical])
+    );
+  };
+
+  const shouldHideDuplicateProfileField = (data, key) =>
+    shouldHideDuplicateCompanyField(data, key) || shouldHideDuplicateEmailField(data, key);
 
   // Show only meaningful, non-empty fields
   const validKeys = Object.keys(profileData).filter(
@@ -137,33 +211,32 @@ const StudentProfilePage = () => {
       key !== "_id" &&
       key !== "__v" &&
       !isHiddenProfileKey(key) &&
-      !(hideDuplicateCompanyName && key === "Company_Name") &&
+      !shouldHideDuplicateProfileField(profileData, key) &&
       isFieldAvailable(profileData[key])
   );
 
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
-  const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
 
   const matchesPersonalField = (key) => {
     const lowerKey = key.toLowerCase();
-    if (lowerKey.includes("company")) return false; // e.g. Company_Name must not match "Name"
+    if (isPrimaryCompanySemanticKey(key)) return false;
+    if (lowerKey.includes("company")) return false;
     return personalInfoFields.some((f) => lowerKey.includes(f.toLowerCase()));
   };
+
+  const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
 
   const matchesAcademicField = (key) => {
     const lowerKey = key.toLowerCase();
     return academicFields.some((f) => lowerKey.includes(f.toLowerCase()));
   };
 
-  const otherFields = validKeys.filter(
-    (key) => !matchesPersonalField(key) && !matchesAcademicField(key)
-  );
-
+  /** Placement / offer fields — everything outside personal & academic. */
   const getFieldCategory = (key) => {
     if (matchesPersonalField(key)) return "personal";
     if (matchesAcademicField(key)) return "academic";
-    return "other";
+    return "company";
   };
 
   const renderField = (key, value) => {
@@ -251,14 +324,17 @@ const StudentProfilePage = () => {
             </div>
           )}
 
-          {/* Other Information Section */}
-          {otherFields.length > 0 && (
+          {/* Company Information — placement & offer details (company name, stipend, internship/FTE columns, …) */}
+          {validKeys.some((key) => getFieldCategory(key) === 'company') && (
             <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-              <div className="mb-4 border-b border-theme pb-2">
-                <h2 className="text-xl font-semibold text-theme-primary">Additional Information</h2>
+              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+                <FaBuilding className="text-theme-accent text-xl" />
+                <h2 className="text-xl font-semibold text-theme-primary">Company Information</h2>
               </div>
               <div className="space-y-3 pt-2">
-                {otherFields.map(key => renderField(key, profileData[key]))}
+                {validKeys
+                  .filter((key) => getFieldCategory(key) === 'company')
+                  .map((key) => renderField(key, profileData[key]))}
               </div>
             </div>
           )}
