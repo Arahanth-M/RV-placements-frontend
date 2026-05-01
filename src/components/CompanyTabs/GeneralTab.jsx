@@ -1,6 +1,6 @@
 
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { adminAPI } from "../../utils/api";
 
 function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYear = 2026 }) {
@@ -21,13 +21,27 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
   const [isEditingGeneral, setIsEditingGeneral] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [editEligibility, setEditEligibility] = useState(company.eligibility || "");
-  const [editBusinessModel, setEditBusinessModel] = useState(company.business_model || "");
   const [editOffCampus, setEditOffCampus] = useState(company.offCampus === true);
+  const [isEditingPpoConversion, setIsEditingPpoConversion] = useState(false);
+  const [savingPpoConversion, setSavingPpoConversion] = useState(false);
+  const [editPpoConversionType, setEditPpoConversionType] = useState(
+    company.ppoConversionType || ""
+  );
 
   const isInternshipOnlyCompany = (() => {
     const typeLower = (company?.type || "").toLowerCase();
     return typeLower.includes("only internship");
   })();
+  const isPpoCompany = ((company?.type || "").toLowerCase().includes("ppo"));
+
+  useEffect(() => {
+    if (!isEditingPpoConversion) {
+      setEditPpoConversionType(company.ppoConversionType || "");
+    }
+  }, [
+    company.ppoConversionType,
+    isEditingPpoConversion,
+  ]);
 
 
   const formatCTCValue = (value) => {
@@ -39,45 +53,36 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
       
-      {/* GENERAL INFO */}
+      {/* Placement-year info (business model lives in company header — company-wide) */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-indigo-400">
-            General Information
-          </h2>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-indigo-400">
+              Eligibility details
+            </h2>
+          </div>
           {isAdmin && (
             <button
               type="button"
               onClick={() => {
                 if (!isEditingGeneral) {
                   setEditEligibility(company.eligibility || "");
-                  setEditBusinessModel(company.business_model || "");
                   setEditOffCampus(company.offCampus === true);
                 }
                 setIsEditingGeneral((prev) => !prev);
               }}
-              className="px-3 py-1 text-sm rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-600"
+              className="px-3 py-1 text-sm rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-600 shrink-0"
             >
-              {isEditingGeneral ? "Cancel" : "Edit general info"}
+              {isEditingGeneral ? "Cancel" : "Edit placement details"}
             </button>
           )}
         </div>
 
         {!isEditingGeneral ? (
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="bg-slate-800/60 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Eligibility</p>
-              <p className="text-slate-200 mt-1">
-                {company.eligibility ?? "Not provided"}
-              </p>
-            </div>
-
-            <div className="bg-slate-800/60 rounded-lg p-4">
-              <p className="text-slate-400 text-sm">Business Model</p>
-              <p className="text-slate-200 mt-1">
-                {company.business_model ?? "Not provided"}
-              </p>
-            </div>
+          <div className="bg-slate-800/60 rounded-lg p-4">
+            <p className="text-slate-200 whitespace-pre-wrap">
+              {company.eligibility ?? "Not provided"}
+            </p>
           </div>
         ) : (
           <form
@@ -89,7 +94,6 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
                   company._id,
                   {
                     eligibility: editEligibility,
-                    business_model: editBusinessModel,
                     offCampus: editOffCampus,
                   },
                   { year: placementYear }
@@ -99,12 +103,11 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
                 }
                 setIsEditingGeneral(false);
               } catch (err) {
-                console.error("Error updating general info:", err);
+                console.error("Error updating placement details:", err);
                 alert(
                   err.response?.data?.details?.eligibility?.message ||
-                    err.response?.data?.details?.business_model?.message ||
                     err.response?.data?.error ||
-                    "Failed to update general info. Please try again."
+                    "Failed to update placement details. Please try again."
                 );
               } finally {
                 setSavingGeneral(false);
@@ -112,28 +115,17 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
             }}
             className="space-y-4"
           >
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="grid gap-4">
               <div>
-                <label className="block text-slate-300 text-sm mb-1">
-                  Eligibility
+                <label htmlFor="placement-eligibility" className="sr-only">
+                  Eligibility criteria
                 </label>
                 <textarea
+                  id="placement-eligibility"
                   value={editEligibility}
                   onChange={(e) => setEditEligibility(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]"
+                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[120px]"
                   placeholder="e.g. 7.5 CGPA, CSE/ECE/EEE..."
-                />
-              </div>
-              <div>
-                <label className="block text-slate-300 text-sm mb-1">
-                  Business Model
-                </label>
-                <input
-                  type="text"
-                  value={editBusinessModel}
-                  onChange={(e) => setEditBusinessModel(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g. Product-based, Fintech..."
                 />
               </div>
               <div className="flex items-center gap-3 rounded-md border border-slate-700 bg-slate-800/60 px-4 py-3">
@@ -155,7 +147,7 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
                 disabled={savingGeneral}
                 className="px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
               >
-                {savingGeneral ? "Saving…" : "Save general info"}
+                {savingGeneral ? "Saving…" : "Save placement details"}
               </button>
               <button
                 type="button"
@@ -169,6 +161,102 @@ function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYe
           </form>
         )}
       </div>
+
+      {isPpoCompany && (
+        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-indigo-400">
+              Conversion details
+            </h2>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isEditingPpoConversion) {
+                    setEditPpoConversionType(company.ppoConversionType || "");
+                  }
+                  setIsEditingPpoConversion((prev) => !prev);
+                }}
+                className="px-3 py-1 text-sm rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-600 shrink-0"
+              >
+                {isEditingPpoConversion ? "Cancel" : "Edit conversion type"}
+              </button>
+            )}
+          </div>
+
+          {!isEditingPpoConversion ? (
+            <div className="bg-slate-800 rounded-lg p-4">
+              <p className="text-slate-400 text-xs uppercase">Type of conversion</p>
+              <p className="text-slate-200 font-medium mt-1">
+                {company.ppoConversionType || "Not provided"}
+              </p>
+            </div>
+          ) : (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  setSavingPpoConversion(true);
+                  await adminAPI.updateCompanyStats(
+                    company._id,
+                    {
+                      ppoConversionType: editPpoConversionType,
+                    },
+                    { year: placementYear }
+                  );
+                  if (typeof onRolesUpdated === "function") {
+                    await onRolesUpdated();
+                  }
+                  setIsEditingPpoConversion(false);
+                } catch (err) {
+                  console.error("Error updating PPO conversion stats:", err);
+                  alert(
+                    err.response?.data?.error ||
+                      "Failed to update conversion type. Please try again."
+                  );
+                } finally {
+                  setSavingPpoConversion(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label
+                  htmlFor="ppo-conversion-type"
+                  className="block text-slate-300 text-sm mb-1"
+                >
+                  Type of conversion
+                </label>
+                <input
+                  id="ppo-conversion-type"
+                  type="text"
+                  value={editPpoConversionType}
+                  onChange={(e) => setEditPpoConversionType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. Full-time PPO, extension + PPO"
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingPpoConversion}
+                  className="px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
+                >
+                  {savingPpoConversion ? "Saving…" : "Save conversion type"}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingPpoConversion}
+                  onClick={() => setIsEditingPpoConversion(false)}
+                  className="px-3 py-2 rounded-md border border-slate-600 text-slate-200 text-sm hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
       {/* ROLES */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">

@@ -84,12 +84,21 @@ const StudentProfilePage = () => {
       .join(' ');
   };
 
+  const unwrapDisplayString = (s) => {
+    if (typeof s !== 'string') return s;
+    let t = s.trim();
+    if (t.length >= 2 && ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'")))) {
+      t = t.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'");
+    }
+    return t;
+  };
+
   // Get display value
   const getDisplayValue = (value) => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'object') return JSON.stringify(value, null, 2);
-    return String(value);
+    return String(unwrapDisplayString(value));
   };
 
   const isFieldAvailable = (value) => {
@@ -120,6 +129,8 @@ const StudentProfilePage = () => {
     return personalInfoFields.includes(lowerKey);
   };
 
+  const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
+
   const matchesAcademicField = (key) => {
     const lowerKey = key.toLowerCase();
     return academicFields.includes(lowerKey);
@@ -132,7 +143,7 @@ const StudentProfilePage = () => {
   const getFieldCategory = (key) => {
     if (matchesPersonalField(key)) return "personal";
     if (matchesAcademicField(key)) return "academic";
-    return "other";
+    return "company";
   };
 
   const renderField = (key, value) => {
@@ -220,11 +231,12 @@ const StudentProfilePage = () => {
             </div>
           )}
 
-          {/* Other Information Section */}
-          {otherFields.length > 0 && (
+          {/* Company Information — placement & offer details (company name, stipend, internship/FTE columns, …) */}
+          {validKeys.some((key) => getFieldCategory(key) === 'company') && (
             <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-              <div className="mb-4 border-b border-theme pb-2">
-                <h2 className="text-xl font-semibold text-theme-primary">Additional Information</h2>
+              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+                <FaBuilding className="text-theme-accent text-xl" />
+                <h2 className="text-xl font-semibold text-theme-primary">Company Information</h2>
               </div>
               <div className="space-y-3 pt-2">
                 {otherFields.map(key => renderField(key, student[key]))}
