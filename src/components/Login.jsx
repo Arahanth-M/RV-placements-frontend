@@ -3,6 +3,8 @@ import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
+const LOGIN_INTENT_KEY = "loginIntent";
+const LOGIN_INTENT_SPC = "spc";
 
 const GoogleIcon = () => (
   <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
@@ -30,15 +32,17 @@ const Login = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isAdminRoute = location.pathname.includes("/admin");
+  const spcAccessDenied = new URLSearchParams(location.search).get("reason") === "spc_access_denied";
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = ({ spc = false } = {}) => {
     if (!isAdminRoute) {
       const nextPath = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
       if (nextPath.startsWith("/")) {
         sessionStorage.setItem(LOGIN_REDIRECT_PATH_KEY, nextPath);
       }
     }
-    login(isAdminRoute);
+
+    login(isAdminRoute, { intent: spc ? LOGIN_INTENT_SPC : null });
   };
 
   useEffect(() => {
@@ -66,6 +70,13 @@ const Login = () => {
         </div>
 
         <div className="space-y-4">
+          {spcAccessDenied && (
+            <div className="bg-red-100/90 dark:bg-red-900/25 border border-red-300 dark:border-red-700 rounded-xl p-4">
+              <p className="text-sm text-red-900 dark:text-red-200">
+                <strong>Access denied:</strong> Not authorized as SPC.
+              </p>
+            </div>
+          )}
           {isAdminRoute && (
             <div className="bg-yellow-100/90 dark:bg-yellow-900/25 border border-yellow-300 dark:border-yellow-700 rounded-xl p-4">
               <p className="text-sm text-yellow-900 dark:text-yellow-200">
@@ -81,6 +92,16 @@ const Login = () => {
             <GoogleIcon />
             Sign in with Google
           </button>
+          {!isAdminRoute && (
+            <button
+              type="button"
+              onClick={() => handleGoogleSignIn({ spc: true })}
+              className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-theme text-sm font-medium rounded-xl text-theme-primary bg-theme-card hover:bg-theme-nav focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
+            >
+              <GoogleIcon />
+              Login as SPC
+            </button>
+          )}
         </div>
       </div>
     </div>

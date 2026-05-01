@@ -16,6 +16,7 @@ import Contact from "./components/Contact";
 import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import ProtectedSpcRoute from "./components/ProtectedSpcRoute";
 // PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
 // import Premium from "./components/Premium";
 import Resources from "./components/Resources";
@@ -31,6 +32,8 @@ import AIInterviews from "./components/AIInterviews";
 import Feedback from "./components/Feedback";
 import UserManual from "./components/UserManual";
 import ResumeBuilderPage from "./components/ResumeBuilderPage";
+import SPCDashboard from "./components/SPCDashboard";
+import SPCPlacementForm from "./components/SPCPlacementForm";
 import { RESUME_BUILDER_ENABLED } from "./utils/constants";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
@@ -119,6 +122,22 @@ function AppShell() {
               <ProtectedAdminRoute>
                 <AdminDashboard />
               </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/spc-dashboard"
+            element={
+              <ProtectedSpcRoute>
+                <SPCDashboard />
+              </ProtectedSpcRoute>
+            }
+          />
+          <Route
+            path="/spc/form"
+            element={
+              <ProtectedSpcRoute>
+                <SPCPlacementForm />
+              </ProtectedSpcRoute>
             }
           />
           <Route path="/team" element={<Developers />} />

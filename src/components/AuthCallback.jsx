@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
-import { studentAPI } from '../utils/api';
+import { authAPI, studentAPI } from '../utils/api';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
+const LOGIN_INTENT_KEY = "loginIntent";
+const LOGIN_INTENT_SPC = "spc";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -13,6 +15,7 @@ const AuthCallback = () => {
   const [userData, setUserData] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
+  const [accessDeniedMessage, setAccessDeniedMessage] = useState("");
   const handledRef = useRef(false);
 
   useEffect(() => {
@@ -30,8 +33,22 @@ const AuthCallback = () => {
           const fetchedUserData = await refreshUser();
           
           if (fetchedUserData) {
+            const loginIntent = sessionStorage.getItem(LOGIN_INTENT_KEY);
             const signupFlag = urlParams.get('signup') === 'success';
             const adminFlag = urlParams.get('admin') === 'true';
+
+            if (loginIntent === LOGIN_INTENT_SPC) {
+              const currentUserResponse = await authAPI.getCurrentUser();
+              const spcUser = currentUserResponse?.data || null;
+
+              if (!spcUser || spcUser.role !== LOGIN_INTENT_SPC) {
+                sessionStorage.removeItem(LOGIN_INTENT_KEY);
+                sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
+                setAccessDeniedMessage("Not authorized as SPC");
+                setIsProcessing(false);
+                return;
+              }
+            }
             
             setUserData(fetchedUserData);
             setIsSignup(signupFlag);
@@ -41,12 +58,12 @@ const AuthCallback = () => {
             
             // Skip student data fetch for admin users
             if (adminFlag) {
-              handleLoginComplete(fetchedUserData, signupFlag, adminFlag);
+              handleLoginComplete(fetchedUserData, signupFlag, adminFlag, loginIntent);
               return;
             }
             
             // Fetch student profile strictly by authenticated email
-            await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag);
+            await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag, loginIntent);
           } else {
             console.error('No user data received after authentication');
             navigate('/', { replace: true });
@@ -84,15 +101,7 @@ const AuthCallback = () => {
   }, [navigate, refreshUser]);
 
   // Strictly email-based profile fetch — no name matching
-  const fetchStudentProfileByEmail = async (user, signup, admin) => {
-    if (user?.isBetaListed !== true) {
-      if (setStudentData) {
-        setStudentData(null);
-      }
-      handleLoginComplete(user, signup, admin);
-      return;
-    }
-
+  const fetchStudentProfileByEmail = async (user, signup, admin, loginIntent) => {
     try {
       const userId = user?.userId || user?._id;
       console.log(`📡 [AuthCallback] Fetching profile by email for user: ${user?.email}`);
@@ -100,7 +109,7 @@ const AuthCallback = () => {
       const profileRes = await studentAPI.getProfile();
       
       if (profileRes.data) {
-        console.log(`✅ [AuthCallback] Profile loaded: ${profileRes.data.Name} -> ${profileRes.data.Company}`);
+        console.log(`✅ [AuthCallback] Profile loaded for ${user?.email}`);
         
         // Store strictly with user-specific key
         if (userId) {
@@ -121,10 +130,11 @@ const AuthCallback = () => {
       // Proceed without student data — user can still use other features
     }
     
-    handleLoginComplete(user, signup, admin);
+    handleLoginComplete(user, signup, admin, loginIntent);
   };
 
-  const handleLoginComplete = (user, signup, admin) => {
+  const handleLoginComplete = (user, signup, admin, loginIntent) => {
+    sessionStorage.removeItem(LOGIN_INTENT_KEY);
     if (admin) {
       sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
     } else {
@@ -133,6 +143,9 @@ const AuthCallback = () => {
 
     if (admin) {
       window.location.replace('/admin/dashboard');
+    } else if (loginIntent === LOGIN_INTENT_SPC) {
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      window.location.replace('/spc-dashboard');
     } else {
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
       const safeRedirect =
@@ -142,6 +155,26 @@ const AuthCallback = () => {
     }
     setIsProcessing(false);
   };
+
+  if (accessDeniedMessage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-theme-app px-4">
+        <div className="max-w-md w-full bg-theme-card border border-theme rounded-3xl p-8 text-center shadow-2xl">
+          <h2 className="text-2xl font-bold text-red-600 mb-3">Access denied</h2>
+          <p className="text-sm text-theme-secondary">{accessDeniedMessage}</p>
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => navigate("/", { replace: true })}
+              className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              Back to students corner
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isProcessing) {
     return (

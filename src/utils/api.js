@@ -185,6 +185,9 @@ export const adminAPI = {
   getSubmissions: (config) => API.get('/api/admin/submissions', config),
   getSubmission: (id) => API.get(`/api/admin/submissions/${id}`),
   getUserCount: () => API.get('/api/admin/stats/users'),
+  assignSpc: (data) => API.post('/api/admin/assign-spc', data),
+  getSpcs: () => API.get('/api/admin/spcs'),
+  revokeSpc: (id) => API.patch(`/api/admin/spcs/${id}/revoke`),
   approveSubmission: (id) => API.post(`/api/admin/submissions/${id}/approve`),
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
   deleteApprovedSubmission: (id) => API.delete(`/api/admin/submissions/${id}/delete`),
@@ -280,6 +283,11 @@ export const submitMissingCompany = (data) => {
 
 export const placementAPI = {
   submitPlacementData: (companyId, data) => API.post(`/api/placement/${companyId}/placement-data`, data),
+};
+
+export const spcAPI = {
+  submitPlacement: (data) => API.post('/api/placement/spc/submit', data),
+  getPlacementStatus: () => API.get('/api/placement/student/status'),
 };
 
 export const leaderboardAPI = {
