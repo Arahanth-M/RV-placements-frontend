@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaTimes, FaUser, FaIdCard, FaGraduationCap, FaBuilding } from 'react-icons/fa';
+import { getProfileDisplayValue } from '../utils/studentProfileView';
 
 const StudentProfile = ({ studentData, onClose }) => {
   if (!studentData) {
@@ -35,14 +36,6 @@ const StudentProfile = ({ studentData, onClose }) => {
       t = t.slice(1, -1).replace(/\\"/g, '"').replace(/\\'/g, "'");
     }
     return t;
-  };
-
-  // Get display value
-  const getDisplayValue = (value) => {
-    if (value === null || value === undefined) return 'N/A';
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (typeof value === 'object') return JSON.stringify(value, null, 2);
-    return String(unwrapDisplayString(value));
   };
 
   // Never show internal/redundant company fields in profile UI
@@ -170,8 +163,8 @@ const StudentProfile = ({ studentData, onClose }) => {
         <span className="text-slate-400 font-medium text-sm sm:text-base min-w-[150px] sm:min-w-[180px]">
           {displayKey}:
         </span>
-        <span className="text-white text-sm sm:text-base flex-1 break-words">
-          {getDisplayValue(value)}
+        <span className="text-white text-sm sm:text-base flex-1 break-words whitespace-pre-line">
+          {getProfileDisplayValue(value)}
         </span>
       </div>
     );

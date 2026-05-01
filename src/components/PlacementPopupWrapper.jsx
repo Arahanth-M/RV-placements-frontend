@@ -152,7 +152,7 @@ const PlacementPopupWrapper = () => {
             <h3 className="text-xl font-extrabold text-theme-primary mb-1 tracking-tight">
               {isPlacementPopup ? (
                 <>
-                  Congrats {displayName}{' '}
+                  Congratulations {displayName}{' '}
                   <span className="inline-block animate-bounce">🎉</span>
                 </>
               ) : (
@@ -162,8 +162,8 @@ const PlacementPopupWrapper = () => {
 
             {isPlacementPopup ? (
               <>
-                <p className="text-theme-secondary text-sm mb-3">
-                  Congrats on being part of:
+                <p className="text-theme-secondary text-sm mb-3 text-center">
+                  for succesfully getting the opportunity to work at:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {companyNames.map((name, idx) => (
@@ -176,6 +176,7 @@ const PlacementPopupWrapper = () => {
                         borderColor:
                           'color-mix(in srgb, var(--accent) 55%, transparent)',
                         color: 'var(--accent)',
+                        aligncenter: 'var(--accent)',
                         boxShadow:
                           '0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent)',
                       }}
