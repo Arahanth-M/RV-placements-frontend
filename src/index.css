@@ -77,6 +77,142 @@ body {
   background-color: rgba(0, 0, 0, 0.35);
 }
 
+/* AI interview coding workspace (LeetCode-style; follows theme tokens) */
+.ai-code-workspace {
+  background-color: var(--input-bg);
+}
+
+.ai-code-workspace-body {
+  background-color: var(--input-bg);
+}
+
+.ai-code-workspace-gutter {
+  min-width: 2.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  border-right: 1px solid var(--input-border);
+}
+
+[data-theme="light"] .ai-code-workspace-gutter {
+  background-color: rgba(79, 70, 229, 0.055);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .ai-code-workspace-gutter {
+  background-color: rgba(0, 0, 0, 0.28);
+  color: var(--text-muted);
+}
+
+.ai-code-workspace-gutter-line {
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-code-workspace-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  caret-color: var(--accent);
+}
+
+.ai-code-workspace-editor::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.ai-code-workspace-pill {
+  background-color: var(--primary-soft);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+
+/* AI mock interview — formal, legible question copy */
+.ai-interview-question-display {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  font-size: clamp(1.2rem, 2.8vw, 1.85rem);
+  line-height: 1.55;
+  color: var(--text-primary);
+  letter-spacing: 0.015em;
+}
+
+@keyframes ai-interview-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ai-interview-typewriter-caret {
+  display: inline-block;
+  width: 2px;
+  height: 0.92em;
+  margin-left: 3px;
+  vertical-align: -0.1em;
+  background-color: var(--accent);
+  animation: ai-interview-caret-blink 1s step-end infinite;
+}
+
+.ai-interview-answer-shell {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  background: linear-gradient(155deg, var(--bg-hero), var(--bg-card));
+  box-shadow: var(--shadow-soft);
+}
+
+[data-theme="dark"] .ai-interview-answer-shell {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: linear-gradient(
+    165deg,
+    rgba(15, 23, 42, 0.94),
+    rgba(8, 12, 20, 0.98)
+  );
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+}
+
+.ai-interview-answer-shell textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.22);
+}
+
+.ai-interview-submit-row {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .ai-interview-submit-row {
+  border-top-color: rgba(148, 163, 184, 0.18);
+}
+
+.ai-interview-submit-row > button:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(129, 140, 248, 0.35);
+}
+
+.ai-interview-code-workspace-wrap {
+  border-radius: var(--radius-md, 10px);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+
+.ai-interview-code-workspace-wrap .ai-code-workspace {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .ai-interview-code-workspace-wrap {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+[data-theme="dark"] .ai-code-workspace-pill {
+  background-color: rgba(129, 140, 248, 0.12);
+  border-color: var(--input-border);
+}
+
 /* Submission thank-you / error dialog (company card contributions) */
 .submission-feedback-backdrop {
   background-color: rgba(0, 0, 0, 0.55);

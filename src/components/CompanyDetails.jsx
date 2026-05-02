@@ -157,6 +157,8 @@ function CompanyDetails() {
 
   const placementContextForApi = readPlacementListContext(location, id);
 
+  const interviewFocusMode = isInterviewLocked && activeTab === "aiinterview";
+
   const getSessionValue = (baseKey) => {
     const userScopedKey =
       user && user.userId ? `${baseKey}_${user.userId}` : baseKey;
@@ -500,7 +502,29 @@ function CompanyDetails() {
           </button>
         </div>
 
-        {/* Company Header */}
+        {/* Company header — compact during AI interview focus */}
+        {interviewFocusMode ? (
+          <div className="mb-4 rounded-xl border border-theme bg-theme-card px-4 py-3 shadow-sm flex items-center gap-3 min-w-0">
+            <div
+              className="h-11 w-11 shrink-0 rounded-lg border border-theme bg-theme-input flex items-center justify-center overflow-hidden"
+              aria-hidden
+            >
+              <CompanyLogo
+                company={company}
+                className="w-full h-full object-contain p-0.5"
+                alt={company.name ? `${company.name} logo` : "Company logo"}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-theme-accent">
+                Interview in progress
+              </p>
+              <p className="text-base sm:text-lg font-semibold text-theme-primary truncate">
+                {company.name}
+              </p>
+            </div>
+          </div>
+        ) : (
         <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6">
           <div className="flex items-center gap-4 sm:gap-5 md:gap-6">
             <div
@@ -526,8 +550,10 @@ function CompanyDetails() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Tab Navigation */}
+        {!interviewFocusMode && (
         <div className="mb-4 sm:mb-6 min-w-0" ref={dropdownRef}>
           <div
             className="flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl md:gap-1.5 md:p-1.5"
@@ -636,8 +662,7 @@ function CompanyDetails() {
             })}
           </div>
         </div>
-
-        {/* Tab Content */}
+        )}
         <div className="company-tab-content">
           {activeTab === "about" && <AboutTab company={company} />}
           {activeTab === "general" && (
