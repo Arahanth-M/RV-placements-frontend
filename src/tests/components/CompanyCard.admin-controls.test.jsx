@@ -100,7 +100,7 @@ describe("CompanyCard admin got in controls", () => {
     mockAdjustCompanyTotalGotIn.mockResolvedValue({
       data: {
         totalGotIn: 4,
-        totalGotInByYear: { 2026: 4, 2027: 0 },
+        totalGotInByYear: { 2026: 4, 2027: 0, 2028: 0 },
       },
     });
 
@@ -124,7 +124,7 @@ describe("CompanyCard admin got in controls", () => {
 
     expect(onStatsUpdated).toHaveBeenCalledWith(baseCompany._id, {
       totalGotIn: 4,
-      totalGotInByYear: { 2026: 4, 2027: 0 },
+      totalGotInByYear: { 2026: 4, 2027: 0, 2028: 0 },
     });
   });
 
@@ -132,7 +132,7 @@ describe("CompanyCard admin got in controls", () => {
     mockAdjustCompanyTotalGotIn.mockResolvedValue({
       data: {
         totalGotIn: 2,
-        totalGotInByYear: { 2026: 0, 2027: 2 },
+        totalGotInByYear: { 2026: 0, 2027: 2, 2028: 0 },
       },
     });
 
@@ -172,5 +172,6 @@ describe("CompanyCard admin got in controls", () => {
 
     expect(await screen.findByText(/2027:\s*5/)).toBeInTheDocument();
     expect(screen.getByText(/2026:\s*0/)).toBeInTheDocument();
+    expect(screen.getByText(/2028:\s*0/)).toBeInTheDocument();
   });
 });

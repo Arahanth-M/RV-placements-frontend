@@ -41,7 +41,13 @@ import {
   companystatsTierListUrl,
   isPlacementTierParam,
   normalizeClusterParam,
+  PLACEMENT_CATEGORY_NO_VISIT_COPY,
 } from "../constants/placementTiers.js";
+import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+  isPlacementDetailVisitYear,
+} from "../constants/placementYears.js";
 
 const PROFILE_COMPANY_FIELDS = [
   "Summer internship Company name",
@@ -168,7 +174,7 @@ function CompanyStats() {
   const [categoryPreview, setCategoryPreview] = useState(null);
   /** False until the first placement-card year list fetch finishes (success or error). Drives tier-list skeletons. */
   const [companiesFetchDone, setCompaniesFetchDone] = useState(false);
-  const isPlacementCardsYear = selectedYear === 2026 || selectedYear === 2027;
+  const isPlacementCardsYear = isPlacementDetailVisitYear(selectedYear);
   const [search, setSearch] = useState("");
   const [tierCategories, setTierCategories] = useState({
     [PLACEMENT_TIER_DREAM]: "all",
@@ -202,7 +208,8 @@ function CompanyStats() {
     const fromLocal = localStorage.getItem("companystats_selectedYear");
     const raw = fromSession ?? fromSessionFallback ?? fromLocal;
     const parsed = parseInt(String(raw || ""), 10);
-    return parsed === 2027 ? 2027 : 2026;
+    if (Number.isFinite(parsed) && isPlacementDetailVisitYear(parsed)) return parsed;
+    return DEFAULT_PLACEMENT_DETAIL_YEAR;
   };
 
   const activeCategory = useMemo(
@@ -417,7 +424,7 @@ function CompanyStats() {
 
     if (location.state?.selectedYear !== undefined) {
       const yearToSet = location.state.selectedYear;
-      if (yearToSet === 2026) {
+      if (yearToSet === DEFAULT_PLACEMENT_DETAIL_YEAR) {
         navigate(PATH_COMPANY_CATEGORY, { replace: true });
         return;
       }
@@ -440,7 +447,7 @@ function CompanyStats() {
     } else {
       const parsedYear = parseInt(storedYear, 10);
       if (!Number.isNaN(parsedYear)) {
-        if (parsedYear === 2026) {
+        if (parsedYear === DEFAULT_PLACEMENT_DETAIL_YEAR) {
           navigate(PATH_COMPANY_CATEGORY, { replace: true });
         } else {
           setSelectedYear(parsedYear);
@@ -452,7 +459,7 @@ function CompanyStats() {
   // Persist hub year (2024/2025 only). Placement-card years use /category and ?tier= URLs.
   useEffect(() => {
     if (!user?.userId) return;
-    if (selectedYear === null || selectedYear === 2026) {
+    if (selectedYear === null || selectedYear === DEFAULT_PLACEMENT_DETAIL_YEAR) {
       sessionStorage.setItem(getStorageKey("companystats_selectedYear"), "");
     } else {
       sessionStorage.setItem(getStorageKey("companystats_selectedYear"), String(selectedYear));
@@ -479,7 +486,7 @@ function CompanyStats() {
   // (otherwise this runs before URL sync and wipes tier after /companystats?tier= navigation → infinite "Loading…").
   useEffect(() => {
     if (selectedYear == null) return;
-    if (selectedYear !== 2026 && selectedYear !== 2027) setPlacementTier(null);
+    if (!isPlacementDetailVisitYear(selectedYear)) setPlacementTier(null);
   }, [selectedYear]);
 
   // Close the floating filter menu whenever the user changes tiers.
@@ -624,7 +631,7 @@ function CompanyStats() {
   // Fetch companies for year-based cards (currently 2026/2027); preview-logos in parallel.
   useEffect(() => {
     let cancelled = false;
-    if (selectedYear === 2026 || selectedYear === 2027) {
+    if (isPlacementDetailVisitYear(selectedYear)) {
       localStorage.setItem('companystats_selectedYear', String(selectedYear));
       const cachedCompanies = getCachedCompanies(selectedYear);
       if (cachedCompanies) {
@@ -682,7 +689,7 @@ function CompanyStats() {
 
     return () => {
       cancelled = true;
-      if (selectedYear !== 2026 && selectedYear !== 2027) {
+      if (!isPlacementDetailVisitYear(selectedYear)) {
         localStorage.removeItem('companystats_selectedYear');
       }
     };
@@ -815,8 +822,10 @@ function CompanyStats() {
     return isCompanyMarkedOffCampus(company);
   };
 
-  /** PPO on any placement year (2026/2027), or legacy single-year primary visit. */
+  /** Same rule as category-preview summer tiles: strict on-campus PPO row without FTE in visit type, then legacy PPO flags. */
   const qualifiesSummerInternshipTile = (company) => {
+    if (company.placementSummerInternshipForListingYear === true) return true;
+    if (company.placementSummerInternshipForListingYear === false) return false;
     if (company.placementAnyYearPpoOnCampus === true) return true;
     if (company.placementAnyYearPpoOnCampus === false) return false;
     return isPpoCompany(company) && !isOffCampusCompany(company);
@@ -1098,7 +1107,7 @@ function CompanyStats() {
       const nextCompanies = prevCompanies.map((company) =>
         company._id === companyId ? { ...company, ...updates } : company
       );
-      if (selectedYear === 2026 || selectedYear === 2027) {
+      if (isPlacementDetailVisitYear(selectedYear)) {
         setCachedCompanies(selectedYear, nextCompanies);
       }
       return nextCompanies;
@@ -1173,11 +1182,14 @@ function CompanyStats() {
               Pick a batch to open placement stats or the company hub.
             </p>
           <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
-            {[2024, 2025, 2026].map((year) => {
+            {[2024, 2025, ...PLACEMENT_DETAIL_VISIT_YEARS].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
               const isDisabled = requiresAuth && !user;
-              const bullets = yearStatsHubBullets[year] || [];
-              
+              const isPlacementHubPick = isPlacementDetailVisitYear(year);
+              const bullets =
+                yearStatsHubBullets[year] ||
+                (isPlacementHubPick ? yearStatsHubBullets[DEFAULT_PLACEMENT_DETAIL_YEAR] : []);
+
               return (
                 <button
                   key={year}
@@ -1186,7 +1198,7 @@ function CompanyStats() {
                       alert("You must be logged in to view 2024 and 2025 statistics.");
                       return;
                     }
-                    if (year === 2026) {
+                    if (isPlacementHubPick) {
                       setSelectedYear(year);
                       if (user?.userId) {
                         sessionStorage.setItem(
@@ -1223,12 +1235,14 @@ function CompanyStats() {
                       </div>
                     </div>
                     <h3 className="text-center text-xl font-bold text-theme-primary sm:text-2xl">
-                      {year === 2026 ? "2026 Onwards" : `${year} Stats`}
+                      {isPlacementHubPick && year === DEFAULT_PLACEMENT_DETAIL_YEAR
+                        ? "2026 Onwards"
+                        : isPlacementHubPick
+                          ? `${year} placement`
+                          : `${year} Stats`}
                     </h3>
                     <p className="mb-4 text-center text-sm text-theme-secondary sm:text-base">
-                      {year === 2026
-                        ? "View company cards"
-                        : "View statistics table"}
+                      {isPlacementHubPick ? "View company cards" : "View statistics table"}
                     </p>
                     <ul className="w-full min-w-0 flex-1 list-outside list-disc space-y-2 pl-5 text-left text-sm leading-relaxed text-theme-secondary sm:pl-6 sm:text-base [&>li]:pl-1 marker:text-theme-accent">
                       {bullets.map((line, i) => (
@@ -1492,11 +1506,10 @@ function CompanyStats() {
                 Select category
               </h2>
               <p className="mx-auto mt-2 text-center text-base text-theme-secondary whitespace-nowrap sm:text-lg">
-                Choose Dream, Open dream, Internship only, Summer internship, or Off campus to browse company cards for 2026.
+                Choose Dream, Open dream, Internship only, Summer internship, or Off campus to browse company cards
+          
               </p>
-              <p className="mx-auto mt-1 max-w-xl text-center text-xs text-theme-muted sm:text-sm">
-                Note: Dream means CTC below 10 LPA, and Open dream means CTC above 10 LPA.
-              </p>
+              
             </div>
           </div>
           <div className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch">
@@ -1710,17 +1723,68 @@ function CompanyStats() {
             tierListSlice.map((c) => {
               let typeDisplayLabel;
               let detailDefaultYear;
+              let typePlacementLabelPending = false;
+              // Summer internship hub: fixed subtitle on every card; strict-visit rules only affect listing membership + detail page.
               if (placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
-                typeDisplayLabel = c.placementSummerDisplayType ?? c.type;
-                detailDefaultYear = c.placementSummerDetailYear;
+                typeDisplayLabel = "Internship(PPO)";
+                const listingYear = isPlacementDetailVisitYear(selectedYear)
+                  ? selectedYear
+                  : null;
+                detailDefaultYear =
+                  listingYear !== null
+                    ? listingYear
+                    : isPlacementDetailVisitYear(c.placementSummerDetailYear)
+                      ? c.placementSummerDetailYear
+                      : undefined;
               } else if (
                 placementTier === PLACEMENT_TIER_DREAM ||
                 placementTier === PLACEMENT_TIER_OPEN_DREAM
               ) {
-                typeDisplayLabel = c.placementDreamDisplayType ?? c.type;
-                detailDefaultYear = c.placementDreamDetailYear;
+                const listingYear = isPlacementDetailVisitYear(selectedYear)
+                  ? selectedYear
+                  : null;
+                if (listingYear !== null && c.placementDreamTierForListingYear === false) {
+                  const dreamDetailY = isPlacementDetailVisitYear(c.placementDreamDetailYear)
+                    ? c.placementDreamDetailYear
+                    : null;
+                  const dreamFallbackLabel =
+                    typeof c.placementDreamDisplayType === "string"
+                      ? c.placementDreamDisplayType.trim()
+                      : "";
+                  const showLaterCycleDreamCard =
+                    dreamDetailY !== null &&
+                    dreamDetailY > listingYear &&
+                    dreamFallbackLabel.length > 0;
+
+                  if (showLaterCycleDreamCard) {
+                    typeDisplayLabel = dreamFallbackLabel;
+                    detailDefaultYear = dreamDetailY;
+                    typePlacementLabelPending = false;
+                  } else {
+                    typeDisplayLabel = PLACEMENT_CATEGORY_NO_VISIT_COPY;
+                    detailDefaultYear = listingYear;
+                    typePlacementLabelPending = true;
+                  }
+                } else {
+                  const mergedType =
+                    typeof c.type === "string" && c.type.trim()
+                      ? c.type.trim()
+                      : "";
+                  const dreamVisitType =
+                    typeof c.placementDreamDisplayType === "string"
+                      ? c.placementDreamDisplayType.trim()
+                      : "";
+                  typeDisplayLabel =
+                    dreamVisitType || mergedType || "Placement Drive";
+                  detailDefaultYear =
+                    listingYear !== null
+                      ? listingYear
+                      : isPlacementDetailVisitYear(c.placementDreamDetailYear)
+                        ? c.placementDreamDetailYear
+                        : undefined;
+                }
               }
-              if (detailDefaultYear !== 2026 && detailDefaultYear !== 2027) {
+              if (!isPlacementDetailVisitYear(detailDefaultYear)) {
                 detailDefaultYear = undefined;
               }
               const placementListContext =
@@ -1736,6 +1800,7 @@ function CompanyStats() {
                   key={c._id}
                   company={c}
                   typeDisplayLabel={typeDisplayLabel}
+                  typePlacementLabelPending={typePlacementLabelPending}
                   detailDefaultYear={detailDefaultYear}
                   placementYear={selectedYear}
                   helpfulStatus={helpfulStatusByCompanyId[c._id]}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { adminAPI } from "../../utils/api";
+import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 
 const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
 
@@ -15,7 +16,12 @@ function normalizeBranchRows(rows) {
     .filter((row) => BRANCH_CODES.includes(row.branchCode));
 }
 
-function StatsTab({ company = {}, isAdmin = false, onStatsUpdated, placementYear = 2026 }) {
+function StatsTab({
+  company = {},
+  isAdmin = false,
+  onStatsUpdated,
+  placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+}) {
   const isPpoCompany = String(company?.type || "").toLowerCase().includes("ppo");
   const [branchFilter, setBranchFilter] = useState("all");
   const [isEditingStats, setIsEditingStats] = useState(false);

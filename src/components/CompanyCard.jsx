@@ -3,23 +3,41 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
+import {
+  PLACEMENT_TIER_DREAM,
+  PLACEMENT_TIER_OPEN_DREAM,
+  PLACEMENT_TIER_SUMMER_INTERNSHIP,
+} from "../constants/placementTiers.js";
+import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+  isPlacementDetailVisitYear,
+} from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
 
-const GOT_IN_DISPLAY_YEARS = [2026, 2027];
+const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
-function normalizeTotalGotInByYear(company, fallbackYear = 2026) {
+function normalizeTotalGotInByYear(
+  company,
+  fallbackYear = DEFAULT_PLACEMENT_DETAIL_YEAR
+) {
+  const zeros = Object.fromEntries(
+    PLACEMENT_DETAIL_VISIT_YEARS.map((y) => [y, 0])
+  );
   const d = company?.totalGotInByYear;
   if (d && typeof d === "object") {
-    return {
-      2026: Number(d[2026]) || 0,
-      2027: Number(d[2027]) || 0,
-    };
+    const out = { ...zeros };
+    for (const y of PLACEMENT_DETAIL_VISIT_YEARS) {
+      out[y] = Number(d[y]) || 0;
+    }
+    return out;
   }
   const legacy = Number(company?.totalGotIn) || 0;
-  return {
-    2026: fallbackYear === 2026 ? legacy : 0,
-    2027: fallbackYear === 2027 ? legacy : 0,
-  };
+  const out = { ...zeros };
+  if (isPlacementDetailVisitYear(fallbackYear)) {
+    out[fallbackYear] = legacy;
+  }
+  return out;
 }
 
 function CompanyCard({
@@ -28,6 +46,8 @@ function CompanyCard({
   isAdmin,
   onStatsUpdated,
   typeDisplayLabel,
+  /** Dream/Open dream: true when this year has no on-campus FTE-tier visit (category no-visit copy). */
+  typePlacementLabelPending = false,
   detailDefaultYear,
   placementYear,
   helpfulStatus,
@@ -46,12 +66,11 @@ function CompanyCard({
   const [isCheckingStatus, setIsCheckingStatus] = useState(Boolean(user) && !helpfulStatus);
   const hasPrefetchedRef = useRef(false);
 
-  const cardPlacementYear =
-    detailDefaultYear === 2026 || detailDefaultYear === 2027
-      ? detailDefaultYear
-      : placementYear === 2026 || placementYear === 2027
-        ? placementYear
-        : 2026;
+  const cardPlacementYear = isPlacementDetailVisitYear(detailDefaultYear)
+    ? detailDefaultYear
+    : isPlacementDetailVisitYear(placementYear)
+      ? placementYear
+      : DEFAULT_PLACEMENT_DETAIL_YEAR;
 
   const [isEditingType, setIsEditingType] = useState(false);
   const [editTypeValue, setEditTypeValue] = useState("");
@@ -97,7 +116,7 @@ function CompanyCard({
   const companyDetailPath = (() => {
     const cid = company._id;
     const params = new URLSearchParams();
-    if (detailDefaultYear === 2026 || detailDefaultYear === 2027) {
+    if (isPlacementDetailVisitYear(detailDefaultYear)) {
       params.set("year", String(detailDefaultYear));
     }
     if (placementListContext) {
@@ -127,15 +146,14 @@ function CompanyCard({
         sessionStorage.removeItem(`company_detail_placement_ctx:${company._id}`);
       }
     }
-    const navState =
-      detailDefaultYear === 2026 || detailDefaultYear === 2027
-        ? {
-            defaultPlacementYear: detailDefaultYear,
-            ...(placementListContext ? { placementListContext } : {}),
-          }
-        : placementListContext
-          ? { placementListContext }
-          : undefined;
+    const navState = isPlacementDetailVisitYear(detailDefaultYear)
+      ? {
+          defaultPlacementYear: detailDefaultYear,
+          ...(placementListContext ? { placementListContext } : {}),
+        }
+      : placementListContext
+        ? { placementListContext }
+        : undefined;
     navigate(companyDetailPath, { state: navState });
   };
 
@@ -148,7 +166,7 @@ function CompanyCard({
     if (hasPrefetchedRef.current || !company?._id) return;
     hasPrefetchedRef.current = true;
     const prefetchOpts = {};
-    if (detailDefaultYear === 2026 || detailDefaultYear === 2027) {
+    if (isPlacementDetailVisitYear(detailDefaultYear)) {
       prefetchOpts.year = detailDefaultYear;
     }
     if (placementListContext) {
@@ -223,6 +241,14 @@ function CompanyCard({
   };
 
   const typeShown = typeDisplayLabel ?? company.type;
+
+  /** Dream / Open dream / Summer: category no-visit copy omits company-static teaser rows (business model, tags). */
+  const tierPendingOmitsPlacementTeasers =
+    typePlacementLabelPending &&
+    (placementListContext === PLACEMENT_TIER_SUMMER_INTERNSHIP ||
+      placementListContext === PLACEMENT_TIER_DREAM ||
+      placementListContext === PLACEMENT_TIER_OPEN_DREAM);
+
   const isPpoCard = String(typeShown || company.type || "")
     .toLowerCase()
     .includes("ppo");
@@ -256,10 +282,12 @@ function CompanyCard({
       const nextByYear =
         response.data?.totalGotInByYear != null &&
         typeof response.data.totalGotInByYear === "object"
-          ? {
-              2026: Number(response.data.totalGotInByYear[2026]) || 0,
-              2027: Number(response.data.totalGotInByYear[2027]) || 0,
-            }
+          ? Object.fromEntries(
+              PLACEMENT_DETAIL_VISIT_YEARS.map((y) => [
+                y,
+                Number(response.data.totalGotInByYear[y]) || 0,
+              ])
+            )
           : {
               ...totalGotInByYear,
               [adminGotInYear]: response.data?.totalGotIn ?? 0,
@@ -358,7 +386,11 @@ function CompanyCard({
           <div className="flex items-center gap-2">
             {!isEditingType ? (
               <>
-                <p className="company-role text-xs sm:text-sm text-theme-secondary italic truncate">
+                <p
+                  className={`company-role text-xs sm:text-sm italic truncate ${
+                    typePlacementLabelPending ? "text-theme-muted" : "text-theme-secondary"
+                  }`}
+                >
                   {typeShown || "Placement Drive"}
                 </p>
                 {isAdmin && (
@@ -390,35 +422,47 @@ function CompanyCard({
 
       {/* Middle Section: Main info - Flex grow to push footer down */}
       <div className="flex-1 flex flex-col min-w-0 gap-3">
-        
-        <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
-          <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
-          <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed break-words">
-            {company.business_model || "Innovative solutions and high-quality services."}
-          </span>
-        </div>
-
-        <div className="mt-1 flex flex-col gap-2 min-h-[4rem]">
-          {company.focusTags && company.focusTags.length > 0 ? (
-            <>
-              <span className="font-semibold text-theme-secondary text-[10px] uppercase tracking-wider">Top focus areas</span>
-              <div className="flex flex-wrap gap-1.5 line-clamp-2 overflow-hidden">
-                {company.focusTags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="tag inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-theme-accent bg-opacity-10 border border-theme-accent text-theme-accent uppercase tracking-tight whitespace-nowrap"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="h-full flex items-center">
-              <span className="text-[10px] text-theme-muted italic uppercase tracking-widest">General placement prep</span>
+        {tierPendingOmitsPlacementTeasers ? (
+          <div
+            className="flex flex-1 min-h-[7.5rem] rounded-xl border border-dashed border-theme/45 bg-theme-input/15"
+            aria-hidden
+          />
+        ) : (
+          <>
+            <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
+              <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
+              <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed break-words">
+                {company.business_model || "Innovative solutions and high-quality services."}
+              </span>
             </div>
-          )}
-        </div>
+
+            <div className="mt-1 flex flex-col gap-2 min-h-[4rem]">
+              {company.focusTags && company.focusTags.length > 0 ? (
+                <>
+                  <span className="font-semibold text-theme-secondary text-[10px] uppercase tracking-wider">
+                    Top focus areas
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 line-clamp-2 overflow-hidden">
+                    {company.focusTags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="tag inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-theme-accent bg-opacity-10 border border-theme-accent text-theme-accent uppercase tracking-tight whitespace-nowrap"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex items-center">
+                  <span className="text-[10px] text-theme-muted italic uppercase tracking-widest">
+                    General placement prep
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Bottom Section: Action + Footer */}

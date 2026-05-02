@@ -2,12 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 import { adminAPI } from "../../utils/api";
+import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import {
   CompensationAsterisk,
   CompensationDisclaimerFootnote,
 } from "../PlacementCompensationNote.jsx";
 
-function GeneralTab({ company = {}, isAdmin = false, onRolesUpdated, placementYear = 2026 }) {
+function GeneralTab({
+  company = {},
+  isAdmin = false,
+  onRolesUpdated,
+  placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+}) {
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
   const [rolesDraft, setRolesDraft] = useState(() =>

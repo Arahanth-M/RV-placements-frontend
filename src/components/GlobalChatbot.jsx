@@ -2,6 +2,9 @@ import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { isPlacementTierParam } from '../constants/placementTiers.js';
+import { PLACEMENT_DETAIL_VISIT_YEARS } from '../constants/placementYears.js';
+
+const PLACEMENT_HUB_YEAR_STRINGS = PLACEMENT_DETAIL_VISIT_YEARS.map(String);
 
 const GlobalChatbot = () => {
   const { user } = useAuth();
@@ -77,7 +80,9 @@ const GlobalChatbot = () => {
       const tier = params.get('tier');
       const isTierCompanyList =
         location.pathname === '/companystats' && isPlacementTierParam(tier);
-      const shouldShow = isTierCompanyList && selectedYear === '2026';
+      const shouldShow =
+        isTierCompanyList &&
+        PLACEMENT_HUB_YEAR_STRINGS.includes(selectedYear);
       setShouldShowChatbot(shouldShow);
       
       // If we're not on the right page or year, cleanup chatbot

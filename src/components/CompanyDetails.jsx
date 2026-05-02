@@ -9,6 +9,8 @@ import {
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_OPEN_DREAM,
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
+  PLACEMENT_CATEGORY_NO_VISIT_COPY,
+  PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY,
 } from "../constants/placementTiers.js";
 import CompanyLogo from "./CompanyLogo";
 
@@ -23,20 +25,25 @@ import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
 import InternshipTab from "./CompanyTabs/InternshipTab";
 import StatsTab from "./CompanyTabs/StatsTab";
+import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+  isPlacementDetailVisitYear,
+} from "../constants/placementYears.js";
 
-const PLACEMENT_YEAR_CHOICES = [2026, 2027];
+const PLACEMENT_YEAR_CHOICES = [...PLACEMENT_DETAIL_VISIT_YEARS];
 const YEAR_TABS = ["general", "stats", "oa", "interview", "internship"];
 
 function readPreferredPlacementYearFromLocation(location) {
   try {
     const params = new URLSearchParams(location.search || "");
     const q = Number(params.get("year"));
-    if (q === 2026 || q === 2027) return q;
+    if (isPlacementDetailVisitYear(q)) return q;
   } catch {
     // ignore
   }
   const s = location.state?.defaultPlacementYear;
-  if (s === 2026 || s === 2027) return s;
+  if (isPlacementDetailVisitYear(s)) return s;
   return null;
 }
 
@@ -109,7 +116,18 @@ function resolveCompanyHeadlineSubtitle(company, placementListContext) {
       : "";
 
   if (placementListContext === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
+    if (company?.placementSummerInternshipVisitMissingForYear === true) {
+      return PLACEMENT_CATEGORY_NO_VISIT_COPY;
+    }
     return raw || apiHeadline || "";
+  }
+
+  if (
+    company?.placementDreamTierVisitMissingForYear === true &&
+    (placementListContext === PLACEMENT_TIER_DREAM ||
+      placementListContext === PLACEMENT_TIER_OPEN_DREAM)
+  ) {
+    return PLACEMENT_CATEGORY_NO_VISIT_COPY;
   }
 
   return apiHeadline || inferDreamHeadlineFallback(company) || raw || "";
@@ -131,6 +149,18 @@ function ChevronIcon({ className }) {
   );
 }
 
+/** Dream/Open dream or Summer internship: selected year has no visit for that list context — tabs stay empty. */
+function DreamTierVisitEmptyPanel() {
+  return (
+    <div
+      className="rounded-xl border border-theme bg-theme-card px-6 py-14 text-center"
+      role="status"
+    >
+      <p className="text-theme-secondary">No visit yet</p>
+    </div>
+  );
+}
+
 function CompanyDetails() {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const { id } = useParams();
@@ -144,7 +174,7 @@ function CompanyDetails() {
   const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
-  const [placementYear, setPlacementYear] = useState(2026);
+  const [placementYear, setPlacementYear] = useState(DEFAULT_PLACEMENT_DETAIL_YEAR);
   const [placementYearLoading, setPlacementYearLoading] = useState(false);
   const [openDropdownTab, setOpenDropdownTab] = useState(null);
   const detailFetchIdRef = useRef(null);
@@ -197,7 +227,7 @@ function CompanyDetails() {
     let yearForRequest;
     if (switchedCompany) {
       detailFetchIdRef.current = id;
-      yearForRequest = preferredYear ?? 2026;
+      yearForRequest = preferredYear ?? DEFAULT_PLACEMENT_DETAIL_YEAR;
       setPlacementYearLoading(false);
       setLoading(true);
       setLoadError(null);
@@ -359,6 +389,53 @@ function CompanyDetails() {
       );
     });
 
+  const tierCtxEffective = readPlacementListContext(location, id);
+  const hideDreamTierVisitDetails =
+    company.placementDreamTierVisitMissingForYear === true &&
+    (tierCtxEffective === PLACEMENT_TIER_DREAM ||
+      tierCtxEffective === PLACEMENT_TIER_OPEN_DREAM);
+
+  const hideSummerInternshipVisitDetails =
+    company.placementSummerInternshipVisitMissingForYear === true &&
+    tierCtxEffective === PLACEMENT_TIER_SUMMER_INTERNSHIP;
+
+  const hideTierContextVisitDetails =
+    hideDreamTierVisitDetails || hideSummerInternshipVisitDetails;
+
+  const dreamTierVisitPresentForYear = (y) => {
+    const m = company.placementDreamTierVisitByYear;
+    if (m && typeof m === "object") return m[y] === true;
+    return (
+      Array.isArray(company.placementYearsAvailable) &&
+      company.placementYearsAvailable.includes(y)
+    );
+  };
+
+  const summerStrictVisitPresentForYear = (y) => {
+    const m = company.placementSummerInternshipVisitByYear;
+    if (m && typeof m === "object") return m[y] === true;
+    return (
+      Array.isArray(company.placementYearsAvailable) &&
+      company.placementYearsAvailable.includes(y)
+    );
+  };
+
+  const yearOptionShowsApprovedVisit = (y) => {
+    if (
+      tierCtxEffective === PLACEMENT_TIER_DREAM ||
+      tierCtxEffective === PLACEMENT_TIER_OPEN_DREAM
+    ) {
+      return dreamTierVisitPresentForYear(y);
+    }
+    if (tierCtxEffective === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
+      return summerStrictVisitPresentForYear(y);
+    }
+    return (
+      Array.isArray(company.placementYearsAvailable) &&
+      company.placementYearsAvailable.includes(y)
+    );
+  };
+
   const companyNavTabs = [
     { id: "about", label: "About" },
     { id: "general", label: "Roles & Info" },
@@ -459,10 +536,7 @@ function CompanyDetails() {
     setOpenDropdownTab((prev) => (prev === tabId ? null : tabId));
   };
 
-  // Called when user picks a year from the dropdown
-  const handleYearPick = (tabId, year) => {
-    setOpenDropdownTab(null);
-    setActiveTab(tabId);
+  const navigatePlacementYear = (year) => {
     const params = new URLSearchParams();
     params.set("year", String(year));
     const ctx = readPlacementListContext(location, id);
@@ -471,6 +545,13 @@ function CompanyDetails() {
       replace: true,
       state: location.state ?? {},
     });
+  };
+
+  // Called when user picks a year from a year-scoped tab dropdown
+  const handleYearPick = (tabId, year) => {
+    setOpenDropdownTab(null);
+    setActiveTab(tabId);
+    navigatePlacementYear(year);
   };
 
   return (
@@ -579,18 +660,16 @@ function CompanyDetails() {
                         </div>
                       )}
                       {PLACEMENT_YEAR_CHOICES.map((y, i) => {
-                        const hasData =
-                          Array.isArray(company.placementYearsAvailable) &&
-                          company.placementYearsAvailable.includes(y);
+                        const hasVisit = yearOptionShowsApprovedVisit(y);
                         const isSelected = placementYear === y;
 
                         return (
                           <React.Fragment key={y}>
-                            {/* Divider before years without data */}
+                            {/* Divider before years without a visit for this list context */}
                             {i > 0 &&
-                              !hasData &&
+                              !hasVisit &&
                               PLACEMENT_YEAR_CHOICES[i - 1] &&
-                              company.placementYearsAvailable?.includes(
+                              yearOptionShowsApprovedVisit(
                                 PLACEMENT_YEAR_CHOICES[i - 1]
                               ) && (
                                 <div className="h-px bg-theme-border mx-2" />
@@ -608,9 +687,9 @@ function CompanyDetails() {
                             >
                               <span className="flex items-center gap-2">
                                 {y}
-                                {!hasData && (
+                                {!hasVisit && (
                                   <span className="text-xs text-theme-secondary font-normal">
-                                    no visit yet
+                                    {PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY}
                                   </span>
                                 )}
                               </span>
@@ -640,42 +719,71 @@ function CompanyDetails() {
         {/* Tab Content */}
         <div className="company-tab-content">
           {activeTab === "about" && <AboutTab company={company} />}
-          {activeTab === "general" && (
-            <GeneralTab
-              company={company}
-              isAdmin={isAdmin}
-              onRolesUpdated={handleRefresh}
-              placementYear={placementYear}
-            />
-          )}
-          {activeTab === "stats" && (
-            <StatsTab
-              company={company}
-              isAdmin={isAdmin}
-              onStatsUpdated={handleRefresh}
-              placementYear={placementYear}
-            />
-          )}
-          {activeTab === "oa" && (
-            <OATab
-              company={company}
-              isAdmin={isAdmin}
-              onCompanyUpdate={handleRefresh}
-              placementYear={placementYear}
-            />
-          )}
-          {activeTab === "coding" && <CodingTab company={company} />}
-          {activeTab === "interview" && (
-            <InterviewTab
-              company={company}
-              isAdmin={isAdmin}
-              onCompanyUpdate={handleRefresh}
-              placementYear={placementYear}
-            />
-          )}
-          {activeTab === "internship" && (
-            <InternshipTab company={company} placementYear={placementYear} />
-          )}
+          {activeTab === "general" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <GeneralTab
+                company={company}
+                isAdmin={isAdmin}
+                onRolesUpdated={handleRefresh}
+                placementYear={placementYear}
+              />
+            ))}
+          {activeTab === "stats" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <StatsTab
+                company={company}
+                isAdmin={isAdmin}
+                onStatsUpdated={handleRefresh}
+                placementYear={placementYear}
+              />
+            ))}
+          {activeTab === "oa" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <OATab
+                company={company}
+                isAdmin={isAdmin}
+                onCompanyUpdate={handleRefresh}
+                placementYear={placementYear}
+                placementListContext={placementContextForApi}
+                placementCompanyVisitId={company?.placementCompanyVisitId}
+              />
+            ))}
+          {activeTab === "coding" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <CodingTab company={company} />
+            ))}
+          {activeTab === "interview" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <InterviewTab
+                company={company}
+                isAdmin={isAdmin}
+                onCompanyUpdate={handleRefresh}
+                placementYear={placementYear}
+                placementListContext={placementContextForApi}
+                placementCompanyVisitId={company?.placementCompanyVisitId}
+              />
+            ))}
+          {activeTab === "internship" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <InternshipTab
+                company={company}
+                placementYear={placementYear}
+                placementListContext={placementContextForApi}
+                placementCompanyVisitId={company?.placementCompanyVisitId}
+              />
+            ))}
           {activeTab === "aiinterview" && (
             <AIInterviewTab
               company={company}
@@ -686,12 +794,23 @@ function CompanyDetails() {
               }}
             />
           )}
-          {activeTab === "mustdo" && (
-            <MustDoTab company={company} placementYear={placementYear} />
-          )}
-          {activeTab === "offcampus" && (
-            <OffCampusQuestionsTab company={company} />
-          )}
+          {activeTab === "mustdo" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <MustDoTab
+                company={company}
+                placementYear={placementYear}
+                placementListContext={placementContextForApi}
+                placementCompanyVisitId={company?.placementCompanyVisitId}
+              />
+            ))}
+          {activeTab === "offcampus" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <OffCampusQuestionsTab company={company} />
+            ))}
         </div>
       </div>
 

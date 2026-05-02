@@ -269,6 +269,7 @@
 // export default OATab;
 
 import React, { useState } from "react";
+import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
@@ -277,7 +278,14 @@ import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.webp";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
-function OATab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 }) {
+function OATab({
+  company,
+  isAdmin,
+  onCompanyUpdate,
+  placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+  placementListContext,
+  placementCompanyVisitId,
+}) {
   const [showModal, setShowModal] = useState(false);
   const [question, setQuestion] = useState("");
   const [solution, setSolution] = useState("");
@@ -304,6 +312,8 @@ function OATab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 }) {
           type: "onlineQuestions",
           content: JSON.stringify({ question, solution }),
           placementYear,
+          ...(placementListContext ? { placementListContext } : {}),
+          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
         }),
       });
 

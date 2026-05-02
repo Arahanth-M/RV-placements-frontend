@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
+import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+} from '../constants/placementYears.js';
 import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield } from 'react-icons/fa';
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
 const ADMIN_COMPANY_YEARS = [
   { value: 'all', label: 'All years' },
-  { value: '2026', label: '2026' },
-  { value: '2027', label: '2027' },
+  ...PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
+    value: String(y),
+    label: String(y),
+  })),
 ];
 
 const InfoHint = ({ text }) => (
@@ -117,10 +123,10 @@ const AdminDashboard = () => {
   const resolveCompanyActionYear = (placementYear) => {
     if (placementYear != null && placementYear !== '') return String(placementYear);
     if (selectedCompanyYear !== 'all') return String(selectedCompanyYear);
-    return '2026';
+    return String(DEFAULT_PLACEMENT_DETAIL_YEAR);
   };
-  const getCompanyActionKey = (companyId, placementYear) =>
-    `${companyId}:${resolveCompanyActionYear(placementYear)}`;
+  const getCompanyActionKey = (companyId, placementYear, companyVisitId) =>
+    `${companyId}:${resolveCompanyActionYear(placementYear)}:${companyVisitId ?? ''}`;
 
   const loadPendingCompaniesList = useCallback(async (page) => {
     const res = await adminAPI.getCompanies({
@@ -550,9 +556,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApproveCompany = async (companyId, placementYear) => {
+  const handleApproveCompany = async (companyId, placementYear, companyVisitId) => {
     const companyYear = resolveCompanyActionYear(placementYear);
-    const actionKey = getCompanyActionKey(companyId, placementYear);
+    const actionKey = getCompanyActionKey(companyId, placementYear, companyVisitId);
     if (!window.confirm(`Are you sure you want to approve this company for ${companyYear}? It will be visible to all users for that placement year.`)) {
       return;
     }
@@ -560,7 +566,10 @@ const AdminDashboard = () => {
     try {
       setApprovingCompanyIds(prev => new Set(prev).add(actionKey));
       
-      const response = await adminAPI.approveCompany(companyId, { year: companyYear });
+      const response = await adminAPI.approveCompany(companyId, {
+        year: companyYear,
+        ...(companyVisitId ? { companyVisitId } : {}),
+      });
       const alreadyApproved = response?.data?.alreadyApproved === true;
 
       try {
@@ -599,9 +608,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleRejectCompany = async (companyId, placementYear) => {
+  const handleRejectCompany = async (companyId, placementYear, companyVisitId) => {
     const companyYear = resolveCompanyActionYear(placementYear);
-    const actionKey = getCompanyActionKey(companyId, placementYear);
+    const actionKey = getCompanyActionKey(companyId, placementYear, companyVisitId);
     if (!window.confirm(`Are you sure you want to reject this company for ${companyYear}? This removes only the selected year's company visit.`)) {
       return;
     }
@@ -609,7 +618,10 @@ const AdminDashboard = () => {
     try {
       setRejectingCompanyIds(prev => new Set(prev).add(actionKey));
       
-      await adminAPI.rejectCompany(companyId, { year: companyYear });
+      await adminAPI.rejectCompany(companyId, {
+        year: companyYear,
+        ...(companyVisitId ? { companyVisitId } : {}),
+      });
 
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
@@ -655,9 +667,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteApprovedCompany = async (companyId, placementYear) => {
+  const handleDeleteApprovedCompany = async (companyId, placementYear, companyVisitId) => {
     const companyYear = resolveCompanyActionYear(placementYear);
-    const actionKey = getCompanyActionKey(companyId, placementYear);
+    const actionKey = getCompanyActionKey(companyId, placementYear, companyVisitId);
     if (!window.confirm(`Are you sure you want to delete this approved company for ${companyYear}? This removes only the selected year's company visit.`)) {
       return;
     }
@@ -665,7 +677,10 @@ const AdminDashboard = () => {
     try {
       setDeletingCompanyIds(prev => new Set(prev).add(actionKey));
       
-      await adminAPI.deleteApprovedCompany(companyId, { year: companyYear });
+      await adminAPI.deleteApprovedCompany(companyId, {
+        year: companyYear,
+        ...(companyVisitId ? { companyVisitId } : {}),
+      });
 
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
@@ -850,11 +865,16 @@ const AdminDashboard = () => {
       }
 
       for (const company of bulkCompanies) {
-        const actionKey = getCompanyActionKey(company._id, company.placementYear);
+        const actionKey = getCompanyActionKey(
+          company._id,
+          company.placementYear,
+          company.companyVisitId
+        );
         try {
           setApprovingCompanyIds(prev => new Set(prev).add(actionKey));
           await adminAPI.approveCompany(company._id, {
             year: resolveCompanyActionYear(company.placementYear),
+            ...(company.companyVisitId ? { companyVisitId: company.companyVisitId } : {}),
           });
 
           successCount++;
@@ -1883,7 +1903,10 @@ const AdminDashboard = () => {
                     <div className="inline-block min-w-full align-middle">
                       <div className="p-4 sm:p-6 space-y-4">
                         {companies.map((company) => (
-                          <div key={`${company._id}-${company.placementYear || 'na'}`} className="border border-slate-700 rounded-lg p-4 sm:p-6 bg-slate-800/60 hover:bg-slate-800">
+                          <div
+                            key={`${company._id}-${company.placementYear || 'na'}-${company.companyVisitId || ''}`}
+                            className="border border-slate-700 rounded-lg p-4 sm:p-6 bg-slate-800/60 hover:bg-slate-800"
+                          >
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                               <div className="flex-1">
                                 <h3 className="text-lg sm:text-xl font-bold text-slate-200 mb-2">{company.name}</h3>
@@ -1900,11 +1923,21 @@ const AdminDashboard = () => {
                                 </div>
                               </div>
                               {(() => {
-                                const companyActionKey = getCompanyActionKey(company._id, company.placementYear);
+                                const companyActionKey = getCompanyActionKey(
+                                  company._id,
+                                  company.placementYear,
+                                  company.companyVisitId
+                                );
                                 return (
                               <div className="flex items-center gap-2 flex-col sm:flex-row w-full sm:w-auto">
                                 <button
-                                  onClick={() => handleApproveCompany(company._id, company.placementYear)}
+                                  onClick={() =>
+                                    handleApproveCompany(
+                                      company._id,
+                                      company.placementYear,
+                                      company.companyVisitId
+                                    )
+                                  }
                                   disabled={approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)}
                                   className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
                                     approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)
@@ -1915,7 +1948,13 @@ const AdminDashboard = () => {
                                   {approvingCompanyIds.has(companyActionKey) ? 'Approving...' : 'Approve'}
                                 </button>
                                 <button
-                                  onClick={() => handleRejectCompany(company._id, company.placementYear)}
+                                  onClick={() =>
+                                    handleRejectCompany(
+                                      company._id,
+                                      company.placementYear,
+                                      company.companyVisitId
+                                    )
+                                  }
                                   disabled={approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)}
                                   className={`px-4 py-2 rounded-md text-sm font-medium transition w-full sm:w-auto ${
                                     approvingCompanyIds.has(companyActionKey) || rejectingCompanyIds.has(companyActionKey)
@@ -1993,9 +2032,16 @@ const AdminDashboard = () => {
                       <div className="p-4 sm:p-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {approvedCompanies.map((company) => (
-                            <div key={`${company._id}-${company.placementYear || 'na'}`} className="border border-slate-700 rounded-lg p-4 bg-slate-800/60">
+                            <div
+                              key={`${company._id}-${company.placementYear || 'na'}-${company.companyVisitId || ''}`}
+                              className="border border-slate-700 rounded-lg p-4 bg-slate-800/60"
+                            >
                               {(() => {
-                                const companyActionKey = getCompanyActionKey(company._id, company.placementYear);
+                                const companyActionKey = getCompanyActionKey(
+                                  company._id,
+                                  company.placementYear,
+                                  company.companyVisitId
+                                );
                                 return (
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <div className="flex items-center gap-2 flex-1">
@@ -2008,7 +2054,13 @@ const AdminDashboard = () => {
                                   </span>
                                 </div>
                                 <button
-                                  onClick={() => handleDeleteApprovedCompany(company._id, company.placementYear)}
+                                  onClick={() =>
+                                    handleDeleteApprovedCompany(
+                                      company._id,
+                                      company.placementYear,
+                                      company.companyVisitId
+                                    )
+                                  }
                                   disabled={deletingCompanyIds.has(companyActionKey)}
                                   className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
                                     deletingCompanyIds.has(companyActionKey)

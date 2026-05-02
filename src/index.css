@@ -1233,13 +1233,31 @@ html, body, #root {
   min-height: 2.5rem !important;
 }
 
-/* SPC placement form: keep inputs at standard control height */
-.spc-placement-form .spc-form-field {
+/* SPC placement form: lock single-line control height (grid/flex stretch can inflate native inputs) */
+.spc-placement-form :is(input.spc-field-control, button.spc-field-control) {
   height: 2.75rem !important;
   min-height: 2.75rem !important;
+  max-height: 2.75rem !important;
+  box-sizing: border-box !important;
   line-height: 1.25rem !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+  flex: 0 0 auto !important;
+}
+
+/* File inputs: keep the native picker row inside the fixed band */
+.spc-placement-form input.spc-field-control[type="file"]::file-selector-button {
+  height: 2rem;
+  margin-block: auto;
+  margin-inline-end: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card-hover);
+  color: var(--text-secondary);
+  padding-inline: 0.75rem;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  cursor: inherit;
 }
 
 /* Global smooth hover transitions for card-like surfaces across routes */

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { BASE_URL } from './constants';
+import { DEFAULT_PLACEMENT_DETAIL_YEAR } from '../constants/placementYears.js';
 
 const API = axios.create({
   baseURL: BASE_URL,
@@ -105,13 +106,13 @@ export const companyAPI = {
 
   /**
    * @param {string} id
-   * @param {{ year?: number, placementContext?: string }} [options] placement visit year (2026 / 2027); optional list context for multi-slot years
+   * @param {{ year?: number, placementContext?: string }} [options] placement visit year; optional list context for multi-slot years
    */
   async getCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
 
-    let year = options.year != null ? Number(options.year) : 2026;
-    if (!Number.isFinite(year)) year = 2026;
+    let year = options.year != null ? Number(options.year) : DEFAULT_PLACEMENT_DETAIL_YEAR;
+    if (!Number.isFinite(year)) year = DEFAULT_PLACEMENT_DETAIL_YEAR;
     const ctxRaw =
       typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
     const dedupeKey = `${id}:y${year}:pc:${ctxRaw || '_'}`;
@@ -151,8 +152,8 @@ export const companyAPI = {
    */
   async refreshCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
-    let year = options.year != null ? Number(options.year) : 2026;
-    if (!Number.isFinite(year)) year = 2026;
+    let year = options.year != null ? Number(options.year) : DEFAULT_PLACEMENT_DETAIL_YEAR;
+    if (!Number.isFinite(year)) year = DEFAULT_PLACEMENT_DETAIL_YEAR;
     const ctxRaw =
       typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
     return API.get(`/api/companies/${id}`, {
@@ -189,9 +190,15 @@ export const leetcodeAPI = {
 export const getAdminStats = () => API.get('/api/admin/stats');
 
 function adminPlacementYearParams(opts = {}) {
-  let year = opts.year != null ? Number(opts.year) : 2026;
-  if (!Number.isFinite(year)) year = 2026;
-  return { year };
+  let year = opts.year != null ? Number(opts.year) : DEFAULT_PLACEMENT_DETAIL_YEAR;
+  if (!Number.isFinite(year)) year = DEFAULT_PLACEMENT_DETAIL_YEAR;
+  const params = { year };
+  const vid =
+    opts.companyVisitId != null && String(opts.companyVisitId).trim() !== ''
+      ? String(opts.companyVisitId).trim()
+      : '';
+  if (vid) params.companyVisitId = vid;
+  return params;
 }
 
 export const adminAPI = {

@@ -86,6 +86,7 @@
 // export default InterviewTab;
 
 import React, { useState, useEffect } from "react";
+import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI } from "../../utils/api";
@@ -94,7 +95,14 @@ import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.webp";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
-function InterviewTab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 }) {
+function InterviewTab({
+  company,
+  isAdmin,
+  onCompanyUpdate,
+  placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+  placementListContext,
+  placementCompanyVisitId,
+}) {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
   const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
@@ -459,6 +467,8 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 
             solution: newInterviewSolution,
           }),
           placementYear,
+          ...(placementListContext ? { placementListContext } : {}),
+          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
         }),
       });
 
@@ -492,6 +502,8 @@ function InterviewTab({ company, isAdmin, onCompanyUpdate, placementYear = 2026 
           type: "interviewProcess",
           content: newInterviewProcess,
           placementYear,
+          ...(placementListContext ? { placementListContext } : {}),
+          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
         }),
       });
 

@@ -4,6 +4,9 @@ const companyPreviewCache = {};
 const COMPANY_SESSION_PREFIX = "companies_";
 const COMPANY_PREVIEW_SESSION_PREFIX = "companies_preview_";
 
+/** Short TTL so hub cards pick up visit-row changes quickly (session + in-memory). */
+const COMPANY_LIST_CACHE_TTL_MS = 3 * 60 * 1000;
+
 function readSessionCache(prefix, key) {
   if (typeof window === "undefined") return null;
   try {
@@ -24,28 +27,47 @@ function writeSessionCache(prefix, key, data) {
   }
 }
 
+function unwrapTimedArray(raw) {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.cachedAt !== "number") return null;
+  if (Date.now() - raw.cachedAt > COMPANY_LIST_CACHE_TTL_MS) return null;
+  return Array.isArray(raw.list) ? raw.list : null;
+}
+
+function unwrapTimedPayload(raw) {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (typeof raw.cachedAt !== "number") return null;
+  if (Date.now() - raw.cachedAt > COMPANY_LIST_CACHE_TTL_MS) return null;
+  return raw.payload ?? null;
+}
+
 export function getCachedCompanies(year) {
   const key = String(year ?? "");
   if (!key) return null;
-  return companyCache[key] ?? readSessionCache(COMPANY_SESSION_PREFIX, key);
+  const raw = companyCache[key] ?? readSessionCache(COMPANY_SESSION_PREFIX, key);
+  return unwrapTimedArray(raw);
 }
 
 export function setCachedCompanies(year, data) {
   const key = String(year ?? "");
   if (!key) return;
-  companyCache[key] = data;
-  writeSessionCache(COMPANY_SESSION_PREFIX, key, data);
+  const wrapped = { list: data, cachedAt: Date.now() };
+  companyCache[key] = wrapped;
+  writeSessionCache(COMPANY_SESSION_PREFIX, key, wrapped);
 }
 
 export function getCachedCompanyPreview(year) {
   const key = String(year ?? "");
   if (!key) return null;
-  return companyPreviewCache[key] ?? readSessionCache(COMPANY_PREVIEW_SESSION_PREFIX, key);
+  const raw =
+    companyPreviewCache[key] ?? readSessionCache(COMPANY_PREVIEW_SESSION_PREFIX, key);
+  return unwrapTimedPayload(raw);
 }
 
 export function setCachedCompanyPreview(year, data) {
   const key = String(year ?? "");
   if (!key) return;
-  companyPreviewCache[key] = data;
-  writeSessionCache(COMPANY_PREVIEW_SESSION_PREFIX, key, data);
+  const wrapped = { payload: data, cachedAt: Date.now() };
+  companyPreviewCache[key] = wrapped;
+  writeSessionCache(COMPANY_PREVIEW_SESSION_PREFIX, key, wrapped);
 }

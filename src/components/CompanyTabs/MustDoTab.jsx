@@ -1,9 +1,15 @@
 import React, { useState } from "react";
+import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import rvLogo from "../../assets/logo2.webp";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
-function MustDoTab({ company = {}, placementYear = 2026 }) {
+function MustDoTab({
+  company = {},
+  placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+  placementListContext,
+  placementCompanyVisitId,
+}) {
   const [showModal, setShowModal] = useState(false);
   const [topic, setTopic] = useState("");
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
@@ -21,6 +27,8 @@ function MustDoTab({ company = {}, placementYear = 2026 }) {
           type: "mustDoTopics",
           content: topic,
           placementYear,
+          ...(placementListContext ? { placementListContext } : {}),
+          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
         }),
       });
 
