@@ -317,10 +317,36 @@ export const leaderboardAPI = {
 };
 
 export const interviewAPI = {
-  previewInterviewPlan: (companyId) =>
-    API.get(`/api/interview/preview-plan/${companyId}`),
-  async startInterview({ userId, companyId }) {
-    const res = await API.post('/api/interview/start-interview', { userId, companyId });
+  getInterviewVisitOptions: (companyId) =>
+    API.get(`/api/interview/visit-options/${encodeURIComponent(companyId)}`),
+  previewInterviewPlan: (
+    companyId,
+    { visitType = "", cluster = "", placementYear, mergePlacementByType } = {}
+  ) =>
+    API.get(`/api/interview/preview-plan/${encodeURIComponent(companyId)}`, {
+      params: {
+        placementVisitType: visitType,
+        placementCluster: cluster,
+        placementYear,
+        mergePlacementByType,
+      },
+    }),
+  async startInterview({
+    userId,
+    companyId,
+    placementVisitType = "",
+    placementCluster = "",
+    placementYear,
+    mergePlacementByType,
+  }) {
+    const res = await API.post('/api/interview/start-interview', {
+      userId,
+      companyId,
+      placementVisitType,
+      placementCluster,
+      placementYear,
+      mergePlacementByType,
+    });
     clearInterviewSummaryCacheForUser(userId);
     if (res?.data?.sessionId) {
       interviewDetailCache.delete(String(res.data.sessionId));
@@ -330,6 +356,12 @@ export const interviewAPI = {
   },
   async submitAnswer({ sessionId, answer }) {
     const res = await API.post('/api/interview/submit-answer', { sessionId, answer }, { timeout: 30000 });
+    interviewDetailCache.delete(String(sessionId));
+    interviewDetailPromises.delete(String(sessionId));
+    return res;
+  },
+  async beginQuestionReattempt({ sessionId }) {
+    const res = await API.post('/api/interview/begin-question-reattempt', { sessionId });
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
@@ -346,8 +378,24 @@ export const interviewAPI = {
     interviewDetailPromises.delete(String(sessionId));
     return res;
   },
-  getResumableInterview: ({ userId, companyId }) =>
-    API.get('/api/interview/resume-interview', { params: { userId, companyId } }),
+  getResumableInterview: ({
+    userId,
+    companyId,
+    placementVisitType = "",
+    placementCluster = "",
+    placementYear,
+    mergePlacementByType,
+  }) =>
+    API.get('/api/interview/resume-interview', {
+      params: {
+        userId,
+        companyId,
+        placementVisitType,
+        placementCluster,
+        placementYear,
+        mergePlacementByType,
+      },
+    }),
   getInterviewStatus: (sessionId) =>
     API.get(`/api/interview/interview-status/${encodeURIComponent(sessionId)}`, {
       timeout: 15000,

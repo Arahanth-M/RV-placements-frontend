@@ -2,8 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
+import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
+import { FaMoon, FaSun } from "react-icons/fa";
 import rvLogo from "../../assets/logo2.webp";
+import InterviewCodeWorkspace from "./InterviewCodeWorkspace";
 
 const EXIT_WARNING_MESSAGE =
   "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";
@@ -28,6 +31,15 @@ const summarizeRoundAbout = (value, fallbackText) => {
   }
 
   return summary || fallbackText;
+};
+
+const placementSlotKey = (slot) =>
+  `${slot?.visitType ?? ""}\u001f${slot?.mergePlacementByType ? "mt" : "ex"}`;
+
+const formatPlacementSlotSummary = (slot) => {
+  if (!slot) return "";
+  const typePart = slot.visitType?.trim() ? slot.visitType.trim() : "Default";
+  return typePart;
 };
 
 const isIgnorableDiscardError = (err) => {
@@ -58,6 +70,111 @@ const toDisplayRelevance = (value) => {
   return ["relevant", "irrelevant"].includes(safe) ? safe : null;
 };
 
+/** Backend round.type or derive from session.rounds + currentRound (1-based). */
+function deriveRoundTypeFromPayload(payload) {
+  if (!payload || typeof payload !== "object") return "";
+  if (payload.roundType != null && String(payload.roundType).trim() !== "") {
+    return String(payload.roundType).trim();
+  }
+  const rounds = payload.rounds;
+  if (!Array.isArray(rounds) || rounds.length === 0) return "";
+  const cr = Number(payload.currentRound);
+  let idx =
+    Number.isFinite(cr) && cr >= 1 ? cr - 1 : Number(payload.currentRoundIndex);
+  if (!Number.isFinite(idx) || idx < 0) idx = 0;
+  idx = Math.min(Math.max(0, idx), rounds.length - 1);
+  const t = rounds[idx]?.type;
+  return t ? String(t).trim() : "";
+}
+
+/** Whether UI should show the coding workspace (DSA / coding rounds only). */
+function isCodingInterviewRound(roundTypeLabel) {
+  const s = String(roundTypeLabel || "").trim().toLowerCase();
+  if (!s) return false;
+  if (s.includes("system design")) return false;
+  if (s.includes("hr") || s.includes("behavior")) return false;
+  return (
+    s.includes("dsa") ||
+    s.includes("coding") ||
+    s.includes("algorithm") ||
+    s.includes("data structure") ||
+    s.includes("/coding")
+  );
+}
+
+/** Planned question counts per round (mirrors backend interview-status shape). */
+function deriveRoundsQuestionSummary(rounds) {
+  if (!Array.isArray(rounds)) return [];
+  return rounds.map((r, idx) => {
+    const roundNumber = typeof r.roundNumber === "number" ? r.roundNumber : idx + 1;
+    let qc =
+      typeof r.questionCount === "number" && Number.isFinite(r.questionCount)
+        ? Math.round(r.questionCount)
+        : null;
+    const slots = Array.isArray(r.questions) ? r.questions.length : 0;
+    if (qc == null || qc < 1) qc = Math.max(slots, 3);
+    qc = Math.min(5, Math.max(3, qc));
+    return { roundNumber, questionCount: qc };
+  });
+}
+
+/** Single blob sent to the API: prose-only rounds use explanation; coding rounds combine labeled sections. */
+function buildInterviewSubmissionAnswer(explanation, code, isCodingRound) {
+  const ex = String(explanation ?? "").trim();
+  const co = String(code ?? "").trim();
+  if (!isCodingRound) return ex;
+  const parts = [];
+  if (ex) parts.push(`Explanation:\n${ex}`);
+  if (co) parts.push(`Code / solution:\n${co}`);
+  return parts.join("\n\n").trim();
+}
+
+/** Progressive reveal for interview question copy (caret hides when complete). */
+function useTypewriterText(fullText, active) {
+  const [out, setOut] = useState("");
+
+  useEffect(() => {
+    if (!active) {
+      setOut("");
+      return undefined;
+    }
+    const full = String(fullText ?? "");
+    if (!full) {
+      setOut("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    let i = 0;
+    const timeoutIds = [];
+    setOut("");
+
+    const schedule = (fn, delay) => {
+      const id = window.setTimeout(fn, delay);
+      timeoutIds.push(id);
+      return id;
+    };
+
+    const tick = () => {
+      if (cancelled) return;
+      const pace = full.length > 900 ? 5 : full.length > 350 ? 3 : 2;
+      const delay = full.length > 900 ? 14 : full.length > 350 ? 18 : 22;
+      i = Math.min(i + pace, full.length);
+      setOut(full.slice(0, i));
+      if (i < full.length) schedule(tick, delay);
+    };
+
+    schedule(tick, 100);
+
+    return () => {
+      cancelled = true;
+      timeoutIds.forEach((id) => window.clearTimeout(id));
+    };
+  }, [fullText, active]);
+
+  return out;
+}
+
 function AIInterviewTab({
   company,
   onInterviewLockChange,
@@ -65,11 +182,14 @@ function AIInterviewTab({
   registerInterviewExitHandler,
 }) {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [sessionId, setSessionId] = useState("");
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const answerCharCount = answer.trim().length;
+  const [answerExplanation, setAnswerExplanation] = useState("");
+  const [answerCode, setAnswerCode] = useState("");
+  const answerCharCount =
+    answerExplanation.trim().length + answerCode.trim().length;
   const [feedback, setFeedback] = useState("");
   const [score, setScore] = useState(null);
   const [status, setStatus] = useState("idle");
@@ -83,8 +203,17 @@ function AIInterviewTab({
   const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
   const [totalRounds, setTotalRounds] = useState(0);
   const [difficultyLevel, setDifficultyLevel] = useState("");
+  const [currentRoundType, setCurrentRoundType] = useState("");
+  const [roundsQuestionSummary, setRoundsQuestionSummary] = useState([]);
+  const [questionsPlannedThisRound, setQuestionsPlannedThisRound] = useState(3);
+  const [currentQuestionNumberWithinRound, setCurrentQuestionNumberWithinRound] = useState(1);
   const [previewPlan, setPreviewPlan] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [visitSlots, setVisitSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedSlotKey, setSelectedSlotKey] = useState("");
+  const [slotMenuOpen, setSlotMenuOpen] = useState(false);
+  const slotPickerRef = useRef(null);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -115,15 +244,52 @@ function AIInterviewTab({
   pendingQuestionFeedbackRef.current = pendingQuestionFeedback;
   const quitConfirmResolverRef = useRef(null);
 
+  const selectedPlacementSlot = useMemo(() => {
+    if (!visitSlots.length || !selectedSlotKey) return null;
+    return visitSlots.find((s) => placementSlotKey(s) === selectedSlotKey) ?? null;
+  }, [visitSlots, selectedSlotKey]);
+
+  const placementSelectionReady = useMemo(() => {
+    if (user?.betaAccess === false) return true;
+    if (slotsLoading) return false;
+    if (!visitSlots.length) return false;
+    return Boolean(selectedSlotKey);
+  }, [user?.betaAccess, slotsLoading, visitSlots.length, selectedSlotKey]);
+
   const canStart = useMemo(() => {
-    return Boolean(user?.userId && company?._id) && !loading;
-  }, [user?.userId, company?._id, loading]);
+    return (
+      Boolean(user?.userId && company?._id) &&
+      !loading &&
+      placementSelectionReady
+    );
+  }, [user?.userId, company?._id, loading, placementSelectionReady]);
+
+  const isCodingRoundUI = useMemo(() => {
+    const hint =
+      Array.isArray(roundsDetails) && roundsDetails[currentRoundIndex]
+        ? roundsDetails[currentRoundIndex].questionType
+        : "";
+    return (
+      isCodingInterviewRound(currentRoundType) ||
+      isCodingInterviewRound(hint)
+    );
+  }, [currentRoundType, roundsDetails, currentRoundIndex]);
+
+  const submissionAnswerDraft = useMemo(
+    () =>
+      buildInterviewSubmissionAnswer(
+        answerExplanation,
+        answerCode,
+        isCodingRoundUI
+      ),
+    [answerExplanation, answerCode, isCodingRoundUI]
+  );
 
   const canSubmitAnswer = useMemo(() => {
     return (
       Boolean(sessionId) &&
       Boolean(question) &&
-      Boolean(answer.trim()) &&
+      Boolean(submissionAnswerDraft.trim()) &&
       status === "in_progress" &&
       !roundFeedbackView &&
       !pendingQuestionFeedback &&
@@ -133,7 +299,7 @@ function AIInterviewTab({
   }, [
     sessionId,
     question,
-    answer,
+    submissionAnswerDraft,
     status,
     roundFeedbackView,
     pendingQuestionFeedback,
@@ -144,6 +310,10 @@ function AIInterviewTab({
   const isInterviewActive = useMemo(() => {
     return Boolean(sessionId) && status === "in_progress";
   }, [sessionId, status]);
+
+  useEffect(() => {
+    if (!isCodingRoundUI) setAnswerCode("");
+  }, [isCodingRoundUI]);
 
   const previewRoundItems = useMemo(() => {
     if (Array.isArray(previewPlan?.rounds) && previewPlan.rounds.length > 0) {
@@ -262,6 +432,29 @@ function AIInterviewTab({
     };
   }, [status, sessionId, report, user?.betaAccess]);
 
+  const fetchVisitSlots = useCallback(async () => {
+    if (!company?._id) {
+      setVisitSlots([]);
+      return;
+    }
+
+    if (user?.betaAccess === false) {
+      setVisitSlots([]);
+      return;
+    }
+
+    setSlotsLoading(true);
+    try {
+      const { data } = await interviewAPI.getInterviewVisitOptions(company._id);
+      const slots = Array.isArray(data?.slots) ? data.slots : [];
+      setVisitSlots(slots);
+    } catch {
+      setVisitSlots([]);
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, [company?._id, user?.betaAccess]);
+
   const fetchResumableInterview = useCallback(async () => {
     if (!user?.userId || !company?._id) {
       setResumeSession(null);
@@ -273,16 +466,35 @@ function AIInterviewTab({
       return;
     }
 
+    if (!placementSelectionReady) {
+      setResumeSession(null);
+      return;
+    }
+
+    const slot = selectedPlacementSlot;
+    const visitType = slot?.visitType ?? "";
+    const mergeMt = slot?.mergePlacementByType === true;
+
     try {
       const { data } = await interviewAPI.getResumableInterview({
         userId: user.userId,
         companyId: company._id,
+        placementVisitType: visitType,
+        placementCluster: mergeMt ? "" : slot?.cluster ?? "",
+        placementYear: mergeMt ? undefined : Number(slot?.year),
+        mergePlacementByType: mergeMt,
       });
       setResumeSession(data || null);
     } catch {
       setResumeSession(null);
     }
-  }, [user?.userId, user?.betaAccess, company?._id]);
+  }, [
+    user?.userId,
+    user?.betaAccess,
+    company?._id,
+    placementSelectionReady,
+    selectedPlacementSlot,
+  ]);
 
   const fetchPreviewPlan = useCallback(async () => {
     if (!company?._id) {
@@ -295,16 +507,64 @@ function AIInterviewTab({
       return;
     }
 
+    if (!placementSelectionReady) {
+      setPreviewPlan(null);
+      return;
+    }
+
+    const slot = selectedPlacementSlot;
+    const visitType = slot?.visitType ?? "";
+    const mergeMt = slot?.mergePlacementByType === true;
+
     setPreviewLoading(true);
     try {
-      const { data } = await interviewAPI.previewInterviewPlan(company._id);
+      const { data } = await interviewAPI.previewInterviewPlan(company._id, {
+        visitType,
+        cluster: mergeMt ? "" : slot?.cluster ?? "",
+        placementYear: mergeMt ? undefined : Number(slot?.year),
+        mergePlacementByType: mergeMt,
+      });
       setPreviewPlan(data || null);
     } catch {
       setPreviewPlan(null);
     } finally {
       setPreviewLoading(false);
     }
-  }, [company?._id, user?.betaAccess]);
+  }, [company?._id, user?.betaAccess, placementSelectionReady, selectedPlacementSlot]);
+
+  useEffect(() => {
+    fetchVisitSlots();
+  }, [fetchVisitSlots]);
+
+  useEffect(() => {
+    setSelectedSlotKey("");
+    setSlotMenuOpen(false);
+  }, [company?._id]);
+
+  useEffect(() => {
+    if (!visitSlots.length) return;
+    setSelectedSlotKey((prev) => {
+      if (prev && visitSlots.some((s) => placementSlotKey(s) === prev)) {
+        return prev;
+      }
+      if (visitSlots.length === 1) {
+        return placementSlotKey(visitSlots[0]);
+      }
+      return "";
+    });
+  }, [visitSlots]);
+
+  useEffect(() => {
+    if (!slotMenuOpen) return undefined;
+    const onDocMouseDown = (e) => {
+      const root = slotPickerRef.current;
+      if (root && !root.contains(e.target)) {
+        setSlotMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [slotMenuOpen]);
 
   useEffect(() => {
     fetchResumableInterview();
@@ -576,7 +836,8 @@ function AIInterviewTab({
       answerTextAreaRef.current.style.height = "auto";
     }
     setQuestion("");
-    setAnswer("");
+    setAnswerExplanation("");
+    setAnswerCode("");
     setFeedback("");
     setScore(null);
     setStatus("idle");
@@ -588,12 +849,16 @@ function AIInterviewTab({
     setCurrentRoundIndex(0);
     setTotalRounds(0);
     setDifficultyLevel("");
+    setCurrentRoundType("");
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
     setIsProcessing(false);
     setTips([]);
     setCurrentTipIndex(0);
     setPendingQuestionFeedback(null);
+    setRoundsQuestionSummary([]);
+    setQuestionsPlannedThisRound(3);
+    setCurrentQuestionNumberWithinRound(1);
   };
 
   useEffect(() => {
@@ -606,7 +871,7 @@ function AIInterviewTab({
     const minHeightPx = 120;
     const nextHeight = Math.max(minHeightPx, el.scrollHeight);
     el.style.height = `${nextHeight}px`;
-  }, [answer, status]);
+  }, [answerExplanation, status]);
 
   const handleResumeInterview = () => {
     if (!resumeSession) return;
@@ -621,6 +886,18 @@ function AIInterviewTab({
     setCurrentRoundIndex(Number(resumeSession.currentRoundIndex) || 0);
     setTotalRounds(Number(resumeSession.totalRounds) || 0);
     setDifficultyLevel(resumeSession.difficultyLevel || "");
+    setCurrentRoundType(deriveRoundTypeFromPayload(resumeSession));
+    if (Array.isArray(resumeSession.rounds)) {
+      setRoundsQuestionSummary(deriveRoundsQuestionSummary(resumeSession.rounds));
+      const crNum = Number(resumeSession.currentRound) || 1;
+      const rd = resumeSession.rounds[Math.max(0, crNum - 1)];
+      setQuestionsPlannedThisRound(
+        typeof rd?.questionCount === "number"
+          ? Math.min(5, Math.max(3, Math.round(rd.questionCount)))
+          : 3
+      );
+    }
+    setCurrentQuestionNumberWithinRound(Number(resumeSession.currentQuestionIndex ?? 0) + 1);
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
     setPendingQuestionFeedback(null);
@@ -630,11 +907,17 @@ function AIInterviewTab({
 
   const handleStartInterview = async () => {
     if (!canStart) {
-      setError("Please login and make sure company details are loaded.");
+      setError(
+        !placementSelectionReady
+          ? "Choose a visit type slot before starting."
+          : "Please login and make sure company details are loaded."
+      );
       return;
     }
 
     if (user?.betaAccess === false) return;
+
+    const slot = selectedPlacementSlot;
 
     loadingRef.current = true;
     roundFeedbackRef.current = null;
@@ -652,9 +935,14 @@ function AIInterviewTab({
     }
 
     try {
+      const mergeMt = slot?.mergePlacementByType === true;
       const { data } = await interviewAPI.startInterview({
         userId: user.userId,
         companyId: company._id,
+        placementVisitType: slot?.visitType ?? "",
+        placementCluster: mergeMt ? "" : slot?.cluster ?? "",
+        placementYear: mergeMt ? undefined : Number(slot?.year),
+        mergePlacementByType: mergeMt,
       });
 
       setSessionId(data.sessionId || "");
@@ -666,8 +954,22 @@ function AIInterviewTab({
       setCurrentRoundIndex(Number(data.currentRoundIndex) || 0);
       setTotalRounds(Number(data.totalRounds) || 0);
       setDifficultyLevel(data.difficultyLevel || "");
+      const rt0 = deriveRoundTypeFromPayload(data);
+      if (rt0) setCurrentRoundType(rt0);
       setRoundTransitionMessage("");
-      setAnswer("");
+      setAnswerExplanation("");
+      setAnswerCode("");
+      if (Array.isArray(data.rounds)) {
+        setRoundsQuestionSummary(deriveRoundsQuestionSummary(data.rounds));
+        const crNum = Number(data.currentRound) || 1;
+        const rd = data.rounds[Math.max(0, crNum - 1)];
+        setQuestionsPlannedThisRound(
+          typeof rd?.questionCount === "number"
+            ? Math.min(5, Math.max(3, Math.round(rd.questionCount)))
+            : 3
+        );
+      }
+      setCurrentQuestionNumberWithinRound(Number(data.currentQuestionIndex ?? 0) + 1);
       await enterFullscreen();
       if (data?.resumed) {
         setResumeSession({
@@ -676,6 +978,7 @@ function AIInterviewTab({
           status: data.status || "in_progress",
           roundsPlan: Array.isArray(data.roundsPlan) ? data.roundsPlan : [],
           roundsDetails: Array.isArray(data.roundsDetails) ? data.roundsDetails : [],
+          rounds: Array.isArray(data.rounds) ? data.rounds : [],
           currentRound: data.currentRound || "",
           currentRoundIndex: Number(data.currentRoundIndex) || 0,
           totalRounds: Number(data.totalRounds) || 0,
@@ -706,8 +1009,21 @@ function AIInterviewTab({
     setReport(st.report || null);
     setCurrentRound(st.currentRound ?? "");
     setCurrentRoundIndex(Math.max(0, (Number(st.currentRound) || 1) - 1));
+    if (st.roundType != null && String(st.roundType).trim() !== "") {
+      setCurrentRoundType(String(st.roundType).trim());
+    }
     if (st.totalRounds != null) {
       setTotalRounds(Number(st.totalRounds) || 0);
+    }
+
+    if (Array.isArray(st.roundsQuestionSummary)) {
+      setRoundsQuestionSummary(st.roundsQuestionSummary);
+    }
+    if (typeof st.questionsPlannedThisRound === "number") {
+      setQuestionsPlannedThisRound(st.questionsPlannedThisRound);
+    }
+    if (typeof st.currentQuestionNumberWithinRound === "number") {
+      setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
     }
 
     if (st.roundCompleted) {
@@ -740,6 +1056,8 @@ function AIInterviewTab({
 
         if (hasLastAnswerFeedback) {
           setPendingQuestionFeedback({
+            answeredQuestion: String(st.lastQuestion ?? "").trim(),
+            canReattempt: Boolean(st.lastQuestionCanReattempt),
             feedback: st.lastFeedback || "",
             score: typeof st.lastScore === "number" ? st.lastScore : null,
             correctness: toDisplayCorrectness(st.lastCorrectness),
@@ -775,6 +1093,8 @@ function AIInterviewTab({
         (String(st.lastFeedback || "").trim() || typeof st.lastScore === "number")
       ) {
         setPendingQuestionFeedback({
+          answeredQuestion: String(st.lastQuestion ?? "").trim(),
+          canReattempt: Boolean(st.lastQuestionCanReattempt),
           feedback: st.lastFeedback || "",
           score: typeof st.lastScore === "number" ? st.lastScore : null,
           correctness: toDisplayCorrectness(st.lastCorrectness),
@@ -854,7 +1174,7 @@ function AIInterviewTab({
     try {
       const { data } = await interviewAPI.submitAnswer({
         sessionId,
-        answer: answer.trim(),
+        answer: submissionAnswerDraft.trim(),
       });
 
       console.info("[AIInterviewTab] submitAnswer response", {
@@ -864,7 +1184,8 @@ function AIInterviewTab({
       });
 
       if (data.status === "processing") {
-        setAnswer("");
+        setAnswerExplanation("");
+        setAnswerCode("");
         const sid = String(data.sessionId || sessionId);
         interviewAnswerPollAbortedRef.current = false;
         setIsProcessing(true);
@@ -1063,8 +1384,20 @@ function AIInterviewTab({
         setCurrentRoundIndex(Number(data.currentRoundIndex) || 0);
         setTotalRounds(Number(data.totalRounds) || 0);
         setDifficultyLevel(data.difficultyLevel || "");
+        const rtSync = deriveRoundTypeFromPayload(data);
+        if (rtSync) setCurrentRoundType(rtSync);
+        if (Array.isArray(data.rounds)) {
+          setRoundsQuestionSummary(deriveRoundsQuestionSummary(data.rounds));
+        }
+        if (typeof data.currentQuestionIndex === "number") {
+          setCurrentQuestionNumberWithinRound(Number(data.currentQuestionIndex) + 1);
+        }
+        if (typeof data.questionsPlannedThisRound === "number") {
+          setQuestionsPlannedThisRound(data.questionsPlannedThisRound);
+        }
         setRoundTransitionMessage(data?.roundTransition?.message || "");
-        setAnswer("");
+        setAnswerExplanation("");
+        setAnswerCode("");
         if (data.roundCompleted) {
           roundCompletedAtRef.current = Date.now();
           setQuestion("");
@@ -1094,6 +1427,8 @@ function AIInterviewTab({
 
             if (hasLastAnswerFeedback) {
               setPendingQuestionFeedback({
+                answeredQuestion: snap.questionText || "",
+                canReattempt: true,
                 feedback: data.feedback || "",
                 score: typeof data.score === "number" ? data.score : null,
                 correctness: toDisplayCorrectness(data.correctness),
@@ -1123,6 +1458,8 @@ function AIInterviewTab({
             (String(data.feedback || "").trim() || typeof data.score === "number")
           ) {
             setPendingQuestionFeedback({
+              answeredQuestion: snap.questionText || "",
+              canReattempt: true,
               feedback: data.feedback || "",
               score: typeof data.score === "number" ? data.score : null,
               correctness: toDisplayCorrectness(data.correctness),
@@ -1166,7 +1503,8 @@ function AIInterviewTab({
       setPendingQuestionFeedback(null);
       setFeedback("");
       setScore(null);
-      setAnswer("");
+      setAnswerExplanation("");
+      setAnswerCode("");
       setRoundFeedbackView(d);
       roundFeedbackRef.current = {
         nextRoundAvailable: Boolean(d.nextRoundAvailable),
@@ -1183,8 +1521,52 @@ function AIInterviewTab({
     setPendingQuestionFeedback(null);
     setFeedback("");
     setScore(null);
-    setAnswer("");
-  }, []);
+    setAnswerExplanation("");
+    setAnswerCode("");
+    const sid = activeSessionIdRef.current;
+    if (sid && user?.betaAccess !== false) {
+      interviewAPI
+        .getInterviewStatus(sid)
+        .then(({ data: st }) => {
+          if (Array.isArray(st.roundsQuestionSummary)) {
+            setRoundsQuestionSummary(st.roundsQuestionSummary);
+          }
+          if (typeof st.questionsPlannedThisRound === "number") {
+            setQuestionsPlannedThisRound(st.questionsPlannedThisRound);
+          }
+          if (typeof st.currentQuestionNumberWithinRound === "number") {
+            setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.betaAccess]);
+
+  const handleReattemptQuestion = useCallback(async () => {
+    const sid = activeSessionIdRef.current || sessionId;
+    if (!sid || user?.betaAccess === false) return;
+
+    loadingRef.current = true;
+    roundFeedbackRef.current = null;
+    setLoading(true);
+    setError("");
+    try {
+      await interviewAPI.beginQuestionReattempt({ sessionId: sid });
+      const { data: st } = await interviewAPI.getInterviewStatus(sid);
+      applyInterviewStatusPayload(st);
+      setPendingQuestionFeedback(null);
+      setAnswerExplanation("");
+      setAnswerCode("");
+      setFeedback("");
+      setScore(null);
+    } catch (err) {
+      console.error("Failed to begin question reattempt:", err);
+      setError(err?.response?.data?.error || "Could not start a reattempt.");
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }, [sessionId, user?.betaAccess, applyInterviewStatusPayload]);
 
   const handleStartNextRound = async () => {
     if (!sessionId || loading || !roundFeedbackView?.nextRoundAvailable) return;
@@ -1200,9 +1582,28 @@ function AIInterviewTab({
       setCurrentRound(data.currentRound || "");
       setCurrentRoundIndex(Math.max(0, (Number(data.currentRound) || 1) - 1));
       setDifficultyLevel(data.difficulty || "");
+      if (data.roundType != null && String(data.roundType).trim() !== "") {
+        setCurrentRoundType(String(data.roundType).trim());
+      }
       roundFeedbackRef.current = null;
       setRoundFeedbackView(null);
+      setAnswerExplanation("");
+      setAnswerCode("");
       await enterFullscreen();
+      try {
+        const { data: st } = await interviewAPI.getInterviewStatus(sessionId);
+        if (Array.isArray(st.roundsQuestionSummary)) {
+          setRoundsQuestionSummary(st.roundsQuestionSummary);
+        }
+        if (typeof st.questionsPlannedThisRound === "number") {
+          setQuestionsPlannedThisRound(st.questionsPlannedThisRound);
+        }
+        if (typeof st.currentQuestionNumberWithinRound === "number") {
+          setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
+        }
+      } catch {
+        setCurrentQuestionNumberWithinRound(1);
+      }
     } catch (err) {
       console.error("Failed to start next round:", err);
       setError(err?.response?.data?.error || "Failed to start next round.");
@@ -1214,14 +1615,148 @@ function AIInterviewTab({
 
   const showStartPrompt = !sessionId || status === "idle";
   const interviewCompleted = status === "completed";
+
+  const showInterviewQuestionHero = useMemo(() => {
+    return (
+      isInterviewActive &&
+      Boolean(question?.trim()) &&
+      !isProcessing &&
+      !pendingQuestionFeedback &&
+      !roundFeedbackView
+    );
+  }, [
+    isInterviewActive,
+    question,
+    isProcessing,
+    pendingQuestionFeedback,
+    roundFeedbackView,
+  ]);
+
+  const typewriterQuestionActive = useMemo(() => {
+    return (
+      Boolean(question?.trim()) && !isProcessing && !pendingQuestionFeedback
+    );
+  }, [question, isProcessing, pendingQuestionFeedback]);
+
+  const typedQuestionText = useTypewriterText(question ?? "", typewriterQuestionActive);
+  const questionTypingIncomplete =
+    typewriterQuestionActive &&
+    typedQuestionText.length < String(question ?? "").length;
+
+  const interviewRoundPlanLine = useMemo(() => {
+    if (roundsQuestionSummary.length > 0) {
+      return roundsQuestionSummary
+        .map((r) => `Round ${r.roundNumber}: ${r.questionCount} questions`)
+        .join(" · ");
+    }
+    if (totalRounds > 0) {
+      return `This interview has ${totalRounds} round${totalRounds === 1 ? "" : "s"}.`;
+    }
+    return "";
+  }, [roundsQuestionSummary, totalRounds]);
+
+  const displayInterviewRoundNumber = useMemo(() => {
+    const n = Number(currentRound);
+    if (Number.isFinite(n) && n >= 1) return n;
+    return currentRoundIndex + 1;
+  }, [currentRound, currentRoundIndex]);
+
   /** Entire multi-round session finished (server only sets this after the last round’s report is generated). */
   const showInterviewFinale =
     interviewCompleted && Boolean(sessionId) && !isProcessing;
   const hasResumableInterview =
     Boolean(resumeSession?.sessionId) && resumeSession?.status === "in_progress";
 
+  /** Fullscreen + any loaded interview session (in progress or summary) — matches browser fullscreen during mock interview. */
+  const showFullscreenThemeToggle =
+    typeof document !== "undefined" &&
+    isInFullscreen &&
+    Boolean(sessionId) &&
+    status !== "idle";
+
   return (
+    <>
+      {showFullscreenThemeToggle &&
+        createPortal(
+          <div
+            className="fixed z-[10050] flex flex-col items-end gap-2 pointer-events-none"
+            style={{
+              top: "max(1rem, env(safe-area-inset-top, 0px))",
+              right: "max(1rem, env(safe-area-inset-right, 0px))",
+            }}
+          >
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-theme bg-theme-card px-3 py-2 text-sm font-semibold text-theme-primary shadow-lg hover:bg-theme-card-hover transition-colors"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? (
+                <FaSun className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+              ) : (
+                <FaMoon className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden />
+              )}
+              <span className="hidden sm:inline">
+                {theme === "dark" ? "Light mode" : "Dark mode"}
+              </span>
+            </button>
+          </div>,
+          document.body
+        )}
     <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 relative">
+      {showInterviewQuestionHero && (
+        <section
+          className="mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-theme"
+          aria-labelledby="interview-current-question-heading"
+        >
+          <h2 id="interview-current-question-heading" className="sr-only">
+            Current interview question
+          </h2>
+          {interviewRoundPlanLine ? (
+            <p className="text-[11px] sm:text-xs font-semibold tracking-[0.12em] text-theme-muted uppercase mb-3 leading-snug">
+              Questions per round — {interviewRoundPlanLine}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2 sm:gap-3 text-sm mb-5">
+            <span className="inline-flex items-center gap-2 rounded-lg bg-theme-input border border-theme px-3 py-2 font-sans">
+              <span className="text-theme-secondary text-xs font-semibold uppercase tracking-wide">
+                Current round
+              </span>
+              <span className="text-theme-primary tabular-nums font-bold text-base">
+                {displayInterviewRoundNumber}
+                <span className="text-theme-muted font-semibold mx-1">/</span>
+                {totalRounds || "—"}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg bg-theme-input border border-theme px-3 py-2 font-sans">
+              <span className="text-theme-secondary text-xs font-semibold uppercase tracking-wide">
+                Current question
+              </span>
+              <span className="text-theme-primary tabular-nums font-bold text-base">
+                {currentQuestionNumberWithinRound}
+                <span className="text-theme-muted font-semibold mx-1">/</span>
+                {questionsPlannedThisRound}
+              </span>
+              <span className="text-theme-muted text-xs hidden sm:inline font-normal normal-case tracking-normal">
+                this round
+              </span>
+            </span>
+          </div>
+          <div className="rounded-xl border border-theme-accent/40 bg-theme-input px-4 py-5 sm:px-7 sm:py-7 shadow-inner">
+            <p
+              className="ai-interview-question-display whitespace-pre-wrap"
+              aria-live="polite"
+              aria-busy={questionTypingIncomplete || undefined}
+            >
+              {typedQuestionText}
+              {questionTypingIncomplete ? (
+                <span className="ai-interview-typewriter-caret" aria-hidden />
+              ) : null}
+            </p>
+          </div>
+        </section>
+      )}
       {quitConfirmOpen && (
         <div
           className="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm"
@@ -1295,6 +1830,16 @@ function AIInterviewTab({
                   </h3>
                 </div>
               </div>
+              {String(pendingQuestionFeedback.answeredQuestion || "").trim() ? (
+                <div className="mt-5 rounded-xl border border-theme-accent/35 bg-theme-input px-4 py-4 sm:px-6 sm:py-5 shadow-inner">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted mb-2">
+                    Your question
+                  </p>
+                  <p className="ai-interview-question-display whitespace-pre-wrap text-[clamp(1.05rem,2.4vw,1.45rem)] leading-snug">
+                    {pendingQuestionFeedback.answeredQuestion}
+                  </p>
+                </div>
+              ) : null}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 {pendingQuestionFeedback.score !== null && (
                   <div className="inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme px-4 py-3">
@@ -1329,15 +1874,34 @@ function AIInterviewTab({
                 {pendingQuestionFeedback.feedback || "No detailed feedback for this response."}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleContinueToNextQuestion}
-              className="w-full sm:w-auto self-center sm:self-end px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors"
-            >
-              {pendingQuestionFeedback?.deferredRoundSummary
-                ? "View round summary"
-                : "Next question"}
-            </button>
+            {pendingQuestionFeedback.canReattempt ? (
+              <p className="text-[11px] text-theme-muted leading-snug">
+                You may submit one reattempt for this question. Scores are stored per attempt; we may use
+                the best attempt later.
+              </p>
+            ) : null}
+            <div className="flex flex-col-reverse sm:flex-row sm:flex-wrap sm:justify-end gap-3">
+              {pendingQuestionFeedback.canReattempt ? (
+                <button
+                  type="button"
+                  onClick={handleReattemptQuestion}
+                  disabled={loading}
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl border-2 border-theme-accent text-theme-accent text-base font-semibold bg-transparent hover:bg-theme-accent/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Reattempt question
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleContinueToNextQuestion}
+                disabled={loading}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors disabled:opacity-50"
+              >
+                {pendingQuestionFeedback?.deferredRoundSummary
+                  ? "View round summary"
+                  : "Next question"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1631,6 +2195,7 @@ function AIInterviewTab({
         </div>
       )}
 
+      {!isInterviewActive && (
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
         <button
@@ -1638,12 +2203,14 @@ function AIInterviewTab({
           disabled={
             loading ||
             (!showStartPrompt && status === "in_progress") ||
-            interviewCompleted
+            interviewCompleted ||
+            (showStartPrompt && !canStart)
           }
           className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium ${
             loading ||
             (!showStartPrompt && status === "in_progress") ||
-            interviewCompleted
+            interviewCompleted ||
+            (showStartPrompt && !canStart)
               ? "bg-slate-700 text-slate-400 cursor-not-allowed shadow-none"
               : "bg-indigo-600 hover:bg-indigo-700 text-white"
           }`}
@@ -1651,11 +2218,108 @@ function AIInterviewTab({
           {showStartPrompt ? "Start Interview" : "Reset"}
         </button>
       </div>
+      )}
 
       {!user?.userId && (
         <p className="text-sm text-theme-accent mb-3">
           Please login to start your AI interview.
         </p>
+      )}
+
+      {user?.userId && user?.betaAccess !== false && showStartPrompt && (
+        <div
+          ref={slotPickerRef}
+          className="mb-4 rounded-xl border border-theme bg-theme-input p-4 shadow-sm"
+        >
+          <div className="flex flex-col gap-1 mb-3">
+            <p className="text-sm font-semibold text-theme-primary">Placement slot</p>
+            <p className="text-xs text-theme-secondary leading-relaxed">
+              Slots group by visit <span className="font-medium text-theme-primary">type</span>. Each
+              slot merges every approved row for this company with that same type (all years and clusters).
+            </p>
+          </div>
+          {slotsLoading ? (
+            <p className="text-sm text-theme-secondary">Loading placement options…</p>
+          ) : visitSlots.length === 0 ? (
+            <p className="text-sm text-theme-secondary">No placement slots available.</p>
+          ) : (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => visitSlots.length > 1 && setSlotMenuOpen((open) => !open)}
+                aria-expanded={slotMenuOpen}
+                aria-haspopup="listbox"
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-theme-accent bg-theme-card text-left transition-colors ${
+                  visitSlots.length > 1
+                    ? "hover:bg-theme-input cursor-pointer"
+                    : "cursor-default"
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-theme-primary truncate">
+                    {selectedPlacementSlot
+                      ? formatPlacementSlotSummary(selectedPlacementSlot)
+                      : "Select visit type"}
+                  </p>
+                </div>
+                {visitSlots.length > 1 ? (
+                  <svg
+                    className={`shrink-0 h-5 w-5 text-theme-accent transition-transform ${
+                      slotMenuOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  <span className="text-[10px] uppercase tracking-wider text-theme-muted shrink-0">
+                    Only slot
+                  </span>
+                )}
+              </button>
+              {slotMenuOpen && visitSlots.length > 1 && (
+                <ul
+                  className="absolute z-30 mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border border-theme-accent bg-theme-card shadow-xl py-1"
+                  role="listbox"
+                >
+                  {visitSlots.map((slot) => {
+                    const key = placementSlotKey(slot);
+                    const active = key === selectedSlotKey;
+                    return (
+                      <li key={key} role="option" aria-selected={active}>
+                        <button
+                          type="button"
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-l-2 ${
+                            active
+                              ? "border-theme-accent bg-theme-accent/10 text-theme-primary font-semibold"
+                              : "border-transparent text-theme-secondary hover:bg-theme-input"
+                          }`}
+                          onClick={() => {
+                            setSelectedSlotKey(key);
+                            setSlotMenuOpen(false);
+                          }}
+                        >
+                          <div>{formatPlacementSlotSummary(slot)}</div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {visitSlots.length > 1 && !selectedSlotKey && (
+                <p className="mt-2 text-xs text-theme-accent font-medium">
+                  Select a slot to load the preview and start.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {hasResumableInterview && showStartPrompt && (
@@ -1719,7 +2383,7 @@ function AIInterviewTab({
         </div>
       )}
 
-      {isInterviewActive && (
+      {isInterviewActive && !showInterviewQuestionHero && (
         <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input flex items-center justify-between gap-3">
           <p className="text-sm text-theme-primary">
             Interview mode is active. Press <span className="font-semibold">Esc</span> or use
@@ -1830,7 +2494,7 @@ function AIInterviewTab({
         </div>
       )}
 
-      {question && !isProcessing && !pendingQuestionFeedback && (
+      {!showInterviewQuestionHero && question && !isProcessing && !pendingQuestionFeedback && (
         <div className="mb-4">
           <div className="mb-2 flex flex-wrap gap-2 text-xs">
             {currentRound && (
@@ -1848,12 +2512,26 @@ function AIInterviewTab({
                 Difficulty: {difficultyLevel}
               </span>
             )}
+            {isCodingRoundUI && (
+              <span className="px-2 py-1 rounded-md bg-theme-accent/10 border border-theme-accent text-theme-accent font-medium">
+                Coding round — explanation + code
+              </span>
+            )}
           </div>
           <p className="text-xs uppercase tracking-wide text-theme-secondary mb-2">
             Current Question
           </p>
           <div className="p-4 rounded-lg border border-theme bg-theme-input text-theme-primary">
-            {question}
+            <p
+              className="ai-interview-question-display whitespace-pre-wrap text-[clamp(1rem,2.2vw,1.35rem)]"
+              aria-live="polite"
+              aria-busy={questionTypingIncomplete || undefined}
+            >
+              {typedQuestionText}
+              {questionTypingIncomplete ? (
+                <span className="ai-interview-typewriter-caret" aria-hidden />
+              ) : null}
+            </p>
           </div>
           {Array.isArray(roundsDetails) && roundsDetails.length > 0 ? (
             <div className="mt-2">
@@ -1882,42 +2560,81 @@ function AIInterviewTab({
         !roundFeedbackView &&
         !pendingQuestionFeedback &&
         !isProcessing && (
-        <div className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm text-theme-secondary">Your Answer</p>
-              <p className="text-xs text-theme-muted mt-1">
-                Tip: press <span className="font-semibold text-theme-accent">Ctrl + Enter</span> to submit
+        <div className="ai-interview-answer-shell space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-sm font-semibold text-theme-primary tracking-tight">
+                {isCodingRoundUI ? "Your response" : "Your answer"}
+              </p>
+              <p className="text-[11px] text-theme-muted leading-snug">
+                {isCodingRoundUI ? (
+                  <>
+                    Write your <span className="font-medium text-theme-secondary">approach and reasoning</span> in the
+                    explanation box and your{" "}
+                    <span className="font-medium text-theme-secondary">implementation or pseudocode</span> in the code
+                    editor. Both sections are submitted together and stay separate — nothing copies between them.
+                  </>
+                ) : (
+                  <>Write your answer in the box below.</>
+                )}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-theme-muted">{answerCharCount} chars</p>
+            <div className="flex flex-row sm:flex-col items-center sm:items-end justify-end gap-3 shrink-0 w-full sm:w-auto">
+              <p className="text-[11px] font-medium tabular-nums text-theme-muted sm:text-right whitespace-nowrap">
+                {answerCharCount} chars
+              </p>
             </div>
           </div>
 
-          <textarea
-            ref={answerTextAreaRef}
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            rows={5}
-            onKeyDown={(e) => {
-              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                e.preventDefault();
-                handleSubmitAnswer();
-              }
-            }}
-            className="w-full px-3 py-2 rounded-lg bg-theme-input border border-theme-input text-theme-primary focus:outline-none focus:ring-2 focus:ring-theme-accent resize-none"
-            placeholder="Type your answer..."
-            disabled={loading}
-          />
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">
+                {isCodingRoundUI ? "Explanation" : "Answer"}
+              </p>
+              <textarea
+                ref={answerTextAreaRef}
+                value={answerExplanation}
+                onChange={(e) => setAnswerExplanation(e.target.value)}
+                rows={isCodingRoundUI ? 5 : 6}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    handleSubmitAnswer();
+                  }
+                }}
+                className="w-full min-h-[148px] px-4 py-3.5 rounded-xl bg-theme-input border-2 border-theme-input text-[15px] leading-relaxed text-theme-primary placeholder:text-theme-muted/80 transition-[border-color,box-shadow] duration-150 resize-y focus:outline-none focus:border-theme-accent focus:ring-0"
+                placeholder={
+                  isCodingRoundUI
+                    ? "Explain your approach, complexity, trade-offs…"
+                    : "Type your answer..."
+                }
+                disabled={loading}
+              />
+            </div>
 
-          <div className="flex items-center justify-between gap-3 pt-1">
+            {isCodingRoundUI ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Code</p>
+                <div className="ai-interview-code-workspace-wrap">
+                  <InterviewCodeWorkspace
+                    value={answerCode}
+                    onChange={setAnswerCode}
+                    disabled={loading}
+                    onSubmitShortcut={handleSubmitAnswer}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="ai-interview-submit-row flex flex-wrap items-center justify-between gap-3">
             <button
+              type="button"
               onClick={handleSubmitAnswer}
               disabled={!canSubmitAnswer}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              className={`inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
                 canSubmitAnswer
-                  ? "bg-theme-accent text-white"
+                  ? "bg-theme-accent text-white hover:brightness-105 active:brightness-95"
                   : "bg-theme-card text-theme-muted cursor-not-allowed"
               }`}
             >
@@ -1927,6 +2644,7 @@ function AIInterviewTab({
         </div>
       )}
     </div>
+    </>
   );
 }
 
