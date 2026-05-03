@@ -1,23 +1,25 @@
 import React from "react";
-import { FaArrowLeft, FaExternalLinkAlt, FaComments } from "react-icons/fa";
+import { FaExternalLinkAlt, FaComments } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { FEEDBACK_FORM_URL } from "../utils/constants";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 function Feedback() {
   const navigate = useNavigate();
 
   return (
-    <div className="content-cards-page-theme min-h-screen bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-4xl">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="back-nav-clear-sidebar mb-5 flex items-center back-link-theme text-sm sm:text-base"
-        >
-          <FaArrowLeft className="mr-2" />
-          Back
-        </button>
+    <div className={`content-cards-page-theme min-h-screen ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate(-1)} label="Back" />
+        </PageBackNavRow>
 
+        <div className="mx-auto w-full max-w-4xl">
         <section className="rounded-2xl border border-theme bg-theme-card p-6 shadow-lg sm:p-8">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-theme-accent/40 bg-theme-hero px-3 py-1.5">
             <FaComments className="text-theme-accent" />
@@ -52,6 +54,7 @@ function Feedback() {
             </a>
           </div>
         </section>
+        </div>
       </div>
     </div>
   );

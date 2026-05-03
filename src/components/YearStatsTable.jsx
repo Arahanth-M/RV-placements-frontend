@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { FaArrowLeft, FaSearch, FaFilter } from "react-icons/fa";
+import { FaSearch, FaFilter } from "react-icons/fa";
+import { PageBackButton, PageBackNavRow } from "./PageBackNav.jsx";
 import Analytics from "./Analytics";
 
 const PAGE_SIZE = 100;
@@ -150,13 +151,9 @@ function YearStatsTable({ year, data, onBack }) {
   if (!data || data.length === 0) {
     return (
       <div className="bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg p-6 sm:p-8">
-        <button
-          onClick={onBack}
-          className="back-nav-clear-sidebar mb-4 flex items-center back-link-theme text-sm sm:text-base"
-        >
-          <FaArrowLeft className="mr-2" />
-          Back to Year Selection
-        </button>
+        <PageBackNavRow>
+          <PageBackButton onClick={onBack} label="Back to Year Selection" />
+        </PageBackNavRow>
         <p className="text-theme-muted text-center py-8">No data available for {year} stats.</p>
       </div>
     );
@@ -211,14 +208,9 @@ function YearStatsTable({ year, data, onBack }) {
 
   return (
     <div className="space-y-6">
-      {/* Back Button */}
-      <button
-        onClick={onBack}
-        className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base"
-      >
-        <FaArrowLeft className="mr-2" />
-        Back to Year Selection
-      </button>
+      <PageBackNavRow>
+        <PageBackButton onClick={onBack} label="Back to Year Selection" />
+      </PageBackNavRow>
 
       <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-lg">
         <div className="flex flex-col items-center justify-center gap-3 text-center">

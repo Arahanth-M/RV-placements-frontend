@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
@@ -7,9 +7,14 @@ import MissingCompanyRequestModal from "../components/MissingCompanyRequestModal
 import YearStatsTable from "../components/YearStatsTable";
 import { CompanyCardGridShimmer, YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
 import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
+import {
   FaFilter,
   FaCalendarAlt,
-  FaArrowLeft,
   FaRegStar,
   FaMedal,
   FaChevronRight,
@@ -417,6 +422,12 @@ function CompanyStats() {
       setPlacementTier(tierQuery);
     }
   }, [location.pathname, tierQuery, user?.userId]);
+
+  // Year/cluster/tier often change query only (/category → /category?cluster=… or ?tier= swaps on /companystats),
+  // so App ScrollToTop (pathname-only) does not run — scroll here instead.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [selectedYear, clusterParam, tierQuery]);
 
   // Check for navigation state or sessionStorage to restore selectedYear (non-2026 only on hub)
   useEffect(() => {
@@ -1158,21 +1169,12 @@ function CompanyStats() {
     !isPlacementTierParam(tierQuery)
   ) {
     return (
-      <div className="min-h-screen overflow-x-hidden bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
+      <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton onClick={handleBack} label="Back" />
+          </PageBackNavRow>
         <div className="mx-auto w-full max-w-6xl min-w-0">
-           {/* Back Button */}
-      <div className="mb-6 flex items-center justify-between gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back
-        </button>
-      </div>
           {/* Year Selection Cards */}
           <div className="mb-8">
             <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
@@ -1269,6 +1271,7 @@ function CompanyStats() {
             </div>
           </div>
         </div>
+        </div>
       </div>
     );
   }
@@ -1276,8 +1279,8 @@ function CompanyStats() {
   // Year stats table view (2024 or 2025)
   if (selectedYear === 2024 || selectedYear === 2025) {
     return (
-      <div className="p-4 sm:p-6 min-h-screen bg-theme-app">
-        <div className="max-w-7xl mx-auto">
+      <div className={`min-h-screen ${pageShellOuterClass}`}>
+        <div className={pageShellInnerClass}>
           {loadingYearStats ? (
             <YearStatsTableShimmer yearLabel={String(selectedYear)} />
           ) : (
@@ -1346,28 +1349,27 @@ function CompanyStats() {
     ];
 
     return (
-      <div className="min-h-screen overflow-x-hidden bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
+      <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton
+              onClick={() => {
+                setCompanies([]);
+                setSearch("");
+                setTierCategories({
+                  [PLACEMENT_TIER_DREAM]: "all",
+                  [PLACEMENT_TIER_OPEN_DREAM]: "all",
+                  [PLACEMENT_TIER_OFF_CAMPUS]: "all",
+                });
+                resetListPages();
+                setPlacementTier(null);
+                setSelectedYear(null);
+                navigate(PATH_COMPANY_STATS, { replace: true });
+              }}
+              label="Back to Year Selection"
+            />
+          </PageBackNavRow>
         <div className="mx-auto w-full max-w-6xl min-w-0">
-          <button
-            type="button"
-            onClick={() => {
-              setCompanies([]);
-              setSearch("");
-              setTierCategories({
-                [PLACEMENT_TIER_DREAM]: "all",
-                [PLACEMENT_TIER_OPEN_DREAM]: "all",
-                [PLACEMENT_TIER_OFF_CAMPUS]: "all",
-              });
-              resetListPages();
-              setPlacementTier(null);
-              setSelectedYear(null);
-              navigate(PATH_COMPANY_STATS, { replace: true });
-            }}
-            className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
-          >
-            <FaArrowLeft className="mr-2" />
-            Back to Year Selection
-          </button>
           <div className="mb-8">
             <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
               Choose your cluster
@@ -1412,6 +1414,7 @@ function CompanyStats() {
             </div>
           </div>
         </div>
+        </div>
       </div>
     );
   }
@@ -1425,16 +1428,15 @@ function CompanyStats() {
   ) {
     const clusterLabel = clusterParam === PLACEMENT_CLUSTER_EC ? "EC cluster" : "ME cluster";
     return (
-      <div className="min-h-screen overflow-x-hidden bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
+      <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton
+              onClick={() => navigate(PATH_COMPANY_CATEGORY, { replace: true })}
+              label="Back to cluster selection"
+            />
+          </PageBackNavRow>
         <div className="mx-auto w-full max-w-2xl min-w-0">
-          <button
-            type="button"
-            onClick={() => navigate(PATH_COMPANY_CATEGORY, { replace: true })}
-            className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
-          >
-            <FaArrowLeft className="mr-2" />
-            Back to cluster selection
-          </button>
           <div className="company-card rounded-2xl border-2 border-theme bg-theme-card p-8 text-center shadow-lg sm:p-10">
             <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
             <p className="mt-4 text-base text-theme-secondary sm:text-lg">Under development</p>
@@ -1442,6 +1444,7 @@ function CompanyStats() {
               This cluster&apos;s company hub is not available yet. Please use the CS cluster listings, or check back later.
             </p>
           </div>
+        </div>
         </div>
       </div>
     );
@@ -1488,26 +1491,26 @@ function CompanyStats() {
       : p?.counts?.offCampus ?? 0;
 
     return (
-      <div className="p-6 sm:p-8 min-h-screen bg-theme-app">
-        <div className="max-w-7xl mx-auto">
-          <button
-            type="button"
-            onClick={() => {
-              navigate(PATH_COMPANY_CATEGORY, { replace: true });
-            }}
-            className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
-          >
-            <FaArrowLeft className="mr-2" />
-            Back to cluster selection
-          </button>
+      <div className={`min-h-screen ${pageShellOuterClass}`}>
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton
+              onClick={() => {
+                navigate(PATH_COMPANY_CATEGORY, { replace: true });
+              }}
+              label="Back to cluster selection"
+            />
+          </PageBackNavRow>
+        <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
               <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
                 Select category
               </h2>
-              <p className="mx-auto mt-2 text-center text-base text-theme-secondary whitespace-nowrap sm:text-lg">
-                Choose Dream, Open dream, Internship only, Summer internship, or Off campus to browse company cards
-          
+              <p className="mx-auto mt-2 max-w-lg px-1 text-center text-sm leading-snug text-theme-secondary sm:max-w-2xl sm:px-0 sm:text-base sm:leading-normal md:text-lg">
+                Choose Dream, Open dream, Summer internship, Off-campus or
+                <br />
+                {" "}Internship only to browse company cards
               </p>
               
             </div>
@@ -1523,7 +1526,7 @@ function CompanyStats() {
                 <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Dream companies
                 </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={dreamLogoPreview}
                     gridSize={5}
@@ -1546,7 +1549,7 @@ function CompanyStats() {
                 <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Open dream companies
                 </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={openDreamLogoPreview}
                     gridSize={5}
@@ -1559,30 +1562,7 @@ function CompanyStats() {
                 </div>
               </div>
             </button>
-            <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Internship only companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={internshipOnlyLogoPreview}
-                    gridSize={5}
-                    interval={3000}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
-            <button
+                        <button
               type="button"
               onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
@@ -1591,7 +1571,7 @@ function CompanyStats() {
                 <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Summer internship companies
                 </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={summerLogoPreview}
                     gridSize={5}
@@ -1606,6 +1586,51 @@ function CompanyStats() {
             </button>
             <button
               type="button"
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
+
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                  Internship only companies
+                </h3>
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={internshipOnlyLogoPreview}
+                    gridSize={5}
+                    interval={3000}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
+            {/* <button
+              type="button"
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                  Summer internship companies
+                </h3>
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={summerLogoPreview}
+                    gridSize={5}
+                    interval={3200}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{summerCount} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button> */}
+            <button
+              type="button"
               onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
@@ -1613,7 +1638,7 @@ function CompanyStats() {
                 <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
                   Off campus companies
                 </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[88px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={offCampusLogoPreview}
                     gridSize={5}
@@ -1651,6 +1676,7 @@ function CompanyStats() {
             requestCategory={placementTier || "company-listing"}
           />
         </div>
+        </div>
       </div>
     );
   }
@@ -1679,19 +1705,18 @@ function CompanyStats() {
   const tierListTotalPages = Math.max(1, Math.ceil(tierListTotal / companiesPerPage));
 
   return (
-    <div className="page-container px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 min-h-screen relative bg-theme-app w-full max-w-full min-w-0">
-      <div className="mb-4 sm:mb-6">
-        <button
-          type="button"
-          onClick={() => {
-            resetListPages();
-            navigate(companystatsClusterCategoryUrl(PLACEMENT_CLUSTER_CS));
-          }}
-          className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
-        >
-          <FaArrowLeft className="mr-2" />
-          Back
-        </button>
+    <div className={`page-container min-h-screen relative w-full max-w-full min-w-0 ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton
+            onClick={() => {
+              resetListPages();
+              navigate(companystatsClusterCategoryUrl(PLACEMENT_CLUSTER_CS));
+            }}
+            label="Back"
+          />
+        </PageBackNavRow>
+        <div className="mb-4 sm:mb-6">
         <div className="top-bar flex flex-col sm:flex-row items-center sm:justify-between gap-4 mb-8 w-full">
           <div className="w-full sm:w-auto sm:max-w-md">
           <input
@@ -1807,7 +1832,13 @@ function CompanyStats() {
                   isAdmin={isAdmin}
                   onUpdate={handleCompanyCardUpdated}
                   onStatsUpdated={handleCompanyCardUpdated}
-                  hidePlacementGotInCounts={placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP}
+                  hidePlacementGotInCounts={
+                    placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP ||
+                    placementTier === PLACEMENT_TIER_DREAM ||
+                    placementTier === PLACEMENT_TIER_OPEN_DREAM ||
+                    placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY ||
+                    placementTier === PLACEMENT_TIER_OFF_CAMPUS
+                  }
                   placementListContext={placementListContext}
                 />
               );
@@ -1939,6 +1970,7 @@ function CompanyStats() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

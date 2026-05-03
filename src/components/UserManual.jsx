@@ -1,22 +1,24 @@
 import React from "react";
-import { FaArrowLeft, FaBookOpen } from "react-icons/fa";
+import { FaBookOpen } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 function UserManual() {
   const navigate = useNavigate();
 
   return (
-    <div className="content-cards-page-theme min-h-screen bg-theme-app px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto w-full max-w-3xl">
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-          className="back-nav-clear-sidebar mb-6 flex items-center back-link-theme text-sm sm:text-base"
-        >
-          <FaArrowLeft className="mr-2" />
-          Back
-        </button>
+    <div className={`content-cards-page-theme min-h-screen ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate("/")} label="Back" />
+        </PageBackNavRow>
 
+        <div className="mx-auto w-full max-w-3xl">
         <article className="rounded-2xl border border-theme bg-theme-card p-6 shadow-lg sm:p-8 sm:p-10">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-theme-accent/40 bg-theme-hero px-3 py-1.5">
             <FaBookOpen className="text-theme-accent" />
@@ -161,6 +163,7 @@ function UserManual() {
             </p>
           </section>
         </article>
+        </div>
       </div>
     </div>
   );

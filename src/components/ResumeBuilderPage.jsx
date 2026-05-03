@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaPlus, FaTrash, FaFileDownload, FaChevronDown, FaSave } from "react-icons/fa";
 import { resumeAPI } from "../utils/api";
 import { exportResume } from "../utils/resumeExport";
@@ -8,6 +9,12 @@ import {
 } from "./resume/defaultDraft";
 import StandardClassic from "./resume/templates/StandardClassic";
 import IIITVLatexStyle from "./resume/templates/IIITVLatexStyle";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 function createBullet() {
   return { text: "" };
@@ -93,6 +100,7 @@ function formatFieldLabel(field) {
 }
 
 export default function ResumeBuilderPage() {
+  const navigate = useNavigate();
   const [draft, setDraft] = useState(createBlankResumeDraft());
   const [skillsInput, setSkillsInput] = useState("");
   const [version, setVersion] = useState(0);
@@ -374,8 +382,11 @@ export default function ResumeBuilderPage() {
   }
 
   return (
-    <div className="resume-builder-form min-h-screen bg-theme-app px-4 py-4">
-      <div className="max-w-7xl mx-auto">
+    <div className={`resume-builder-form min-h-screen ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate(-1)} />
+        </PageBackNavRow>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <h1 className="text-2xl font-bold text-theme-primary">Resume Builder</h1>
           <div className="flex items-center gap-2 text-sm">

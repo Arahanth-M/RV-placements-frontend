@@ -3,7 +3,12 @@ import { leaderboardAPI } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
 import { FaUser, FaRedo, FaSearch, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 /* ─── helpers ─────────────────────────────────────────────── */
 const podiumMeta = [
@@ -245,7 +250,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="events-page-theme min-h-screen pt-3 sm:pt-4 pb-8 sm:pb-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className={`events-page-theme min-h-screen ${pageShellOuterClass}`}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
         @keyframes lb-fade-in {
@@ -273,21 +278,12 @@ const Leaderboard = () => {
         }
       `}</style>
 
-      <div style={{ maxWidth: 896, margin: '0 auto' }}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={handleBack} label="Back" />
+        </PageBackNavRow>
 
-        {/* Back Button */}
-        <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back
-          </button>
-        </div>
+        <div style={{ maxWidth: 896, margin: "0 auto" }}>
 
         {/* ── Header ── */}
         <div className="lb-header-wrap">
@@ -636,6 +632,7 @@ const Leaderboard = () => {
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );

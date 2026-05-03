@@ -7,6 +7,8 @@ import {
   companystatsTierListUrl,
   isPlacementTierParam,
   PLACEMENT_TIER_DREAM,
+  PLACEMENT_TIER_INTERNSHIP_ONLY,
+  PLACEMENT_TIER_OFF_CAMPUS,
   PLACEMENT_TIER_OPEN_DREAM,
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
   PLACEMENT_CATEGORY_NO_VISIT_COPY,
@@ -30,6 +32,12 @@ import {
   PLACEMENT_DETAIL_VISIT_YEARS,
   isPlacementDetailVisitYear,
 } from "../constants/placementYears.js";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 const PLACEMENT_YEAR_CHOICES = [...PLACEMENT_DETAIL_VISIT_YEARS];
 const YEAR_TABS = ["general", "stats", "oa", "interview", "internship"];
@@ -51,7 +59,9 @@ function parseTierContext(raw) {
   if (
     raw === PLACEMENT_TIER_SUMMER_INTERNSHIP ||
     raw === PLACEMENT_TIER_DREAM ||
-    raw === PLACEMENT_TIER_OPEN_DREAM
+    raw === PLACEMENT_TIER_OPEN_DREAM ||
+    raw === PLACEMENT_TIER_OFF_CAMPUS ||
+    raw === PLACEMENT_TIER_INTERNSHIP_ONLY
   ) {
     return raw;
   }
@@ -558,31 +568,13 @@ function CompanyDetails() {
 
   return (
     <>
-      <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
-        {/* Back Button */}
-        <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
-          >
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Back
-          </button>
-        </div>
+      <div className={`min-h-screen ${pageShellOuterClass}`}>
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton onClick={handleBack} label="Back" />
+          </PageBackNavRow>
 
+          <div className="mx-auto max-w-6xl">
         {/* Company header — compact during AI interview focus */}
         {interviewFocusMode ? (
           <div className="mb-4 rounded-xl border border-theme bg-theme-card px-4 py-3 shadow-sm flex items-center gap-3 min-w-0">
@@ -676,7 +668,7 @@ function CompanyDetails() {
                   {/* Year dropdown panel */}
                   {isYearTab && isOpen && (
                     <div
-                      className="absolute top-full mt-1.5 left-0 z-30 bg-theme-card border border-theme rounded-xl overflow-hidden min-w-[150px] shadow-lg"
+                      className="absolute top-full mt-1.5 left-0 z-30 bg-theme-card border border-theme rounded-xl overflow-hidden min-w-[132px] sm:min-w-[150px] shadow-lg"
                       role="listbox"
                       aria-label={`Select placement year for ${label}`}
                     >
@@ -705,7 +697,7 @@ function CompanyDetails() {
                               role="option"
                               aria-selected={isSelected}
                               onClick={() => handleYearPick(id, y)}
-                              className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-theme-nav ${
+                              className={`w-full flex items-center justify-between gap-2 sm:gap-3 px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm transition-colors hover:bg-theme-nav ${
                                 isSelected
                                   ? "text-theme-accent font-semibold"
                                   : "text-theme-primary"
@@ -714,14 +706,14 @@ function CompanyDetails() {
                               <span className="flex items-center gap-2">
                                 {y}
                                 {!hasVisit && (
-                                  <span className="text-xs text-theme-secondary font-normal">
+                                  <span className="text-[10px] sm:text-xs text-theme-secondary font-normal">
                                     {PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY}
                                   </span>
                                 )}
                               </span>
                               {isSelected && (
                                 <svg
-                                  className="w-3.5 h-3.5 flex-shrink-0 text-theme-accent"
+                                  className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-theme-accent"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                   stroke="currentColor"
@@ -764,6 +756,7 @@ function CompanyDetails() {
                 isAdmin={isAdmin}
                 onStatsUpdated={handleRefresh}
                 placementYear={placementYear}
+                placementListContext={placementContextForApi}
               />
             ))}
           {activeTab === "oa" &&
@@ -836,6 +829,8 @@ function CompanyDetails() {
             ) : (
               <OffCampusQuestionsTab company={company} />
             ))}
+        </div>
+          </div>
         </div>
       </div>
 

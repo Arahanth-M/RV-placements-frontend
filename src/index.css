@@ -1,12 +1,15 @@
 @import "tailwindcss";
 
 /*
- * Sidebar hamburger is fixed top-left. Only back-navigation controls use this
- * class so the rest of the page layout stays full width.
+ * Respect notched devices only — header chrome no longer uses a fixed top-left menu,
+ * so back controls align with page padding like other shell content.
  */
+.back-nav-clear-sidebar {
+  margin-left: env(safe-area-inset-left, 0px);
+}
+
 @media (max-width: 1279px) {
   .back-nav-clear-sidebar {
-    margin-left: max(3.25rem, env(safe-area-inset-left, 0px));
     margin-top: 0.25rem;
   }
 }
@@ -1369,8 +1372,9 @@ html, body, #root {
   min-height: 2.5rem !important;
 }
 
-/* SPC placement form: lock single-line control height (grid/flex stretch can inflate native inputs) */
-.spc-placement-form :is(input.spc-field-control, button.spc-field-control) {
+/* SPC forms: lock single-line control height (grid/flex stretch can inflate native inputs) */
+.spc-placement-form :is(input.spc-field-control, button.spc-field-control, select.spc-field-control),
+.spc-conversion-form :is(input.spc-field-control, button.spc-field-control, select.spc-field-control) {
   height: 2.75rem !important;
   min-height: 2.75rem !important;
   max-height: 2.75rem !important;
@@ -1381,8 +1385,22 @@ html, body, #root {
   flex: 0 0 auto !important;
 }
 
+/* SPC forms — dark: input tokens + color-scheme so native <select> isn’t a light system popup on dark UI */
+[data-theme="dark"] .spc-placement-form,
+[data-theme="dark"] .spc-conversion-form {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .spc-placement-form select.spc-field-control,
+[data-theme="dark"] .spc-conversion-form select.spc-field-control {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--input-border);
+}
+
 /* File inputs: keep the native picker row inside the fixed band */
-.spc-placement-form input.spc-field-control[type="file"]::file-selector-button {
+.spc-placement-form input.spc-field-control[type="file"]::file-selector-button,
+.spc-conversion-form input.spc-field-control[type="file"]::file-selector-button {
   height: 2rem;
   margin-block: auto;
   margin-inline-end: 0.75rem;
@@ -1394,6 +1412,63 @@ html, body, #root {
   font-size: 0.8125rem;
   font-family: inherit;
   cursor: inherit;
+}
+
+/* SPC conversion form — feedback banners (theme-aware contrast; avoids mismatched Tailwind green/dark) */
+.spc-form-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border-radius: var(--radius-lg);
+  padding: 0.875rem 1rem;
+  border-width: 1px;
+  border-style: solid;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-soft);
+}
+
+.spc-form-alert__icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+}
+
+:root:not([data-theme="dark"]) .spc-form-alert--success,
+[data-theme="light"] .spc-form-alert--success {
+  background-color: #ecfdf5;
+  border-color: #34d399;
+  color: #065f46;
+}
+
+[data-theme="dark"] .spc-form-alert--success {
+  background: linear-gradient(
+    145deg,
+    rgba(6, 95, 70, 0.55),
+    rgba(4, 47, 46, 0.72)
+  );
+  border-color: rgba(52, 211, 153, 0.42);
+  color: #d1fae5;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+:root:not([data-theme="dark"]) .spc-form-alert--error,
+[data-theme="light"] .spc-form-alert--error {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+[data-theme="dark"] .spc-form-alert--error {
+  background: linear-gradient(
+    145deg,
+    rgba(127, 29, 29, 0.42),
+    rgba(69, 10, 10, 0.62)
+  );
+  border-color: rgba(248, 113, 113, 0.42);
+  color: #fecaca;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 /* Global smooth hover transitions for card-like surfaces across routes */

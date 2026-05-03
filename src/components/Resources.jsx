@@ -1,6 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { resourceCategories, iconMap } from '../data/resourcesData';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 
 const colorMap = [
@@ -108,7 +114,7 @@ const Resources = () => {
   };
 
   return (
-    <div className="events-page-theme min-h-screen py-8 sm:py-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className={`events-page-theme min-h-screen ${pageShellOuterClass}`}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
 
@@ -174,20 +180,10 @@ const Resources = () => {
         }
       `}</style>
 
-      <div className="max-w-7xl mx-auto res-font">
-          {/* Back Button */}
-      <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back
-        </button>
-      </div>
+      <div className={`${pageShellInnerClass} res-font`}>
+        <PageBackNavRow>
+          <PageBackButton onClick={handleBack} label="Back" />
+        </PageBackNavRow>
 
         {/* ── Header ── */}
         <div className="mb-8 sm:mb-10 text-center">
@@ -229,7 +225,7 @@ const Resources = () => {
               ref={searchRef}
               className="res-search-input bg-slate-800/60 border border-slate-700 text-slate-200"
               type="text"
-              placeholder="Search by resource name or category…"
+              placeholder="Search by topic"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
               onFocus={() => setShowSuggestions(true)}

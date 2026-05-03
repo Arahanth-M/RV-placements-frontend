@@ -225,10 +225,7 @@ function CodingTab({ company }) {
               Object.keys(item).filter((k) => !SKIP_KEYS.has(k))
             );
             const itemTitle = getItemTitle(item);
-            const preview =
-              itemTitle !== ""
-                ? itemTitle.slice(0, 60) + (itemTitle.length > 60 ? "…" : "")
-                : "Coding question";
+            const headerLabel = itemTitle !== "" ? itemTitle : "Coding question";
 
             return (
               <div
@@ -238,10 +235,12 @@ function CodingTab({ company }) {
                 <button
                   type="button"
                   onClick={() => toggleAccordion(index)}
-                  className="w-full text-left px-3 py-3.5 sm:px-5 sm:py-4 font-semibold text-theme-primary flex justify-between items-center min-w-0 hover:bg-theme-nav transition-colors gap-2 text-sm sm:text-base"
+                  className="w-full text-left px-3 py-3.5 sm:px-5 sm:py-4 font-semibold text-theme-primary flex min-w-0 items-start justify-between gap-2 text-sm sm:text-base hover:bg-theme-nav transition-colors"
                 >
-                  <span className="truncate pr-2 min-w-0">{preview}</span>
-                  <span className="text-theme-muted text-base sm:text-lg shrink-0">
+                  <span className="min-w-0 flex-1 break-words pr-1 leading-snug sm:pr-2">
+                    {headerLabel}
+                  </span>
+                  <span className="text-theme-muted shrink-0 pt-0.5 text-base leading-none sm:pt-0 sm:text-lg" aria-hidden>
                     {openIndex === index ? "−" : "+"}
                   </span>
                 </button>

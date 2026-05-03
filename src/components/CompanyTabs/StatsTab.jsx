@@ -1,8 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FaMinus, FaPlus } from "react-icons/fa";
 import { adminAPI } from "../../utils/api";
-import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
+import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+  isPlacementDetailVisitYear,
+  normalizeTotalGotInByYear,
+} from "../../constants/placementYears.js";
+import { PLACEMENT_TIER_SUMMER_INTERNSHIP } from "../../constants/placementTiers.js";
 
 const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
+
+function gotInForBranchCode(rows, branchCode) {
+  const bc = String(branchCode || "").toLowerCase();
+  const hit = rows.find((row) => row.branchCode === bc);
+  return hit ? Math.max(0, Number(hit.gotIn) || 0) : 0;
+}
 
 function normalizeBranchRows(rows) {
   if (!Array.isArray(rows)) return [];
@@ -16,13 +29,43 @@ function normalizeBranchRows(rows) {
     .filter((row) => BRANCH_CODES.includes(row.branchCode));
 }
 
+function sumGotIn(rows) {
+  return rows.reduce((sum, row) => sum + row.gotIn, 0);
+}
+
+/** Backend-aligned: exclude branches marked conversion N/A from converted totals and acceptance denominator. */
+function sumGotInApplicable(rows) {
+  return rows.reduce(
+    (sum, row) => sum + (row.convertedNotApplicable ? 0 : row.gotIn),
+    0
+  );
+}
+
+function sumConvertedApplicable(rows) {
+  return rows.reduce(
+    (sum, row) => sum + (row.convertedNotApplicable ? 0 : row.converted),
+    0
+  );
+}
+
 function StatsTab({
   company = {},
   isAdmin = false,
   onStatsUpdated,
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+  /** When set from summer internship listings, hide placement-cycle “got in” (not applicable to that hub). */
+  placementListContext,
 }) {
   const isPpoCompany = String(company?.type || "").toLowerCase().includes("ppo");
+  const hidePlacementGotInByYear =
+    placementListContext === PLACEMENT_TIER_SUMMER_INTERNSHIP;
+  const adminGotInYear = isPlacementDetailVisitYear(placementYear)
+    ? placementYear
+    : DEFAULT_PLACEMENT_DETAIL_YEAR;
+  const [totalGotInByYear, setTotalGotInByYear] = useState(() =>
+    normalizeTotalGotInByYear(company, adminGotInYear)
+  );
+  const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
   const [branchFilter, setBranchFilter] = useState("all");
   const [isEditingStats, setIsEditingStats] = useState(false);
   const [savingStats, setSavingStats] = useState(false);
@@ -33,20 +76,40 @@ function StatsTab({
   const [convertedNaInput, setConvertedNaInput] = useState(false);
 
   const displayRows = useMemo(() => normalizeBranchRows(company.ppoBranchStats), [company.ppoBranchStats]);
-  const adminMarkedNotApplicable = Boolean(company?.ppoConversionNotApplicable);
+  /** SPC add-placement / FTE conversion — separate from PPO conversion branch stats. */
+  const placementGotInRows = useMemo(
+    () => normalizeBranchRows(company.placementGotInBranchStats),
+    [company.placementGotInBranchStats]
+  );
+  const applicableBranchRows = useMemo(
+    () => displayRows.filter((row) => !row.convertedNotApplicable),
+    [displayRows]
+  );
   const hasAnyBranchNa = useMemo(
     () => displayRows.some((row) => Boolean(row.convertedNotApplicable)),
     [displayRows]
   );
   const isConvertedDataUnavailable = useMemo(() => {
-    if (adminMarkedNotApplicable) return true;
     const yearNum = Number(placementYear);
     if (!Number.isFinite(yearNum) || yearNum < 2027) return false;
-    if (displayRows.length === 0) return false;
-    return displayRows.every((row) => Number(row?.converted || 0) === 0);
-  }, [adminMarkedNotApplicable, placementYear, displayRows]);
+    if (applicableBranchRows.length === 0) return false;
+    return applicableBranchRows.every((row) => Number(row?.converted || 0) === 0);
+  }, [placementYear, applicableBranchRows]);
+  const noApplicableBranches = applicableBranchRows.length === 0 && displayRows.length > 0;
   const shouldMaskSummary =
-    adminMarkedNotApplicable || hasAnyBranchNa || (isConvertedDataUnavailable && !isAdmin);
+    noApplicableBranches ||
+    (applicableBranchRows.length === 0 && displayRows.length === 0) ||
+    (isConvertedDataUnavailable && !isAdmin);
+
+  useEffect(() => {
+    setTotalGotInByYear(normalizeTotalGotInByYear(company, adminGotInYear));
+  }, [
+    company.totalGotIn,
+    company.totalGotInByYear,
+    company.ppoBranchStats,
+    company.placementGotInBranchStats,
+    adminGotInYear,
+  ]);
 
   useEffect(() => {
     if (!isEditingStats) return;
@@ -68,34 +131,171 @@ function StatsTab({
   }, [displayRows, branchFilter]);
 
   const overallTotals = useMemo(() => {
-    const gotIn = displayRows.reduce((sum, row) => sum + row.gotIn, 0);
-    const converted = displayRows.reduce((sum, row) => sum + row.converted, 0);
-    const acceptanceRate = gotIn > 0 ? Number(((converted / gotIn) * 100).toFixed(2)) : 0;
+    const gotIn = sumGotIn(displayRows);
+    const converted = sumConvertedApplicable(displayRows);
+    const gotInForRate = sumGotInApplicable(displayRows);
+    const acceptanceRate =
+      gotInForRate > 0 ? Number(((converted / gotInForRate) * 100).toFixed(2)) : 0;
     return { gotIn, converted, acceptanceRate };
   }, [displayRows]);
 
   const totals = useMemo(() => {
-    const gotIn = filteredRows.reduce((sum, row) => sum + row.gotIn, 0);
-    const converted = filteredRows.reduce((sum, row) => sum + row.converted, 0);
-    const acceptanceRate = gotIn > 0 ? Number(((converted / gotIn) * 100).toFixed(2)) : 0;
+    const gotIn = sumGotIn(filteredRows);
+    const converted = sumConvertedApplicable(filteredRows);
+    const gotInForRate = sumGotInApplicable(filteredRows);
+    const acceptanceRate =
+      gotInForRate > 0 ? Number(((converted / gotInForRate) * 100).toFixed(2)) : 0;
     return { gotIn, converted, acceptanceRate };
   }, [filteredRows]);
 
   const tableRows = isAdmin ? filteredRows : displayRows;
   const summary = isAdmin ? totals : overallTotals;
 
-  if (!isPpoCompany) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-6 text-theme-secondary">
-        <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm">
-          Stats are currently available for Internship (PPO) companies only.
+  /** Visit row returned for this ?year= (+ placement hub when set): same source as Roles & OA tabs. */
+  const visitTotalSelectedYear = (() => {
+    const raw = company?.totalGotIn;
+    if (raw != null && raw !== "") {
+      const n = Number(raw);
+      if (Number.isFinite(n)) return Math.max(0, n);
+    }
+    return totalGotInByYear[adminGotInYear] ?? 0;
+  })();
+  const adminYearGotIn = visitTotalSelectedYear;
+  const placementGotInBranchesWithCounts = useMemo(
+    () =>
+      BRANCH_CODES.filter((bc) => gotInForBranchCode(placementGotInRows, bc) > 0),
+    [placementGotInRows]
+  );
+
+  const handleAdjustTotalGotIn = async (delta) => {
+    if (!isAdmin || isUpdatingTotalGotIn || !company?._id) return;
+    try {
+      setIsUpdatingTotalGotIn(true);
+      const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta, {
+        year: adminGotInYear,
+      });
+      const nextByYear =
+        response.data?.totalGotInByYear != null &&
+        typeof response.data.totalGotInByYear === "object"
+          ? Object.fromEntries(
+              PLACEMENT_DETAIL_VISIT_YEARS.map((y) => [
+                y,
+                Number(response.data.totalGotInByYear[y]) || 0,
+              ])
+            )
+          : {
+              ...totalGotInByYear,
+              [adminGotInYear]: response.data?.totalGotIn ?? 0,
+            };
+      setTotalGotInByYear(nextByYear);
+      if (typeof onStatsUpdated === "function") {
+        await onStatsUpdated();
+      }
+    } catch (err) {
+      console.error("Error updating total got in:", err);
+      alert("Failed to update Got in count");
+    } finally {
+      setIsUpdatingTotalGotIn(false);
+    }
+  };
+
+  const placementGotInSection = (
+    <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+        <div>
+          <h2 className="text-xl font-semibold text-theme-accent">
+            Placed in by branch ({adminGotInYear})
+          </h2>
+          
         </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="text-right sm:text-right">
+            <div className="text-xs font-medium text-theme-muted uppercase tracking-wide">
+              Total got in
+            </div>
+            <div className="text-2xl font-bold text-theme-accent tabular-nums leading-tight">
+              {visitTotalSelectedYear}
+            </div>
+          </div>
+          {isAdmin ? (
+            <div className="flex items-center gap-1 border-l border-theme pl-4">
+              <button
+                type="button"
+                onClick={() => handleAdjustTotalGotIn(-1)}
+                disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Decrease got in count"
+                title="Decrease got in count"
+              >
+                <FaMinus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdjustTotalGotIn(1)}
+                disabled={isUpdatingTotalGotIn}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Increase got in count"
+                title="Increase got in count"
+              >
+                <FaPlus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {placementGotInBranchesWithCounts.length === 0 ? (
+        <p className="text-sm text-theme-muted py-2 text-center">
+          No branch rows with a count yet for {adminGotInYear}. Visit total above still reflects the visit.
+        </p>
+      ) : (
+        <div className="max-w-md w-full mx-auto rounded-lg border border-theme overflow-hidden">
+          <table className="w-full text-sm table-fixed divide-y divide-[var(--border)]">
+            <thead className="bg-theme-hero">
+              <tr>
+                <th className="px-2 py-2 w-[42%] text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
+                  Branch
+                </th>
+                <th className="px-2 py-2 text-right text-xs font-medium text-theme-muted uppercase tracking-wider tabular-nums">
+                  Got in ({adminGotInYear})
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-theme-card divide-y divide-[var(--border)]">
+              {placementGotInBranchesWithCounts.map((bc) => (
+                <tr key={bc} className="hover:bg-theme-nav/50 transition-colors">
+                  <td className="px-2 py-2 font-medium text-theme-primary uppercase">{bc}</td>
+                  <td className="px-2 py-2 text-right text-theme-primary tabular-nums whitespace-nowrap">
+                    {gotInForBranchCode(placementGotInRows, bc)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  if (!isPpoCompany) {
+    if (hidePlacementGotInByYear) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <p className="text-sm text-theme-muted">
+            Placement offer counts by year are not shown for summer internship listings.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
+        {placementGotInSection}
       </div>
     );
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
+      {!hidePlacementGotInByYear ? placementGotInSection : null}
       <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-xl font-semibold text-theme-accent">Branch-wise stats</h2>
@@ -137,11 +337,16 @@ function StatsTab({
         </div>
         {shouldMaskSummary && (
           <p className="text-xs text-theme-muted mb-4">
-            {adminMarkedNotApplicable
-              ? "Conversion values are marked as not applicable for now."
-              : hasAnyBranchNa
-              ? "Some branch conversions are marked as not applicable."
-              : `Conversion values for ${placementYear} are not available yet.`}
+            {noApplicableBranches
+              ? "Conversion values are not tracked for any branch (all marked not applicable)."
+              : isConvertedDataUnavailable && !isAdmin
+              ? `Conversion values for ${placementYear} are not available yet.`
+              : "Conversion summary is unavailable."}
+          </p>
+        )}
+        {!shouldMaskSummary && hasAnyBranchNa && (
+          <p className="text-xs text-theme-muted mb-4">
+            Branches marked not applicable are excluded from converted totals and acceptance rate.
           </p>
         )}
 
@@ -160,7 +365,6 @@ function StatsTab({
                 tableRows.map((row) => {
                   const rate = row.gotIn > 0 ? Number(((row.converted / row.gotIn) * 100).toFixed(2)) : 0;
                   const shouldMaskRow =
-                    adminMarkedNotApplicable ||
                     Boolean(row.convertedNotApplicable) ||
                     (isConvertedDataUnavailable && !isAdmin);
                   return (

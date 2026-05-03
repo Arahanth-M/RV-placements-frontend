@@ -3,15 +3,15 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaCheckCircle, FaChevronDown, FaExclamationCircle } from "react-icons/fa";
 import { spcAPI } from "../utils/api";
 import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+} from "../constants/placementYears.js";
+import {
   PageBackButton,
   PageBackNavRow,
   pageShellInnerClass,
   pageShellOuterClass,
 } from "./PageBackNav.jsx";
-import {
-  DEFAULT_PLACEMENT_DETAIL_YEAR,
-  PLACEMENT_DETAIL_VISIT_YEARS,
-} from "../constants/placementYears.js";
 
 const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
 
@@ -27,21 +27,32 @@ function formatSpcSubmitError(err, fallbackMessage) {
   return msg;
 }
 
+/** Custom picker options — native `<select>` popups ignore dark theme on Windows (white list + light text). */
+const BRANCH_PICKER_OPTIONS = [
+  { value: "", label: "Select branch" },
+  ...BRANCH_CODES.map((b) => ({ value: b, label: b.toUpperCase() })),
+];
+
+const CONVERSION_TYPES = [
+  { value: "fte", label: "FTE" },
+  { value: "fte_internship", label: "Internship + FTE" },
+];
+
 const INITIAL_FORM = {
   email: "",
   name: "",
   usn: "",
-  companyQuery: "",
-  companyPlaced: "",
-  typeOfOffer: "",
-  role: "",
-  stipend: "",
-  base: "",
-  ctc: "",
   placementYear: DEFAULT_PLACEMENT_DETAIL_YEAR,
   branchCode: "",
+  companyQuery: "",
+  conversionType: "fte",
+  ctc: "",
+  base: "",
+  stipend: "",
+  role: "",
 };
 
+/** Same hub as company detail (`?placementContext=` or session from company cards). */
 function placementContextHintForSpc(companyId, searchParams) {
   const fromUrl = String(searchParams.get("placementContext") || "").trim();
   if (fromUrl) return fromUrl;
@@ -55,35 +66,18 @@ function placementContextHintForSpc(companyId, searchParams) {
   }
 }
 
-const SPC_TYPE_OF_OFFER_OPTIONS = [
-  "Internship(PPO)",
-  "FTE",
-  "Internship+FTE",
-  "Internship + FTE (PBC)",
-  "Only internship(6 months)",
-];
-
-/** Which compensation inputs to show for the selected type of offer. */
-function compensationVisibilityForTypeOfOffer(typeOfOffer) {
-  const t = String(typeOfOffer || "").trim();
-  if (t === "FTE") return { stipend: false, fte: true };
-  if (t === "Internship(PPO)" || t === "Only internship(6 months)") return { stipend: true, fte: false };
-  if (t === "Internship+FTE" || t === "Internship + FTE (PBC)") return { stipend: true, fte: true };
-  return { stipend: true, fte: true };
-}
-
-/* ─── Shared input class ────────────────────────────────────────────────── */
 const INPUT_CLASS =
   "spc-field-control h-11 min-h-[2.75rem] max-h-[2.75rem] w-full shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm text-theme-primary outline-none focus:border-theme-accent transition-colors placeholder:text-theme-muted box-border";
 
-/* ─── TypeOfOfferPicker ─────────────────────────────────────────────────── */
-function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
+function SimplePicker({ value, onChange, options, placeholder, labelId }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
-    const onKeyDown = (e) => { if (e.key === "Escape") setOpen(false); };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     const onPointerDown = (e) => {
       if (!rootRef.current?.contains(e.target)) setOpen(false);
     };
@@ -95,16 +89,12 @@ function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
     };
   }, [open]);
 
-  const pick = (next) => {
-    onChange({ target: { name: "typeOfOffer", value: next } });
-    setOpen(false);
-  };
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? "";
 
   return (
     <div ref={rootRef} className="relative w-full">
       <button
         type="button"
-        id="spc-type-of-offer-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-labelledby={labelId}
@@ -112,7 +102,7 @@ function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
         onClick={() => setOpen((p) => !p)}
       >
         <span className={value ? "text-theme-primary" : "text-theme-muted"}>
-          {value || placeholder}
+          {selectedLabel || placeholder}
         </span>
         <FaChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-theme-secondary transition-transform duration-200 ${open ? "rotate-180" : ""}`}
@@ -127,9 +117,9 @@ function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
           aria-labelledby={labelId}
         >
           {options.map((opt) => {
-            const selected = value === opt;
+            const selected = value === opt.value;
             return (
-              <li key={opt} role="presentation">
+              <li key={opt.value} role="presentation">
                 <button
                   type="button"
                   role="option"
@@ -139,9 +129,12 @@ function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
                       ? "bg-theme-nav font-medium text-theme-primary"
                       : "text-theme-primary hover:bg-theme-nav"
                   }`}
-                  onClick={() => pick(opt)}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
                 >
-                  {opt}
+                  {opt.label}
                 </button>
               </li>
             );
@@ -152,15 +145,14 @@ function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
   );
 }
 
-/* ─── Field ─────────────────────────────────────────────────────────────── */
 function Field({ label, name, value, onChange, type = "text", placeholder = "" }) {
   return (
     <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-      <label htmlFor={`field-${name}`} className="block text-sm font-medium text-theme-primary">
+      <label htmlFor={`conv-field-${name}`} className="block text-sm font-medium text-theme-primary">
         {label}
       </label>
       <input
-        id={`field-${name}`}
+        id={`conv-field-${name}`}
         type={type}
         name={name}
         value={value}
@@ -172,8 +164,7 @@ function Field({ label, name, value, onChange, type = "text", placeholder = "" }
   );
 }
 
-/* ─── Main Form ─────────────────────────────────────────────────────────── */
-export default function SPCPlacementForm() {
+export default function SPCConversionForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -187,6 +178,7 @@ export default function SPCPlacementForm() {
   const suggestRootRef = useRef(null);
   const debounceRef = useRef(null);
   const formFeedbackRef = useRef(null);
+  /** Keeps latest selection for debounced suggest callback (avoids stale closures). */
   const selectedCompanyRef = useRef(null);
 
   useEffect(() => {
@@ -219,7 +211,7 @@ export default function SPCPlacementForm() {
     setSuccess("");
     if (name === "companyQuery") {
       setSelectedCompany(null);
-      setForm((prev) => ({ ...prev, companyQuery: value, companyPlaced: "" }));
+      setForm((prev) => ({ ...prev, companyQuery: value }));
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -239,10 +231,14 @@ export default function SPCPlacementForm() {
         const res = await spcAPI.companySuggest(q);
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
         setSuggestions(items);
+        const trimmed = q.trim();
         const locked = selectedCompanyRef.current;
-        const matchesLocked =
-          locked?.id && q.trim() === String(locked.name || "").trim();
-        setSuggestOpen(Boolean(items.length > 0 && !matchesLocked));
+        const matchesLockedSelection =
+          locked?.id &&
+          trimmed === String(locked.name || "").trim();
+        // After choosing from the list, query updates to the canonical name and triggers another fetch.
+        // Do not reopen the dropdown — that felt like having to "select twice".
+        setSuggestOpen(Boolean(items.length > 0 && !matchesLockedSelection));
       } catch {
         setSuggestions([]);
         setSuggestOpen(false);
@@ -259,11 +255,7 @@ export default function SPCPlacementForm() {
     }
     setSelectedCompany({ id: item.id, name: item.name });
     selectedCompanyRef.current = { id: item.id, name: item.name };
-    setForm((prev) => ({
-      ...prev,
-      companyQuery: item.name,
-      companyPlaced: item.name,
-    }));
+    setForm((prev) => ({ ...prev, companyQuery: item.name }));
     setSuggestOpen(false);
     setSuggestions([]);
     setError("");
@@ -273,67 +265,55 @@ export default function SPCPlacementForm() {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!selectedCompany?.id) {
+      setError("Select a company from the suggestions list.");
+      return;
+    }
+    if (!String(form.branchCode || "").trim()) {
+      setError("Please select a branch.");
+      return;
+    }
+
     setIsSubmitting(true);
-
     try {
-      if (!String(form.typeOfOffer || "").trim()) {
-        setError("Please select a type of offer.");
-        return;
-      }
-      if (selectedCompany?.id && !String(form.branchCode || "").trim()) {
-        setError("Select a branch when a company is chosen from suggestions so visit got-in can be updated.");
-        return;
-      }
-
-      const companyPlaced =
-        (selectedCompany?.name || form.companyPlaced || form.companyQuery || "").trim();
-      if (!companyPlaced) {
-        setError("Company placed is required (pick from suggestions or type the name).");
-        return;
-      }
-
-      const { stipend: sendStipend, fte: sendFte } = compensationVisibilityForTypeOfOffer(
-        form.typeOfOffer
-      );
-
-      const cleaned = {
-        email: form.email.trim(),
-        name: form.name.trim(),
-        usn: form.usn.trim(),
-        companyPlaced,
-        typeOfOffer: form.typeOfOffer.trim(),
+      const payload = {
+        companyId: selectedCompany.id,
+        placementYear: Number(form.placementYear),
+        branchCode: form.branchCode,
+        email: form.email,
+        name: form.name,
+        usn: form.usn,
+        conversionType: form.conversionType,
+        ctc: String(form.ctc ?? "").trim(),
+        base: String(form.base ?? "").trim(),
+        role: String(form.role ?? "").trim(),
+        stipend:
+          form.conversionType === "fte_internship" ? String(form.stipend ?? "").trim() : "",
       };
-      if (sendStipend && form.stipend?.trim()) cleaned.stipend = form.stipend.trim();
-      if (sendFte && form.base?.trim()) cleaned.base = form.base.trim();
-      if (sendFte && form.ctc?.trim()) cleaned.ctc = form.ctc.trim();
-      if (form.role?.trim()) cleaned.role = form.role.trim();
-
-      if (selectedCompany?.id && form.branchCode) {
-        cleaned.companyId = selectedCompany.id;
-        cleaned.placementYear = Number(form.placementYear);
-        cleaned.branchCode = form.branchCode;
-        const placementCtx = placementContextHintForSpc(selectedCompany.id, searchParams);
-        if (placementCtx) {
-          cleaned.placementContext = placementCtx;
-        }
+      const placementCtx = placementContextHintForSpc(selectedCompany.id, searchParams);
+      if (placementCtx) {
+        payload.placementContext = placementCtx;
       }
 
-      await spcAPI.submitPlacement(cleaned);
-      setSuccess("Placement data submitted successfully");
+      await spcAPI.submitConversionDetails(payload);
+      setSuccess("Conversion details saved successfully.");
       setForm(INITIAL_FORM);
       setSelectedCompany(null);
       setSuggestions([]);
     } catch (err) {
-      setError(formatSpcSubmitError(err, "Failed to submit placement data"));
+      setError(formatSpcSubmitError(err, "Failed to save conversion details"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const compFields = compensationVisibilityForTypeOfOffer(form.typeOfOffer);
+  const showStipend = form.conversionType === "fte_internship";
+
+  const yearOptions = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
   return (
-    <div className={`spc-placement-form min-h-screen ${pageShellOuterClass}`}>
+    <div className={`spc-conversion-form min-h-screen ${pageShellOuterClass}`}>
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate("/spc-dashboard")} label="Back to Dashboard" />
@@ -342,21 +322,21 @@ export default function SPCPlacementForm() {
         <div className="mx-auto w-full max-w-2xl">
         <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
           <div>
-            <h1 className="text-3xl font-bold text-theme-primary">Placement Form</h1>
+            <h1 className="text-3xl font-bold text-theme-primary">Update conversion details</h1>
             {/* <p className="mt-2 text-sm text-theme-secondary">
-              With company, placement year, and branch from suggestions, role and the compensation fields you see
-              (by type of offer) update the matched company visit the same way as Update conversion details.
+              Record compensation and conversion type with a verified company. Each new student + company
+              + placement year increments placement got-in and visit total on the visit
+              (placementGotInBranchStats), separate from PPO conversion stats on the Stats tab.
             </p> */}
           </div>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-            {/* Student Details */}
             <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
-              <h2 className="text-lg font-semibold text-theme-primary">Student Details</h2>
+              <h2 className="text-lg font-semibold text-theme-primary">Student</h2>
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="sm:col-span-2">
                   <Field
-                    label="Email of student"
+                    label="Email"
                     name="email"
                     value={form.email}
                     onChange={handleChange}
@@ -364,51 +344,83 @@ export default function SPCPlacementForm() {
                     placeholder="student@rvce.edu.in"
                   />
                 </div>
-                <Field
-                  label="Name"
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Student full name"
-                />
+                <Field label="Name" name="name" value={form.name} onChange={handleChange} placeholder="Full name" />
                 <Field
                   label="USN"
                   name="usn"
                   value={form.usn}
                   onChange={(e) =>
-                    handleChange({ target: { name: "usn", value: e.target.value.toUpperCase() } })
+                    handleChange({
+                      target: { name: "usn", value: e.target.value.toUpperCase() },
+                    })
                   }
                   placeholder="1RV22CS001"
                 />
               </div>
             </section>
 
-            {/* Placement Details */}
             <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
-              <h2 className="text-lg font-semibold text-theme-primary">Placement Details</h2>
+              <h2 className="text-lg font-semibold text-theme-primary">Placement cycle</h2>
+              <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
+                <div className="flex min-h-0 w-full flex-col gap-2 self-start">
+                  <label id="conv-year-label" className="block text-sm font-medium text-theme-primary">
+                    Year
+                  </label>
+                  <SimplePicker
+                    value={form.placementYear}
+                    onChange={(v) => {
+                      setError("");
+                      setSuccess("");
+                      setForm((prev) => ({ ...prev, placementYear: Number(v) }));
+                    }}
+                    options={yearOptions.map((y) => ({ value: y, label: String(y) }))}
+                    placeholder="Select year"
+                    labelId="conv-year-label"
+                  />
+                </div>
+                <div className="flex min-h-0 w-full flex-col gap-2 self-start">
+                  <label id="conv-branch-label" className="block text-sm font-medium text-theme-primary">
+                    Branch
+                  </label>
+                  <SimplePicker
+                    value={form.branchCode}
+                    onChange={(v) => {
+                      setError("");
+                      setSuccess("");
+                      setForm((prev) => ({ ...prev, branchCode: v }));
+                    }}
+                    options={BRANCH_PICKER_OPTIONS}
+                    placeholder="Select branch"
+                    labelId="conv-branch-label"
+                  />
+                </div>
+              </div>
+            </section>
 
+            <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
+              <h2 className="text-lg font-semibold text-theme-primary">Company</h2>
               <div ref={suggestRootRef} className="relative flex min-h-0 w-full flex-col gap-2 self-start">
-                <label htmlFor="spc-pl-company" className="block text-sm font-medium text-theme-primary">
-                  Company 
+                <label htmlFor="conv-company" className="block text-sm font-medium text-theme-primary">
+                  Company name
                 </label>
                 <input
-                  id="spc-pl-company"
+                  id="conv-company"
                   name="companyQuery"
                   autoComplete="off"
                   value={form.companyQuery}
                   onChange={handleChange}
                   onFocus={() => {
-                    if (form.companyQuery.trim().length >= 2 && suggestions.length > 0) {
-                      setSuggestOpen(true);
-                    }
+                    if (form.companyQuery.trim().length >= 2 && suggestions.length > 0) setSuggestOpen(true);
                   }}
                   placeholder="Type at least 2 characters to pick from suggestions"
                   className={INPUT_CLASS}
                 />
-                {/* {selectedCompany?.id && form.companyQuery === selectedCompany.name && (
-                  <p className="text-xs text-theme-secondary">Linked for visit got-in updates.</p>
-                )} */}
-                {suggestLoading && <p className="text-xs text-theme-muted">Searching…</p>}
+                {selectedCompany?.id && form.companyQuery === selectedCompany.name && (
+                  <p className="text-xs text-theme-secondary">Linked company ID ready for submit.</p>
+                )}
+                {suggestLoading && (
+                  <p className="text-xs text-theme-muted">Searching…</p>
+                )}
                 {suggestOpen && suggestions.length > 0 && (
                   <ul
                     className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme bg-theme-card py-1 shadow-lg"
@@ -429,73 +441,31 @@ export default function SPCPlacementForm() {
                   </ul>
                 )}
               </div>
+            </section>
 
-              {/* <p className="text-xs text-theme-muted">
-                Or type a company name only (no list pick) to record placement without changing visit
-                counters.
-              </p> */}
-
+            <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
+              <h2 className="text-lg font-semibold text-theme-primary">Conversion & compensation</h2>
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
-                <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                  <label htmlFor="spc-pl-year" className="block text-sm font-medium text-theme-primary">
-                    Placement year
+                <div className="sm:col-span-2 flex min-h-0 w-full flex-col gap-2 self-start">
+                  <label className="block text-sm font-medium text-theme-primary" id="conv-type-label">
+                    Conversion type
                   </label>
-                  <select
-                    id="spc-pl-year"
-                    name="placementYear"
-                    value={form.placementYear}
-                    onChange={(e) =>
+                  <SimplePicker
+                    value={form.conversionType}
+                    onChange={(v) => {
+                      setError("");
+                      setSuccess("");
                       setForm((prev) => ({
                         ...prev,
-                        placementYear: Number(e.target.value),
-                      }))
-                    }
-                    className={INPUT_CLASS}
-                  >
-                    {PLACEMENT_DETAIL_VISIT_YEARS.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                  <label htmlFor="spc-pl-branch" className="block text-sm font-medium text-theme-primary">
-                    Branch 
-                  </label>
-                  <select
-                    id="spc-pl-branch"
-                    name="branchCode"
-                    value={form.branchCode}
-                    onChange={handleChange}
-                    className={INPUT_CLASS}
-                  >
-                    <option value="">Select branch</option>
-                    {BRANCH_CODES.map((b) => (
-                      <option key={b} value={b}>
-                        {b.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
-                <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                  <label className="block text-sm font-medium text-theme-primary" id="spc-type-of-offer-label">
-                    Type of offer
-                  </label>
-                  <TypeOfOfferPicker
-                    value={form.typeOfOffer}
-                    onChange={handleChange}
-                    options={SPC_TYPE_OF_OFFER_OPTIONS}
-                    placeholder="Select type of offer"
-                    labelId="spc-type-of-offer-label"
+                        conversionType: v,
+                        stipend: v === "fte" ? "" : prev.stipend,
+                      }));
+                    }}
+                    options={CONVERSION_TYPES}
+                    placeholder="Select conversion type"
+                    labelId="conv-type-label"
                   />
                 </div>
-              </div>
-
-              <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="sm:col-span-2">
                   <Field
                     label="Role"
@@ -504,51 +474,34 @@ export default function SPCPlacementForm() {
                     onChange={handleChange}
                     placeholder="e.g. Analyst, SDE"
                   />
+                  
                 </div>
-                {compFields.stipend ? (
-                  <Field
-                    label="Stipend"
-                    name="stipend"
-                    value={form.stipend}
-                    onChange={handleChange}
-                    placeholder="e.g. 50,000"
-                  />
-                ) : null}
-                {compFields.fte ? (
-                  <>
-                    <Field
-                      label="CTC"
-                      name="ctc"
-                      value={form.ctc}
-                      onChange={handleChange}
-                      placeholder="e.g. 18 LPA"
-                    />
-                    <Field
-                      label="Base"
-                      name="base"
-                      value={form.base}
-                      onChange={handleChange}
-                      placeholder="e.g. 12 LPA"
-                    />
-                  </>
-                ) : null}
-              </div>
-            </section>
-
-            {/* Resume Upload */}
-            <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
-              <h2 className="text-lg font-semibold text-theme-primary">Resume Upload</h2>
-              <div className="flex min-h-0 w-full max-w-full flex-col gap-2 self-start">
-                <label className="block text-sm font-medium text-theme-primary">Upload resume</label>
-                <input
-                  type="file"
-                  disabled
-                  className={`${INPUT_CLASS} cursor-not-allowed opacity-50 file:cursor-not-allowed`}
+                <Field
+                  label="CTC "
+                  name="ctc"
+                  value={form.ctc}
+                  onChange={handleChange}
+                  placeholder="e.g. 18 LPA"
                 />
+                <Field
+                  label="Base"
+                  name="base"
+                  value={form.base}
+                  onChange={handleChange}
+                  placeholder="e.g. 12 LPA"
+                />
+                {showStipend ? (
+                  <div className="sm:col-span-2">
+                    <Field
+                      label="Stipend (for 6 month internship)"
+                      name="stipend"
+                      value={form.stipend}
+                      onChange={handleChange}
+                      placeholder="e.g. 50,000"
+                    />
+                  </div>
+                ) : null}
               </div>
-              <p className="text-sm text-theme-secondary">
-                Resume upload is on hold for now and is not being submitted yet.
-              </p>
             </section>
 
             {error || success ? (
@@ -568,7 +521,6 @@ export default function SPCPlacementForm() {
               </div>
             ) : null}
 
-            {/* Actions */}
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -582,7 +534,7 @@ export default function SPCPlacementForm() {
                 disabled={isSubmitting}
                 className="h-11 rounded-xl bg-theme-accent px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSubmitting ? "Submitting…" : "Submit Placement Data"}
+                {isSubmitting ? "Saving…" : "Save conversion details"}
               </button>
             </div>
           </form>
