@@ -8,11 +8,19 @@ import {
   CompensationDisclaimerFootnote,
 } from "../PlacementCompensationNote.jsx";
 
+/** Whole-field placeholders — hide from students; admins still see them so they can replace with a real date. */
+function isPlaceholderVisitDateOnly(raw) {
+  const s = raw == null ? "" : String(raw).trim();
+  return /^tba$/i.test(s) || /^tbd$/i.test(s);
+}
+
 function GeneralTab({
   company = {},
   isAdmin = false,
   onRolesUpdated,
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+  /** True when opened from Dream / Open dream / Summer hub and this year has no matching visit — show notice but keep tab content (e.g. date of visit). */
+  tierVisitDetailsPlaceholder = false,
 }) {
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
@@ -38,11 +46,28 @@ function GeneralTab({
     company.ppoConversionType || ""
   );
 
+  const [isEditingVisitDate, setIsEditingVisitDate] = useState(false);
+  const [visitDateDraft, setVisitDateDraft] = useState("");
+  const [savingVisitDate, setSavingVisitDate] = useState(false);
+
   const isInternshipOnlyCompany = (() => {
     const typeLower = (company?.type || "").toLowerCase();
     return typeLower.includes("only internship");
   })();
   const isPpoCompany = ((company?.type || "").toLowerCase().includes("ppo"));
+  const visitDateRaw =
+    company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
+  /** Shown to students / non-admins only when not a bare TBA/TBD. */
+  const visitDatePublicText =
+    visitDateRaw.length > 0 && !isPlaceholderVisitDateOnly(visitDateRaw)
+      ? visitDateRaw
+      : null;
+  /** Admin read-only line: any stored value including TBA/TBD. */
+  const visitDateAdminReadOnlyText = visitDateRaw.length > 0 ? visitDateRaw : null;
+  /** Admins may only edit visit date when this list/year has an approved visit row (not “No visit yet”). */
+  const canAdminEditVisitDate = isAdmin && !tierVisitDetailsPlaceholder;
+  const showVisitDateSection =
+    visitDatePublicText != null || canAdminEditVisitDate;
 
   useEffect(() => {
     if (!isEditingPpoConversion) {
@@ -53,6 +78,17 @@ function GeneralTab({
     isEditingPpoConversion,
   ]);
 
+  useEffect(() => {
+    if (!isEditingVisitDate) {
+      const raw =
+        company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
+      setVisitDateDraft(raw);
+    }
+  }, [company.date_of_visit, isEditingVisitDate]);
+
+  useEffect(() => {
+    if (tierVisitDetailsPlaceholder) setIsEditingVisitDate(false);
+  }, [tierVisitDetailsPlaceholder]);
 
   const formatCTCValue = (value) => {
     if (value === null || value === undefined) return "N/A";
@@ -62,7 +98,19 @@ function GeneralTab({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
-      
+      {tierVisitDetailsPlaceholder && (
+        <div
+          className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-4 sm:px-6 sm:py-5 text-center"
+          role="status"
+        >
+          <p className="text-slate-200 font-medium">No visit yet</p>
+          <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
+            This placement list and year do not have a matching on-campus visit. You can still
+            review eligibility below; visit date is shown only when recorded for this batch.
+          </p>
+        </div>
+      )}
+
       {/* Placement-year info (business model lives in company header — company-wide) */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">
@@ -171,6 +219,118 @@ function GeneralTab({
           </form>
         )}
       </div>
+
+      {showVisitDateSection && (
+        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-indigo-400">
+                Date of visit
+              </h2>
+              {/* <p className="text-sm text-slate-500 mt-1">
+                Placement batch{" "}
+                <span className="font-medium text-slate-300">{placementYear}</span>
+              </p> */}
+            </div>
+            {canAdminEditVisitDate && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isEditingVisitDate) {
+                    setVisitDateDraft(visitDateRaw);
+                  }
+                  setIsEditingVisitDate((prev) => !prev);
+                }}
+                className="px-3 py-1 text-sm rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-600 shrink-0"
+              >
+                {isEditingVisitDate ? "Cancel" : visitDateRaw ? "Edit date" : "Add date"}
+              </button>
+            )}
+          </div>
+
+          {!isEditingVisitDate ? (
+            <div className="bg-slate-800/60 rounded-lg p-4">
+              {canAdminEditVisitDate ? (
+                visitDateAdminReadOnlyText ? (
+                  <p className="text-base font-medium text-slate-200 whitespace-pre-wrap">
+                    {visitDateAdminReadOnlyText}
+                  </p>
+                ) : (
+                  <p className="text-slate-500 text-sm italic">
+                    Not set — use Add date to record the on-campus visit date for this batch.
+                  </p>
+                )
+              ) : visitDatePublicText ? (
+                <p className="text-base font-medium text-slate-200 whitespace-pre-wrap">
+                  {visitDatePublicText}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  setSavingVisitDate(true);
+                  await adminAPI.updateCompanyGeneralInfo(
+                    company._id,
+                    { date_of_visit: visitDateDraft.trim() },
+                    { year: placementYear }
+                  );
+                  if (typeof onRolesUpdated === "function") {
+                    await onRolesUpdated();
+                  }
+                  setIsEditingVisitDate(false);
+                } catch (err) {
+                  console.error("Error updating date of visit:", err);
+                  alert(
+                    err.response?.data?.details?.date_of_visit?.message ||
+                      err.response?.data?.error ||
+                      "Failed to update date of visit. Please try again."
+                  );
+                } finally {
+                  setSavingVisitDate(false);
+                }
+              }}
+            >
+              <div>
+                <label
+                  htmlFor="visit-date-input"
+                  className="block text-slate-400 text-xs uppercase tracking-wide mb-2"
+                >
+                  Visit date (free text or ISO, e.g. 2026-08-12)
+                </label>
+                <input
+                  id="visit-date-input"
+                  type="text"
+                  value={visitDateDraft}
+                  onChange={(e) => setVisitDateDraft(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. 12 Aug 2026 or TBA"
+                />
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={savingVisitDate}
+                  className="px-4 py-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold disabled:opacity-60"
+                >
+                  {savingVisitDate ? "Saving…" : "Save date"}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingVisitDate}
+                  onClick={() => setIsEditingVisitDate(false)}
+                  className="px-3 py-2 rounded-md border border-slate-600 text-slate-200 text-sm hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
 
       {isPpoCompany && (
         <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">

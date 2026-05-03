@@ -261,11 +261,6 @@ function CompanyCard({
       : Number(company.ppoConversionAcceptanceRate) || 0;
   const ppoConversionType = String(company.ppoConversionType || "").trim();
 
-  const visitDateStr =
-    company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
-  const showDateOfVisit =
-    visitDateStr.length > 0 && !/^(tba|tbd)$/i.test(visitDateStr);
-
   const adminGotInYear = cardPlacementYear;
   const adminYearGotIn = totalGotInByYear[adminGotInYear] ?? 0;
 
