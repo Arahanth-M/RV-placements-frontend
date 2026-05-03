@@ -1843,6 +1843,7 @@ function CompanyStats() {
       )}
       </div>
     </div>
+    </div>
   );
 }
 
