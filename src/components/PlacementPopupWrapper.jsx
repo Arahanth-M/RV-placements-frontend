@@ -12,22 +12,39 @@ function normalizeCompanyName(raw) {
   return String(raw).trim();
 }
 
+function pushCompanyName(seen, names, raw) {
+  const name = normalizeCompanyName(raw);
+  if (!name) return;
+  const key = name.toLowerCase();
+  if (seen.has(key)) return;
+  seen.add(key);
+  names.push(name);
+}
+
+/** Companies from `placementdatas` (and API summary fields), de-duplicated. */
 function placementCompanyNamesFromProfile(studentData) {
-  const placements = Array.isArray(studentData?.placements) ? studentData.placements : [];
+  if (!studentData || typeof studentData !== 'object') return [];
+
   const seen = new Set();
   const names = [];
 
-  for (const placement of placements) {
-    const name = normalizeCompanyName(placement?.companyPlaced);
-    if (!name) continue;
-
-    const key = name.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    names.push(name);
+  for (const placement of Array.isArray(studentData.placements) ? studentData.placements : []) {
+    pushCompanyName(seen, names, placement?.companyPlaced);
   }
+  for (const row of Array.isArray(studentData.placementCompanies) ? studentData.placementCompanies : []) {
+    pushCompanyName(seen, names, row?.companyName);
+  }
+  pushCompanyName(seen, names, studentData.primaryCompanyName);
+  pushCompanyName(seen, names, studentData.Company);
 
   return names;
+}
+
+function formatPartOfCompanySentence(names) {
+  if (names.length === 0) return '';
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
 const PlacementPopupWrapper = () => {
@@ -118,6 +135,7 @@ const PlacementPopupWrapper = () => {
   const displayName =
     studentData?.student?.name?.trim() || user?.username || 'Student';
   const isPlacementPopup = popupVariant === 'placement';
+  const companySentence = formatPartOfCompanySentence(companyNames);
 
   return (
     <div className="fixed top-6 right-6 z-50 animate-slide-in-right max-w-md w-[92vw] sm:w-auto">
@@ -152,39 +170,44 @@ const PlacementPopupWrapper = () => {
             <h3 className="text-xl font-extrabold text-theme-primary mb-1 tracking-tight">
               {isPlacementPopup ? (
                 <>
-                  Congratulations {displayName}{' '}
+                  Congratulations, {displayName}{' '}
                   <span className="inline-block animate-bounce">🎉</span>
                 </>
               ) : (
-                <>Welcome {displayName} , Hope you are doing great !!</>
+                <>Welcome {displayName}, hope you are doing great!</>
               )}
             </h3>
 
             {isPlacementPopup ? (
               <>
-                <p className="text-theme-secondary text-sm mb-3 text-center">
-                  for succesfully getting the opportunity to work at:
+                <p className="text-theme-secondary text-sm mb-3 leading-relaxed">
+                  Congrats on being part of{' '}
+                  <span className="font-semibold text-theme-primary">
+                    {companySentence}
+                  </span>
+                  .
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {companyNames.map((name, idx) => (
-                    <span
-                      key={`${name}-${idx}`}
-                      className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 hover:scale-105 hover:-translate-y-0.5"
-                      style={{
-                        background:
-                          'color-mix(in srgb, var(--accent) 22%, transparent)',
-                        borderColor:
-                          'color-mix(in srgb, var(--accent) 55%, transparent)',
-                        color: 'var(--accent)',
-                        aligncenter: 'var(--accent)',
-                        boxShadow:
-                          '0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent)',
-                      }}
-                    >
-                      {name}
-                    </span>
-                  ))}
-                </div>
+                {companyNames.length > 1 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {companyNames.map((name, idx) => (
+                      <span
+                        key={`${name}-${idx}`}
+                        className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 hover:scale-105 hover:-translate-y-0.5"
+                        style={{
+                          background:
+                            'color-mix(in srgb, var(--accent) 22%, transparent)',
+                          borderColor:
+                            'color-mix(in srgb, var(--accent) 55%, transparent)',
+                          color: 'var(--accent)',
+                          boxShadow:
+                            '0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent), 0 6px 14px color-mix(in srgb, var(--accent) 18%, transparent)',
+                        }}
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </>
             ) : null}
           </div>
