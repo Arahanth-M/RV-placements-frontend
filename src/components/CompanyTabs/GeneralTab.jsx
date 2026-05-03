@@ -19,8 +19,6 @@ function GeneralTab({
   isAdmin = false,
   onRolesUpdated,
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
-  /** True when opened from Dream / Open dream / Summer hub and this year has no matching visit — show notice but keep tab content (e.g. date of visit). */
-  tierVisitDetailsPlaceholder = false,
 }) {
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
@@ -64,8 +62,7 @@ function GeneralTab({
       : null;
   /** Admin read-only line: any stored value including TBA/TBD. */
   const visitDateAdminReadOnlyText = visitDateRaw.length > 0 ? visitDateRaw : null;
-  /** Admins may only edit visit date when this list/year has an approved visit row (not “No visit yet”). */
-  const canAdminEditVisitDate = isAdmin && !tierVisitDetailsPlaceholder;
+  const canAdminEditVisitDate = isAdmin;
   const showVisitDateSection =
     visitDatePublicText != null || canAdminEditVisitDate;
 
@@ -86,10 +83,6 @@ function GeneralTab({
     }
   }, [company.date_of_visit, isEditingVisitDate]);
 
-  useEffect(() => {
-    if (tierVisitDetailsPlaceholder) setIsEditingVisitDate(false);
-  }, [tierVisitDetailsPlaceholder]);
-
   const formatCTCValue = (value) => {
     if (value === null || value === undefined) return "N/A";
     if (typeof value === "number") return `₹ ${value.toLocaleString("en-IN")}`;
@@ -98,19 +91,6 @@ function GeneralTab({
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
-      {tierVisitDetailsPlaceholder && (
-        <div
-          className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-4 sm:px-6 sm:py-5 text-center"
-          role="status"
-        >
-          <p className="text-slate-200 font-medium">No visit yet</p>
-          <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto leading-relaxed">
-            This placement list and year do not have a matching on-campus visit. You can still
-            review eligibility below; visit date is shown only when recorded for this batch.
-          </p>
-        </div>
-      )}
-
       {/* Placement-year info (business model lives in company header — company-wide) */}
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">

@@ -744,15 +744,17 @@ function CompanyDetails() {
         )}
         <div className="company-tab-content">
           {activeTab === "about" && <AboutTab company={company} />}
-          {activeTab === "general" && (
-            <GeneralTab
-              company={company}
-              isAdmin={isAdmin}
-              onRolesUpdated={handleRefresh}
-              placementYear={placementYear}
-              tierVisitDetailsPlaceholder={hideTierContextVisitDetails}
-            />
-          )}
+          {activeTab === "general" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <GeneralTab
+                company={company}
+                isAdmin={isAdmin}
+                onRolesUpdated={handleRefresh}
+                placementYear={placementYear}
+              />
+            ))}
           {activeTab === "stats" &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
