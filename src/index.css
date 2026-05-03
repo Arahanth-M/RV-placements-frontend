@@ -80,7 +80,7 @@ body {
   background-color: rgba(0, 0, 0, 0.35);
 }
 
-/* AI interview coding workspace (LeetCode-style; follows theme tokens) */
+/* AI interview coding workspace (follows theme tokens) */
 .ai-code-workspace {
   background-color: var(--input-bg);
 }

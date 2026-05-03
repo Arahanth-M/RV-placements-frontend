@@ -3,7 +3,6 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import appStore from "./utils/appStore";
 import { AuthProvider } from "./utils/AuthContext";
-import { PremiumProvider } from "./utils/PremiumContext";
 import { ThemeProvider } from "./utils/ThemeContext";
 import { InterviewLockProvider, useInterviewLock } from "./utils/InterviewLockContext";
 import Header from "./components/Header";
@@ -17,8 +16,6 @@ import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedSpcRoute from "./components/ProtectedSpcRoute";
-// PAYMENT GATEWAY INTEGRATION - COMMENTED OUT
-// import Premium from "./components/Premium";
 import Resources from "./components/Resources";
 import AdminDashboard from "./components/AdminDashboard";
 import Events from "./components/Events";
@@ -83,8 +80,6 @@ function AppShell() {
           />
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
-          {/* PAYMENT GATEWAY INTEGRATION - COMMENTED OUT */}
-          {/* <Route path="/premium" element={<Premium />} /> */}
           <Route
             path="/resources"
             element={
@@ -191,14 +186,12 @@ function App() {
       <BrowserRouter basename="/">
         <ScrollToTop />
         <AuthProvider>
-          <PremiumProvider>
-            <ThemeProvider>
-              <InterviewLockProvider>
-                <AppShell />
-              </InterviewLockProvider>
-            </ThemeProvider>
-          </PremiumProvider>
-          </AuthProvider>
+          <ThemeProvider>
+            <InterviewLockProvider>
+              <AppShell />
+            </InterviewLockProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </BrowserRouter>
     </Provider>
   );

@@ -105,7 +105,7 @@ export default function ResumeBuilderPage() {
   const [skillsInput, setSkillsInput] = useState("");
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [saveState, setSaveState] = useState("idle");
+  const [_saveState, setSaveState] = useState("idle");
   const [statusText, setStatusText] = useState("");
   const [errors, setErrors] = useState([]);
   const [isExporting, setIsExporting] = useState(false);

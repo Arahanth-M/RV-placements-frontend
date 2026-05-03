@@ -31,7 +31,7 @@ function UserManual() {
           <p className="mt-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
             This guide walks you through the platform in the order you will typically use it: signing
             in, exploring companies, reading interview content, contributing
-            your own experience, requesting a missing company, and using AI mock interviews.
+            your own experience, and using AI mock interviews.
           </p>
 
           <hr className="my-8 border-theme" />
@@ -123,22 +123,6 @@ function UserManual() {
               </li>
               <li>Submit. Your contribution may be reviewed before it appears for everyone.</li>
             </ol>
-          </section>
-
-          <hr className="my-8 border-theme" />
-
-          <section className="space-y-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
-            <h2 className="text-base font-bold text-theme-primary sm:text-lg">
-              When a company is not listed
-            </h2>
-            <p>
-              Sometimes a company will not appear in the list yet. In any category view, use{" "}
-              <strong className="text-theme-primary">&quot;Can&apos;t find your company?&quot;</strong>{" "}
-              to open the missing-company flow: choose or type the company name, submit the request,
-              and an <strong className="text-theme-primary">admin will review</strong> it and add the
-              company to the platform when appropriate. You can use the same entry point whether you
-              are only browsing or you are about to add an experience and the company is missing.
-            </p>
           </section>
 
           <hr className="my-8 border-theme" />

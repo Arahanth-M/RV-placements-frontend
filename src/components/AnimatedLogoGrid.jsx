@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CompanyLogo from "./CompanyLogo";
 
+const MotionDiv = motion.div;
+
 /**
  * AnimatedLogoGrid Component
  * Displays a grid of company logos that randomly swap out with others from a pool.
@@ -79,7 +81,7 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
       {displayedCompanies.map((company, index) => (
         <div key={index} className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
           <AnimatePresence mode="wait">
-            <motion.div
+            <MotionDiv
               key={company?._id || company?.name || index}
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -101,7 +103,7 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
                 className="h-12 w-12 object-contain p-1 sm:h-16 sm:w-16 sm:p-1"
                 alt={`${company?.name || 'Company'} logo`}
               />
-            </motion.div>
+            </MotionDiv>
           </AnimatePresence>
         </div>
       ))}

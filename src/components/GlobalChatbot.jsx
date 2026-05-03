@@ -21,7 +21,7 @@ const GlobalChatbot = () => {
     if (window.voiceflow && window.voiceflow.chat) {
       try {
         window.voiceflow.chat.close();
-      } catch (error) {
+      } catch {
         console.log('Chatbot already closed or not initialized');
       }
     }

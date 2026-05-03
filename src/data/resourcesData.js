@@ -15,12 +15,6 @@ export const resourceCategories = [
         affiliate: false 
       },
       { 
-        id: 'leetcode-premium',
-        name: "LeetCode Premium - Practice Problems", 
-        url: "https://leetcode.com/subscribe/", 
-        affiliate: true 
-      },
-      { 
         id: 'neetcode',
         name: "NeetCode - Algorithm Explanations", 
         url: "https://neetcode.io/", 

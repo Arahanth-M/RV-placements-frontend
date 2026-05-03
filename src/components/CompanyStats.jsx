@@ -3,7 +3,6 @@ import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
 import AnimatedLogoGrid from "../components/AnimatedLogoGrid";
-import MissingCompanyRequestModal from "../components/MissingCompanyRequestModal";
 import YearStatsTable from "../components/YearStatsTable";
 import { CompanyCardGridShimmer, YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
 import {
@@ -53,74 +52,6 @@ import {
   PLACEMENT_DETAIL_VISIT_YEARS,
   isPlacementDetailVisitYear,
 } from "../constants/placementYears.js";
-
-const PROFILE_COMPANY_FIELDS = [
-  "Summer internship Company name",
-  "FTE Company name",
-  "Only internship Company name",
-  "FTE and internship Company name",
-  "6 months Internship Company name",
-  "Company name",
-  "Company_Name",
-  "Name of Company",
-  "company1",
-  "company2",
-  "company3",
-  "company4",
-  "company5",
-  "Company",
-  "company",
-];
-
-function isPlacementCompanyField(fieldName) {
-  const k = String(fieldName || "");
-  return (
-    /company\s*name|name\s*of\s*company/i.test(k) ||
-    /company[_\s]+name/i.test(k)
-  );
-}
-
-function normalizeProfileCompanyName(raw) {
-  if (raw == null) return "";
-  return String(raw).trim();
-}
-
-function getPlacementCompanyNames(studentData) {
-  const items = studentData && typeof studentData === "object" ? studentData : {};
-  const directKeys = Object.keys(items).filter((key) => isPlacementCompanyField(key));
-  const candidateFields = [...new Set([...PROFILE_COMPANY_FIELDS, ...directKeys])];
-  const uniqueCompanies = new Map();
-
-  for (const fieldName of candidateFields) {
-    const companyName = normalizeProfileCompanyName(items[fieldName]);
-    if (!companyName) continue;
-    const normalized = companyName.toLowerCase();
-    if (!uniqueCompanies.has(normalized)) {
-      uniqueCompanies.set(normalized, companyName);
-    }
-  }
-
-  if (uniqueCompanies.size > 0) {
-    return Array.from(uniqueCompanies.values());
-  }
-
-  const placementCompanies = Array.isArray(studentData?.placementCompanies)
-    ? studentData.placementCompanies
-    : [];
-
-  for (const item of placementCompanies) {
-    const companyName = normalizeProfileCompanyName(
-      item?.companyName ?? item?.Company ?? item?.company
-    );
-    if (!companyName) continue;
-    const normalized = companyName.toLowerCase();
-    if (!uniqueCompanies.has(normalized)) {
-      uniqueCompanies.set(normalized, companyName);
-    }
-  }
-
-  return Array.from(uniqueCompanies.values());
-}
 
 function normalizeType(type) {
   return String(type || "")
@@ -187,7 +118,6 @@ function CompanyStats() {
     [PLACEMENT_TIER_OFF_CAMPUS]: "all",
   });
   const [showFilter, setShowFilter] = useState(false);
-  const [showMissingCompanyModal, setShowMissingCompanyModal] = useState(false);
   const [helpfulStatusByCompanyId, setHelpfulStatusByCompanyId] = useState({});
   /** 2026: null = pick Dream vs Open dream; otherwise which list to show */
   const [placementTier, setPlacementTier] = useState(null);
@@ -203,7 +133,7 @@ function CompanyStats() {
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
-  const { user, isAdmin, studentData, setUser } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const getPersistedPlacementCardsYear = () => {
     const fromSession = user?.userId
@@ -248,11 +178,6 @@ function CompanyStats() {
     setTierCategory(placementTier, valueOrUpdater);
   };
 
-  const placementCompanyNames = useMemo(
-    () => getPlacementCompanyNames(studentData),
-    [studentData]
-  );
-
   const handleBack = () => {
     navigate('/');
   };  
@@ -287,7 +212,7 @@ function CompanyStats() {
     if (!Number.isNaN(ts)) return ts;
 
     // dd/mm/yyyy or dd-mm-yyyy or dd.mm.yyyy
-    const dmy = noOrdinal.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    const dmy = noOrdinal.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
     if (dmy) {
       const day = Number(dmy[1]);
       const month = Number(dmy[2]) - 1;
@@ -1652,29 +1577,6 @@ function CompanyStats() {
               </div>
             </button>
           </div>
-
-          <MissingCompanyRequestModal
-            isOpen={showMissingCompanyModal}
-            onClose={() => setShowMissingCompanyModal(false)}
-            onSuccess={(payload) => {
-              const nextUser = payload?.user;
-              if (!nextUser) {
-                setUser((prev) => (
-                  prev
-                    ? { ...prev, hasSubmittedMissingCompanyRequest: true }
-                    : prev
-                ));
-                return;
-              }
-
-              setUser((prev) => ({
-                ...(prev || {}),
-                ...nextUser,
-              }));
-            }}
-            userCompanies={placementCompanyNames}
-            requestCategory={placementTier || "company-listing"}
-          />
         </div>
         </div>
       </div>
@@ -1727,16 +1629,8 @@ function CompanyStats() {
               setSearch(e.target.value);
               resetListPages();
             }}
-              className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+            className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
           />
-        </div>
-          <button
-            type="button"
-            onClick={() => setShowMissingCompanyModal(true)}
-            className="self-end sm:self-auto mr-3 sm:mr-6 rounded-lg border border-theme-accent/40 bg-theme-card px-4 py-2 text-sm font-semibold text-theme-accent shadow-sm transition-opacity hover:opacity-90 whitespace-nowrap"
-          >
-            Can&apos;t find your company?
-          </button>
         </div>
       </div>
 
@@ -1866,29 +1760,6 @@ function CompanyStats() {
           </p>
         )}
       </section>
-
-      <MissingCompanyRequestModal
-        isOpen={showMissingCompanyModal}
-        onClose={() => setShowMissingCompanyModal(false)}
-        onSuccess={(payload) => {
-          const nextUser = payload?.user;
-          if (!nextUser) {
-            setUser((prev) => (
-              prev
-                ? { ...prev, hasSubmittedMissingCompanyRequest: true }
-                : prev
-            ));
-            return;
-          }
-
-          setUser((prev) => ({
-            ...(prev || {}),
-            ...nextUser,
-          }));
-        }}
-        userCompanies={placementCompanyNames}
-        requestCategory={placementTier || "company-listing"}
-      />
 
       {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
         placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP && (

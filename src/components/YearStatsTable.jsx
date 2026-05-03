@@ -142,38 +142,6 @@ function YearStatsTable({ year, data, onBack }) {
     [filteredData, pageStart]
   );
 
-  const scrollToYearStatsTop = () => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg p-6 sm:p-8">
-        <PageBackNavRow>
-          <PageBackButton onClick={onBack} label="Back to Year Selection" />
-        </PageBackNavRow>
-        <p className="text-theme-muted text-center py-8">No data available for {year} stats.</p>
-      </div>
-    );
-  }
-
-  // Get all unique keys from all objects to create table headers
-  const headers = useMemo(() => {
-    const allKeys = new Set();
-    (data || []).forEach((item) => {
-      Object.keys(item || {}).forEach((key) => {
-        // Exclude MongoDB internal fields
-        if (key !== "_id" && key !== "__v") {
-          allKeys.add(key);
-        }
-      });
-    });
-    return Array.from(allKeys);
-  }, [data]);
-
-  // Helper function to format cell values
   const formatCellValue = (value) => {
     if (value === null || value === undefined) {
       return "N/A";
@@ -184,10 +152,17 @@ function YearStatsTable({ year, data, onBack }) {
     return String(value);
   };
 
-  const tabActive =
-    "bg-theme-hero text-theme-accent shadow-md";
-  const tabInactive =
-    "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav";
+  const headers = useMemo(() => {
+    const allKeys = new Set();
+    (data || []).forEach((item) => {
+      Object.keys(item || {}).forEach((key) => {
+        if (key !== "_id" && key !== "__v") {
+          allKeys.add(key);
+        }
+      });
+    });
+    return Array.from(allKeys);
+  }, [data]);
 
   const tableRows = useMemo(
     () =>
@@ -205,6 +180,28 @@ function YearStatsTable({ year, data, onBack }) {
       )),
     [paginatedData, headers, pageStart]
   );
+
+  const scrollToYearStatsTop = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg p-6 sm:p-8">
+        <PageBackNavRow>
+          <PageBackButton onClick={onBack} label="Back to Year Selection" />
+        </PageBackNavRow>
+        <p className="text-theme-muted text-center py-8">No data available for {year} stats.</p>
+      </div>
+    );
+  }
+
+  const tabActive =
+    "bg-theme-hero text-theme-accent shadow-md";
+  const tabInactive =
+    "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav";
 
   return (
     <div className="space-y-6">

@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }) => {
           const adminFlag = adminResponse.data?.isAdmin || false;
           setIsAdmin(adminFlag);
           localStorage.setItem(LAST_USER_IS_ADMIN_KEY, JSON.stringify(adminFlag));
-        } catch (error) {
+        } catch {
           setIsAdmin(false);
           localStorage.setItem(LAST_USER_IS_ADMIN_KEY, JSON.stringify(false));
         }
@@ -158,7 +158,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem(LAST_USER_KEY);
         localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
       }
-    } catch (error) {
+    } catch {
       console.log('User not authenticated');
       setUser(null);
       setIsAdmin(false);
@@ -359,7 +359,7 @@ export const AuthProvider = ({ children }) => {
         try {
           const adminResponse = await authAPI.isAdmin();
           setIsAdmin(adminResponse.data?.isAdmin || false);
-        } catch (error) {
+        } catch {
           setIsAdmin(false);
         }
         return response.data;

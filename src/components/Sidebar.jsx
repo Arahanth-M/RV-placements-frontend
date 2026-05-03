@@ -8,7 +8,7 @@ import logo from "../assets/logo2.webp";
 import NotificationBell from "./NotificationBell";
 
 const Sidebar = () => {
-  const { user, isAdmin, studentData, login, signup, logout, loading } = useAuth();
+  const { user, isAdmin, login, signup, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();

@@ -42,8 +42,6 @@ const AdminDashboard = () => {
     approvedSubmissions: 0,
     totalCompanies: 0,
     pendingCompanies: 0,
-    missingCompaniesCount: 0,
-    topMissingCompanies: [],
     topSubmittedCompanies: [],
     mostViewedCompanies: [],
     mostHelpfulCompanies: [],
@@ -53,12 +51,11 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('submissions'); // 'stats', 'submissions', 'companies', 'missing-companies', 'events'
+  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'assign-spc'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
   const [selectedCompanyYear, setSelectedCompanyYear] = useState('all');
-  const [missingCompanies, setMissingCompanies] = useState([]);
   const [companiesSubTab, setCompaniesSubTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,8 +73,6 @@ const AdminDashboard = () => {
   });
   const [deletingIds, setDeletingIds] = useState(new Set());
   const [deletingCompanyIds, setDeletingCompanyIds] = useState(new Set());
-  const [updatingMissingCompanyIds, setUpdatingMissingCompanyIds] = useState(new Set());
-  const [deletingMissingCompanyIds, setDeletingMissingCompanyIds] = useState(new Set());
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [approvingAll, setApprovingAll] = useState(false);
@@ -87,8 +82,6 @@ const AdminDashboard = () => {
   const [coPendingMeta, setCoPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [coApprovedMeta, setCoApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [eventsLoaded, setEventsLoaded] = useState(false);
-  const [missingCompaniesLoaded, setMissingCompaniesLoaded] = useState(false);
-  const [missingCompaniesLoading, setMissingCompaniesLoading] = useState(false);
   const [adminToast, setAdminToast] = useState(null);
   const [spcForm, setSpcForm] = useState({ email: '', usn: '' });
   const [assigningSpc, setAssigningSpc] = useState(false);
@@ -153,19 +146,6 @@ const AdminDashboard = () => {
       totalPages: Math.max(1, d.totalPages || 1),
     });
   }, [selectedCompanyYear]);
-
-  const loadMissingCompanies = useCallback(async () => {
-    setMissingCompaniesLoading(true);
-    try {
-      const res = await adminAPI.getMissingCompanies();
-      const items = Array.isArray(res.data?.items) ? res.data.items : [];
-      items.sort((a, b) => (b?.requestCount || 0) - (a?.requestCount || 0));
-      setMissingCompanies(items);
-    } finally {
-      setMissingCompaniesLoading(false);
-      setMissingCompaniesLoaded(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (!adminToast) return undefined;
@@ -369,23 +349,6 @@ const AdminDashboard = () => {
     };
   }, [loading, activeMainTab, spcUsersLoaded, loadSpcUsers]);
 
-  useEffect(() => {
-    if (loading) return;
-    if (activeMainTab !== 'missing-companies') return;
-    if (missingCompaniesLoaded) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadMissingCompanies();
-      } catch (e) {
-        if (!cancelled) console.error(e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, activeMainTab, missingCompaniesLoaded, loadMissingCompanies]);
-
   const parseContent = (contentString) => {
     try {
       return JSON.parse(contentString);
@@ -404,10 +367,6 @@ const AdminDashboard = () => {
       minute: '2-digit',
     });
   };
-
-  const sortedMissingCompanies = [...missingCompanies].sort(
-    (a, b) => (b?.requestCount || 0) - (a?.requestCount || 0)
-  );
 
   const renderStatsList = (title, description, items, valueKey, valueLabel) => (
     <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
@@ -699,66 +658,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUpdateMissingCompanyStatus = async (id, status) => {
-    try {
-      setUpdatingMissingCompanyIds(prev => new Set(prev).add(id));
-      const res = await adminAPI.updateMissingCompanyStatus(id, status);
-      const updatedItem = res.data?.missingCompany;
-
-      setMissingCompanies(prev => {
-        const next = prev.map((item) =>
-          item._id === id
-            ? {
-                ...item,
-                ...(updatedItem || {}),
-                status: updatedItem?.status || status,
-              }
-            : item
-        );
-        next.sort((a, b) => (b?.requestCount || 0) - (a?.requestCount || 0));
-        return next;
-      });
-    } catch (err) {
-      console.error('Error updating missing company status:', err);
-      const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Failed to update missing company status. Please try again.';
-      setAdminToast({ type: 'error', message: errorMessage });
-    } finally {
-      setUpdatingMissingCompanyIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    }
-  };
-
-  const handleDeleteMissingCompany = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this missing company request?')) {
-      return;
-    }
-
-    try {
-      setDeletingMissingCompanyIds(prev => new Set(prev).add(id));
-      await adminAPI.deleteMissingCompany(id);
-      setMissingCompanies(prev => prev.filter((item) => item._id !== id));
-    } catch (err) {
-      console.error('Error deleting missing company request:', err);
-      const errorMessage =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Failed to delete missing company request. Please try again.';
-      setAdminToast({ type: 'error', message: errorMessage });
-    } finally {
-      setDeletingMissingCompanyIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(id);
-        return newSet;
-      });
-    }
-  };
-
   const handleViewFullSubmission = async (submission) => {
     if (submission.contentTruncated) {
       try {
@@ -794,7 +693,6 @@ const AdminDashboard = () => {
         bulkList = bulkRes.data.items || [];
       }
 
-      const totalSubmissions = bulkList.length;
       let successCount = 0;
       let failCount = 0;
       const errors = [];
@@ -1019,15 +917,6 @@ const AdminDashboard = () => {
               <div className="h-5 w-80 max-w-full shimmer-box rounded-md"></div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <div key={`stats-skeleton-${idx}`} className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-3">
-                  <div className="h-3 w-24 shimmer-box rounded"></div>
-                  <div className="h-7 w-16 shimmer-box rounded"></div>
-                </div>
-              ))}
-            </div>
-
             <div className="bg-slate-900/70 border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700">
                 <div className="h-6 w-52 shimmer-box rounded"></div>
@@ -1054,81 +943,8 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Stats Cards */}
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">Total Users</p>
-                    <p className="text-2xl font-bold text-white mt-1">{stats.totalUsers}</p>
-                  </div>
-                  <div className="bg-indigo-600 rounded-full p-2">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">Pending Submissions</p>
-                    <p className="text-2xl font-bold text-white mt-1">{stats.pendingSubmissions || 0}</p>
-                  </div>
-                  <div className="bg-yellow-600 rounded-full p-2">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">Approved Submissions</p>
-                    <p className="text-2xl font-bold text-white mt-1">{stats.approvedSubmissions || 0}</p>
-                  </div>
-                  <div className="bg-green-600 rounded-full p-2">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">Pending Companies</p>
-                    <p className="text-2xl font-bold text-white mt-1">{stats.pendingCompanies}</p>
-                  </div>
-                  <div className="bg-yellow-600 rounded-full p-2">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-400">Approved Companies</p>
-                    <p className="text-2xl font-bold text-white mt-1">{stats.totalCompanies}</p>
-                  </div>
-                  <div className="bg-purple-600 rounded-full p-2">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Main Tabs Navigation */}
             <div className="flex gap-2 sm:gap-4 mb-6 flex-wrap overflow-x-auto pb-2">
               <button
@@ -1151,7 +967,7 @@ const AdminDashboard = () => {
                 }`}
               >
                 <FaFileAlt />
-                Submissions
+                Submissions ({stats.pendingSubmissions ?? 0})
               </button>
               <button
                 onClick={() => setActiveMainTab('companies')}
@@ -1162,18 +978,7 @@ const AdminDashboard = () => {
                 }`}
               >
                 <FaBuilding />
-                Companies
-              </button>
-              <button
-                onClick={() => setActiveMainTab('missing-companies')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'missing-companies'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaBuilding />
-                Missing Companies
+                Companies ({stats.pendingCompanies ?? 0})
               </button>
               <button
                 onClick={() => setActiveMainTab('events')}
@@ -1216,7 +1021,7 @@ const AdminDashboard = () => {
                       <p className="mt-4 text-sm text-theme-secondary">Loading stats...</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                       {[
                         {
                           label: 'Total Users',
@@ -1224,19 +1029,25 @@ const AdminDashboard = () => {
                           description: 'All user accounts currently stored on the platform.',
                         },
                         {
-                          label: 'Total Companies',
-                          value: stats.totalCompanies ?? 0,
-                          description: 'All companies currently present in the main company collection.',
-                        },
-                        {
                           label: 'Pending Submissions',
                           value: stats.pendingSubmissions ?? 0,
                           description: 'User submissions still waiting for admin review and action.',
                         },
                         {
-                          label: 'Missing Companies',
-                          value: stats.missingCompaniesCount ?? 0,
-                          description: 'Missing-company requests submitted by users for admin review.',
+                          label: 'Approved Submissions',
+                          value: stats.approvedSubmissions ?? 0,
+                          description: 'Experience submissions that have been approved.',
+                        },
+                        {
+                          label: 'Pending Companies',
+                          value: stats.pendingCompanies ?? 0,
+                          description:
+                            'Company placement listings awaiting admin approval for the configured placement year.',
+                        },
+                        {
+                          label: 'Total Companies',
+                          value: stats.totalCompanies ?? 0,
+                          description: 'All companies currently present in the main company collection.',
                         },
                         {
                           label: 'Daily Active Users',
@@ -1265,13 +1076,6 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-                  {renderStatsList(
-                    'Top Missing Companies',
-                    'Companies most frequently requested by users as missing from the platform.',
-                    stats.topMissingCompanies,
-                    'requestCount',
-                    'Requests'
-                  )}
                   {renderStatsList(
                     'Top Submitted Companies',
                     'Companies with the highest number of user submissions overall.',
@@ -2084,132 +1888,6 @@ const AdminDashboard = () => {
                   </div>
                 )
                 )}
-              </div>
-            )}
-
-            {activeMainTab === 'missing-companies' && (
-              <div className="bg-theme-card border border-theme rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-theme">
-                  <div>
-                    <h2 className="text-xl font-semibold text-theme-accent">Missing Companies</h2>
-                    <p className="text-sm text-theme-secondary mt-1">
-                      Review missing company requests submitted by students.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="px-6 py-5">
-                  {missingCompaniesLoading ? (
-                    <div className="rounded-lg border border-theme bg-theme-hero p-6 text-center">
-                      <p className="text-theme-primary text-sm sm:text-base">Loading missing companies...</p>
-                    </div>
-                  ) : sortedMissingCompanies.length === 0 ? (
-                    <div className="rounded-lg border border-theme bg-theme-hero p-6 text-center">
-                      <p className="text-theme-secondary text-sm sm:text-base">No missing company requests found.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto -mx-2 sm:mx-0">
-                      <table className="min-w-full divide-y divide-theme">
-                        <thead className="bg-theme-hero">
-                          <tr>
-                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
-                              Name
-                            </th>
-                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
-                              Request Count
-                            </th>
-                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
-                              Categories
-                            </th>
-                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-secondary uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-theme bg-theme-card">
-                          {sortedMissingCompanies.map((company) => {
-                            const isUpdating = updatingMissingCompanyIds.has(company._id);
-                            const isDeleting = deletingMissingCompanyIds.has(company._id);
-                            const isBusy = isUpdating || isDeleting;
-                            const categoriesText = Array.isArray(company.categories) && company.categories.length > 0
-                              ? company.categories.join(', ')
-                              : 'N/A';
-
-                            return (
-                              <tr key={company._id} className="hover:bg-theme-nav transition-colors">
-                                <td className="px-3 sm:px-4 py-4 text-sm font-medium text-theme-primary">
-                                  {company.name}
-                                </td>
-                                <td className="px-3 sm:px-4 py-4 text-sm text-theme-secondary">
-                                  {company.requestCount || 0}
-                                </td>
-                                <td className="px-3 sm:px-4 py-4 text-sm text-theme-secondary">
-                                  {categoriesText}
-                                </td>
-                                <td className="px-3 sm:px-4 py-4">
-                                  <span
-                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                      company.status === 'ADDED'
-                                        ? 'bg-green-600 text-white'
-                                        : company.status === 'REJECTED'
-                                          ? 'bg-red-600 text-white'
-                                          : 'bg-amber-600 text-white'
-                                    }`}
-                                  >
-                                    {company.status || 'PENDING'}
-                                  </span>
-                                </td>
-                                <td className="px-3 sm:px-4 py-4">
-                                  <div className="flex flex-col sm:flex-row gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdateMissingCompanyStatus(company._id, 'ADDED')}
-                                      disabled={isBusy || company.status === 'ADDED'}
-                                      className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
-                                        isBusy || company.status === 'ADDED'
-                                          ? 'bg-theme-nav text-theme-muted cursor-not-allowed'
-                                          : 'bg-green-600 text-white hover:bg-green-700'
-                                      }`}
-                                    >
-                                      {isUpdating && company.status !== 'ADDED' ? 'Updating...' : 'Mark as Added'}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpdateMissingCompanyStatus(company._id, 'REJECTED')}
-                                      disabled={isBusy || company.status === 'REJECTED'}
-                                      className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
-                                        isBusy || company.status === 'REJECTED'
-                                          ? 'bg-theme-nav text-theme-muted cursor-not-allowed'
-                                          : 'bg-amber-600 text-white hover:bg-amber-700'
-                                      }`}
-                                    >
-                                      {isUpdating && company.status !== 'REJECTED' ? 'Updating...' : 'Reject'}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteMissingCompany(company._id)}
-                                      disabled={isBusy}
-                                      className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition ${
-                                        isBusy
-                                          ? 'bg-theme-nav text-theme-muted cursor-not-allowed'
-                                          : 'bg-red-600 text-white hover:bg-red-700'
-                                      }`}
-                                    >
-                                      {isDeleting ? 'Deleting...' : 'Delete'}
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 

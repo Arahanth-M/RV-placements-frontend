@@ -35,7 +35,6 @@ resources-v1.json:
 // Alternative 4: Using environment variables for sensitive URLs
 /*
 .env.local:
-REACT_APP_LEETCODE_AFFILIATE_URL=https://leetcode.com/subscribe/?ref=yourcode
 REACT_APP_UDEMY_AFFILIATE_URL=https://www.udemy.com/course/?ref=yourcode
 */
 
@@ -44,13 +43,11 @@ REACT_APP_UDEMY_AFFILIATE_URL=https://www.udemy.com/course/?ref=yourcode
 // config.js
 export const getResourceUrl = (resourceId, isAffiliate) => {
   const baseUrls = {
-    'leetcode': process.env.REACT_APP_LEETCODE_URL,
     'udemy': process.env.REACT_APP_UDEMY_URL,
     // ...
   };
   
   const affiliateParams = {
-    'leetcode': '?ref=yourcode',
     'udemy': '?ref=yourcode',
     // ...
   };
