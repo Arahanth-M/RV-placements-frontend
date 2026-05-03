@@ -182,11 +182,6 @@ export const experienceAPI = {
   getExperiences: () => API.get('/api/experiences'),
 };
 
-export const leetcodeAPI = {
-  getAllQuestions: (params) => API.get('/api/leetcode', { params }),
-  getQuestion: (id) => API.get(`/api/leetcode/${id}`),
-};
-
 export const getAdminStats = () => API.get('/api/admin/stats');
 
 function adminPlacementYearParams(opts = {}) {
@@ -253,9 +248,6 @@ export const adminAPI = {
     API.put(`/api/admin/companies/${companyId}/roles`, { roles }, { params: adminPlacementYearParams(opts) }),
   updateCompanyGeneralInfo: (companyId, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/general`, data, { params: adminPlacementYearParams(opts) }),
-  getMissingCompanies: () => API.get('/api/admin/missing-companies'),
-  updateMissingCompanyStatus: (id, status) => API.patch(`/api/admin/missing-companies/${id}/status`, { status }),
-  deleteMissingCompany: (id) => API.delete(`/api/admin/missing-companies/${id}`),
 };
 
 export const eventAPI = {
@@ -296,10 +288,6 @@ export const resumeAPI = {
   saveDraft: ({ payload, version }) => API.put("/api/resume/draft", { payload, version }),
   exportPdf: (payload) =>
     API.post("/api/resume/export", { payload }, { responseType: "blob" }),
-};
-
-export const submitMissingCompany = (data) => {
-  return API.post("/api/missing-companies", data);
 };
 
 export const placementAPI = {

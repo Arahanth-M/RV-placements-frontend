@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
@@ -14,7 +13,7 @@ const EXIT_WARNING_MESSAGE =
 const summarizeRoundAbout = (value, fallbackText) => {
   const raw = Array.isArray(value) ? value.join(" ") : String(value || "");
   const cleaned = raw
-    .replace(/^round\s*\d+\s*[:\-]?\s*/i, "")
+    .replace(/^round\s*\d+\s*[-:]?\s*/i, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -183,15 +182,14 @@ function AIInterviewTab({
 }) {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
   const [sessionId, setSessionId] = useState("");
   const [question, setQuestion] = useState("");
   const [answerExplanation, setAnswerExplanation] = useState("");
   const [answerCode, setAnswerCode] = useState("");
   const answerCharCount =
     answerExplanation.trim().length + answerCode.trim().length;
-  const [feedback, setFeedback] = useState("");
-  const [score, setScore] = useState(null);
+  const [_feedback, setFeedback] = useState("");
+  const [_score, setScore] = useState(null);
   const [status, setStatus] = useState("idle");
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");

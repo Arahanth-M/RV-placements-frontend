@@ -218,8 +218,6 @@ function NotificationBell() {
     return null;
   }
 
-  const unreadNotifications = notifications.filter((n) => !n.isSeen);
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button

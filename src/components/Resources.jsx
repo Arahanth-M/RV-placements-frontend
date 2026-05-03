@@ -265,7 +265,7 @@ const Resources = () => {
                 <div style={{ padding: '8px 16px 6px', fontSize: '11px', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }} className="text-slate-500">
                   Categories
                 </div>
-                {categorySuggestions.map((title, i) => {
+                {categorySuggestions.map((title) => {
                   const origIdx = resourceCategories.findIndex((c) => c.title === title);
                   const pal = colorMap[origIdx % colorMap.length];
                   return (

@@ -13,7 +13,9 @@ export function ThemeProvider({ children }) {
     try {
       const stored = localStorage.getItem(THEME_KEY);
       if (stored === "light" || stored === "dark") return stored;
-    } catch (_) {}
+    } catch {
+      /* localStorage unavailable */
+    }
     return "dark";
   });
 
@@ -22,7 +24,9 @@ export function ThemeProvider({ children }) {
     root.setAttribute("data-theme", theme);
     try {
       localStorage.setItem(THEME_KEY, theme);
-    } catch (_) {}
+    } catch {
+      /* localStorage unavailable */
+    }
   }, [theme]);
 
   const setTheme = (value) => {

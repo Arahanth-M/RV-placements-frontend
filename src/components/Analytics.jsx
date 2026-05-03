@@ -200,7 +200,6 @@ function Analytics({ year = null, embedded = false }) {
 
   const branches2024 = getBranches(data2024);
   const branches2025 = getBranches(data2025);
-  const allBranches = Array.from(new Set([...branches2024, ...branches2025])).sort();
 
   // Determine which years to display
   const show2024 = year === null || year === 2024;

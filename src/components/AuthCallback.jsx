@@ -12,9 +12,6 @@ const AuthCallback = () => {
   const navigate = useNavigate();
   const { refreshUser, setStudentData } = useAuth(); 
   const [isProcessing, setIsProcessing] = useState(true);
-  const [userData, setUserData] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
   const [accessDeniedMessage, setAccessDeniedMessage] = useState("");
   const handledRef = useRef(false);
 
@@ -49,10 +46,6 @@ const AuthCallback = () => {
                 return;
               }
             }
-            
-            setUserData(fetchedUserData);
-            setIsSignup(signupFlag);
-            setIsAdmin(adminFlag);
             
             console.log(`${signupFlag ? 'Signup' : 'Login'} successful, user data:`, fetchedUserData);
             
