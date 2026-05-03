@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { eventAPI } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
 import { FaCalendarAlt, FaExternalLinkAlt } from 'react-icons/fa';
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 const Events = () => {
   const { user } = useAuth();
@@ -72,21 +78,11 @@ const Events = () => {
   });
 
   return (
-    <div className="events-page-theme pt-3 sm:pt-4 pb-8 sm:pb-10 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
-      <div className="max-w-7xl mx-auto">
-         {/* Back Button */}
-      <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back
-        </button>
-      </div>
+    <div className={`events-page-theme ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={handleBack} label="Back" />
+        </PageBackNavRow>
         {/* Header */}
         <div className="mb-5 sm:mb-6 text-center">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-theme-primary mb-2">Events</h1>

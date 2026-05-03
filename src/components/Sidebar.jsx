@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useState, useEffect, useRef } from "react";
-import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaBookOpen, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser, FaFileAlt } from "react-icons/fa";
+import { FaHome, FaGraduationCap, FaUserShield, FaEnvelope, FaChartBar, FaBook, FaBookOpen, FaCode, FaComments, FaBriefcase, FaTachometerAlt, FaCalendarAlt, FaExclamationCircle, FaBars, FaTrophy, FaSun, FaMoon, FaUser, FaFileAlt, FaClipboardList } from "react-icons/fa";
 import { useTheme } from "../utils/ThemeContext";
 import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.webp";
@@ -487,6 +487,17 @@ const Sidebar = () => {
                     >
                       <FaFileAlt className="w-4 h-4 mr-2" />
                       Add Placement Data
+                    </Link>
+                    <Link
+                      to="/spc/conversion-details"
+                      onClick={() => {
+                        setShowSpcCornerMenu(false);
+                        setIsVisible(false);
+                      }}
+                      className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                    >
+                      <FaClipboardList className="w-4 h-4 mr-2" />
+                      Update conversion details
                     </Link>
                   </div>
                 )}

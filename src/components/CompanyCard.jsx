@@ -12,33 +12,11 @@ import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
   isPlacementDetailVisitYear,
+  normalizeTotalGotInByYear,
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
-
-function normalizeTotalGotInByYear(
-  company,
-  fallbackYear = DEFAULT_PLACEMENT_DETAIL_YEAR
-) {
-  const zeros = Object.fromEntries(
-    PLACEMENT_DETAIL_VISIT_YEARS.map((y) => [y, 0])
-  );
-  const d = company?.totalGotInByYear;
-  if (d && typeof d === "object") {
-    const out = { ...zeros };
-    for (const y of PLACEMENT_DETAIL_VISIT_YEARS) {
-      out[y] = Number(d[y]) || 0;
-    }
-    return out;
-  }
-  const legacy = Number(company?.totalGotIn) || 0;
-  const out = { ...zeros };
-  if (isPlacementDetailVisitYear(fallbackYear)) {
-    out[fallbackYear] = legacy;
-  }
-  return out;
-}
 
 function CompanyCard({
   company,
@@ -51,7 +29,7 @@ function CompanyCard({
   detailDefaultYear,
   placementYear,
   helpfulStatus,
-  /** Summer internship list: hide placement + PPO “got in” counts on the card */
+  /** Dream / open dream / internship-only / off-campus / summer internship: hide placement “got in” on the card (shown on Stats tab by year). */
   hidePlacementGotInCounts = false,
   /** Dream / Open dream / Summer internship lists — drives detail-page subtitle framing */
   placementListContext,

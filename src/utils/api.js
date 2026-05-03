@@ -297,6 +297,13 @@ export const placementAPI = {
 export const spcAPI = {
   submitPlacement: (data) => API.post('/api/placement/spc/submit', data),
   getPlacementStatus: () => API.get('/api/placement/student/status'),
+  companySuggest: (q, limit) =>
+    API.get('/api/placement/spc/company-suggest', {
+      params: { q, ...(limit != null ? { limit } : {}) },
+    }),
+  submitConversionDetails: (data) => API.post('/api/placement/spc/conversion-details', data),
+  /** Company contribution submissions + placement/conversion rows filed by this SPC. */
+  getMySubmissions: () => API.get('/api/placement/spc/my-submissions'),
 };
 
 export const leaderboardAPI = {

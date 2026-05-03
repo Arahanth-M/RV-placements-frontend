@@ -2,13 +2,18 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import {
-  FaArrowLeft,
   FaUser,
   FaIdCard,
   FaGraduationCap,
   FaBuilding,
   FaClipboardList,
 } from "react-icons/fa";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 import { studentAPI } from "../utils/api";
 import {
   formatProfileLabel,
@@ -113,16 +118,31 @@ const StudentProfilePage = () => {
     if (!hasDisplayValue(value)) return null;
     const display = String(value).trim();
     return (
-      <div className="flex flex-col sm:flex-row sm:items-start gap-2 pb-3 border-b border-theme last:border-0">
-        <span className="text-theme-secondary font-medium text-sm sm:text-base min-w-[150px] sm:min-w-[180px] inline-flex items-baseline gap-1 flex-wrap">
-          <span>{label}</span>
-          <span aria-hidden className="select-none">
-            :
+      <div className="border-b border-theme last:border-0">
+        {/* Narrow phones: label + value flow inline and wrap together */}
+        <div className="py-3 sm:hidden">
+          <p className="text-sm leading-relaxed text-theme-primary [overflow-wrap:anywhere]">
+            <span className="inline text-theme-secondary font-medium">
+              {label}
+              <span aria-hidden className="select-none">
+                :{" "}
+              </span>
+            </span>
+            <span className="font-medium text-theme-primary whitespace-pre-line break-words">{display}</span>
+          </p>
+        </div>
+        {/* sm+: roomy two-column row like reference */}
+        <div className="hidden sm:flex sm:flex-row sm:items-start sm:gap-6 md:gap-8 sm:py-3 md:py-3.5">
+          <span className="w-40 shrink-0 pt-0.5 text-base font-medium text-theme-secondary md:w-48 lg:w-52">
+            {label}
+            <span aria-hidden className="select-none">
+              :
+            </span>
           </span>
-        </span>
-        <span className="text-theme-primary font-medium text-sm sm:text-base flex-1 break-words whitespace-pre-line">
-          {display}
-        </span>
+          <span className="min-w-0 flex-1 text-base font-medium leading-relaxed text-theme-primary [overflow-wrap:anywhere] whitespace-pre-line break-words">
+            {display}
+          </span>
+        </div>
       </div>
     );
   };
@@ -132,32 +152,34 @@ const StudentProfilePage = () => {
     if (!displayKey) return null;
 
     return (
-      <div
-        key={key}
-        className="flex flex-col sm:flex-row sm:items-start gap-2 pb-3 border-b border-theme last:border-0"
-      >
-        <span className="text-theme-secondary font-medium text-sm sm:text-base min-w-[150px] sm:min-w-[180px]">
-          {displayKey}:
-        </span>
-        <span className="text-theme-primary font-medium text-sm sm:text-base flex-1 break-words whitespace-pre-line">
-          {getProfileDisplayValue(value)}
-        </span>
+      <div key={key} className="border-b border-theme last:border-0">
+        <div className="py-3 sm:hidden">
+          <p className="text-sm leading-relaxed text-theme-primary [overflow-wrap:anywhere]">
+            <span className="text-theme-secondary font-medium">{displayKey}: </span>
+            <span className="font-medium text-theme-primary whitespace-pre-line break-words">
+              {getProfileDisplayValue(value)}
+            </span>
+          </p>
+        </div>
+        <div className="hidden sm:flex sm:flex-row sm:items-start sm:gap-6 md:gap-8 sm:py-3 md:py-3.5">
+          <span className="w-40 shrink-0 pt-0.5 text-base font-medium text-theme-secondary md:w-48 lg:w-52">
+            {displayKey}:
+          </span>
+          <span className="min-w-0 flex-1 text-base font-medium leading-relaxed text-theme-primary [overflow-wrap:anywhere] whitespace-pre-line break-words">
+            {getProfileDisplayValue(value)}
+          </span>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-theme-app overflow-y-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+    <div className={`min-h-screen overflow-y-auto ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate(-1)} />
+        </PageBackNavRow>
         <div className="mb-6 sm:mb-8">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex items-center back-link-theme text-sm sm:text-base mb-4 hover:opacity-80 transition-opacity"
-          >
-            <FaArrowLeft className="mr-2" />
-            Back
-          </button>
           <div className="bg-theme-card border border-theme px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm">
             {user?.picture ? (
               <img
@@ -186,12 +208,12 @@ const StudentProfilePage = () => {
         <div className="space-y-6">
           {splitStudent ? (
             <>
-              <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-                <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+              <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 md:p-6 shadow-sm transition-colors">
+                <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2 sm:mb-4 sm:pb-2">
                   <FaIdCard className="text-theme-accent text-xl" />
                   <h2 className="text-xl font-semibold text-theme-primary">Personal Information</h2>
                 </div>
-                <div className="space-y-3 pt-2">
+                <div className="space-y-0 pt-1 sm:pt-2">
                   {renderSplitRow("Email Address", splitStudent.email)}
                   {renderSplitRow("Name", splitStudent.name)}
                   {renderSplitRow("USN", splitStudent.usn)}
@@ -201,12 +223,12 @@ const StudentProfilePage = () => {
                 </div>
               </div>
 
-              <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-                <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+              <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 md:p-6 shadow-sm transition-colors">
+                <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2 sm:mb-4 sm:pb-2">
                   <FaClipboardList className="text-theme-accent text-xl" />
                   <h2 className="text-xl font-semibold text-theme-primary">Company Information</h2>
                 </div>
-                <div className="space-y-3 pt-2">
+                <div className="space-y-0 pt-1 sm:pt-2">
                   {Array.isArray(profileData.placements) && profileData.placements.length > 0 ? (
                     profileData.placements.map((p, idx) => (
                       <div key={p?._id ?? `placement-${idx}`}>
@@ -216,7 +238,7 @@ const StudentProfilePage = () => {
                         hasDisplayValue(p?.base) ||
                         hasDisplayValue(p?.ctc) ? (
                           <div
-                            className={`space-y-3 ${idx > 0 ? "pt-4 mt-4 border-t border-theme" : ""}`}
+                            className={`space-y-0 ${idx > 0 ? "pt-4 mt-4 border-t border-theme" : ""}`}
                           >
                             {profileData.placements.length > 1 ? (
                               <p className="text-theme-secondary text-sm font-semibold">
@@ -286,12 +308,12 @@ const StudentProfilePage = () => {
 
           {!splitStudent &&
           validKeys.some((key) => getProfileFieldCategory(key) === "personal") ? (
-            <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+            <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 md:p-6 shadow-sm transition-colors">
+              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2 sm:mb-4 sm:pb-2">
                 <FaIdCard className="text-theme-accent text-xl" />
                 <h2 className="text-xl font-semibold text-theme-primary">Personal Information</h2>
               </div>
-              <div className="space-y-3 pt-2">
+              <div className="space-y-0 pt-1 sm:pt-2">
                 {validKeys
                   .filter((key) => getProfileFieldCategory(key) === "personal")
                   .map((key) => renderField(key, profileData[key]))}
@@ -301,12 +323,12 @@ const StudentProfilePage = () => {
 
           {!splitStudent &&
           validKeys.some((key) => getProfileFieldCategory(key) === "academic") ? (
-            <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+            <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 md:p-6 shadow-sm transition-colors">
+              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2 sm:mb-4 sm:pb-2">
                 <FaGraduationCap className="text-theme-accent text-xl" />
                 <h2 className="text-xl font-semibold text-theme-primary">Academic Information</h2>
               </div>
-              <div className="space-y-3 pt-2">
+              <div className="space-y-0 pt-1 sm:pt-2">
                 {validKeys
                   .filter((key) => getProfileFieldCategory(key) === "academic")
                   .map((key) => renderField(key, profileData[key]))}
@@ -316,12 +338,12 @@ const StudentProfilePage = () => {
 
           {!splitStudent &&
           validKeys.some((key) => getProfileFieldCategory(key) === "company") ? (
-            <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm transition-colors">
-              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2">
+            <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 md:p-6 shadow-sm transition-colors">
+              <div className="flex items-center gap-2 mb-4 border-b border-theme pb-2 sm:mb-4 sm:pb-2">
                 <FaBuilding className="text-theme-accent text-xl" />
                 <h2 className="text-xl font-semibold text-theme-primary">Company Information</h2>
               </div>
-              <div className="space-y-3 pt-2">
+              <div className="space-y-0 pt-1 sm:pt-2">
                 {validKeys
                   .filter((key) => getProfileFieldCategory(key) === "company")
                   .map((key) => renderField(key, profileData[key]))}

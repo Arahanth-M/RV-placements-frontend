@@ -19,6 +19,7 @@ import {
   FaBars,
   FaTimes,
   FaBriefcase,
+  FaClipboardList,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -34,6 +35,7 @@ const primaryLinks = [
 const spcCornerLinks = [
   { label: "SPC Dashboard", path: "/spc-dashboard", icon: FaTachometerAlt },
   { label: "Add Placement Data", path: "/spc/form", icon: FaFileAlt },
+  { label: "Update conversion details", path: "/spc/conversion-details", icon: FaClipboardList },
 ];
 
 const studentCornerLinks = [
@@ -593,7 +595,7 @@ const Header = () => {
               {item.label}
             </Link>
           ))}
-          <button
+          {/* <button
             type="button"
             onClick={() => {
               setMobileNavOpen(false);
@@ -602,7 +604,7 @@ const Header = () => {
             className={mobileNavLinkClass}
           >
             Fill the form
-          </button>
+          </button> */}
 
           <button
             type="button"

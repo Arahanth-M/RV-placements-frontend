@@ -3,7 +3,12 @@ import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import InterviewAnalytics from "./InterviewAnalytics";
 import { useNavigate } from "react-router-dom";
-
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 
 const toSafeString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -119,23 +124,16 @@ function AIInterviews() {
   };
 
   return (
-    <div className="px-4 sm:px-6 pt-1 sm:pt-2 pb-4 sm:pb-6 max-w-6xl mx-auto min-h-screen bg-theme-app">
+    <div className={`min-h-screen ${pageShellOuterClass}`}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
       `}</style>
-           {/* Back Button */}
-      <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="back-nav-clear-sidebar flex items-center back-link-theme text-sm sm:text-base transition-colors"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back
-        </button>
-      </div>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={handleBack} label="Back" />
+        </PageBackNavRow>
+
+        <div className="mx-auto max-w-6xl">
       {/* Header Section */}
       <div className="mb-6 sm:mb-8 text-center">
         <p style={{
@@ -261,6 +259,8 @@ function AIInterviews() {
           )}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

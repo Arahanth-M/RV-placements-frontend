@@ -31,6 +31,7 @@ import UserManual from "./components/UserManual";
 import ResumeBuilderPage from "./components/ResumeBuilderPage";
 import SPCDashboard from "./components/SPCDashboard";
 import SPCPlacementForm from "./components/SPCPlacementForm";
+import SPCConversionForm from "./components/SPCConversionForm";
 import { RESUME_BUILDER_ENABLED } from "./utils/constants";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
@@ -132,6 +133,14 @@ function AppShell() {
             element={
               <ProtectedSpcRoute>
                 <SPCPlacementForm />
+              </ProtectedSpcRoute>
+            }
+          />
+          <Route
+            path="/spc/conversion-details"
+            element={
+              <ProtectedSpcRoute>
+                <SPCConversionForm />
               </ProtectedSpcRoute>
             }
           />

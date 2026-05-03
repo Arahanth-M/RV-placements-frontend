@@ -64,24 +64,22 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
     return <p className="text-theme-muted text-sm italic">No logos available</p>;
   }
 
-  // Mobile only: max-content columns + w-max so the logo cluster doesn’t stretch edge-to-edge.
-  // sm+: restore full-width 1fr columns so tiles stay inside category cards (max-content + w-max overflowed on laptop).
   const n = displayedCompanies.length;
   const gridCols =
     n >= 5
-      ? "grid-cols-[repeat(3,max-content)] sm:grid-cols-5"
+      ? "grid-cols-3 sm:grid-cols-5"
       : n >= 3
-        ? "grid-cols-[repeat(3,max-content)] sm:grid-cols-3"
+        ? "grid-cols-3 sm:grid-cols-3"
         : n === 2
-          ? "grid-cols-[repeat(2,max-content)] sm:grid-cols-2"
-          : "grid-cols-[max-content] sm:grid-cols-1";
+          ? "grid-cols-2 sm:grid-cols-2"
+          : "grid-cols-1 sm:grid-cols-1";
 
   return (
     <div
-      className={`grid ${gridCols} gap-1.5 sm:gap-2 p-1.5 sm:p-2 min-h-[72px] sm:min-h-[80px] items-center justify-center justify-items-center overflow-hidden max-sm:place-content-center w-full min-w-0 max-sm:w-max max-sm:max-w-full max-sm:mx-auto`}
+      className={`grid ${gridCols} w-full min-w-0 items-center justify-center justify-items-center gap-2 p-2 sm:gap-2 sm:p-2 min-h-[152px] sm:min-h-[80px] overflow-hidden place-content-center`}
     >
       {displayedCompanies.map((company, index) => (
-        <div key={index} className="relative w-10 h-10 sm:w-20 sm:h-20 shrink-0">
+        <div key={index} className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
           <AnimatePresence mode="wait">
             <MotionDiv
               key={company?._id || company?.name || index}
@@ -98,11 +96,11 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
                 duration: 0.4,
                 scale: { type: "spring", stiffness: 300, damping: 15 }
               }}
-              className="w-10 h-10 sm:w-20 sm:h-20 rounded-lg sm:rounded-xl border border-theme sm:border-2 bg-theme-input flex items-center justify-center overflow-hidden shadow-sm transition-all cursor-pointer"
+              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border-2 border-theme bg-theme-input shadow-sm transition-all cursor-pointer sm:h-20 sm:w-20 sm:rounded-xl"
             >
               <CompanyLogo
                 company={company}
-                className="w-8 h-8 sm:w-16 sm:h-16 object-contain p-0.5 sm:p-1"
+                className="h-12 w-12 object-contain p-1 sm:h-16 sm:w-16 sm:p-1"
                 alt={`${company?.name || 'Company'} logo`}
               />
             </MotionDiv>

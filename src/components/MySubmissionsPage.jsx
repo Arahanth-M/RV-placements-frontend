@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FaArrowLeft,
   FaChevronDown,
   FaClock,
   FaBuilding,
   FaClipboardList,
   FaUser,
 } from "react-icons/fa";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
 import { submissionAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 
@@ -170,17 +175,12 @@ const MySubmissionsPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-theme-app overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+    <div className={`min-h-screen overflow-y-auto ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate(-1)} />
+        </PageBackNavRow>
         <div className="mb-6 sm:mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center back-link-theme text-sm sm:text-base mb-4 hover:opacity-80 transition-opacity"
-          >
-            <FaArrowLeft className="mr-2" />
-            Back
-          </button>
-
           <div className="bg-theme-card border border-theme px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm">
             {user?.picture ? (
               <img
