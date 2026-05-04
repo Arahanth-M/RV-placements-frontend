@@ -5,7 +5,7 @@ import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from '../constants/placementYears.js';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload } from 'react-icons/fa';
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
@@ -51,7 +51,7 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'assign-spc'
+  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'assign-spc', 'add-next-batch'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
@@ -89,6 +89,10 @@ const AdminDashboard = () => {
   const [spcUsersLoading, setSpcUsersLoading] = useState(false);
   const [spcUsersLoaded, setSpcUsersLoaded] = useState(false);
   const [revokingSpcIds, setRevokingSpcIds] = useState(new Set());
+  const [studentBatchColumnGuide, setStudentBatchColumnGuide] = useState([]);
+  const [studentBatchImportLoading, setStudentBatchImportLoading] = useState(false);
+  const [studentBatchImportResult, setStudentBatchImportResult] = useState(null);
+  const [studentBatchFileKey, setStudentBatchFileKey] = useState(0);
 
   const loadPendingSubmissionsList = useCallback(async (page) => {
     const res = await adminAPI.getSubmissions({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
@@ -348,6 +352,71 @@ const AdminDashboard = () => {
       cancelled = true;
     };
   }, [loading, activeMainTab, spcUsersLoaded, loadSpcUsers]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (activeMainTab !== 'add-next-batch') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await adminAPI.getStudentBatchColumnGuide();
+        if (!cancelled) {
+          setStudentBatchColumnGuide(Array.isArray(res.data?.columns) ? res.data.columns : []);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setStudentBatchColumnGuide([]);
+          setAdminToast({
+            type: 'error',
+            message:
+              e?.response?.data?.error ||
+              e?.response?.data?.message ||
+              'Could not load the student column guide.',
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, activeMainTab]);
+
+  const handleStudentBatchImport = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const input = form.querySelector('input[type="file"]');
+    const file = input?.files?.[0];
+    if (!file) {
+      setAdminToast({ type: 'error', message: 'Choose an .xlsx file first.' });
+      return;
+    }
+    setStudentBatchImportLoading(true);
+    setStudentBatchImportResult(null);
+    try {
+      const res = await adminAPI.importStudentsBatch(file);
+      setStudentBatchImportResult(res.data);
+      if (res.data?.success) {
+        setAdminToast({ type: 'success', message: res.data.message || 'Import finished.' });
+        setStudentBatchFileKey((k) => k + 1);
+      } else {
+        setAdminToast({
+          type: 'error',
+          message: res.data?.message || res.data?.error || 'Import was rejected.',
+        });
+      }
+    } catch (err) {
+      const body = err?.response?.data;
+      setStudentBatchImportResult(
+        body && typeof body === 'object' ? body : { success: false, message: err?.message || 'Request failed.' }
+      );
+      setAdminToast({
+        type: 'error',
+        message: body?.message || body?.error || 'Import request failed.',
+      });
+    } finally {
+      setStudentBatchImportLoading(false);
+    }
+  };
 
   const parseContent = (contentString) => {
     try {
@@ -1002,6 +1071,18 @@ const AdminDashboard = () => {
                 <FaUserShield />
                 Assign SPC
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('add-next-batch')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'add-next-batch'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaUpload />
+                Add next batch
+              </button>
             </div>
 
             {/* Main Content Area */}
@@ -1323,6 +1404,189 @@ const AdminDashboard = () => {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeMainTab === 'add-next-batch' && (
+              <div className="space-y-6">
+                <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                  <div className="mb-5">
+                    <h2 className="text-xl font-semibold text-theme-accent">Add next batch</h2>
+                    <p className="mt-1 text-sm text-theme-secondary">
+                      Upload an Excel workbook (.xlsx) with a header row. Required columns use common labels such as
+                      Name, Email, and USN; optional Phone and Branch. Rows with validation errors block the entire
+                      import. Duplicate USN or email in the file or in the database are skipped (first row in the file
+                      wins). Inserts run in a single database transaction (all or nothing).
+                    </p>
+                  </div>
+
+                  <div className="mb-6 overflow-x-auto rounded-lg border border-theme">
+                    <table className="min-w-full divide-y divide-theme text-sm">
+                      <thead className="bg-theme-hero">
+                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                          <th className="px-4 py-3">Accepted header labels (examples)</th>
+                          <th className="px-4 py-3">Stored as</th>
+                          <th className="px-4 py-3">Required</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-theme text-theme-primary">
+                        {(studentBatchColumnGuide.length
+                          ? studentBatchColumnGuide
+                          : [
+                              { labels: ['Name'], field: 'name', required: true },
+                              { labels: ['Email'], field: 'email', required: true },
+                              { labels: ['USN'], field: 'usn', required: true },
+                              { labels: ['Phone'], field: 'phoneNumber', required: false },
+                              { labels: ['Branch'], field: 'branch', required: false },
+                            ]
+                        ).map((row) => (
+                          <tr key={row.field}>
+                            <td className="px-4 py-3 text-theme-secondary">
+                              {Array.isArray(row.labels) ? row.labels.join(', ') : row.labels}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs">{row.field}</td>
+                            <td className="px-4 py-3">{row.required ? 'Yes' : 'No'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <form
+                    key={studentBatchFileKey}
+                    onSubmit={handleStudentBatchImport}
+                    className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
+                  >
+                    <label className="block min-w-[220px] flex-1">
+                      <span className="mb-2 block text-sm font-medium text-theme-primary">Excel file (.xlsx)</span>
+                      <input
+                        type="file"
+                        name="file"
+                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        className="block w-full text-sm text-theme-secondary file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={studentBatchImportLoading}
+                      className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {studentBatchImportLoading ? 'Importing…' : 'Upload and import'}
+                    </button>
+                  </form>
+                </div>
+
+                {studentBatchImportResult && (
+                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+                    <h3 className="text-lg font-semibold text-theme-primary">Import result</h3>
+                    <p
+                      className={`mt-2 text-sm ${
+                        studentBatchImportResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                      }`}
+                    >
+                      {studentBatchImportResult.message ||
+                        studentBatchImportResult.error ||
+                        (studentBatchImportResult.success ? 'Completed.' : 'Import did not complete.')}
+                    </p>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
+                        <p className="text-xs font-semibold uppercase text-theme-secondary">Inserted</p>
+                        <p className="mt-1 text-2xl font-bold text-theme-primary">
+                          {studentBatchImportResult.inserted ?? 0}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
+                        <p className="text-xs font-semibold uppercase text-theme-secondary">Skipped</p>
+                        <p className="mt-1 text-2xl font-bold text-theme-primary">
+                          {studentBatchImportResult.skippedCount ??
+                            (Array.isArray(studentBatchImportResult.skipped)
+                              ? studentBatchImportResult.skipped.length
+                              : 0)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
+                        <p className="text-xs font-semibold uppercase text-theme-secondary">Failed (validation)</p>
+                        <p className="mt-1 text-2xl font-bold text-theme-primary">
+                          {studentBatchImportResult.failedCount ??
+                            (Array.isArray(studentBatchImportResult.failed)
+                              ? studentBatchImportResult.failed.length
+                              : 0)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {Array.isArray(studentBatchImportResult.failed) && studentBatchImportResult.failed.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-sm font-semibold text-theme-primary">Failed rows</h4>
+                        <p className="mt-1 text-xs text-theme-secondary">
+                          Each sheet row number matches Excel (row 1 is the header; the first data row is 2). Fix these
+                          cells and upload again — nothing was saved for this attempt.
+                        </p>
+                        <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-theme">
+                          <table className="min-w-full divide-y divide-theme text-sm">
+                            <thead className="bg-theme-hero sticky top-0">
+                              <tr className="text-left text-xs font-semibold uppercase text-theme-secondary">
+                                <th className="px-3 py-2">Sheet row</th>
+                                <th className="px-3 py-2">Reason</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-theme">
+                              {studentBatchImportResult.failed.map((f, idx) => (
+                                <tr key={`${f.excelRow}-${idx}`}>
+                                  <td className="px-3 py-2 font-mono text-theme-primary">{f.excelRow}</td>
+                                  <td className="px-3 py-2 text-theme-secondary">{f.reason}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {Array.isArray(studentBatchImportResult.skipped) && studentBatchImportResult.skipped.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-sm font-semibold text-theme-primary">Skipped rows</h4>
+                        <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-theme">
+                          <table className="min-w-full divide-y divide-theme text-sm">
+                            <thead className="bg-theme-hero sticky top-0">
+                              <tr className="text-left text-xs font-semibold uppercase text-theme-secondary">
+                                <th className="px-3 py-2">Sheet row</th>
+                                <th className="px-3 py-2">Reason</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-theme">
+                              {studentBatchImportResult.skipped.map((s, idx) => (
+                                <tr key={`${s.excelRow}-${idx}`}>
+                                  <td className="px-3 py-2 font-mono text-theme-primary">{s.excelRow}</td>
+                                  <td className="px-3 py-2 text-theme-secondary">{s.reason}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {studentBatchImportResult.success &&
+                      Array.isArray(studentBatchImportResult.insertedExcelRows) &&
+                      studentBatchImportResult.insertedExcelRows.length > 0 && (
+                        <div className="mt-6">
+                          <h4 className="text-sm font-semibold text-theme-primary">Inserted sheet rows</h4>
+                          <p className="mt-1 max-h-40 overflow-y-auto font-mono text-xs text-theme-secondary break-all">
+                            {(() => {
+                              const rows = studentBatchImportResult.insertedExcelRows;
+                              const cap = 200;
+                              const head = rows.slice(0, cap);
+                              const more = rows.length - head.length;
+                              return more > 0
+                                ? `${head.join(', ')} …and ${more} more row number(s).`
+                                : head.join(', ');
+                            })()}
+                          </p>
+                        </div>
+                      )}
+                  </div>
+                )}
               </div>
             )}
 

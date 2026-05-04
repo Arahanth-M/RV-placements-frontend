@@ -248,6 +248,12 @@ export const adminAPI = {
     API.put(`/api/admin/companies/${companyId}/roles`, { roles }, { params: adminPlacementYearParams(opts) }),
   updateCompanyGeneralInfo: (companyId, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/general`, data, { params: adminPlacementYearParams(opts) }),
+  getStudentBatchColumnGuide: () => API.get('/api/admin/students/batch-import/column-guide'),
+  importStudentsBatch: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return API.post('/api/admin/students/batch-import', formData);
+  },
 };
 
 export const eventAPI = {
