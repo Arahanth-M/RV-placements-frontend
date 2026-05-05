@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
+import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from '../constants/placementYears.js';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel } from 'react-icons/fa';
 
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
@@ -51,7 +52,7 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'assign-spc', 'add-next-batch'
+  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'assign-spc', 'add-next-batch'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
@@ -93,6 +94,7 @@ const AdminDashboard = () => {
   const [studentBatchImportLoading, setStudentBatchImportLoading] = useState(false);
   const [studentBatchImportResult, setStudentBatchImportResult] = useState(null);
   const [studentBatchFileKey, setStudentBatchFileKey] = useState(0);
+  const [studentBatchSelectedFileName, setStudentBatchSelectedFileName] = useState('');
 
   const loadPendingSubmissionsList = useCallback(async (page) => {
     const res = await adminAPI.getSubmissions({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
@@ -398,6 +400,7 @@ const AdminDashboard = () => {
       if (res.data?.success) {
         setAdminToast({ type: 'success', message: res.data.message || 'Import finished.' });
         setStudentBatchFileKey((k) => k + 1);
+        setStudentBatchSelectedFileName('');
       } else {
         setAdminToast({
           type: 'error',
@@ -1073,6 +1076,18 @@ const AdminDashboard = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveMainTab('student-placement-stats')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'student-placement-stats'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaBuilding />
+                Student Placement Stats
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveMainTab('add-next-batch')}
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
                   activeMainTab === 'add-next-batch'
@@ -1289,6 +1304,10 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            {activeMainTab === 'student-placement-stats' && (
+              <StudentPlacementStatsTab />
+            )}
+
             {activeMainTab === 'assign-spc' && (
               <div className="space-y-6">
                 <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
@@ -1459,11 +1478,32 @@ const AdminDashboard = () => {
                   >
                     <label className="block min-w-[220px] flex-1">
                       <span className="mb-2 block text-sm font-medium text-theme-primary">Excel file (.xlsx)</span>
+                      <div className="mb-2 flex items-center gap-2">
+                        <label
+                          htmlFor="student-batch-file-input"
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-theme bg-theme-hero px-3 py-2 text-xs font-semibold text-theme-secondary transition hover:bg-theme-nav"
+                        >
+                          <FaFileExcel className="text-emerald-500" />
+                          <span>Choose Excel file</span>
+                        </label>
+                        {studentBatchSelectedFileName ? (
+                          <span className="truncate text-xs text-theme-secondary">
+                            {studentBatchSelectedFileName}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-theme-muted">No file selected</span>
+                        )}
+                      </div>
                       <input
+                        id="student-batch-file-input"
                         type="file"
                         name="file"
                         accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        className="block w-full text-sm text-theme-secondary file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          setStudentBatchSelectedFileName(file?.name || '');
+                        }}
+                        className="hidden"
                       />
                     </label>
                     <button

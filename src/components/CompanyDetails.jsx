@@ -6,6 +6,7 @@ import { companyAPI } from "../utils/api";
 import {
   companystatsTierListUrl,
   isPlacementTierParam,
+  normalizeClusterParam,
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_INTERNSHIP_ONLY,
   PLACEMENT_TIER_OFF_CAMPUS,
@@ -53,6 +54,25 @@ function readPreferredPlacementYearFromLocation(location) {
   const s = location.state?.defaultPlacementYear;
   if (isPlacementDetailVisitYear(s)) return s;
   return null;
+}
+
+function readPlacementCompanyVisitIdFromLocation(location) {
+  try {
+    const params = new URLSearchParams(location.search || "");
+    const raw = String(params.get("placementCompanyVisitId") || "").trim();
+    return raw || null;
+  } catch {
+    return null;
+  }
+}
+
+function readPlacementClusterFromLocation(location) {
+  try {
+    const params = new URLSearchParams(location.search || "");
+    return normalizeClusterParam(params.get("placementCluster"));
+  } catch {
+    return null;
+  }
 }
 
 function parseTierContext(raw) {
@@ -196,6 +216,8 @@ function CompanyDetails() {
     "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
 
   const placementContextForApi = readPlacementListContext(location, id);
+  const placementCompanyVisitIdForApi = readPlacementCompanyVisitIdFromLocation(location);
+  const placementClusterForApi = readPlacementClusterFromLocation(location);
 
   const interviewFocusMode = isInterviewLocked && activeTab === "aiinterview";
 
@@ -256,6 +278,12 @@ function CompanyDetails() {
       .getCompany(id, {
         year: yearForRequest,
         ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
+        ...(placementCompanyVisitIdForApi
+          ? { placementCompanyVisitId: placementCompanyVisitIdForApi }
+          : {}),
+        ...(placementClusterForApi
+          ? { placementCluster: placementClusterForApi }
+          : {}),
       })
       .then((res) => {
         if (fetchGen !== companyDetailFetchGenRef.current) return;
@@ -287,6 +315,8 @@ function CompanyDetails() {
     location.search,
     location.state?.defaultPlacementYear,
     placementContextForApi,
+    placementCompanyVisitIdForApi,
+    placementClusterForApi,
   ]);
 
   const openTabFromNav = location.state?.openTab;
@@ -306,6 +336,12 @@ function CompanyDetails() {
       .refreshCompany(id, {
         year: placementYear,
         ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
+        ...(placementCompanyVisitIdForApi
+          ? { placementCompanyVisitId: placementCompanyVisitIdForApi }
+          : {}),
+        ...(placementClusterForApi
+          ? { placementCluster: placementClusterForApi }
+          : {}),
       })
       .then((res) => setCompany(res.data))
       .catch((err) => console.error("❌ Error refreshing company:", err))
@@ -553,6 +589,10 @@ function CompanyDetails() {
     params.set("year", String(year));
     const ctx = readPlacementListContext(location, id);
     if (ctx) params.set("placementContext", ctx);
+    const visitId = readPlacementCompanyVisitIdFromLocation(location);
+    if (visitId) params.set("placementCompanyVisitId", visitId);
+    const pCluster = readPlacementClusterFromLocation(location);
+    if (pCluster) params.set("placementCluster", pCluster);
     navigate(`/companies/${id}?${params.toString()}`, {
       replace: true,
       state: location.state ?? {},

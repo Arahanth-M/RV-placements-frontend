@@ -33,6 +33,8 @@ function CompanyCard({
   hidePlacementGotInCounts = false,
   /** Dream / Open dream / Summer internship lists — drives detail-page subtitle framing */
   placementListContext,
+  /** Hub cluster (cs|ec|me) — scopes GET /companies/:id when multiple visits share year/type */
+  placementCluster,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
@@ -93,6 +95,9 @@ function CompanyCard({
     if (placementListContext) {
       params.set("placementContext", placementListContext);
     }
+    if (company?.placementCompanyVisitId) {
+      params.set("placementCompanyVisitId", String(company.placementCompanyVisitId));
+    }
     const q = params.toString();
     return q ? `/companies/${cid}?${q}` : `/companies/${cid}`;
   })();
@@ -142,6 +147,15 @@ function CompanyCard({
     }
     if (placementListContext) {
       prefetchOpts.placementContext = placementListContext;
+    }
+    if (company?.placementCompanyVisitId) {
+      prefetchOpts.placementCompanyVisitId = company.placementCompanyVisitId;
+    }
+    if (
+      typeof placementCluster === "string" &&
+      placementCluster.trim() !== ""
+    ) {
+      prefetchOpts.placementCluster = placementCluster.trim();
     }
     companyAPI.prefetchCompany(company._id, prefetchOpts);
   };
