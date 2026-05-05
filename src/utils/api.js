@@ -351,6 +351,8 @@ export const spcAPI = {
   submitConversionDetails: (data) => API.post('/api/placement/spc/conversion-details', data),
   /** Company contribution submissions + placement/conversion rows filed by this SPC. */
   getMySubmissions: () => API.get('/api/placement/spc/my-submissions'),
+  updatePlacementRecord: (placementId, data) =>
+    API.put(`/api/placement/spc/placements/${encodeURIComponent(String(placementId || ""))}`, data),
 };
 
 export const leaderboardAPI = {

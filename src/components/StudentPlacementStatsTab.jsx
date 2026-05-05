@@ -251,6 +251,7 @@ export default function StudentPlacementStatsTab() {
                     <th className="px-3 py-2">Email ID</th>
                     <th className="px-3 py-2">Company Placed</th>
                     <th className="px-3 py-2">Stipend</th>
+                    <th className="px-3 py-2">6 Months Internship Stipend</th>
                     <th className="px-3 py-2">CTC</th>
                     <th className="px-3 py-2">Role</th>
                     <th className="px-3 py-2">PPO Conversion Type</th>
@@ -267,6 +268,7 @@ export default function StudentPlacementStatsTab() {
                         <td className="px-3 py-2">{student.email || "-"}</td>
                         <td className="px-3 py-2">{student.companyPlaced || "-"}</td>
                         <td className="px-3 py-2">{student.stipend || "-"}</td>
+                        <td className="px-3 py-2">{student.sixMonthsInternshipStipend || "-"}</td>
                         <td className="px-3 py-2">{student.ctc || "-"}</td>
                         <td className="px-3 py-2">{student.role || "-"}</td>
                         <td className="px-3 py-2">

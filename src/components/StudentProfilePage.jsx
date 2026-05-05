@@ -235,6 +235,7 @@ const StudentProfilePage = () => {
                         {hasDisplayValue(p?.companyPlaced ?? p?.company ?? p?.Company) ||
                         hasDisplayValue(p?.typeOfOffer ?? p?.offerType ?? p?.offer) ||
                         hasDisplayValue(p?.stipend ?? p?.Stipend) ||
+                        hasDisplayValue(p?.["6-months-internship-stipend"]) ||
                         hasDisplayValue(p?.base) ||
                         hasDisplayValue(p?.ctc) ? (
                           <div
@@ -259,6 +260,13 @@ const StudentProfilePage = () => {
                                 <CompensationAsterisk />
                               </>,
                               p?.stipend ?? p?.Stipend
+                            )}
+                            {renderSplitRow(
+                              <>
+                                6 Months Internship Stipend
+                                <CompensationAsterisk />
+                              </>,
+                              p?.["6-months-internship-stipend"]
                             )}
                             {renderSplitRow(
                               <>
@@ -287,6 +295,7 @@ const StudentProfilePage = () => {
                   profileData.placements.some((p) =>
                     [
                       p?.stipend ?? p?.Stipend,
+                      p?.["6-months-internship-stipend"],
                       p?.base,
                       p?.ctc,
                     ].some((v) => hasDisplayValue(v))

@@ -103,6 +103,8 @@ function formatPlacementRecord(obj) {
   const offer =
     obj.typeOfOffer ?? obj.offerType ?? obj.offer ?? obj.type ?? "";
   const stipend = obj.stipend ?? obj.Stipend;
+  const sixMonthsInternshipStipend =
+    obj["6-months-internship-stipend"] ?? obj["6 Months Internship Stipend"];
   const baseVal = obj.base ?? obj.Base;
   const ctcVal = obj.ctc ?? obj.CTC;
   const parts = [String(company).trim()];
@@ -110,6 +112,12 @@ function formatPlacementRecord(obj) {
   let line = parts.filter(Boolean).join(" ");
   if (stipend != null && String(stipend).trim())
     line += ` · Stipend: ${String(stipend).trim()}`;
+  if (
+    sixMonthsInternshipStipend != null &&
+    String(sixMonthsInternshipStipend).trim()
+  ) {
+    line += ` · 6 Months Internship Stipend: ${String(sixMonthsInternshipStipend).trim()}`;
+  }
   if (baseVal != null && String(baseVal).trim())
     line += ` · Base: ${String(baseVal).trim()}`;
   if (ctcVal != null && String(ctcVal).trim())
