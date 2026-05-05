@@ -17,7 +17,7 @@ export function normalizeClusterParam(raw) {
     .trim()
     .toLowerCase();
   if (v === "cs" || v === "cse") return PLACEMENT_CLUSTER_CS;
-  if (v === "ec") return PLACEMENT_CLUSTER_EC;
+  if (v === "ec" || v === "ece") return PLACEMENT_CLUSTER_EC;
   if (v === "me") return PLACEMENT_CLUSTER_ME;
   return null;
 }

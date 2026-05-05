@@ -62,7 +62,17 @@ export const companyAPI = {
   async getAllCompanies(options = {}) {
     let year = options.year != null ? Number(options.year) : null;
     if (year != null && !Number.isFinite(year)) year = null;
-    const key = year == null ? "all" : `y${year}`;
+    const clusterRaw =
+      typeof options.cluster === "string" ? options.cluster.trim().toLowerCase() : "";
+    const cluster =
+      clusterRaw === "cs" || clusterRaw === "cse"
+        ? "cs"
+        : clusterRaw === "ec" || clusterRaw === "ece"
+          ? "ec"
+          : clusterRaw === "me"
+            ? "me"
+            : "";
+    const key = `${year == null ? "all" : `y${year}`}:c${cluster || "_"}`;
     if (!companiesListPromise) companiesListPromise = new Map();
     if (!companiesListPromise.has(key)) {
       companiesListPromise.set(
@@ -70,7 +80,13 @@ export const companyAPI = {
         (async () => {
         try {
           const res = await API.get('/api/companies', {
-            params: year == null ? undefined : { year },
+            params:
+              year == null && !cluster
+                ? undefined
+                : {
+                    ...(year == null ? {} : { year }),
+                    ...(cluster ? { cluster } : {}),
+                  },
           });
           const list = Array.isArray(res.data) ? res.data : [];
           return { data: list };
@@ -106,7 +122,7 @@ export const companyAPI = {
 
   /**
    * @param {string} id
-   * @param {{ year?: number, placementContext?: string }} [options] placement visit year; optional list context for multi-slot years
+   * @param {{ year?: number, placementContext?: string, placementCompanyVisitId?: string, placementCluster?: string }} [options] placement visit year; optional list context + exact visit id + hub cluster for multi-slot years
    */
   async getCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
@@ -115,7 +131,13 @@ export const companyAPI = {
     if (!Number.isFinite(year)) year = DEFAULT_PLACEMENT_DETAIL_YEAR;
     const ctxRaw =
       typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
-    const dedupeKey = `${id}:y${year}:pc:${ctxRaw || '_'}`;
+    const visitIdRaw =
+      typeof options.placementCompanyVisitId === 'string'
+        ? options.placementCompanyVisitId.trim()
+        : '';
+    const clusterRaw =
+      typeof options.placementCluster === 'string' ? options.placementCluster.trim() : '';
+    const dedupeKey = `${id}:y${year}:pc:${ctxRaw || '_'}:v:${visitIdRaw || '_'}:cl:${clusterRaw || '_'}`;
 
     if (!companyDetailsPromises.has(dedupeKey)) {
       companyDetailsPromises.set(
@@ -124,6 +146,8 @@ export const companyAPI = {
           params: {
             year,
             ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+            ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
+            ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
           },
         }).finally(() => {
           companyDetailsPromises.delete(dedupeKey);
@@ -148,7 +172,7 @@ export const companyAPI = {
 
   /**
    * @param {string} id
-   * @param {{ year?: number, placementContext?: string }} [options] placement visit year (must match selected year on detail page)
+   * @param {{ year?: number, placementContext?: string, placementCompanyVisitId?: string, placementCluster?: string }} [options] placement visit year (must match selected year on detail page)
    */
   async refreshCompany(id, options = {}) {
     if (!id) return Promise.reject(new Error('Company id is required'));
@@ -156,10 +180,18 @@ export const companyAPI = {
     if (!Number.isFinite(year)) year = DEFAULT_PLACEMENT_DETAIL_YEAR;
     const ctxRaw =
       typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
+    const visitIdRaw =
+      typeof options.placementCompanyVisitId === 'string'
+        ? options.placementCompanyVisitId.trim()
+        : '';
+    const clusterRaw =
+      typeof options.placementCluster === 'string' ? options.placementCluster.trim() : '';
     return API.get(`/api/companies/${id}`, {
       params: {
         year,
         ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+        ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
+        ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
       },
     });
   },
@@ -249,6 +281,15 @@ export const adminAPI = {
   updateCompanyGeneralInfo: (companyId, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/general`, data, { params: adminPlacementYearParams(opts) }),
   getStudentBatchColumnGuide: () => API.get('/api/admin/students/batch-import/column-guide'),
+  getStudentPlacementStats: (year) =>
+    API.get('/api/admin/students/placement-stats', {
+      params: year == null ? undefined : { year },
+    }),
+  exportStudentPlacementStats: (year) =>
+    API.get('/api/admin/students/placement-stats/export', {
+      params: year == null ? undefined : { year },
+      responseType: 'blob',
+    }),
   importStudentsBatch: (file) => {
     const formData = new FormData();
     formData.append('file', file);

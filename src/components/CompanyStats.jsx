@@ -60,6 +60,39 @@ function normalizeType(type) {
     .toLowerCase();
 }
 
+function normalizeCompanyCluster(raw) {
+  const v = String(raw || "").trim().toLowerCase();
+  if (!v) return null;
+
+  if (
+    v === "ec" ||
+    v === "ece" ||
+    v.includes("electronics") ||
+    v.includes("electrical")
+  ) {
+    return PLACEMENT_CLUSTER_EC;
+  }
+
+  if (v === "me" || v === "mechanical" || v.includes("mechanical engineering")) {
+    return PLACEMENT_CLUSTER_ME;
+  }
+
+  if (
+    v === "cs" ||
+    v === "cse" ||
+    v.includes("computer science") ||
+    v.includes("information science")
+  ) {
+    return PLACEMENT_CLUSTER_CS;
+  }
+
+  return null;
+}
+
+function getCompanyClusterKey(company) {
+  return normalizeCompanyCluster(company?.cluster) || PLACEMENT_CLUSTER_CS;
+}
+
 function isCompanyMarkedOffCampus(company) {
   return company?.offCampus === true;
 }
@@ -133,6 +166,10 @@ function CompanyStats() {
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
+  const effectiveClusterParam =
+    isPlacementCardsYear && placementTier
+      ? clusterParam || PLACEMENT_CLUSTER_CS
+      : clusterParam;
   const { user, isAdmin } = useAuth();
 
   const getPersistedPlacementCardsYear = () => {
@@ -186,7 +223,14 @@ function CompanyStats() {
     const resolvedCardsYear = getPersistedPlacementCardsYear();
     setSelectedYear(resolvedCardsYear);
     setPlacementTier(tier);
-    navigate(companystatsTierListUrl(tier));
+    const baseUrl = companystatsTierListUrl(tier);
+    const nextCluster =
+      clusterParam === PLACEMENT_CLUSTER_CS ||
+      clusterParam === PLACEMENT_CLUSTER_EC ||
+      clusterParam === PLACEMENT_CLUSTER_ME
+        ? clusterParam
+        : PLACEMENT_CLUSTER_CS;
+    navigate(`${baseUrl}&cluster=${encodeURIComponent(nextCluster)}`);
   }, [navigate, user?.userId]);
 
   const toTimestamp = (value) => {
@@ -252,9 +296,39 @@ function CompanyStats() {
 
       const byName = (a?.name || "").localeCompare(b?.name || "");
       if (byName !== 0) return byName;
-      return String(a?._id || "").localeCompare(String(b?._id || ""));
+      const byCompanyId = String(a?._id || "").localeCompare(String(b?._id || ""));
+      if (byCompanyId !== 0) return byCompanyId;
+      return String(a?.placementCompanyVisitId || "").localeCompare(
+        String(b?.placementCompanyVisitId || "")
+      );
     });
   }, [companies]);
+
+  const clusterScopedCompanies = useMemo(() => {
+    if (
+      effectiveClusterParam === PLACEMENT_CLUSTER_CS ||
+      effectiveClusterParam === PLACEMENT_CLUSTER_EC ||
+      effectiveClusterParam === PLACEMENT_CLUSTER_ME
+    ) {
+      return orderedCompanies.filter(
+        (company) => getCompanyClusterKey(company) === effectiveClusterParam
+      );
+    }
+    return orderedCompanies;
+  }, [orderedCompanies, effectiveClusterParam]);
+
+  const ecCompanies = useMemo(
+    () => orderedCompanies.filter((company) => getCompanyClusterKey(company) === PLACEMENT_CLUSTER_EC),
+    [orderedCompanies]
+  );
+  const meCompanies = useMemo(
+    () => orderedCompanies.filter((company) => getCompanyClusterKey(company) === PLACEMENT_CLUSTER_ME),
+    [orderedCompanies]
+  );
+  const csCompanies = useMemo(
+    () => orderedCompanies.filter((company) => getCompanyClusterKey(company) === PLACEMENT_CLUSTER_CS),
+    [orderedCompanies]
+  );
 
   // Helper function to get user-specific storage keys
   const getStorageKey = (key) => {
@@ -405,10 +479,22 @@ function CompanyStats() {
   useEffect(() => {
     if (!isPlacementCardsYear || !placementTier) return;
     if (location.pathname !== PATH_COMPANY_STATS) return;
-    if (tierQuery !== placementTier) {
-      navigate(companystatsTierListUrl(placementTier), { replace: true });
+    const expectedUrl = `${companystatsTierListUrl(placementTier)}&cluster=${encodeURIComponent(
+      effectiveClusterParam || PLACEMENT_CLUSTER_CS
+    )}`;
+    const currentUrl = `${location.pathname}${location.search}`;
+    if (tierQuery !== placementTier || currentUrl !== expectedUrl) {
+      navigate(expectedUrl, { replace: true });
     }
-  }, [isPlacementCardsYear, placementTier, location.pathname, tierQuery, navigate]);
+  }, [
+    isPlacementCardsYear,
+    placementTier,
+    location.pathname,
+    location.search,
+    tierQuery,
+    navigate,
+    effectiveClusterParam,
+  ]);
 
   useEffect(() => {
     if (location.pathname !== PATH_COMPANY_STATS) return;
@@ -604,7 +690,15 @@ function CompanyStats() {
       }
       (async () => {
         try {
-          const res = await companyAPI.getAllCompanies({ year: selectedYear });
+          const res = await companyAPI.getAllCompanies({
+            year: selectedYear,
+            cluster:
+              clusterParam === PLACEMENT_CLUSTER_CS ||
+              clusterParam === PLACEMENT_CLUSTER_EC ||
+              clusterParam === PLACEMENT_CLUSTER_ME
+                ? clusterParam
+                : undefined,
+          });
           if (!cancelled) {
             const nextCompanies = res.data || [];
             setCompanies(nextCompanies);
@@ -663,7 +757,7 @@ function CompanyStats() {
   }, [selectedYear, user]);
 
   // Filter companies (only for 2026)
-  const filteredCompanies = orderedCompanies
+  const filteredCompanies = clusterScopedCompanies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
       if (activeCategory === "all") return true;
@@ -798,20 +892,20 @@ function CompanyStats() {
     (company) => dreamTierListBase(company) && company.category === "open dream"
   );
   // Category cards must always represent full 2026 data, independent of list search/filter state.
-  const allSummerInternshipCompanies = orderedCompanies.filter((company) =>
+  const allSummerInternshipCompanies = clusterScopedCompanies.filter((company) =>
     qualifiesSummerInternshipTile(company)
   );
-  const allOffCampusCompanies = orderedCompanies.filter(isOffCampusCompany);
-  const allInternshipOnlyCompanies = orderedCompanies.filter(
+  const allOffCampusCompanies = clusterScopedCompanies.filter(isOffCampusCompany);
+  const allInternshipOnlyCompanies = clusterScopedCompanies.filter(
     (company) =>
       isInternshipOnlyCompany(company) &&
       !isPpoCompany(company) &&
       !isOffCampusCompany(company)
   );
-  const allDreamCompanies = orderedCompanies.filter(
+  const allDreamCompanies = clusterScopedCompanies.filter(
     (company) => dreamTierListBase(company) && company.category !== "open dream"
   );
-  const allOpenDreamCompanies = orderedCompanies.filter(
+  const allOpenDreamCompanies = clusterScopedCompanies.filter(
     (company) => dreamTierListBase(company) && company.category === "open dream"
   );
 
@@ -1256,6 +1350,7 @@ function CompanyStats() {
         subtitle: "Electronics & Communication",
         icon: FaBolt,
         bullets: clusterHubBullets[PLACEMENT_CLUSTER_EC],
+        companies: ecCompanies,
       },
       {
         id: PLACEMENT_CLUSTER_ME,
@@ -1263,6 +1358,7 @@ function CompanyStats() {
         subtitle: "Mechanical Engineering",
         icon: FaCogs,
         bullets: clusterHubBullets[PLACEMENT_CLUSTER_ME],
+        companies: meCompanies,
       },
       {
         id: PLACEMENT_CLUSTER_CS,
@@ -1270,6 +1366,7 @@ function CompanyStats() {
         subtitle: "Computer Science & Engineering",
         icon: FaLaptopCode,
         bullets: clusterHubBullets[PLACEMENT_CLUSTER_CS],
+        companies: csCompanies,
       },
     ];
 
@@ -1326,7 +1423,7 @@ function CompanyStats() {
                         ))}
                       </ul>
                       <div className="mt-5 flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
-                        <span>Open</span>
+                        <span>Open ({(c.companies || []).length})</span>
                         <FaChevronRight
                           className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
                           aria-hidden
@@ -1344,7 +1441,7 @@ function CompanyStats() {
     );
   }
 
-  // EC / ME: placeholder until cluster-specific data exists
+  // EC / ME: show branch-mapped cards
   if (
     isPlacementCardsYear &&
     placementTier === null &&
@@ -1352,6 +1449,8 @@ function CompanyStats() {
     (clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME)
   ) {
     const clusterLabel = clusterParam === PLACEMENT_CLUSTER_EC ? "EC cluster" : "ME cluster";
+    const clusterCompanies =
+      clusterParam === PLACEMENT_CLUSTER_EC ? ecCompanies : meCompanies;
     return (
       <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
         <div className={pageShellInnerClass}>
@@ -1361,15 +1460,34 @@ function CompanyStats() {
               label="Back to cluster selection"
             />
           </PageBackNavRow>
-        <div className="mx-auto w-full max-w-2xl min-w-0">
-          <div className="company-card rounded-2xl border-2 border-theme bg-theme-card p-8 text-center shadow-lg sm:p-10">
-            <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
-            <p className="mt-4 text-base text-theme-secondary sm:text-lg">Under development</p>
-            <p className="mx-auto mt-2 max-w-md text-sm text-theme-muted">
-              This cluster&apos;s company hub is not available yet. Please use the CS cluster listings, or check back later.
-            </p>
+          <div className="mx-auto w-full max-w-7xl min-w-0">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
+              <p className="mt-2 text-sm text-theme-secondary">
+                Showing companies mapped from company visits branch data.
+              </p>
+            </div>
+            {clusterCompanies.length === 0 ? (
+              <div className="company-card rounded-2xl border-2 border-theme bg-theme-card p-8 text-center shadow-lg sm:p-10">
+                <p className="text-base text-theme-secondary">No companies found in this cluster.</p>
+              </div>
+            ) : (
+              <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr">
+                {clusterCompanies.map((c) => (
+                  <CompanyCard
+                  key={c.placementCompanyVisitId || c._id}
+                    company={c}
+                    placementYear={selectedYear}
+                    helpfulStatus={helpfulStatusByCompanyId[c._id]}
+                    isAdmin={isAdmin}
+                    onUpdate={handleCompanyCardUpdated}
+                    onStatsUpdated={handleCompanyCardUpdated}
+                    placementCluster={effectiveClusterParam}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
         </div>
       </div>
     );
@@ -1716,7 +1834,7 @@ function CompanyStats() {
 
               return (
                 <CompanyCard
-                  key={c._id}
+                  key={c.placementCompanyVisitId || c._id}
                   company={c}
                   typeDisplayLabel={typeDisplayLabel}
                   typePlacementLabelPending={typePlacementLabelPending}
@@ -1734,6 +1852,7 @@ function CompanyStats() {
                     placementTier === PLACEMENT_TIER_OFF_CAMPUS
                   }
                   placementListContext={placementListContext}
+                  placementCluster={effectiveClusterParam}
                 />
               );
             })
