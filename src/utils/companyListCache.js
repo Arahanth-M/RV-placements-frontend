@@ -41,19 +41,24 @@ function unwrapTimedPayload(raw) {
   return raw.payload ?? null;
 }
 
-export function getCachedCompanies(year) {
+export function getCachedCompanies(year, clusterScope = "") {
   const key = String(year ?? "");
   if (!key) return null;
-  const raw = companyCache[key] ?? readSessionCache(COMPANY_SESSION_PREFIX, key);
+  const scope = String(clusterScope ?? "").trim().toLowerCase();
+  const scopedKey = `${key}::${scope || "all"}`;
+  const raw =
+    companyCache[scopedKey] ?? readSessionCache(COMPANY_SESSION_PREFIX, scopedKey);
   return unwrapTimedArray(raw);
 }
 
-export function setCachedCompanies(year, data) {
+export function setCachedCompanies(year, data, clusterScope = "") {
   const key = String(year ?? "");
   if (!key) return;
+  const scope = String(clusterScope ?? "").trim().toLowerCase();
+  const scopedKey = `${key}::${scope || "all"}`;
   const wrapped = { list: data, cachedAt: Date.now() };
-  companyCache[key] = wrapped;
-  writeSessionCache(COMPANY_SESSION_PREFIX, key, wrapped);
+  companyCache[scopedKey] = wrapped;
+  writeSessionCache(COMPANY_SESSION_PREFIX, scopedKey, wrapped);
 }
 
 export function getCachedCompanyPreview(year) {

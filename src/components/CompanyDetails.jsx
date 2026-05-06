@@ -447,8 +447,17 @@ function CompanyDetails() {
     company.placementSummerInternshipVisitMissingForYear === true &&
     tierCtxEffective === PLACEMENT_TIER_SUMMER_INTERNSHIP;
 
+  // Cluster-scoped detail route (e.g. /category?cluster=ec): when selected year has no
+  // visit for this cluster, show the same empty "No visit yet" panel and hide visit tabs/forms.
+  const hideClusterVisitDetailsForYear =
+    Boolean(placementClusterForApi) &&
+    Array.isArray(company.placementYearsAvailable) &&
+    !company.placementYearsAvailable.includes(placementYear);
+
   const hideTierContextVisitDetails =
-    hideDreamTierVisitDetails || hideSummerInternshipVisitDetails;
+    hideDreamTierVisitDetails ||
+    hideSummerInternshipVisitDetails ||
+    hideClusterVisitDetailsForYear;
 
   const dreamTierVisitPresentForYear = (y) => {
     const m = company.placementDreamTierVisitByYear;
@@ -519,7 +528,11 @@ function CompanyDetails() {
     const fromCompanyCards = getSessionValue("fromCompanyCards");
     if (fromCompanyCards === "true") {
       const storedReturnPath = getSessionValue(COMPANY_DETAILS_RETURN_PATH_KEY);
-      if (storedReturnPath && storedReturnPath.startsWith("/companystats")) {
+      if (
+        storedReturnPath &&
+        (storedReturnPath.startsWith("/companystats") ||
+          storedReturnPath.startsWith("/category"))
+      ) {
         navigate(storedReturnPath, { replace: true });
         return;
       }

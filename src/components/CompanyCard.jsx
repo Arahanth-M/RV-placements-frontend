@@ -98,6 +98,9 @@ function CompanyCard({
     if (company?.placementCompanyVisitId) {
       params.set("placementCompanyVisitId", String(company.placementCompanyVisitId));
     }
+    if (typeof placementCluster === "string" && placementCluster.trim() !== "") {
+      params.set("placementCluster", placementCluster.trim().toLowerCase());
+    }
     const q = params.toString();
     return q ? `/companies/${cid}?${q}` : `/companies/${cid}`;
   })();
