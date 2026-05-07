@@ -161,11 +161,18 @@ function CompanyStats() {
   const [internshipOnlyPage, setInternshipOnlyPage] = useState(1);
   const [summerInternshipPage, setSummerInternshipPage] = useState(1);
   const [offCampusPage, setOffCampusPage] = useState(1);
+  const [clusterBranchPage, setClusterBranchPage] = useState(1);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
+  const companyCacheScope =
+    clusterParam === PLACEMENT_CLUSTER_CS ||
+    clusterParam === PLACEMENT_CLUSTER_EC ||
+    clusterParam === PLACEMENT_CLUSTER_ME
+      ? clusterParam
+      : "all";
   const effectiveClusterParam =
     isPlacementCardsYear && placementTier
       ? clusterParam || PLACEMENT_CLUSTER_CS
@@ -231,7 +238,7 @@ function CompanyStats() {
         ? clusterParam
         : PLACEMENT_CLUSTER_CS;
     navigate(`${baseUrl}&cluster=${encodeURIComponent(nextCluster)}`);
-  }, [navigate, user?.userId]);
+  }, [navigate, user?.userId, clusterParam]);
 
   const toTimestamp = (value) => {
     if (value === null || value === undefined) return null;
@@ -328,6 +335,25 @@ function CompanyStats() {
   const csCompanies = useMemo(
     () => orderedCompanies.filter((company) => getCompanyClusterKey(company) === PLACEMENT_CLUSTER_CS),
     [orderedCompanies]
+  );
+  const ecMeClusterCompanies = useMemo(() => {
+    if (clusterParam === PLACEMENT_CLUSTER_EC) return ecCompanies;
+    if (clusterParam === PLACEMENT_CLUSTER_ME) return meCompanies;
+    return [];
+  }, [clusterParam, ecCompanies, meCompanies]);
+  const ecMeFilteredCompanies = useMemo(
+    () =>
+      ecMeClusterCompanies.filter((c) =>
+        String(c?.name || "")
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      ),
+    [ecMeClusterCompanies, search]
+  );
+  const ecMeTotalPages = Math.max(1, Math.ceil(ecMeFilteredCompanies.length / companiesPerPage));
+  const ecMeSlice = ecMeFilteredCompanies.slice(
+    (clusterBranchPage - 1) * companiesPerPage,
+    clusterBranchPage * companiesPerPage
   );
 
   // Helper function to get user-specific storage keys
@@ -504,6 +530,24 @@ function CompanyStats() {
     }
   }, [location.pathname, tierQuery, isPlacementCardsYear, placementTier, navigate]);
 
+  useEffect(() => {
+    if (location.pathname !== PATH_COMPANY_STATS) return;
+    if (!isPlacementCardsYear) return;
+    if (
+      clusterParam !== PLACEMENT_CLUSTER_EC &&
+      clusterParam !== PLACEMENT_CLUSTER_ME
+    ) {
+      return;
+    }
+    const tierAllowedForEcMe =
+      tierQuery === PLACEMENT_TIER_DREAM ||
+      tierQuery === PLACEMENT_TIER_OPEN_DREAM ||
+      tierQuery === PLACEMENT_TIER_SUMMER_INTERNSHIP;
+    if (!tierAllowedForEcMe) {
+      navigate(companystatsClusterCategoryUrl(clusterParam), { replace: true });
+    }
+  }, [location.pathname, isPlacementCardsYear, clusterParam, tierQuery, navigate]);
+
   // Only clear tier when leaving placement-card years for a concrete other year.
   // (otherwise this runs before URL sync and wipes tier after /companystats?tier= navigation → infinite "Loading…").
   useEffect(() => {
@@ -655,7 +699,7 @@ function CompanyStats() {
     let cancelled = false;
     if (isPlacementDetailVisitYear(selectedYear)) {
       localStorage.setItem('companystats_selectedYear', String(selectedYear));
-      const cachedCompanies = getCachedCompanies(selectedYear);
+      const cachedCompanies = getCachedCompanies(selectedYear, companyCacheScope);
       if (cachedCompanies) {
         setCompanies(cachedCompanies);
         setCompaniesFetchDone(true);
@@ -690,19 +734,20 @@ function CompanyStats() {
       }
       (async () => {
         try {
+          const apiClusterParam =
+            clusterParam === PLACEMENT_CLUSTER_CS ||
+            clusterParam === PLACEMENT_CLUSTER_EC ||
+            clusterParam === PLACEMENT_CLUSTER_ME
+              ? clusterParam
+              : undefined;
           const res = await companyAPI.getAllCompanies({
             year: selectedYear,
-            cluster:
-              clusterParam === PLACEMENT_CLUSTER_CS ||
-              clusterParam === PLACEMENT_CLUSTER_EC ||
-              clusterParam === PLACEMENT_CLUSTER_ME
-                ? clusterParam
-                : undefined,
+            cluster: apiClusterParam,
           });
           if (!cancelled) {
             const nextCompanies = res.data || [];
             setCompanies(nextCompanies);
-            setCachedCompanies(selectedYear, nextCompanies);
+            setCachedCompanies(selectedYear, nextCompanies, companyCacheScope);
           }
         } catch (err) {
           console.error("❌ Error fetching companies:", err);
@@ -723,7 +768,7 @@ function CompanyStats() {
         localStorage.removeItem('companystats_selectedYear');
       }
     };
-  }, [selectedYear, location.pathname, placementTier, clusterParam]);
+  }, [selectedYear, location.pathname, placementTier, clusterParam, companyCacheScope]);
 
   // Fetch year stats when 2024 or 2025 is selected
   useEffect(() => {
@@ -852,12 +897,20 @@ function CompanyStats() {
     return isCompanyMarkedOffCampus(company);
   };
 
+  const isStrictClusterTiering =
+    effectiveClusterParam === PLACEMENT_CLUSTER_EC ||
+    effectiveClusterParam === PLACEMENT_CLUSTER_ME;
+
   /** Same rule as category-preview summer tiles: strict on-campus PPO row without FTE in visit type, then legacy PPO flags. */
   const qualifiesSummerInternshipTile = (company) => {
-    if (company.placementSummerInternshipForListingYear === true) return true;
-    if (company.placementSummerInternshipForListingYear === false) return false;
-    if (company.placementAnyYearPpoOnCampus === true) return true;
-    if (company.placementAnyYearPpoOnCampus === false) return false;
+    // For EC/ME cluster pages, avoid cross-cluster leakage from merged placement flags.
+    // Use local row semantics only.
+    if (!isStrictClusterTiering) {
+      if (company.placementSummerInternshipForListingYear === true) return true;
+      if (company.placementSummerInternshipForListingYear === false) return false;
+      if (company.placementAnyYearPpoOnCampus === true) return true;
+      if (company.placementAnyYearPpoOnCampus === false) return false;
+    }
     return isPpoCompany(company) && !isOffCampusCompany(company);
   };
 
@@ -866,8 +919,10 @@ function CompanyStats() {
    * even when the hub’s primary row is a different year’s PPO.
    */
   const dreamTierListBase = (company) => {
-    if (company.placementHasDreamTierVisit === true) return !isOffCampusCompany(company);
-    if (company.placementHasDreamTierVisit === false) return false;
+    if (!isStrictClusterTiering) {
+      if (company.placementHasDreamTierVisit === true) return !isOffCampusCompany(company);
+      if (company.placementHasDreamTierVisit === false) return false;
+    }
     return (
       !isOffCampusCompany(company) &&
       !isPpoCompany(company) &&
@@ -1114,6 +1169,7 @@ function CompanyStats() {
     setInternshipOnlyPage((p) => cap(p, internshipOnlyCompanies.length));
     setSummerInternshipPage((p) => cap(p, summerInternshipCompanies.length));
     setOffCampusPage((p) => cap(p, offCampusCompanies.length));
+    setClusterBranchPage((p) => cap(p, ecMeFilteredCompanies.length));
   }, [
     companiesPerPage,
     dreamCompanies.length,
@@ -1121,6 +1177,7 @@ function CompanyStats() {
     internshipOnlyCompanies.length,
     summerInternshipCompanies.length,
     offCampusCompanies.length,
+    ecMeFilteredCompanies.length,
   ]);
 
   const resetListPages = () => {
@@ -1129,6 +1186,7 @@ function CompanyStats() {
     setInternshipOnlyPage(1);
     setSummerInternshipPage(1);
     setOffCampusPage(1);
+    setClusterBranchPage(1);
   };
 
   const handleCompanyCardUpdated = useCallback((companyId, updates = {}) => {
@@ -1138,7 +1196,7 @@ function CompanyStats() {
         company._id === companyId ? { ...company, ...updates } : company
       );
       if (isPlacementDetailVisitYear(selectedYear)) {
-        setCachedCompanies(selectedYear, nextCompanies);
+        setCachedCompanies(selectedYear, nextCompanies, companyCacheScope);
       }
       return nextCompanies;
     });
@@ -1156,7 +1214,7 @@ function CompanyStats() {
         },
       };
     });
-  }, [selectedYear]);
+  }, [selectedYear, companyCacheScope]);
 
   const yearStatsHubBullets = {
     2024: [
@@ -1203,7 +1261,7 @@ function CompanyStats() {
               Pick a batch to open placement stats or the company hub.
             </p>
           <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
-            {[2024, 2025, ...PLACEMENT_DETAIL_VISIT_YEARS].map((year) => {
+            {[2024, 2025, DEFAULT_PLACEMENT_DETAIL_YEAR].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
               const isDisabled = requiresAuth && !user;
               const isPlacementHubPick = isPlacementDetailVisitYear(year);
@@ -1441,16 +1499,14 @@ function CompanyStats() {
     );
   }
 
-  // EC / ME: show branch-mapped cards
+  // Legacy EC / ME flat list route kept disabled after moving to tier cards parity.
   if (
     isPlacementCardsYear &&
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY &&
-    (clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME)
+    clusterParam === "__legacy_ec_me_flat_list__"
   ) {
     const clusterLabel = clusterParam === PLACEMENT_CLUSTER_EC ? "EC cluster" : "ME cluster";
-    const clusterCompanies =
-      clusterParam === PLACEMENT_CLUSTER_EC ? ecCompanies : meCompanies;
     return (
       <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
         <div className={pageShellInnerClass}>
@@ -1463,17 +1519,37 @@ function CompanyStats() {
           <div className="mx-auto w-full max-w-7xl min-w-0">
             <div className="mb-4">
               <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
-              <p className="mt-2 text-sm text-theme-secondary">
-                Showing companies mapped from company visits branch data.
-              </p>
             </div>
-            {clusterCompanies.length === 0 ? (
+            <div className="top-bar mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex w-full items-center gap-2 sm:max-w-md">
+                <input
+                  type="text"
+                  placeholder={`Search in ${clusterLabel}...`}
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setClusterBranchPage(1);
+                  }}
+                  className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+                />
+                <button
+                  type="button"
+                  onClick={() => setClusterBranchPage(1)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary hover:bg-theme-nav"
+                  aria-label="Search companies"
+                >
+                  <FaSearch className="h-4 w-4" aria-hidden />
+                  <span className="hidden sm:inline">Search</span>
+                </button>
+              </div>
+            </div>
+            {ecMeFilteredCompanies.length === 0 ? (
               <div className="company-card rounded-2xl border-2 border-theme bg-theme-card p-8 text-center shadow-lg sm:p-10">
                 <p className="text-base text-theme-secondary">No companies found in this cluster.</p>
               </div>
             ) : (
               <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr">
-                {clusterCompanies.map((c) => (
+                {ecMeSlice.map((c) => (
                   <CompanyCard
                   key={c.placementCompanyVisitId || c._id}
                     company={c}
@@ -1487,20 +1563,31 @@ function CompanyStats() {
                 ))}
               </div>
             )}
+            {renderTierPagination(ecMeFilteredCompanies.length, clusterBranchPage, setClusterBranchPage)}
+            {ecMeFilteredCompanies.length > 0 && (
+              <p className="mt-2 text-center text-sm text-theme-muted" aria-live="polite">
+                Page {clusterBranchPage} of {ecMeTotalPages} · {ecMeFilteredCompanies.length}{" "}
+                {ecMeFilteredCompanies.length === 1 ? "company" : "companies"}
+              </p>
+            )}
           </div>
         </div>
       </div>
     );
   }
 
-  // CS cluster: Dream / Open dream / Internship only / Summer internship / Off campus — /category?cluster=cs
+  // CS / EC / ME cluster: category cards
   if (
     isPlacementCardsYear &&
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY &&
-    clusterParam === PLACEMENT_CLUSTER_CS
+    (clusterParam === PLACEMENT_CLUSTER_CS ||
+      clusterParam === PLACEMENT_CLUSTER_EC ||
+      clusterParam === PLACEMENT_CLUSTER_ME)
   ) {
-    const useFullListForCategoryTiles = companies.length > 0;
+    const isEcMeCluster =
+      clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME;
+    const useFullListForCategoryTiles = isEcMeCluster ? true : companies.length > 0;
     const p = categoryPreview;
     const dreamLogoPreview = useFullListForCategoryTiles
       ? allDreamCompanies.slice(0, 5)
@@ -1551,9 +1638,19 @@ function CompanyStats() {
                 Select category
               </h2>
               <p className="mx-auto mt-2 max-w-lg px-1 text-center text-sm leading-snug text-theme-secondary sm:max-w-2xl sm:px-0 sm:text-base sm:leading-normal md:text-lg">
-                Choose Dream, Open dream, Summer internship, Off-campus or
-                <br />
-                {" "}Internship only to browse company cards
+                {isEcMeCluster ? (
+                  <>
+                    Choose Dream, Open dream, or Summer internship
+                    <br />
+                    {" "}to browse company cards
+                  </>
+                ) : (
+                  <>
+                    Choose Dream, Open dream, Summer internship, Off-campus or
+                    <br />
+                    {" "}Internship only to browse company cards
+                  </>
+                )}
               </p>
               
             </div>
@@ -1627,29 +1724,30 @@ function CompanyStats() {
                 </div>
               </div>
             </button>
-            <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Internship only companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={internshipOnlyLogoPreview}
-                    gridSize={5}
-                    interval={3000}
-                  />
+            {!isEcMeCluster && (
+              <button
+                type="button"
+                onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
+                className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              >
+                <div className="flex h-full min-h-0 min-w-0 flex-col">
+                  <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                    Internship only companies
+                  </h3>
+                  <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                    <AnimatedLogoGrid
+                      companies={internshipOnlyLogoPreview}
+                      gridSize={5}
+                      interval={3000}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                    <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
+                    <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
+              </button>
+            )}
             {/* <button
               type="button"
               onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
@@ -1672,28 +1770,30 @@ function CompanyStats() {
                 </div>
               </div>
             </button> */}
-            <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Off campus companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={offCampusLogoPreview}
-                    gridSize={5}
-                    interval={3000}
-                  />
+            {!isEcMeCluster && (
+              <button
+                type="button"
+                onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
+                className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              >
+                <div className="flex h-full min-h-0 min-w-0 flex-col">
+                  <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                    Off campus companies
+                  </h3>
+                  <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                    <AnimatedLogoGrid
+                      companies={offCampusLogoPreview}
+                      gridSize={5}
+                      interval={3000}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                    <span className="text-sm sm:text-base">{offCampusCount} companies</span>
+                    <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{offCampusCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
+              </button>
+            )}
           </div>
         </div>
         </div>
@@ -1731,7 +1831,14 @@ function CompanyStats() {
           <PageBackButton
             onClick={() => {
               resetListPages();
-              navigate(companystatsClusterCategoryUrl(PLACEMENT_CLUSTER_CS));
+              navigate(
+                companystatsClusterCategoryUrl(
+                  effectiveClusterParam ||
+                    (clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME
+                      ? clusterParam
+                      : PLACEMENT_CLUSTER_CS)
+                )
+              );
             }}
             label="Back"
           />
@@ -1780,7 +1887,11 @@ function CompanyStats() {
                 const listingYear = isPlacementDetailVisitYear(selectedYear)
                   ? selectedYear
                   : null;
-                if (listingYear !== null && c.placementDreamTierForListingYear === false) {
+                if (
+                  !isStrictClusterTiering &&
+                  listingYear !== null &&
+                  c.placementDreamTierForListingYear === false
+                ) {
                   const dreamDetailY = isPlacementDetailVisitYear(c.placementDreamDetailYear)
                     ? c.placementDreamDetailYear
                     : null;
@@ -1880,8 +1991,7 @@ function CompanyStats() {
         )}
       </section>
 
-      {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY &&
-        placementTier !== PLACEMENT_TIER_SUMMER_INTERNSHIP && (
+      {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY && (
         <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
           <button
             onClick={() => setShowFilter((prev) => !prev)}

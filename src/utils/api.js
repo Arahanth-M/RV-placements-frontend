@@ -382,6 +382,8 @@ export const interviewAPI = {
     placementCluster = "",
     placementYear,
     mergePlacementByType,
+    interviewPlanMode = "custom",
+    customRounds,
   }) {
     const res = await API.post('/api/interview/start-interview', {
       userId,
@@ -390,6 +392,8 @@ export const interviewAPI = {
       placementCluster,
       placementYear,
       mergePlacementByType,
+      interviewPlanMode,
+      customRounds,
     });
     clearInterviewSummaryCacheForUser(userId);
     if (res?.data?.sessionId) {

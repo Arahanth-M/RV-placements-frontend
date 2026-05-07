@@ -10,27 +10,21 @@ import InterviewCodeWorkspace from "./InterviewCodeWorkspace";
 const EXIT_WARNING_MESSAGE =
   "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";
 
-const summarizeRoundAbout = (value, fallbackText) => {
-  const raw = Array.isArray(value) ? value.join(" ") : String(value || "");
-  const cleaned = raw
-    .replace(/^round\s*\d+\s*[-:]?\s*/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
+const MAX_CUSTOM_ROUNDS = 4;
+const ROUND_TYPE_OPTIONS = [
+  "DSA",
+  "System Design",
+  "SQL",
+  "CS Fundamentals",
+  "HR",
+];
+const ROUND_DIFFICULTY_OPTIONS = ["easy", "medium", "hard"];
 
-  if (!cleaned) return fallbackText;
-
-  // Keep preview concise: first clause only, max one short line.
-  let summary = cleaned.split(/[;|.]/)[0].trim() || cleaned;
-  const words = summary.split(" ").filter(Boolean);
-  if (words.length > 10) {
-    summary = `${words.slice(0, 10).join(" ")}...`;
-  }
-  if (summary.length > 72) {
-    summary = `${summary.slice(0, 69).trimEnd()}...`;
-  }
-
-  return summary || fallbackText;
-};
+const buildDefaultCustomRounds = (count = 2) =>
+  Array.from({ length: Math.min(MAX_CUSTOM_ROUNDS, Math.max(1, Number(count) || 1)) }, () => ({
+    type: "DSA",
+    difficulty: "medium",
+  }));
 
 const placementSlotKey = (slot) =>
   `${slot?.visitType ?? ""}\u001f${slot?.mergePlacementByType ? "mt" : "ex"}`;
@@ -94,6 +88,7 @@ function isCodingInterviewRound(roundTypeLabel) {
   if (s.includes("hr") || s.includes("behavior")) return false;
   return (
     s.includes("dsa") ||
+    s.includes("sql") ||
     s.includes("coding") ||
     s.includes("algorithm") ||
     s.includes("data structure") ||
@@ -174,6 +169,86 @@ function useTypewriterText(fullText, active) {
   return out;
 }
 
+function ThemedSelect({ value, options, onChange, placeholder = "Select option", ariaLabel }) {
+  const [open, setOpen] = useState(false);
+  const [hoveredValue, setHoveredValue] = useState(null);
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    const onDocPointer = (event) => {
+      if (!rootRef.current) return;
+      if (!rootRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocPointer);
+    return () => document.removeEventListener("mousedown", onDocPointer);
+  }, []);
+
+  const active = options.find((item) => String(item.value) === String(value)) || null;
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full min-w-[140px] px-3 py-2 rounded-xl border border-theme bg-theme-input text-sm text-theme-primary text-left flex items-center justify-between gap-2 hover:bg-theme-card focus:outline-none focus:border-theme-accent transition-colors"
+      >
+        <span className="truncate">{active?.label || placeholder}</span>
+        <svg
+          className={`h-4 w-4 text-theme-muted transition-transform ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-30 mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border border-theme-accent bg-theme-card shadow-2xl py-1.5"
+        >
+          {options.map((item) => {
+            const isActive = String(item.value) === String(value);
+            const isHovered = String(item.value) === String(hoveredValue);
+            return (
+              <li key={`${ariaLabel || "select"}-${item.value}`} role="option" aria-selected={isActive}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredValue(item.value)}
+                  onMouseLeave={() => setHoveredValue(null)}
+                  onClick={() => {
+                    onChange(item.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors border-l-2 ${
+                    isActive
+                      ? "border-theme-accent bg-theme-accent/10 text-theme-primary font-semibold"
+                      : isHovered
+                      ? "border-theme-accent bg-theme-input text-theme-primary font-semibold"
+                      : "border-transparent text-theme-secondary hover:bg-theme-input hover:text-theme-primary"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function AIInterviewTab({
   company,
   onInterviewLockChange,
@@ -194,7 +269,6 @@ function AIInterviewTab({
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resumeSession, setResumeSession] = useState(null);
   const [roundsPlan, setRoundsPlan] = useState([]);
   const [roundsDetails, setRoundsDetails] = useState([]);
   const [currentRound, setCurrentRound] = useState("");
@@ -205,8 +279,9 @@ function AIInterviewTab({
   const [roundsQuestionSummary, setRoundsQuestionSummary] = useState([]);
   const [questionsPlannedThisRound, setQuestionsPlannedThisRound] = useState(3);
   const [currentQuestionNumberWithinRound, setCurrentQuestionNumberWithinRound] = useState(1);
-  const [previewPlan, setPreviewPlan] = useState(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
+  const [customRounds, setCustomRounds] = useState(() => buildDefaultCustomRounds(2));
+  const [draggedRoundIndex, setDraggedRoundIndex] = useState(null);
+  const [dragOverRoundIndex, setDragOverRoundIndex] = useState(null);
   const [visitSlots, setVisitSlots] = useState([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
@@ -254,13 +329,44 @@ function AIInterviewTab({
     return Boolean(selectedSlotKey);
   }, [user?.betaAccess, slotsLoading, visitSlots.length, selectedSlotKey]);
 
+  const normalizedCustomRounds = useMemo(
+    () =>
+      (Array.isArray(customRounds) ? customRounds : [])
+        .slice(0, MAX_CUSTOM_ROUNDS)
+        .map((round) => ({
+          type: ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "DSA",
+          difficulty: ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
+            ? round.difficulty
+            : "medium",
+        })),
+    [customRounds]
+  );
+
+  const customPlanValidationError = useMemo(() => {
+    if (normalizedCustomRounds.length < 1 || normalizedCustomRounds.length > MAX_CUSTOM_ROUNDS) {
+      return `Select between 1 and ${MAX_CUSTOM_ROUNDS} rounds.`;
+    }
+    const hrCount = normalizedCustomRounds.filter((round) => round.type === "HR").length;
+    if (hrCount < 1) {
+      return "At least one HR round is mandatory.";
+    }
+    const hardSystemDesignCount = normalizedCustomRounds.filter(
+      (round) => round.type === "System Design" && round.difficulty === "hard"
+    ).length;
+    if (hardSystemDesignCount > 2) {
+      return "Use at most 2 hard System Design rounds.";
+    }
+    return "";
+  }, [normalizedCustomRounds]);
+
   const canStart = useMemo(() => {
     return (
       Boolean(user?.userId && company?._id) &&
       !loading &&
-      placementSelectionReady
+      placementSelectionReady &&
+      !customPlanValidationError
     );
-  }, [user?.userId, company?._id, loading, placementSelectionReady]);
+  }, [user?.userId, company?._id, loading, placementSelectionReady, customPlanValidationError]);
 
   const isCodingRoundUI = useMemo(() => {
     const hint =
@@ -313,44 +419,6 @@ function AIInterviewTab({
     if (!isCodingRoundUI) setAnswerCode("");
   }, [isCodingRoundUI]);
 
-  const previewRoundItems = useMemo(() => {
-    if (Array.isArray(previewPlan?.rounds) && previewPlan.rounds.length > 0) {
-      return previewPlan.rounds.map((item, index) => ({
-        roundNumber: item.roundNumber || index + 1,
-        about: summarizeRoundAbout(
-          item.about || item.type,
-          "General Interview"
-        ),
-      }));
-    }
-
-    if (Array.isArray(previewPlan?.roundsDetails) && previewPlan.roundsDetails.length > 0) {
-      return previewPlan.roundsDetails.map((item, index) => ({
-        roundNumber: index + 1,
-        about: summarizeRoundAbout(
-          item.questionType || item.round,
-          "General Interview"
-        ),
-      }));
-    }
-
-    if (Array.isArray(previewPlan?.roundsPlan) && previewPlan.roundsPlan.length > 0) {
-      return previewPlan.roundsPlan.map((item, index) => ({
-        roundNumber: index + 1,
-        about: summarizeRoundAbout(item, `Round ${index + 1}`),
-      }));
-    }
-
-    const total = Number(previewPlan?.totalRounds) || 0;
-    if (total > 0) {
-      return Array.from({ length: total }, (_, index) => ({
-        roundNumber: index + 1,
-        about: `Round ${index + 1}`,
-      }));
-    }
-
-    return [];
-  }, [previewPlan]);
 
   useEffect(() => {
     activeSessionIdRef.current = sessionId;
@@ -453,83 +521,6 @@ function AIInterviewTab({
     }
   }, [company?._id, user?.betaAccess]);
 
-  const fetchResumableInterview = useCallback(async () => {
-    if (!user?.userId || !company?._id) {
-      setResumeSession(null);
-      return;
-    }
-
-    if (user?.betaAccess === false) {
-      setResumeSession(null);
-      return;
-    }
-
-    if (!placementSelectionReady) {
-      setResumeSession(null);
-      return;
-    }
-
-    const slot = selectedPlacementSlot;
-    const visitType = slot?.visitType ?? "";
-    const mergeMt = slot?.mergePlacementByType === true;
-
-    try {
-      const { data } = await interviewAPI.getResumableInterview({
-        userId: user.userId,
-        companyId: company._id,
-        placementVisitType: visitType,
-        placementCluster: mergeMt ? "" : slot?.cluster ?? "",
-        placementYear: mergeMt ? undefined : Number(slot?.year),
-        mergePlacementByType: mergeMt,
-      });
-      setResumeSession(data || null);
-    } catch {
-      setResumeSession(null);
-    }
-  }, [
-    user?.userId,
-    user?.betaAccess,
-    company?._id,
-    placementSelectionReady,
-    selectedPlacementSlot,
-  ]);
-
-  const fetchPreviewPlan = useCallback(async () => {
-    if (!company?._id) {
-      setPreviewPlan(null);
-      return;
-    }
-
-    if (user?.betaAccess === false) {
-      setPreviewPlan(null);
-      return;
-    }
-
-    if (!placementSelectionReady) {
-      setPreviewPlan(null);
-      return;
-    }
-
-    const slot = selectedPlacementSlot;
-    const visitType = slot?.visitType ?? "";
-    const mergeMt = slot?.mergePlacementByType === true;
-
-    setPreviewLoading(true);
-    try {
-      const { data } = await interviewAPI.previewInterviewPlan(company._id, {
-        visitType,
-        cluster: mergeMt ? "" : slot?.cluster ?? "",
-        placementYear: mergeMt ? undefined : Number(slot?.year),
-        mergePlacementByType: mergeMt,
-      });
-      setPreviewPlan(data || null);
-    } catch {
-      setPreviewPlan(null);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [company?._id, user?.betaAccess, placementSelectionReady, selectedPlacementSlot]);
-
   useEffect(() => {
     fetchVisitSlots();
   }, [fetchVisitSlots]);
@@ -564,26 +555,86 @@ function AIInterviewTab({
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [slotMenuOpen]);
 
-  useEffect(() => {
-    fetchResumableInterview();
-  }, [fetchResumableInterview]);
-
-  useEffect(() => {
-    fetchPreviewPlan();
-  }, [fetchPreviewPlan]);
-
-  useEffect(() => {
-    if (!previewPlan) return;
-    console.info("[AIInterviewTab] Preview payload", {
-      totalRounds: previewPlan?.totalRounds,
-      roundsCount: Array.isArray(previewPlan?.rounds) ? previewPlan.rounds.length : 0,
-      roundsPlanCount: Array.isArray(previewPlan?.roundsPlan) ? previewPlan.roundsPlan.length : 0,
-      roundsDetailsCount: Array.isArray(previewPlan?.roundsDetails)
-        ? previewPlan.roundsDetails.length
-        : 0,
-      computedPreviewCount: previewRoundItems.length,
+  const handleCustomRoundCountChange = useCallback((nextCountRaw) => {
+    const nextCount = Math.min(
+      MAX_CUSTOM_ROUNDS,
+      Math.max(1, Number.parseInt(String(nextCountRaw), 10) || 1)
+    );
+    setCustomRounds((prev) => {
+      const base = Array.isArray(prev) ? [...prev] : [];
+      if (base.length > nextCount) return base.slice(0, nextCount);
+      while (base.length < nextCount) {
+        base.push({ type: "DSA", difficulty: "medium" });
+      }
+      return base;
     });
-  }, [previewPlan, previewRoundItems.length]);
+  }, []);
+
+  const handleCustomRoundFieldChange = useCallback((index, field, value) => {
+    setCustomRounds((prev) =>
+      (Array.isArray(prev) ? prev : []).map((round, roundIndex) => {
+        if (roundIndex !== index) return round;
+        if (field === "type") {
+          return {
+            ...round,
+            type: ROUND_TYPE_OPTIONS.includes(value) ? value : "DSA",
+          };
+        }
+        return {
+          ...round,
+          difficulty: ROUND_DIFFICULTY_OPTIONS.includes(value) ? value : "medium",
+        };
+      })
+    );
+  }, []);
+
+  const handleRoundDragStart = useCallback((index) => {
+    setDraggedRoundIndex(index);
+    setDragOverRoundIndex(index);
+  }, []);
+
+  const handleRoundDragOver = useCallback((event, index) => {
+    event.preventDefault();
+    if (dragOverRoundIndex !== index) {
+      setDragOverRoundIndex(index);
+    }
+  }, [dragOverRoundIndex]);
+
+  const handleRoundDrop = useCallback((targetIndex) => {
+    setCustomRounds((prev) => {
+      const safeTargetIndex = Number(targetIndex);
+      if (
+        !Array.isArray(prev) ||
+        prev.length < 2 ||
+        draggedRoundIndex == null ||
+        !Number.isFinite(safeTargetIndex) ||
+        draggedRoundIndex < 0 ||
+        safeTargetIndex < 0 ||
+        draggedRoundIndex >= prev.length ||
+        safeTargetIndex > prev.length
+      ) {
+        return prev;
+      }
+      const insertIndex = Math.min(prev.length, Math.max(0, safeTargetIndex));
+      if (draggedRoundIndex === insertIndex || draggedRoundIndex + 1 === insertIndex) {
+        return prev;
+      }
+      const next = [...prev];
+      const [moved] = next.splice(draggedRoundIndex, 1);
+      const normalizedInsertIndex =
+        insertIndex > draggedRoundIndex ? insertIndex - 1 : insertIndex;
+      next.splice(normalizedInsertIndex, 0, moved);
+      return next;
+    });
+    setDraggedRoundIndex(null);
+    setDragOverRoundIndex(null);
+  }, [draggedRoundIndex]);
+
+  const handleRoundDragEnd = useCallback(() => {
+    setDraggedRoundIndex(null);
+    setDragOverRoundIndex(null);
+  }, []);
+
 
   const enterFullscreen = useCallback(async () => {
     if (document.fullscreenElement) return;
@@ -636,7 +687,6 @@ function AIInterviewTab({
     activeSessionIdRef.current = "";
     isExitingInterviewRef.current = true;
     setSessionId("");
-    setResumeSession(null);
     resetInterviewState();
     setNeedsFullscreenResume(false);
     setIsInFullscreen(Boolean(document.fullscreenElement));
@@ -871,43 +921,13 @@ function AIInterviewTab({
     el.style.height = `${nextHeight}px`;
   }, [answerExplanation, status]);
 
-  const handleResumeInterview = () => {
-    if (!resumeSession) return;
-    loadingRef.current = false;
-    roundFeedbackRef.current = null;
-    setSessionId(resumeSession.sessionId || "");
-    setQuestion(resumeSession.question || "");
-    setStatus(resumeSession.status || "in_progress");
-    setCurrentRound(resumeSession.currentRound || "");
-    setRoundsPlan(Array.isArray(resumeSession.roundsPlan) ? resumeSession.roundsPlan : []);
-    setRoundsDetails(Array.isArray(resumeSession.roundsDetails) ? resumeSession.roundsDetails : []);
-    setCurrentRoundIndex(Number(resumeSession.currentRoundIndex) || 0);
-    setTotalRounds(Number(resumeSession.totalRounds) || 0);
-    setDifficultyLevel(resumeSession.difficultyLevel || "");
-    setCurrentRoundType(deriveRoundTypeFromPayload(resumeSession));
-    if (Array.isArray(resumeSession.rounds)) {
-      setRoundsQuestionSummary(deriveRoundsQuestionSummary(resumeSession.rounds));
-      const crNum = Number(resumeSession.currentRound) || 1;
-      const rd = resumeSession.rounds[Math.max(0, crNum - 1)];
-      setQuestionsPlannedThisRound(
-        typeof rd?.questionCount === "number"
-          ? Math.min(5, Math.max(3, Math.round(rd.questionCount)))
-          : 3
-      );
-    }
-    setCurrentQuestionNumberWithinRound(Number(resumeSession.currentQuestionIndex ?? 0) + 1);
-    setRoundTransitionMessage("");
-    setRoundFeedbackView(null);
-    setPendingQuestionFeedback(null);
-    setError("");
-    enterFullscreen();
-  };
-
   const handleStartInterview = async () => {
     if (!canStart) {
       setError(
         !placementSelectionReady
           ? "Choose a visit type slot before starting."
+          : customPlanValidationError
+          ? customPlanValidationError
           : "Please login and make sure company details are loaded."
       );
       return;
@@ -928,10 +948,6 @@ function AIInterviewTab({
     setRoundFeedbackView(null);
     setPendingQuestionFeedback(null);
 
-    if (!previewPlan && !previewLoading) {
-      fetchPreviewPlan().catch(() => {});
-    }
-
     try {
       const mergeMt = slot?.mergePlacementByType === true;
       const { data } = await interviewAPI.startInterview({
@@ -941,6 +957,8 @@ function AIInterviewTab({
         placementCluster: mergeMt ? "" : slot?.cluster ?? "",
         placementYear: mergeMt ? undefined : Number(slot?.year),
         mergePlacementByType: mergeMt,
+        interviewPlanMode: "custom",
+        customRounds: normalizedCustomRounds,
       });
 
       setSessionId(data.sessionId || "");
@@ -969,22 +987,7 @@ function AIInterviewTab({
       }
       setCurrentQuestionNumberWithinRound(Number(data.currentQuestionIndex ?? 0) + 1);
       await enterFullscreen();
-      if (data?.resumed) {
-        setResumeSession({
-          sessionId: data.sessionId || "",
-          question: data.question || "",
-          status: data.status || "in_progress",
-          roundsPlan: Array.isArray(data.roundsPlan) ? data.roundsPlan : [],
-          roundsDetails: Array.isArray(data.roundsDetails) ? data.roundsDetails : [],
-          rounds: Array.isArray(data.rounds) ? data.rounds : [],
-          currentRound: data.currentRound || "",
-          currentRoundIndex: Number(data.currentRoundIndex) || 0,
-          totalRounds: Number(data.totalRounds) || 0,
-          difficultyLevel: data.difficultyLevel || "",
-        });
-      } else {
-        setResumeSession(null);
-      }
+      // Resume intentionally disabled.
     } catch (err) {
       console.error("Failed to start AI interview:", err);
       setError(err?.response?.data?.error || "Failed to start interview.");
@@ -1117,9 +1120,7 @@ function AIInterviewTab({
       }
     }
 
-    if (st.status === "completed") {
-      setResumeSession(null);
-    }
+    // Resume intentionally disabled.
   }, []);
 
   const handleSubmitAnswer = async () => {
@@ -1477,9 +1478,7 @@ function AIInterviewTab({
             setScore(typeof data.score === "number" ? data.score : null);
           }
         }
-        if (data.status === "completed") {
-          setResumeSession(null);
-        }
+        // Resume intentionally disabled.
       }
     } catch (err) {
       console.error("Failed to submit interview answer:", err);
@@ -1659,12 +1658,55 @@ function AIInterviewTab({
     return currentRoundIndex + 1;
   }, [currentRound, currentRoundIndex]);
 
+  const currentRoundTypeDisplay = useMemo(() => {
+    if (String(currentRoundType || "").trim()) return String(currentRoundType).trim();
+    const detailType =
+      Array.isArray(roundsDetails) && roundsDetails[currentRoundIndex]
+        ? roundsDetails[currentRoundIndex].questionType
+        : "";
+    return String(detailType || "").trim() || "General";
+  }, [currentRoundType, roundsDetails, currentRoundIndex]);
+
+  const interviewRoundsOverview = useMemo(() => {
+    const byRound = Array.isArray(roundsQuestionSummary) ? roundsQuestionSummary : [];
+    if (byRound.length > 0) {
+      return byRound.map((item, idx) => {
+        const labelFromDetails =
+          Array.isArray(roundsDetails) && roundsDetails[idx]
+            ? roundsDetails[idx].questionType
+            : "";
+        const labelFromPlan = Array.isArray(roundsPlan) ? roundsPlan[idx] : "";
+        const category = String(labelFromDetails || labelFromPlan || "General").trim();
+        return {
+          roundNumber: item.roundNumber || idx + 1,
+          category: category || "General",
+          questionCount: item.questionCount || 0,
+        };
+      });
+    }
+
+    const total = Number(totalRounds) || 0;
+    if (total <= 0) return [];
+    return Array.from({ length: total }, (_, idx) => ({
+      roundNumber: idx + 1,
+      category:
+        String(
+          (Array.isArray(roundsDetails) && roundsDetails[idx]
+            ? roundsDetails[idx].questionType
+            : "") ||
+            (Array.isArray(roundsPlan) ? roundsPlan[idx] : "") ||
+            "General"
+        ).trim() || "General",
+      questionCount:
+        (Array.isArray(roundsQuestionSummary) && roundsQuestionSummary[idx]
+          ? roundsQuestionSummary[idx].questionCount
+          : null) ?? 0,
+    }));
+  }, [roundsQuestionSummary, roundsDetails, roundsPlan, totalRounds]);
+
   /** Entire multi-round session finished (server only sets this after the last round’s report is generated). */
   const showInterviewFinale =
     interviewCompleted && Boolean(sessionId) && !isProcessing;
-  const hasResumableInterview =
-    Boolean(resumeSession?.sessionId) && resumeSession?.status === "in_progress";
-
   /** Fullscreen + any loaded interview session (in progress or summary) — matches browser fullscreen during mock interview. */
   const showFullscreenThemeToggle =
     typeof document !== "undefined" &&
@@ -1711,35 +1753,55 @@ function AIInterviewTab({
           <h2 id="interview-current-question-heading" className="sr-only">
             Current interview question
           </h2>
-          {interviewRoundPlanLine ? (
+          <div className="mb-5 rounded-xl border border-theme bg-theme-input p-4">
             <p className="text-[11px] sm:text-xs font-semibold tracking-[0.12em] text-theme-muted uppercase mb-3 leading-snug">
-              Questions per round — {interviewRoundPlanLine}
+              Interview Progress
             </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2 sm:gap-3 text-sm mb-5">
-            <span className="inline-flex items-center gap-2 rounded-lg bg-theme-input border border-theme px-3 py-2 font-sans">
-              <span className="text-theme-secondary text-xs font-semibold uppercase tracking-wide">
-                Current round
-              </span>
-              <span className="text-theme-primary tabular-nums font-bold text-base">
-                {displayInterviewRoundNumber}
-                <span className="text-theme-muted font-semibold mx-1">/</span>
-                {totalRounds || "—"}
-              </span>
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-lg bg-theme-input border border-theme px-3 py-2 font-sans">
-              <span className="text-theme-secondary text-xs font-semibold uppercase tracking-wide">
-                Current question
-              </span>
-              <span className="text-theme-primary tabular-nums font-bold text-base">
-                {currentQuestionNumberWithinRound}
-                <span className="text-theme-muted font-semibold mx-1">/</span>
-                {questionsPlannedThisRound}
-              </span>
-              <span className="text-theme-muted text-xs hidden sm:inline font-normal normal-case tracking-normal">
-                this round
-              </span>
-            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+              <div className="rounded-lg border border-theme bg-theme-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-theme-secondary font-semibold">
+                  Total rounds
+                </p>
+                <p className="text-base font-bold text-theme-primary tabular-nums">
+                  {totalRounds || interviewRoundsOverview.length || 0}
+                </p>
+              </div>
+              <div className="rounded-lg border border-theme bg-theme-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-theme-secondary font-semibold">
+                  Current round
+                </p>
+                <p className="text-base font-bold text-theme-primary tabular-nums">
+                  {displayInterviewRoundNumber}
+                  <span className="text-theme-muted font-semibold mx-1">/</span>
+                  {totalRounds || interviewRoundsOverview.length || "—"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-theme bg-theme-card px-3 py-2">
+                <p className="text-[11px] uppercase tracking-wide text-theme-secondary font-semibold">
+                  Current round type
+                </p>
+                <p className="text-sm font-semibold text-theme-primary truncate">
+                  {currentRoundTypeDisplay}
+                </p>
+              </div>
+            </div>
+            {interviewRoundsOverview.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {interviewRoundsOverview.map((item) => (
+                  <span
+                    key={`overview-round-${item.roundNumber}`}
+                    className="inline-flex items-center gap-2 rounded-lg border border-theme px-2.5 py-1.5 bg-theme-card text-xs text-theme-secondary"
+                  >
+                    <span className="font-semibold text-theme-primary">R{item.roundNumber}</span>
+                    <span className="truncate max-w-[140px]">{item.category}</span>
+                    <span className="text-theme-muted">({item.questionCount}Q)</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            {interviewRoundPlanLine ? (
+              <p className="mt-2 text-[11px] text-theme-muted">{interviewRoundPlanLine}</p>
+            ) : null}
           </div>
           <div className="rounded-xl border border-theme-accent/40 bg-theme-input px-4 py-5 sm:px-7 sm:py-7 shadow-inner">
             <p
@@ -2227,14 +2289,12 @@ function AIInterviewTab({
       {user?.userId && user?.betaAccess !== false && showStartPrompt && (
         <div
           ref={slotPickerRef}
-          className="mb-4 rounded-xl border border-theme bg-theme-input p-4 shadow-sm"
+          className="mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
         >
-          <div className="flex flex-col gap-1 mb-3">
-            <p className="text-sm font-semibold text-theme-primary">Placement slot</p>
-            <p className="text-xs text-theme-secondary leading-relaxed">
-              Slots group by visit <span className="font-medium text-theme-primary">type</span>. Each
-              slot merges every approved row for this company with that same type (all years and clusters).
-            </p>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-theme-primary">Placement slot</p>
+            </div>
           </div>
           {slotsLoading ? (
             <p className="text-sm text-theme-secondary">Loading placement options…</p>
@@ -2247,13 +2307,16 @@ function AIInterviewTab({
                 onClick={() => visitSlots.length > 1 && setSlotMenuOpen((open) => !open)}
                 aria-expanded={slotMenuOpen}
                 aria-haspopup="listbox"
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-theme-accent bg-theme-card text-left transition-colors ${
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-theme-accent bg-theme-input text-left transition-colors ${
                   visitSlots.length > 1
-                    ? "hover:bg-theme-input cursor-pointer"
+                    ? "hover:bg-theme-card/80 focus:outline-none focus:border-theme-accent cursor-pointer"
                     : "cursor-default"
                 }`}
               >
                 <div className="min-w-0">
+                  <p className="text-xs text-theme-muted uppercase tracking-[0.12em] mb-0.5">
+                    Selected slot
+                  </p>
                   <p className="text-sm font-semibold text-theme-primary truncate">
                     {selectedPlacementSlot
                       ? formatPlacementSlotSummary(selectedPlacementSlot)
@@ -2283,7 +2346,7 @@ function AIInterviewTab({
               </button>
               {slotMenuOpen && visitSlots.length > 1 && (
                 <ul
-                  className="absolute z-30 mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border border-theme-accent bg-theme-card shadow-xl py-1"
+                  className="absolute z-30 mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border border-theme-accent bg-theme-card shadow-2xl py-1.5"
                   role="listbox"
                 >
                   {visitSlots.map((slot) => {
@@ -2296,7 +2359,7 @@ function AIInterviewTab({
                           className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-l-2 ${
                             active
                               ? "border-theme-accent bg-theme-accent/10 text-theme-primary font-semibold"
-                              : "border-transparent text-theme-secondary hover:bg-theme-input"
+                              : "border-transparent text-theme-secondary hover:bg-theme-input hover:text-theme-primary"
                           }`}
                           onClick={() => {
                             setSelectedSlotKey(key);
@@ -2320,58 +2383,103 @@ function AIInterviewTab({
         </div>
       )}
 
-      {hasResumableInterview && showStartPrompt && (
-        <div className="mb-4 p-3 rounded-lg border border-theme-accent bg-theme-input">
-          <p className="text-sm text-theme-primary mb-2">
-            You have an in-progress interview for this company.
-          </p>
-          <button
-            onClick={handleResumeInterview}
-            disabled={loading}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-theme-accent text-white transition-colors disabled:opacity-60"
-          >
-            Resume Interview
-          </button>
-        </div>
-      )}
-
-      {showStartPrompt && !hasResumableInterview && (
-        <div className="mb-4 p-3 rounded-lg border border-theme bg-theme-input">
-          <p className="text-sm font-semibold text-theme-primary mb-2">
-            Interview Structure Preview
-          </p>
-          {previewLoading ? (
-            <p className="text-sm text-theme-secondary">Preparing round-wise plan...</p>
-          ) : previewPlan ? (
-            <div className="text-sm space-y-2">
-              <p className="text-theme-secondary">
-                Total rounds:{" "}
-                <span className="text-theme-primary font-semibold">
-                  {previewPlan.totalRounds || (previewPlan.roundsPlan || []).length || 0}
-                </span>
+      {user?.userId && user?.betaAccess !== false && showStartPrompt && (
+        <div className="mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-theme-primary">Interview plan mode</p>
+              <p className="text-xs text-theme-secondary">
+                Customize your round order, type and difficulty (up to {MAX_CUSTOM_ROUNDS} rounds).
               </p>
-              {previewRoundItems.length > 0 ? (
-                <ul className="list-disc pl-5 text-theme-secondary">
-                  {previewRoundItems.map((item, idx) => (
-                    <li key={`preview-round-about-${idx}`}>
-                      <span className="text-theme-primary font-semibold">
-                        Round {item.roundNumber || idx + 1}:
-                      </span>{" "}
-                      {item.about || "General Interview"}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-theme-secondary">
-                  Planned rounds: {(previewPlan.roundsPlan || []).join(" -> ")}
-                </p>
-              )}
             </div>
-          ) : (
-            <p className="text-sm text-theme-secondary">
-              Round preview unavailable right now.
-            </p>
-          )}
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-theme-primary">
+                Number of rounds
+              </label>
+              <div>
+                <ThemedSelect
+                  ariaLabel="Number of rounds"
+                  value={normalizedCustomRounds.length}
+                  onChange={(next) => handleCustomRoundCountChange(next)}
+                  options={[1, 2, 3, 4].map((count) => ({
+                    value: count,
+                    label: String(count),
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div
+              className="space-y-2"
+              onDragOver={(event) => {
+                event.preventDefault();
+                if (draggedRoundIndex !== null) {
+                  setDragOverRoundIndex(normalizedCustomRounds.length);
+                }
+              }}
+              onDrop={() => {
+                if (draggedRoundIndex !== null) {
+                  handleRoundDrop(normalizedCustomRounds.length);
+                }
+              }}
+            >
+              {normalizedCustomRounds.map((round, idx) => (
+                <React.Fragment key={`custom-round-${idx}`}>
+                  {draggedRoundIndex !== null &&
+                    dragOverRoundIndex === idx &&
+                    draggedRoundIndex !== idx && (
+                      <div className="h-4 rounded-md border border-dashed border-theme-accent bg-theme-accent/10 transition-all duration-200" />
+                    )}
+                  <div
+                    draggable
+                    onDragStart={() => handleRoundDragStart(idx)}
+                    onDragOver={(event) => handleRoundDragOver(event, idx)}
+                    onDrop={() => handleRoundDrop(idx)}
+                    onDragEnd={handleRoundDragEnd}
+                    className={`grid grid-cols-1 sm:grid-cols-3 gap-2 items-center rounded-lg border p-3 bg-theme-card transition-all duration-200 ease-out cursor-grab active:cursor-grabbing ${
+                      draggedRoundIndex === idx
+                        ? "opacity-50 border-theme-accent scale-[0.99] shadow-sm"
+                        : dragOverRoundIndex === idx
+                        ? "border-theme-accent/70 shadow-sm"
+                        : "border-theme hover:border-theme-accent/60"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted flex items-center gap-2">
+                      <span className="text-theme-accent">::</span> Round {idx + 1}
+                    </p>
+                    <ThemedSelect
+                      ariaLabel={`Round ${idx + 1} type`}
+                      value={round.type}
+                      onChange={(next) => handleCustomRoundFieldChange(idx, "type", next)}
+                      options={ROUND_TYPE_OPTIONS.map((type) => ({
+                        value: type,
+                        label: type,
+                      }))}
+                    />
+                    <ThemedSelect
+                      ariaLabel={`Round ${idx + 1} difficulty`}
+                      value={round.difficulty}
+                      onChange={(next) => handleCustomRoundFieldChange(idx, "difficulty", next)}
+                      options={ROUND_DIFFICULTY_OPTIONS.map((difficulty) => ({
+                        value: difficulty,
+                        label: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
+                      }))}
+                    />
+                  </div>
+                </React.Fragment>
+              ))}
+              {draggedRoundIndex !== null &&
+                dragOverRoundIndex === normalizedCustomRounds.length && (
+                  <div className="h-4 rounded-md border border-dashed border-theme-accent bg-theme-accent/10 transition-all duration-200" />
+                )}
+            </div>
+
+            {customPlanValidationError && (
+              <p className="text-xs font-medium text-theme-accent">{customPlanValidationError}</p>
+            )}
+          </div>
         </div>
       )}
 

@@ -1738,9 +1738,14 @@ const AdminDashboard = () => {
                                   </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <p className="text-xs sm:text-sm text-slate-200">
-                                    {submission.companyId?.name || 'N/A'}
-                                  </p>
+                                  <div>
+                                    <p className="text-xs sm:text-sm text-slate-200">
+                                      {submission.companyId?.name || 'N/A'}
+                                    </p>
+                                    <p className="text-[11px] sm:text-xs text-slate-400">
+                                      Year: {submission.placementYear || 'N/A'} · Cluster: {submission.cluster || 'N/A'}
+                                    </p>
+                                  </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
@@ -1858,9 +1863,14 @@ const AdminDashboard = () => {
                                   </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <p className="text-xs sm:text-sm text-slate-200">
-                                    {submission.companyId?.name || 'N/A'}
-                                  </p>
+                                  <div>
+                                    <p className="text-xs sm:text-sm text-slate-200">
+                                      {submission.companyId?.name || 'N/A'}
+                                    </p>
+                                    <p className="text-[11px] sm:text-xs text-slate-400">
+                                      Year: {submission.placementYear || 'N/A'} · Cluster: {submission.cluster || 'N/A'}
+                                    </p>
+                                  </div>
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-600 text-white capitalize">
@@ -2416,6 +2426,14 @@ const AdminDashboard = () => {
                   <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-indigo-600 text-white capitalize">
                     {selectedSubmission.type || 'N/A'}
                   </span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-400">Placement Year</p>
+                  <p className="text-base text-slate-200 mt-1">{selectedSubmission.placementYear || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-400">Cluster</p>
+                  <p className="text-base text-slate-200 mt-1">{selectedSubmission.cluster || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-400">Status</p>

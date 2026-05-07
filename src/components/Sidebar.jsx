@@ -7,6 +7,8 @@ import { adminAPI, eventAPI } from "../utils/api";
 import logo from "../assets/logo2.webp";
 import NotificationBell from "./NotificationBell";
 
+const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
+
 const Sidebar = () => {
   const { user, isAdmin, login, signup, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -20,6 +22,14 @@ const Sidebar = () => {
   const [showLoginMenu, setShowLoginMenu] = useState(false);
   const [hasPendingItems, setHasPendingItems] = useState(false);
   const [hasNewEvents, setHasNewEvents] = useState(false);
+  const profileAvailabilityKey =
+    user && (user.userId || user._id)
+      ? `${STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX}${user.userId || user._id}`
+      : null;
+  const shouldHideViewProfile =
+    profileAvailabilityKey &&
+    localStorage.getItem(profileAvailabilityKey) === "no_profile";
+  const shouldHideAiInterviews = shouldHideViewProfile;
   const sidebarRef = useRef(null);
   const hoverZoneRef = useRef(null);
   const hamburgerRef = useRef(null);
@@ -388,17 +398,19 @@ const Sidebar = () => {
                     <FaChartBar className="w-4 h-4 mr-2" />
                     Company Stats
                   </Link>
-                  <Link
-                    to="/interviews"
-                    onClick={() => {
-                      setShowStudentsCornerMenu(false);
-                      setIsVisible(false);
-                    }}
-                    className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
-                  >
-                    <FaComments className="w-4 h-4 mr-2" />
-                    AI Interviews
-                  </Link>
+                  {!shouldHideAiInterviews ? (
+                    <Link
+                      to="/interviews"
+                      onClick={() => {
+                        setShowStudentsCornerMenu(false);
+                        setIsVisible(false);
+                      }}
+                      className="block nav-link text-sm flex items-center text-theme-secondary hover:text-theme-primary hover:bg-theme-nav px-3 py-2 rounded-md transition-colors"
+                    >
+                      <FaComments className="w-4 h-4 mr-2" />
+                      AI Interviews
+                    </Link>
+                  ) : null}
                   <Link
                     to="/resources"
                     onClick={() => {
@@ -614,15 +626,17 @@ const Sidebar = () => {
                         >
                           {user.email}
                         </div>
-                        <button
-                          onClick={() => {
-                            setShowAccountMenu(false);
-                            navigate('/profile');
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
-                        >
-                          View Profile
-                        </button>
+                        {!shouldHideViewProfile ? (
+                          <button
+                            onClick={() => {
+                              setShowAccountMenu(false);
+                              navigate('/profile');
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-theme-primary hover:bg-theme-nav transition-colors"
+                          >
+                            View Profile
+                          </button>
+                        ) : null}
                         <button
                           onClick={() => {
                             setShowAccountMenu(false);

@@ -12,6 +12,7 @@ function InternshipTab({
 }) {
   const [showModal, setShowModal] = useState(false);
   const [experienceText, setExperienceText] = useState("");
+  const [submitAnonymously, setSubmitAnonymously] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
 
   const handleSubmit = async (e) => {
@@ -25,7 +26,7 @@ function InternshipTab({
           companyId: company._id,
           type: "internshipExperience",
           content: JSON.stringify({ experience: experienceText }),
-          isAnonymous: false,
+          isAnonymous: submitAnonymously,
           placementYear,
           ...(placementListContext ? { placementListContext } : {}),
           ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
@@ -40,6 +41,7 @@ function InternshipTab({
       });
 
       setExperienceText("");
+      setSubmitAnonymously(false);
       setShowModal(false);
     } catch (err) {
       console.error(err);
@@ -176,11 +178,25 @@ function InternshipTab({
                 className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-32"
                 required
               />
+              <label className="flex items-start gap-3 rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={submitAnonymously}
+                  onChange={(e) => setSubmitAnonymously(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-500 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+                />
+                <span className="text-xs sm:text-sm text-slate-300">
+                  Submit anonymously (public readers won’t see your name).
+                </span>
+              </label>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setSubmitAnonymously(false);
+                  }}
                 >
                   Cancel
                 </button>
