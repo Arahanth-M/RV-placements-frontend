@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { spcAPI } from "../utils/api";
 import {
@@ -53,6 +53,20 @@ export default function SPCDashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
+  const [companySuggestions, setCompanySuggestions] = useState([]);
+  const [companySuggestOpen, setCompanySuggestOpen] = useState(false);
+  const [companySuggestLoading, setCompanySuggestLoading] = useState(false);
+  const companySuggestRootRef = useRef(null);
+  const companySuggestDebounceRef = useRef(null);
+  const pickedCompanyNameRef = useRef("");
+
+  useEffect(() => {
+    return () => {
+      if (companySuggestDebounceRef.current) {
+        clearTimeout(companySuggestDebounceRef.current);
+      }
+    };
+  }, []);
 
   const loadSubmissions = useCallback(async () => {
     setLoading(true);
@@ -86,6 +100,56 @@ export default function SPCDashboard() {
     }
   }, [showSubmissions]);
 
+  useEffect(() => {
+    if (!companySuggestOpen) return undefined;
+    const onPointerDown = (e) => {
+      if (!companySuggestRootRef.current?.contains(e.target)) setCompanySuggestOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [companySuggestOpen]);
+
+  useEffect(() => {
+    const q = String(editForm.companyPlaced || "").trim();
+    if (!selectedRecord) return;
+    const pickedName = String(pickedCompanyNameRef.current || "").trim().toLowerCase();
+    if (pickedName && q.toLowerCase() === pickedName) {
+      setCompanySuggestLoading(false);
+      setCompanySuggestOpen(false);
+      return;
+    }
+    if (companySuggestDebounceRef.current) clearTimeout(companySuggestDebounceRef.current);
+    if (q.length < 2) {
+      setCompanySuggestions([]);
+      setCompanySuggestOpen(false);
+      setCompanySuggestLoading(false);
+      return;
+    }
+    companySuggestDebounceRef.current = setTimeout(async () => {
+      setCompanySuggestLoading(true);
+      try {
+        const res = await spcAPI.companySuggest(q);
+        const rawItems = Array.isArray(res?.data?.items) ? res.data.items : [];
+        const seenNames = new Set();
+        const items = rawItems.filter((item) => {
+          const nameKey = String(item?.name || "")
+            .trim()
+            .toLowerCase();
+          if (!nameKey || seenNames.has(nameKey)) return false;
+          seenNames.add(nameKey);
+          return true;
+        });
+        setCompanySuggestions(items);
+        setCompanySuggestOpen(items.length > 0);
+      } catch {
+        setCompanySuggestions([]);
+        setCompanySuggestOpen(false);
+      } finally {
+        setCompanySuggestLoading(false);
+      }
+    }, 280);
+  }, [editForm.companyPlaced, selectedRecord]);
+
   const openRecordModal = (row) => {
     setSelectedRecord(row);
     setEditForm({
@@ -103,6 +167,7 @@ export default function SPCDashboard() {
       ppoConversionType: String(row?.ppoConversionType || ""),
       sixMonthsInternshipStipend: String(row?.sixMonthsInternshipStipend || ""),
     });
+    pickedCompanyNameRef.current = "";
     setSaveError("");
     setSaveSuccess("");
   };
@@ -111,13 +176,40 @@ export default function SPCDashboard() {
     if (isSaving) return;
     setSelectedRecord(null);
     setEditForm(EDIT_INITIAL);
+    pickedCompanyNameRef.current = "";
+    setCompanySuggestions([]);
+    setCompanySuggestOpen(false);
+    setCompanySuggestLoading(false);
     setSaveError("");
     setSaveSuccess("");
   };
 
   const onEditChange = (e) => {
     const { name, value } = e.target;
+    if (name === "companyPlaced") {
+      const next = String(value || "").trim().toLowerCase();
+      const picked = String(pickedCompanyNameRef.current || "").trim().toLowerCase();
+      if (next !== picked) {
+        pickedCompanyNameRef.current = "";
+      }
+    }
     setEditForm((prev) => ({ ...prev, [name]: value }));
+    setSaveError("");
+    setSaveSuccess("");
+  };
+
+  const pickSuggestedCompany = (item) => {
+    const pickedName = String(item?.name || "").trim();
+    if (!pickedName) return;
+    if (companySuggestDebounceRef.current) {
+      clearTimeout(companySuggestDebounceRef.current);
+      companySuggestDebounceRef.current = null;
+    }
+    pickedCompanyNameRef.current = pickedName.toLowerCase();
+    setEditForm((prev) => ({ ...prev, companyPlaced: pickedName }));
+    setCompanySuggestions([]);
+    setCompanySuggestOpen(false);
+    setCompanySuggestLoading(false);
     setSaveError("");
     setSaveSuccess("");
   };
@@ -369,9 +461,45 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
                 Student USN
                 <input name="studentUsn" value={editForm.studentUsn} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
               </label>
-              <label className="text-sm text-theme-secondary">
+              <label className="relative text-sm text-theme-secondary" ref={companySuggestRootRef}>
                 Company
-                <input name="companyPlaced" value={editForm.companyPlaced} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
+                <input
+                  name="companyPlaced"
+                  autoComplete="off"
+                  value={editForm.companyPlaced}
+                  onChange={onEditChange}
+                  onFocus={() => {
+                    if (
+                      String(editForm.companyPlaced || "").trim().length >= 2 &&
+                      companySuggestions.length > 0
+                    ) {
+                      setCompanySuggestOpen(true);
+                    }
+                  }}
+                  className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent"
+                />
+                {companySuggestLoading ? (
+                  <p className="mt-1 text-xs text-theme-muted">Searching...</p>
+                ) : null}
+                {companySuggestOpen && companySuggestions.length > 0 ? (
+                  <ul
+                    className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme-input bg-theme-card py-1 shadow-lg"
+                    role="listbox"
+                  >
+                    {companySuggestions.map((item) => (
+                      <li key={item.id} role="presentation">
+                        <button
+                          type="button"
+                          className="flex w-full px-4 py-2.5 text-left text-sm text-theme-primary hover:bg-theme-nav"
+                          onMouseDown={(ev) => ev.preventDefault()}
+                          onClick={() => pickSuggestedCompany(item)}
+                        >
+                          {item.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </label>
               <label className="text-sm text-theme-secondary">
                 Placement Year

@@ -19,6 +19,7 @@ export default function StudentPlacementStatsTab() {
   const [openBranchCode, setOpenBranchCode] = useState("");
   const [exporting, setExporting] = useState(false);
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [addedByViewer, setAddedByViewer] = useState(null);
 
   const totalStudents = useMemo(
     () => branches.reduce((sum, b) => sum + (Number(b?.count) || 0), 0),
@@ -250,11 +251,13 @@ export default function StudentPlacementStatsTab() {
                     <th className="px-3 py-2">USN</th>
                     <th className="px-3 py-2">Email ID</th>
                     <th className="px-3 py-2">Company Placed</th>
+                    <th className="px-3 py-2">Type of Offer</th>
                     <th className="px-3 py-2">Stipend</th>
                     <th className="px-3 py-2">6 Months Internship Stipend</th>
                     <th className="px-3 py-2">CTC</th>
                     <th className="px-3 py-2">Role</th>
                     <th className="px-3 py-2">PPO Conversion Type</th>
+                    <th className="px-3 py-2">Added By</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-theme text-sm text-theme-primary">
@@ -267,12 +270,28 @@ export default function StudentPlacementStatsTab() {
                         </td>
                         <td className="px-3 py-2">{student.email || "-"}</td>
                         <td className="px-3 py-2">{student.companyPlaced || "-"}</td>
+                        <td className="px-3 py-2">{student.typeOfOffer || "-"}</td>
                         <td className="px-3 py-2">{student.stipend || "-"}</td>
                         <td className="px-3 py-2">{student.sixMonthsInternshipStipend || "-"}</td>
                         <td className="px-3 py-2">{student.ctc || "-"}</td>
                         <td className="px-3 py-2">{student.role || "-"}</td>
                         <td className="px-3 py-2">
                           {student.ppoConversionType || ""}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAddedByViewer({
+                                addedByName: student.addedByName || "",
+                                addedByUsn: student.addedByUsn || "",
+                                addedByEmail: student.addedByEmail || "",
+                              })
+                            }
+                            className="rounded-md border border-theme bg-theme-hero px-2.5 py-1.5 text-xs font-semibold text-theme-primary transition hover:bg-theme-nav"
+                          >
+                            View Added By
+                          </button>
                         </td>
                       </tr>
                     )
@@ -284,6 +303,36 @@ export default function StudentPlacementStatsTab() {
         ))}
         </div>
       )}
+      {addedByViewer ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-theme bg-theme-card p-5 shadow-xl">
+            <h4 className="text-base font-semibold text-theme-primary">Placement Record Source</h4>
+            <div className="mt-3 space-y-2 text-sm text-theme-secondary">
+              <p>
+                <span className="font-semibold text-theme-primary">Name:</span>{" "}
+                {addedByViewer.addedByName || "Unavailable"}
+              </p>
+              <p>
+                <span className="font-semibold text-theme-primary">USN:</span>{" "}
+                {addedByViewer.addedByUsn || "Unavailable"}
+              </p>
+              <p>
+                <span className="font-semibold text-theme-primary">Email:</span>{" "}
+                {addedByViewer.addedByEmail || "Unavailable"}
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setAddedByViewer(null)}
+                className="rounded-lg bg-theme-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
