@@ -1261,7 +1261,7 @@ function CompanyStats() {
               Pick a batch to open placement stats or the company hub.
             </p>
           <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
-            {[2024, 2025, ...PLACEMENT_DETAIL_VISIT_YEARS].map((year) => {
+            {[2024, 2025, DEFAULT_PLACEMENT_DETAIL_YEAR].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
               const isDisabled = requiresAuth && !user;
               const isPlacementHubPick = isPlacementDetailVisitYear(year);

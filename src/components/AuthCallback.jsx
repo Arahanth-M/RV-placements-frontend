@@ -4,6 +4,10 @@ import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
+const LOGIN_PROFILE_STATUS_KEY = "loginProfileStatus";
+const LOGIN_PROFILE_STATUS_HAS_PROFILE = "has_profile";
+const LOGIN_PROFILE_STATUS_NO_PROFILE = "no_profile";
+const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 const LOGIN_INTENT_KEY = "loginIntent";
 const LOGIN_INTENT_SPC = "spc";
@@ -13,6 +17,7 @@ const AuthCallback = () => {
   const { refreshUser, setStudentData } = useAuth(); 
   const [isProcessing, setIsProcessing] = useState(true);
   const [accessDeniedMessage, setAccessDeniedMessage] = useState("");
+  const [loginError, setLoginError] = useState(null);
   const handledRef = useRef(false);
 
   useEffect(() => {
@@ -51,7 +56,7 @@ const AuthCallback = () => {
             
             // Skip student data fetch for admin users
             if (adminFlag) {
-              handleLoginComplete(fetchedUserData, signupFlag, adminFlag, loginIntent);
+              handleLoginComplete(fetchedUserData, signupFlag, adminFlag, loginIntent, null);
               return;
             }
             
@@ -70,18 +75,32 @@ const AuthCallback = () => {
       } else if (urlParams.get('login') === 'failed') {
         const reason = urlParams.get('reason');
         if (reason === 'domain') {
-          alert('Please login using your official college email (rvce.edu.in).');
+          setLoginError({
+            title: "Login restricted",
+            message: "Only official RVCE email IDs ending with @rvce.edu.in are allowed to sign in.",
+          });
         } else if (reason === 'not_allowed') {
-          alert('Sign-in is restricted. This account is not authorized to use the app right now.');
+          setLoginError({
+            title: "Sign-in unavailable",
+            message: "This account is not authorized to use the platform right now.",
+          });
         } else if (reason === 'not_found') {
-          alert('User not found. You do not exist in the student database.');
+          setLoginError({
+            title: "Login restricted",
+            message: "Only official RVCE email IDs ending with @rvce.edu.in are allowed to sign in.",
+          });
         } else if (reason === 'not_admin') {
-          alert('Access denied. Only admin can access this area.');
+          setLoginError({
+            title: "Access denied",
+            message: "Only authorized admin accounts can access this area.",
+          });
         } else {
           console.log('Authentication failed');
-          alert('Authentication failed. Please try again.');
+          setLoginError({
+            title: "Authentication failed",
+            message: "Please try signing in again.",
+          });
         }
-        navigate('/', { replace: true });
         setIsProcessing(false);
       } else {
         console.log('Authentication callback invalid');
@@ -95,6 +114,7 @@ const AuthCallback = () => {
 
   // Strictly email-based profile fetch — no name matching
   const fetchStudentProfileByEmail = async (user, signup, admin, loginIntent) => {
+    let hasStudentProfile = false;
     try {
       const userId = user?.userId || user?._id;
       console.log(`📡 [AuthCallback] Fetching profile by email for user: ${user?.email}`);
@@ -103,6 +123,7 @@ const AuthCallback = () => {
       
       if (profileRes.data) {
         console.log(`✅ [AuthCallback] Profile loaded for ${user?.email}`);
+        hasStudentProfile = true;
         
         // Store strictly with user-specific key
         if (userId) {
@@ -123,15 +144,28 @@ const AuthCallback = () => {
       // Proceed without student data — user can still use other features
     }
     
-    handleLoginComplete(user, signup, admin, loginIntent);
+    handleLoginComplete(user, signup, admin, loginIntent, hasStudentProfile);
   };
 
-  const handleLoginComplete = (user, signup, admin, loginIntent) => {
+  const handleLoginComplete = (user, signup, admin, loginIntent, hasStudentProfile) => {
+    const userId = user?.userId || user?._id;
     sessionStorage.removeItem(LOGIN_INTENT_KEY);
     if (admin) {
       sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
+      sessionStorage.removeItem(LOGIN_PROFILE_STATUS_KEY);
     } else {
       sessionStorage.setItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY, '1');
+      const profileStatus =
+        hasStudentProfile === true
+          ? LOGIN_PROFILE_STATUS_HAS_PROFILE
+          : LOGIN_PROFILE_STATUS_NO_PROFILE;
+      sessionStorage.setItem(LOGIN_PROFILE_STATUS_KEY, profileStatus);
+      if (userId) {
+        localStorage.setItem(
+          `${STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX}${userId}`,
+          profileStatus
+        );
+      }
     }
 
     if (admin) {
@@ -162,6 +196,26 @@ const AuthCallback = () => {
               className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Back to students corner
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loginError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-theme-app px-4">
+        <div className="max-w-md w-full bg-theme-card border border-theme rounded-3xl p-8 text-center shadow-2xl">
+          <h2 className="text-2xl font-bold text-theme-primary mb-3">{loginError.title}</h2>
+          <p className="text-sm text-theme-secondary">{loginError.message}</p>
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => navigate("/", { replace: true })}
+              className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              Back to sign in
             </button>
           </div>
         </div>

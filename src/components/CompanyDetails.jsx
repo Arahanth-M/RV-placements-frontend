@@ -7,6 +7,7 @@ import {
   companystatsTierListUrl,
   isPlacementTierParam,
   normalizeClusterParam,
+  PLACEMENT_CLUSTER_CS,
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_INTERNSHIP_ONLY,
   PLACEMENT_TIER_OFF_CAMPUS,
@@ -197,6 +198,13 @@ function CompanyDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin } = useAuth();
+  const profileAvailabilityKey =
+    user && (user.userId || user._id)
+      ? `studentProfileAvailability_${user.userId || user._id}`
+      : null;
+  const shouldHideAiInterviews =
+    profileAvailabilityKey &&
+    localStorage.getItem(profileAvailabilityKey) === "no_profile";
   const { setIsInterviewLocked: setGlobalInterviewLocked } = useInterviewLock();
   const [company, setCompany] = useState(null);
   const [activeTab, setActiveTab] = useState("about");
@@ -218,6 +226,7 @@ function CompanyDetails() {
   const placementContextForApi = readPlacementListContext(location, id);
   const placementCompanyVisitIdForApi = readPlacementCompanyVisitIdFromLocation(location);
   const placementClusterForApi = readPlacementClusterFromLocation(location);
+  const isCsClusterForInterview = placementClusterForApi === PLACEMENT_CLUSTER_CS;
 
   const interviewFocusMode = isInterviewLocked && activeTab === "aiinterview";
 
@@ -323,10 +332,11 @@ function CompanyDetails() {
 
   useEffect(() => {
     if (!company || !id) return;
+    if (!isCsClusterForInterview) return;
     if (openTabFromNav !== "aiinterview") return;
     setActiveTab("aiinterview");
     navigate(`/companies/${id}`, { replace: true, state: {} });
-  }, [company, id, openTabFromNav, navigate]);
+  }, [company, id, openTabFromNav, navigate, isCsClusterForInterview]);
 
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
@@ -855,7 +865,7 @@ function CompanyDetails() {
                 placementCompanyVisitId={company?.placementCompanyVisitId}
               />
             ))}
-          {activeTab === "aiinterview" && (
+          {isCsClusterForInterview && activeTab === "aiinterview" && (
             <AIInterviewTab
               company={company}
               onInterviewLockChange={setIsInterviewLocked}
@@ -887,7 +897,7 @@ function CompanyDetails() {
         </div>
       </div>
 
-      {activeTab !== "aiinterview" && (
+      {!shouldHideAiInterviews && isCsClusterForInterview && activeTab !== "aiinterview" && (
         <div
           className="ai-interview-explore-scope fixed z-[30] pointer-events-none flex flex-col items-end gap-2"
           style={{

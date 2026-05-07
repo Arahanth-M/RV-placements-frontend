@@ -261,6 +261,11 @@ const MySubmissionsPage = () => {
                                 Batch {submission.placementYear}
                               </span>
                             ) : null}
+                            {submission.isAnonymous === true ? (
+                              <span className="inline-flex items-center rounded-full border border-theme-accent/30 bg-theme-accent/10 px-3 py-1 text-xs font-medium text-theme-accent">
+                                Submitted anonymously
+                              </span>
+                            ) : null}
                           </div>
                           <div className="flex flex-col gap-2 text-sm text-theme-secondary sm:text-base">
                             <div className="flex items-center gap-2 min-w-0">

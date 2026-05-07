@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState('');
 
   // 7 hours in milliseconds
   const SESSION_DURATION = 7 * 60 * 60 * 1000; // 7 hours
@@ -275,13 +276,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const dismissSessionExpiredNotice = useCallback(() => {
+    setSessionExpiredNotice('');
+  }, []);
+
   // Check session expiry and logout if needed
   const checkSessionExpiry = useCallback(async () => {
     if (user && isSessionExpired()) {
       console.log('Session expired after 7 hours. Logging out...');
       await logout();
-      // Optionally show a message to the user
-      alert('Your session has expired after 7 hours for security purposes. Please login again.');
+      setSessionExpiredNotice(
+        'Your session has expired after 7 hours for security reasons. Please sign in again.'
+      );
     }
   }, [user, logout]);
 
@@ -419,6 +425,23 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      {sessionExpiredNotice ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 px-4">
+          <div className="max-w-md w-full rounded-3xl border border-theme bg-theme-card p-7 shadow-2xl">
+            <h2 className="text-xl font-bold text-theme-primary">Session expired</h2>
+            <p className="mt-3 text-sm text-theme-secondary">{sessionExpiredNotice}</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={dismissSessionExpiredNotice}
+                className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AuthContext.Provider>
   );
 };

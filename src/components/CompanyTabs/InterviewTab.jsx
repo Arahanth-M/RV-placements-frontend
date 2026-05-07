@@ -108,6 +108,7 @@ function InterviewTab({
   const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
   const [newInterviewSolution, setNewInterviewSolution] = useState("");
   const [newInterviewProcess, setNewInterviewProcess] = useState("");
+  const [newInterviewProcessAnonymous, setNewInterviewProcessAnonymous] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -501,6 +502,7 @@ function InterviewTab({
           companyId: company?._id,
           type: "interviewProcess",
           content: newInterviewProcess,
+          isAnonymous: newInterviewProcessAnonymous,
           placementYear,
           ...(placementListContext ? { placementListContext } : {}),
           ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
@@ -514,6 +516,7 @@ function InterviewTab({
         message: data.message || MESSAGES.SUBMISSION_SUCCESS,
       });
       setNewInterviewProcess("");
+      setNewInterviewProcessAnonymous(false);
       setShowAddProcessModal(false);
     } catch (err) {
       console.error(err);
@@ -849,6 +852,17 @@ function InterviewTab({
                   required
                 />
               </div>
+              <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={newInterviewProcessAnonymous}
+                  onChange={(e) => setNewInterviewProcessAnonymous(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-theme text-theme-accent focus:ring-theme-accent"
+                />
+                <span className="text-sm text-theme-secondary">
+                  Submit anonymously (your name will be hidden in public interview experience view).
+                </span>
+              </label>
               <div className="flex items-center justify-end gap-3">
                 <button
                   type="button"
@@ -856,6 +870,7 @@ function InterviewTab({
                   onClick={() => {
                     setShowAddProcessModal(false);
                     setNewInterviewProcess("");
+                    setNewInterviewProcessAnonymous(false);
                   }}
                 >
                   Cancel

@@ -4,6 +4,9 @@ import { FaTimes } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
+const LOGIN_PROFILE_STATUS_KEY = 'loginProfileStatus';
+const LOGIN_PROFILE_STATUS_HAS_PROFILE = 'has_profile';
+const LOGIN_PROFILE_STATUS_NO_PROFILE = 'no_profile';
 /** Max time the popup stays open while not hovering the card (hover pauses the timer). */
 const POPUP_MAX_ACTIVE_MS = 60_000;
 
@@ -90,15 +93,28 @@ const PlacementPopupWrapper = () => {
       }
 
       if (hasCheckedRef.current) return;
+      const profileStatus = sessionStorage.getItem(LOGIN_PROFILE_STATUS_KEY);
+      if (!profileStatus) return;
 
-      /* Wait until profile payload is loaded after OAuth redirect */
-      if (!studentData) return;
+      if (profileStatus === LOGIN_PROFILE_STATUS_HAS_PROFILE && !studentData) {
+        return;
+      }
 
-      const names = placementCompanyNamesFromProfile(studentData);
+      const names =
+        profileStatus === LOGIN_PROFILE_STATUS_HAS_PROFILE
+          ? placementCompanyNamesFromProfile(studentData)
+          : [];
       hasCheckedRef.current = true;
       sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
+      sessionStorage.removeItem(LOGIN_PROFILE_STATUS_KEY);
 
-      setPopupVariant(names.length > 0 ? 'placement' : 'welcome');
+      if (names.length > 0) {
+        setPopupVariant('placement');
+      } else if (profileStatus === LOGIN_PROFILE_STATUS_NO_PROFILE) {
+        setPopupVariant('welcome-no-profile');
+      } else {
+        setPopupVariant('welcome');
+      }
       setShowPopup(true);
     };
 
@@ -135,6 +151,7 @@ const PlacementPopupWrapper = () => {
   const displayName =
     studentData?.student?.name?.trim() || user?.username || 'Student';
   const isPlacementPopup = popupVariant === 'placement';
+  const isNoProfileWelcome = popupVariant === 'welcome-no-profile';
   const companySentence = formatPartOfCompanySentence(companyNames);
 
   return (
@@ -173,6 +190,8 @@ const PlacementPopupWrapper = () => {
                   Congratulations, {displayName}{' '}
                   <span className="inline-block animate-bounce">🎉</span>
                 </>
+              ) : isNoProfileWelcome ? (
+                <>Hey {displayName}, Hope you are doing great</>
               ) : (
                 <>Welcome {displayName}, hope you are doing great!</>
               )}

@@ -38,7 +38,7 @@ const spcCornerLinks = [
   { label: "Update conversion details", path: "/spc/conversion-details", icon: FaClipboardList },
 ];
 
-const studentCornerLinks = [
+const studentCornerLinksBase = [
   { label: "Company Stats", path: "/companystats", icon: FaChartBar },
   { label: "AI Interviews", path: "/interviews", icon: FaComments },
   { label: "Resources", path: "/resources", icon: FaBook },
@@ -85,6 +85,7 @@ const dropdownItemClass =
 
 const dropdownItemRedClass =
   "flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-500 hover:bg-theme-nav rounded-md transition-colors";
+const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
 
 const Header = () => {
   const placementFormEntryUrl = `${BASE_URL}/api/placement/form`;
@@ -126,6 +127,17 @@ const Header = () => {
 
   const headerDisplayName = user ? accountDisplayName(user, studentData) : "";
   const headerInitial = user ? accountInitialLetter(user, headerDisplayName) : "U";
+  const profileAvailabilityKey =
+    user && (user.userId || user._id)
+      ? `${STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX}${user.userId || user._id}`
+      : null;
+  const shouldHideViewProfile =
+    profileAvailabilityKey &&
+    localStorage.getItem(profileAvailabilityKey) === "no_profile";
+  const shouldHideAiInterviews = shouldHideViewProfile;
+  const studentCornerLinks = shouldHideAiInterviews
+    ? studentCornerLinksBase.filter((l) => l.path !== "/interviews")
+    : studentCornerLinksBase;
 
   const isStudentCornerActive = studentCornerLinks.some((l) => isPathActive(l.path));
   const isSpcUser = user?.role === "spc";
@@ -320,12 +332,14 @@ const Header = () => {
                 <div className="px-3 py-2 text-xs text-theme-secondary border-b border-theme break-words">
                   {user.email}
                 </div>
-                <button
-                  onClick={() => { setAccountMenuOpen(false); navigate("/profile"); }}
-                  className={dropdownItemClass}
-                >
-                  View Profile
-                </button>
+                {!shouldHideViewProfile ? (
+                  <button
+                    onClick={() => { setAccountMenuOpen(false); navigate("/profile"); }}
+                    className={dropdownItemClass}
+                  >
+                    View Profile
+                  </button>
+                ) : null}
                 <button
                   onClick={() => { setAccountMenuOpen(false); navigate("/my-submissions"); }}
                   className={dropdownItemClass}
