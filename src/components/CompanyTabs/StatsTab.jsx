@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FaMinus, FaPlus } from "react-icons/fa";
 import { adminAPI } from "../../utils/api";
 import {
@@ -7,7 +7,11 @@ import {
   isPlacementDetailVisitYear,
   normalizeTotalGotInByYear,
 } from "../../constants/placementYears.js";
-import { PLACEMENT_TIER_SUMMER_INTERNSHIP } from "../../constants/placementTiers.js";
+import {
+  PLACEMENT_TIER_DREAM,
+  PLACEMENT_TIER_OPEN_DREAM,
+  PLACEMENT_TIER_SUMMER_INTERNSHIP,
+} from "../../constants/placementTiers.js";
 
 const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
 
@@ -31,6 +35,13 @@ function normalizeBranchRows(rows) {
 
 function sumGotIn(rows) {
   return rows.reduce((sum, row) => sum + row.gotIn, 0);
+}
+
+function buildFullPlacementDraftRows(placementRows) {
+  return BRANCH_CODES.map((bc) => ({
+    branchCode: bc,
+    gotIn: gotInForBranchCode(placementRows, bc),
+  }));
 }
 
 /** Backend-aligned: exclude branches marked conversion N/A from converted totals and acceptance denominator. */
@@ -74,6 +85,11 @@ function StatsTab({
   const [gotInInput, setGotInInput] = useState("0");
   const [convertedInput, setConvertedInput] = useState("0");
   const [convertedNaInput, setConvertedNaInput] = useState(false);
+  const [isEditingPlacementGotIn, setIsEditingPlacementGotIn] = useState(false);
+  const [savingPlacementGotIn, setSavingPlacementGotIn] = useState(false);
+  const [draftPlacementRows, setDraftPlacementRows] = useState(() =>
+    buildFullPlacementDraftRows([])
+  );
 
   const displayRows = useMemo(() => normalizeBranchRows(company.ppoBranchStats), [company.ppoBranchStats]);
   /** SPC add-placement / FTE conversion — separate from PPO conversion branch stats. */
@@ -167,46 +183,78 @@ function StatsTab({
     [placementGotInRows]
   );
 
-  const handleAdjustTotalGotIn = async (delta) => {
-    if (!isAdmin || isUpdatingTotalGotIn || !company?._id) return;
-    try {
-      setIsUpdatingTotalGotIn(true);
-      const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta, {
-        year: adminGotInYear,
-      });
-      const nextByYear =
-        response.data?.totalGotInByYear != null &&
-        typeof response.data.totalGotInByYear === "object"
-          ? Object.fromEntries(
-              PLACEMENT_DETAIL_VISIT_YEARS.map((y) => [
-                y,
-                Number(response.data.totalGotInByYear[y]) || 0,
-              ])
-            )
-          : {
-              ...totalGotInByYear,
-              [adminGotInYear]: response.data?.totalGotIn ?? 0,
-            };
-      setTotalGotInByYear(nextByYear);
-      if (typeof onStatsUpdated === "function") {
-        await onStatsUpdated();
-      }
-    } catch (err) {
-      console.error("Error updating total got in:", err);
-      alert("Failed to update Got in count");
-    } finally {
-      setIsUpdatingTotalGotIn(false);
-    }
-  };
+  const branchesForPlacementTable = useMemo(
+    () => (isAdmin ? [...BRANCH_CODES] : placementGotInBranchesWithCounts),
+    [isAdmin, placementGotInBranchesWithCounts]
+  );
 
-  const placementGotInSection = (
+  const placementHubHint =
+    placementListContext === PLACEMENT_TIER_OPEN_DREAM
+      ? "Open dream"
+      : placementListContext === PLACEMENT_TIER_DREAM
+        ? "Dream"
+        : null;
+
+  const handleAdjustTotalGotIn = useCallback(
+    async (delta) => {
+      if (!isAdmin || isUpdatingTotalGotIn || !company?._id) return;
+      try {
+        setIsUpdatingTotalGotIn(true);
+        const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta, {
+          year: adminGotInYear,
+          placementContext: placementListContext || undefined,
+          companyVisitId: company?.placementCompanyVisitId || undefined,
+        });
+        const nextByYear =
+          response.data?.totalGotInByYear != null &&
+          typeof response.data.totalGotInByYear === "object"
+            ? Object.fromEntries(
+                PLACEMENT_DETAIL_VISIT_YEARS.map((y) => [
+                  y,
+                  Number(response.data.totalGotInByYear[y]) || 0,
+                ])
+              )
+            : {
+                ...totalGotInByYear,
+                [adminGotInYear]: response.data?.totalGotIn ?? 0,
+              };
+        setTotalGotInByYear(nextByYear);
+        if (typeof onStatsUpdated === "function") {
+          await onStatsUpdated();
+        }
+      } catch (err) {
+        console.error("Error updating total got in:", err);
+        alert("Failed to update Got in count");
+      } finally {
+        setIsUpdatingTotalGotIn(false);
+      }
+    },
+    [
+      adminGotInYear,
+      company?._id,
+      company?.placementCompanyVisitId,
+      isAdmin,
+      isUpdatingTotalGotIn,
+      onStatsUpdated,
+      placementListContext,
+      totalGotInByYear,
+    ]
+  );
+
+  const placementGotInSection = useMemo(
+    () => (
     <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
         <div>
           <h2 className="text-xl font-semibold text-theme-accent">
             Placed in by branch ({adminGotInYear})
           </h2>
-          
+          {isAdmin && placementHubHint ? (
+            <p className="mt-1 text-xs text-theme-muted">
+              Editing counts for the <span className="font-medium text-theme-secondary">{placementHubHint}</span>{" "}
+              visit slot (same hub as the URL). Switch Dream / Open dream in the address bar to edit the other slot.
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-4 shrink-0">
           <div className="text-right sm:text-right">
@@ -243,7 +291,7 @@ function StatsTab({
           ) : null}
         </div>
       </div>
-      {placementGotInBranchesWithCounts.length === 0 ? (
+      {!isAdmin && placementGotInBranchesWithCounts.length === 0 ? (
         <p className="text-sm text-theme-muted py-2 text-center">
           No branch rows with a count yet for {adminGotInYear}. Visit total above still reflects the visit.
         </p>
@@ -261,19 +309,113 @@ function StatsTab({
               </tr>
             </thead>
             <tbody className="bg-theme-card divide-y divide-[var(--border)]">
-              {placementGotInBranchesWithCounts.map((bc) => (
-                <tr key={bc} className="hover:bg-theme-nav/50 transition-colors">
-                  <td className="px-2 py-2 font-medium text-theme-primary uppercase">{bc}</td>
-                  <td className="px-2 py-2 text-right text-theme-primary tabular-nums whitespace-nowrap">
-                    {gotInForBranchCode(placementGotInRows, bc)}
-                  </td>
-                </tr>
-              ))}
+              {branchesForPlacementTable.map((bc) => {
+                const draft = draftPlacementRows.find((r) => r.branchCode === bc);
+                const readOnlyGotIn = gotInForBranchCode(placementGotInRows, bc);
+                return (
+                  <tr key={bc} className="hover:bg-theme-nav/50 transition-colors">
+                    <td className="px-2 py-2 font-medium text-theme-primary uppercase">{bc}</td>
+                    <td className="px-2 py-2 text-right text-theme-primary tabular-nums whitespace-nowrap">
+                      {isEditingPlacementGotIn && isAdmin ? (
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft != null ? String(draft.gotIn) : "0"}
+                          onChange={(e) => {
+                            const n = Math.max(0, parseInt(e.target.value || "0", 10) || 0);
+                            setDraftPlacementRows((prev) =>
+                              prev.map((r) => (r.branchCode === bc ? { ...r, gotIn: n } : r))
+                            );
+                          }}
+                          className="ml-auto block w-20 rounded-md border border-theme-input bg-theme-input px-2 py-1 text-right text-sm text-theme-primary outline-none focus:border-theme-accent"
+                        />
+                      ) : (
+                        readOnlyGotIn
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
+      {isAdmin ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-theme pt-4">
+          <p className="text-xs text-theme-muted max-w-xl">
+            Branch totals should match the story you publish; saving also sets{" "}
+            <span className="font-medium text-theme-secondary">Total got in</span> to the sum of these branches.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!isEditingPlacementGotIn) {
+                  setDraftPlacementRows(buildFullPlacementDraftRows(placementGotInRows));
+                }
+                setIsEditingPlacementGotIn((v) => !v);
+              }}
+              className="px-3 py-1.5 text-sm rounded-lg bg-theme-card border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
+            >
+              {isEditingPlacementGotIn ? "Cancel" : "Edit branch got-in"}
+            </button>
+            {isEditingPlacementGotIn ? (
+              <button
+                type="button"
+                disabled={savingPlacementGotIn}
+                onClick={async () => {
+                  if (!company?._id) return;
+                  try {
+                    setSavingPlacementGotIn(true);
+                    await adminAPI.updateCompanyStats(
+                      company._id,
+                      { placementGotInBranchStats: draftPlacementRows },
+                      {
+                        year: adminGotInYear,
+                        placementContext: placementListContext || undefined,
+                        companyVisitId: company?.placementCompanyVisitId || undefined,
+                      }
+                    );
+                    if (typeof onStatsUpdated === "function") {
+                      await onStatsUpdated();
+                    }
+                    setIsEditingPlacementGotIn(false);
+                  } catch (err) {
+                    console.error("Error saving placement got-in by branch:", err);
+                    alert(err.response?.data?.error || "Failed to save branch got-in counts");
+                  } finally {
+                    setSavingPlacementGotIn(false);
+                  }
+                }}
+                className="px-4 py-1.5 rounded-lg bg-theme-accent hover:opacity-90 text-white text-sm font-semibold disabled:opacity-60 transition-opacity"
+              >
+                {savingPlacementGotIn ? "Saving…" : "Save branch got-in"}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
+    ),
+    [
+      adminGotInYear,
+      adminYearGotIn,
+      branchesForPlacementTable,
+      company?._id,
+      company?.placementCompanyVisitId,
+      draftPlacementRows,
+      handleAdjustTotalGotIn,
+      isAdmin,
+      isEditingPlacementGotIn,
+      isUpdatingTotalGotIn,
+      onStatsUpdated,
+      placementGotInBranchesWithCounts.length,
+      placementGotInRows,
+      placementHubHint,
+      placementListContext,
+      savingPlacementGotIn,
+      visitTotalSelectedYear,
+    ]
   );
 
   if (!isPpoCompany) {
@@ -524,7 +666,11 @@ function StatsTab({
                       {
                         ppoBranchStats: draftRows,
                       },
-                      { year: placementYear }
+                      {
+                        year: placementYear,
+                        placementContext: placementListContext || undefined,
+                        companyVisitId: company?.placementCompanyVisitId || undefined,
+                      }
                     );
                     if (typeof onStatsUpdated === "function") {
                       await onStatsUpdated();

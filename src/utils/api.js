@@ -225,6 +225,11 @@ function adminPlacementYearParams(opts = {}) {
       ? String(opts.companyVisitId).trim()
       : '';
   if (vid) params.companyVisitId = vid;
+  const ctx =
+    opts.placementContext != null && String(opts.placementContext).trim() !== ''
+      ? String(opts.placementContext).trim()
+      : '';
+  if (ctx) params.placementContext = ctx;
   return params;
 }
 
