@@ -171,9 +171,11 @@ const Leaderboard = () => {
   const [previousDayTopContributor, setPreviousDayTopContributor] = useState(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
+  const [isRestricted, setIsRestricted] = useState(false);
   const [search, setSearch]           = useState('');
   const [showAll, setShowAll]         = useState(false);
   const myRowRef = useRef(null);
+  const RESTRICTED_MSG = "LeaderBoard is warming up. Will be live soon";
 
   const PAGE_SIZE = 10;
 
@@ -185,6 +187,7 @@ const Leaderboard = () => {
     try {
       setLoading(true);
       setError(null);
+      setIsRestricted(false);
       const [leaderboardResponse, previousDayTopResponse] = await Promise.all([
         leaderboardAPI.getLeaderboard(),
         leaderboardAPI.getPreviousDayTopContributor(),
@@ -193,7 +196,12 @@ const Leaderboard = () => {
       setPreviousDayTopContributor(previousDayTopResponse.data || null);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
-      setError('Failed to load leaderboard. Please try again.');
+      if (err?.response?.status === 403) {
+        setIsRestricted(true);
+        setError(null);
+      } else {
+        setError('Failed to load leaderboard. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -314,66 +322,68 @@ const Leaderboard = () => {
           </div>
         </div>
 
-        <div
-          className="lb-yesterday-card"
-          style={{
-            ...panelStyle,
-            padding: '14px 16px',
-          }}
-        >
-          <p
+        {!isRestricted && (
+          <div
+            className="lb-yesterday-card"
             style={{
-              fontSize: 11,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: 'var(--text-secondary)',
-              marginBottom: 10,
+              ...panelStyle,
+              padding: '14px 16px',
             }}
           >
-            Yesterday's Top Contributor
-          </p>
+            <p
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--text-secondary)',
+                marginBottom: 10,
+              }}
+            >
+              Yesterday's Top Contributor
+            </p>
 
-          {previousDayTopContributor?.userId || previousDayTopContributor?.username ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Avatar
-                src={previousDayTopContributor?.picture}
-                alt={previousDayTopContributor?.username || 'Top contributor'}
-                size={48}
-                border="#6366F1"
-              />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 15,
-                    color: 'var(--text-primary)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {previousDayTopContributor?.username || 'Anonymous'}
+            {previousDayTopContributor?.userId || previousDayTopContributor?.username ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Avatar
+                  src={previousDayTopContributor?.picture}
+                  alt={previousDayTopContributor?.username || 'Top contributor'}
+                  size={48}
+                  border="#6366F1"
+                />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 15,
+                      color: 'var(--text-primary)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {previousDayTopContributor?.username || 'Anonymous'}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                    {previousDayLabel}
+                  </p>
+                  <p style={{ fontSize: 13, color: '#818CF8', marginTop: 6, fontWeight: 700 }}>
+                    {previousDayTopContributor?.approvedSubmissionCount ?? 0} approved submission
+                    {(previousDayTopContributor?.approvedSubmissionCount ?? 0) === 1 ? '' : 's'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  No approved submissions were recorded yesterday.
                 </p>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
                   {previousDayLabel}
                 </p>
-                <p style={{ fontSize: 13, color: '#818CF8', marginTop: 6, fontWeight: 700 }}>
-                  {previousDayTopContributor?.approvedSubmissionCount ?? 0} approved submission
-                  {(previousDayTopContributor?.approvedSubmissionCount ?? 0) === 1 ? '' : 's'}
-                </p>
               </div>
-            </div>
-          ) : (
-            <div>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                No approved submissions were recorded yesterday.
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                {previousDayLabel}
-              </p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* ── Points legend ── */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
@@ -394,43 +404,45 @@ const Leaderboard = () => {
         </div>
 
         {/* ── Search ── */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <FaSearch style={{
-              position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)',
-              color: '#475569', width: 13, height: 13, pointerEvents: 'none',
-            }} />
-            <input
-              className="lb-search-input"
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setShowAll(false); }}
-              placeholder="Search by username…"
-              style={{
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 10, paddingLeft: 36, paddingRight: search ? 36 : 14,
-                paddingTop: 9, paddingBottom: 9,
-                fontSize: 14, color: 'var(--text-primary)',
-                fontFamily: 'inherit', transition: 'border-color 0.2s',
-              }}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
+        {!isRestricted && (
+          <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+              <FaSearch style={{
+                position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)',
+                color: '#475569', width: 13, height: 13, pointerEvents: 'none',
+              }} />
+              <input
+                className="lb-search-input"
+                type="text"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setShowAll(false); }}
+                placeholder="Search by username…"
                 style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#475569', display: 'flex', alignItems: 'center',
-                  transition: 'color 0.15s',
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 10, paddingLeft: 36, paddingRight: search ? 36 : 14,
+                  paddingTop: 9, paddingBottom: 9,
+                  fontSize: 14, color: 'var(--text-primary)',
+                  fontFamily: 'inherit', transition: 'border-color 0.2s',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.color = '#94A3B8'}
-                onMouseOut={(e)  => e.currentTarget.style.color = '#475569'}
-              >
-                <FaTimes style={{ width: 11, height: 11 }} />
-              </button>
-            )}
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  style={{
+                    position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#475569', display: 'flex', alignItems: 'center',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.color = '#94A3B8'}
+                  onMouseOut={(e)  => e.currentTarget.style.color = '#475569'}
+                >
+                  <FaTimes style={{ width: 11, height: 11 }} />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Loading skeleton ── */}
         {loading && (
@@ -466,8 +478,51 @@ const Leaderboard = () => {
           </div>
         )}
 
+        {isRestricted && !loading && (
+          <div
+            style={{
+              ...panelStyle,
+              padding: '56px 24px',
+              textAlign: 'center',
+              maxWidth: 560,
+              margin: '0 auto',
+            }}
+          >
+            <div
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: '50%',
+                margin: '0 auto 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--bg-hero)',
+                color: 'var(--accent-secondary)',
+                fontSize: 30,
+              }}
+              aria-hidden
+            >
+              🚀
+            </div>
+            <p
+              style={{
+                fontSize: 'clamp(1.05rem, 2.4vw, 1.2rem)',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                marginBottom: 8,
+              }}
+            >
+              {RESTRICTED_MSG}
+            </p>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+              Stay tuned while we finish polishing the leaderboard experience.
+            </p>
+          </div>
+        )}
+
         {/* ── Content ── */}
-        {!loading && !error && (
+        {!loading && !error && !isRestricted && (
           <>
             {filtered.length === 0 ? (
               <div style={{ ...panelStyle, padding: '5rem 2rem', textAlign: 'center' }}>

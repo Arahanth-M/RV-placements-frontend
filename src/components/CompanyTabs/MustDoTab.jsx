@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
+import { adminAPI } from "../../utils/api";
+import { FaEdit, FaTrash } from "react-icons/fa";
 import rvLogo from "../../assets/logo2.webp";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
@@ -9,11 +11,22 @@ function MustDoTab({
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
+  isAdmin = false,
+  onCompanyUpdate,
 }) {
   const [showModal, setShowModal] = useState(false);
   const [topic, setTopic] = useState("");
+  const [editIndex, setEditIndex] = useState(null);
+  const [editTopic, setEditTopic] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const topics = company.Must_Do_Topics ?? [];
+
+  const adminOpts = {
+    year: placementYear,
+    ...(placementListContext ? { placementContext: placementListContext } : {}),
+    ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,6 +63,73 @@ function MustDoTab({
     }
   };
 
+  const startEdit = (index, value) => {
+    setEditIndex(index);
+    setEditTopic(value || "");
+  };
+
+  const cancelEdit = () => {
+    setEditIndex(null);
+    setEditTopic("");
+  };
+
+  const handleAdminUpdate = async (index) => {
+    const nextTopic = editTopic.trim();
+    if (!nextTopic) {
+      setSubmissionFeedback({
+        variant: "error",
+        message: "Topic cannot be empty.",
+      });
+      return;
+    }
+    try {
+      setActionLoading(true);
+      await adminAPI.updateMustDoTopic(
+        company._id,
+        index,
+        { topic: nextTopic },
+        adminOpts
+      );
+      cancelEdit();
+      setSubmissionFeedback({
+        variant: "success",
+        message: "Must do topic updated.",
+      });
+      if (typeof onCompanyUpdate === "function") await onCompanyUpdate();
+    } catch (err) {
+      console.error(err);
+      setSubmissionFeedback({
+        variant: "error",
+        message: err?.response?.data?.error || "Failed to update topic.",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAdminDelete = async (index) => {
+    const ok = window.confirm("Delete this must do topic for this company cluster?");
+    if (!ok) return;
+    try {
+      setActionLoading(true);
+      await adminAPI.deleteMustDoTopic(company._id, index, adminOpts);
+      if (editIndex === index) cancelEdit();
+      setSubmissionFeedback({
+        variant: "success",
+        message: "Must do topic deleted.",
+      });
+      if (typeof onCompanyUpdate === "function") await onCompanyUpdate();
+    } catch (err) {
+      console.error(err);
+      setSubmissionFeedback({
+        variant: "error",
+        message: err?.response?.data?.error || "Failed to delete topic.",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
@@ -75,7 +155,60 @@ function MustDoTab({
                 className="flex items-start gap-3 p-4 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-800 transition min-w-0"
               >
                 <span className="text-indigo-400 font-bold flex-shrink-0">{index + 1}.</span>
-                <p className="text-slate-300 leading-relaxed break-words">{topic}</p>
+                <div className="min-w-0 flex-1">
+                  {editIndex === index ? (
+                    <div className="space-y-3">
+                      <textarea
+                        value={editTopic}
+                        onChange={(e) => setEditTopic(e.target.value)}
+                        className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[90px]"
+                        disabled={actionLoading}
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAdminUpdate(index)}
+                          disabled={actionLoading}
+                          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          disabled={actionLoading}
+                          className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-60"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-300 leading-relaxed break-words">{topic}</p>
+                  )}
+                </div>
+                {isAdmin && editIndex !== index && (
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(index, topic)}
+                      disabled={actionLoading}
+                      className="inline-flex items-center gap-1 rounded-md border border-indigo-500/50 px-2 py-1 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-60"
+                    >
+                      <FaEdit className="h-3 w-3" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdminDelete(index)}
+                      disabled={actionLoading}
+                      className="inline-flex items-center gap-1 rounded-md border border-red-500/50 px-2 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-60"
+                    >
+                      <FaTrash className="h-3 w-3" />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -303,6 +303,10 @@ function CompanyDetails() {
       .catch((err) => {
         if (fetchGen !== companyDetailFetchGenRef.current) return;
         console.error("❌ Error fetching company details:", err);
+        if (err?.response?.status === 403) {
+          setLoadError("restricted");
+          return;
+        }
         const isOffline =
           typeof navigator !== "undefined" && !navigator.onLine;
         const networkError =
@@ -409,6 +413,22 @@ function CompanyDetails() {
         <button
           onClick={() => navigate(-1)}
           className="px-4 py-2 rounded-lg bg-theme-card border border-theme back-link-theme transition-colors"
+        >
+          Go back
+        </button>
+      </div>
+    );
+  }
+
+  if (loadError === "restricted" && !company) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center text-center min-h-screen bg-theme-app">
+        <p className="text-theme-secondary mb-4">
+          Stay connected, we will be back soon
+        </p>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 rounded-lg bg-theme-card border border-theme back-link-theme hover:bg-theme-nav transition-colors"
         >
           Go back
         </button>
@@ -881,6 +901,8 @@ function CompanyDetails() {
             ) : (
               <MustDoTab
                 company={company}
+                isAdmin={isAdmin}
+                onCompanyUpdate={handleRefresh}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}

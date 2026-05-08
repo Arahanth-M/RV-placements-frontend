@@ -275,6 +275,14 @@ export const adminAPI = {
     API.delete(`/api/admin/companies/${companyId}/interview-process/${index}`, {
       params: adminPlacementYearParams(opts),
     }),
+  updateMustDoTopic: (companyId, index, data, opts = {}) =>
+    API.put(`/api/admin/companies/${companyId}/must-do-topics/${index}`, data, {
+      params: adminPlacementYearParams(opts),
+    }),
+  deleteMustDoTopic: (companyId, index, opts = {}) =>
+    API.delete(`/api/admin/companies/${companyId}/must-do-topics/${index}`, {
+      params: adminPlacementYearParams(opts),
+    }),
   updateCompanyStats: (companyId, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/stats`, data, { params: adminPlacementYearParams(opts) }),
   adjustCompanyTotalGotIn: (companyId, delta, opts = {}) =>
