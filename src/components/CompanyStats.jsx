@@ -542,7 +542,9 @@ function CompanyStats() {
     const tierAllowedForEcMe =
       tierQuery === PLACEMENT_TIER_DREAM ||
       tierQuery === PLACEMENT_TIER_OPEN_DREAM ||
-      tierQuery === PLACEMENT_TIER_SUMMER_INTERNSHIP;
+      tierQuery === PLACEMENT_TIER_SUMMER_INTERNSHIP ||
+      tierQuery === PLACEMENT_TIER_INTERNSHIP_ONLY ||
+      tierQuery === PLACEMENT_TIER_OFF_CAMPUS;
     if (!tierAllowedForEcMe) {
       navigate(companystatsClusterCategoryUrl(clusterParam), { replace: true });
     }
@@ -907,7 +909,8 @@ function CompanyStats() {
     // Use local row semantics only.
     if (!isStrictClusterTiering) {
       if (company.placementSummerInternshipForListingYear === true) return true;
-      if (company.placementSummerInternshipForListingYear === false) return false;
+    // Keep cards visible even when current listing year has no visit.
+    // The detail page can still show the "No visit yet" state for that year.
       if (company.placementAnyYearPpoOnCampus === true) return true;
       if (company.placementAnyYearPpoOnCampus === false) return false;
     }
@@ -921,7 +924,8 @@ function CompanyStats() {
   const dreamTierListBase = (company) => {
     if (!isStrictClusterTiering) {
       if (company.placementHasDreamTierVisit === true) return !isOffCampusCompany(company);
-      if (company.placementHasDreamTierVisit === false) return false;
+    // Do not hide the card for non-visit listing years (e.g. 2026 with first visit in 2027).
+    // Card subtitle/empty-state handles the "no visit yet" messaging.
     }
     return (
       !isOffCampusCompany(company) &&
@@ -1638,19 +1642,12 @@ function CompanyStats() {
                 Select category
               </h2>
               <p className="mx-auto mt-2 max-w-lg px-1 text-center text-sm leading-snug text-theme-secondary sm:max-w-2xl sm:px-0 sm:text-base sm:leading-normal md:text-lg">
-                {isEcMeCluster ? (
-                  <>
-                    Choose Dream, Open dream, or Summer internship
-                    <br />
-                    {" "}to browse company cards
-                  </>
-                ) : (
-                  <>
-                    Choose Dream, Open dream, Summer internship, Off-campus or
-                    <br />
-                    {" "}Internship only to browse company cards
-                  </>
-                )}
+                <>
+                  Choose Dream, Open dream, Summer internship, Internship only (6 months), or
+                  <br />
+                  {" "}
+                  Off-campus to browse company cards
+                </>
               </p>
               
             </div>
@@ -1724,30 +1721,28 @@ function CompanyStats() {
                 </div>
               </div>
             </button>
-            {!isEcMeCluster && (
-              <button
-                type="button"
-                onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
-                className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-              >
-                <div className="flex h-full min-h-0 min-w-0 flex-col">
-                  <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                    Internship only companies
-                  </h3>
-                  <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                    <AnimatedLogoGrid
-                      companies={internshipOnlyLogoPreview}
-                      gridSize={5}
-                      interval={3000}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                    <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
-                    <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                  </div>
+            <button
+              type="button"
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                  Internship only companies
+                </h3>
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={internshipOnlyLogoPreview}
+                    gridSize={5}
+                    interval={3000}
+                  />
                 </div>
-              </button>
-            )}
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
             {/* <button
               type="button"
               onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
@@ -1770,30 +1765,28 @@ function CompanyStats() {
                 </div>
               </div>
             </button> */}
-            {!isEcMeCluster && (
-              <button
-                type="button"
-                onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
-                className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-              >
-                <div className="flex h-full min-h-0 min-w-0 flex-col">
-                  <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                    Off campus companies
-                  </h3>
-                  <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                    <AnimatedLogoGrid
-                      companies={offCampusLogoPreview}
-                      gridSize={5}
-                      interval={3000}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                    <span className="text-sm sm:text-base">{offCampusCount} companies</span>
-                    <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                  </div>
+            <button
+              type="button"
+              onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+            >
+              <div className="flex h-full min-h-0 min-w-0 flex-col">
+                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
+                  Off campus companies
+                </h3>
+                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+                  <AnimatedLogoGrid
+                    companies={offCampusLogoPreview}
+                    gridSize={5}
+                    interval={3000}
+                  />
                 </div>
-              </button>
-            )}
+                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
+                  <span className="text-sm sm:text-base">{offCampusCount} companies</span>
+                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
+                </div>
+              </div>
+            </button>
           </div>
         </div>
         </div>
