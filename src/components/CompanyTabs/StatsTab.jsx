@@ -13,7 +13,9 @@ import {
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../../constants/placementTiers.js";
 
-const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
+const CS_BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
+const EC_BRANCH_CODES = ["ece", "ete", "eie", "eee"];
+const ME_BRANCH_CODES = ["ase", "ch", "civil", "iem", "me"];
 
 function gotInForBranchCode(rows, branchCode) {
   const bc = String(branchCode || "").toLowerCase();
@@ -21,7 +23,7 @@ function gotInForBranchCode(rows, branchCode) {
   return hit ? Math.max(0, Number(hit.gotIn) || 0) : 0;
 }
 
-function normalizeBranchRows(rows) {
+function normalizeBranchRows(rows, allowedBranchCodes) {
   if (!Array.isArray(rows)) return [];
   return rows
     .map((row) => ({
@@ -30,15 +32,15 @@ function normalizeBranchRows(rows) {
       converted: Math.max(0, Number(row?.converted) || 0),
       convertedNotApplicable: Boolean(row?.convertedNotApplicable),
     }))
-    .filter((row) => BRANCH_CODES.includes(row.branchCode));
+    .filter((row) => allowedBranchCodes.includes(row.branchCode));
 }
 
 function sumGotIn(rows) {
   return rows.reduce((sum, row) => sum + row.gotIn, 0);
 }
 
-function buildFullPlacementDraftRows(placementRows) {
-  return BRANCH_CODES.map((bc) => ({
+function buildFullPlacementDraftRows(placementRows, allowedBranchCodes) {
+  return allowedBranchCodes.map((bc) => ({
     branchCode: bc,
     gotIn: gotInForBranchCode(placementRows, bc),
   }));
@@ -66,7 +68,17 @@ function StatsTab({
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   /** When set from summer internship listings, hide placement-cycle “got in” (not applicable to that hub). */
   placementListContext,
+  placementCluster,
 }) {
+  const normalizedPlacementCluster = String(placementCluster || "")
+    .trim()
+    .toLowerCase();
+  const branchCodes =
+    normalizedPlacementCluster === "ec"
+      ? EC_BRANCH_CODES
+      : normalizedPlacementCluster === "me"
+        ? ME_BRANCH_CODES
+        : CS_BRANCH_CODES;
   const isPpoCompany = String(company?.type || "").toLowerCase().includes("ppo");
   const hidePlacementGotInByYear =
     placementListContext === PLACEMENT_TIER_SUMMER_INTERNSHIP;
@@ -80,22 +92,27 @@ function StatsTab({
   const [branchFilter, setBranchFilter] = useState("all");
   const [isEditingStats, setIsEditingStats] = useState(false);
   const [savingStats, setSavingStats] = useState(false);
-  const [draftRows, setDraftRows] = useState(() => normalizeBranchRows(company.ppoBranchStats));
-  const [selectedBranch, setSelectedBranch] = useState("cd");
+  const [draftRows, setDraftRows] = useState(() =>
+    normalizeBranchRows(company.ppoBranchStats, branchCodes)
+  );
+  const [selectedBranch, setSelectedBranch] = useState(branchCodes[0] || "cd");
   const [gotInInput, setGotInInput] = useState("0");
   const [convertedInput, setConvertedInput] = useState("0");
   const [convertedNaInput, setConvertedNaInput] = useState(false);
   const [isEditingPlacementGotIn, setIsEditingPlacementGotIn] = useState(false);
   const [savingPlacementGotIn, setSavingPlacementGotIn] = useState(false);
   const [draftPlacementRows, setDraftPlacementRows] = useState(() =>
-    buildFullPlacementDraftRows([])
+    buildFullPlacementDraftRows([], branchCodes)
   );
 
-  const displayRows = useMemo(() => normalizeBranchRows(company.ppoBranchStats), [company.ppoBranchStats]);
+  const displayRows = useMemo(
+    () => normalizeBranchRows(company.ppoBranchStats, branchCodes),
+    [company.ppoBranchStats, branchCodes]
+  );
   /** SPC add-placement / FTE conversion — separate from PPO conversion branch stats. */
   const placementGotInRows = useMemo(
-    () => normalizeBranchRows(company.placementGotInBranchStats),
-    [company.placementGotInBranchStats]
+    () => normalizeBranchRows(company.placementGotInBranchStats, branchCodes),
+    [company.placementGotInBranchStats, branchCodes]
   );
   const applicableBranchRows = useMemo(
     () => displayRows.filter((row) => !row.convertedNotApplicable),
@@ -141,6 +158,15 @@ function StatsTab({
     setConvertedNaInput(false);
   }, [isEditingStats, selectedBranch, draftRows]);
 
+  useEffect(() => {
+    const fallbackBranch = branchCodes[0] || "cd";
+    setSelectedBranch((prev) =>
+      branchCodes.includes(String(prev || "").toLowerCase()) ? prev : fallbackBranch
+    );
+    setDraftRows(normalizeBranchRows(company.ppoBranchStats, branchCodes));
+    setDraftPlacementRows(buildFullPlacementDraftRows(placementGotInRows, branchCodes));
+  }, [branchCodes, company.ppoBranchStats, placementGotInRows]);
+
   const filteredRows = useMemo(() => {
     if (branchFilter === "all") return displayRows;
     return displayRows.filter((row) => row.branchCode === branchFilter);
@@ -179,13 +205,13 @@ function StatsTab({
   const adminYearGotIn = visitTotalSelectedYear;
   const placementGotInBranchesWithCounts = useMemo(
     () =>
-      BRANCH_CODES.filter((bc) => gotInForBranchCode(placementGotInRows, bc) > 0),
-    [placementGotInRows]
+      branchCodes.filter((bc) => gotInForBranchCode(placementGotInRows, bc) > 0),
+    [placementGotInRows, branchCodes]
   );
 
   const branchesForPlacementTable = useMemo(
-    () => (isAdmin ? [...BRANCH_CODES] : placementGotInBranchesWithCounts),
-    [isAdmin, placementGotInBranchesWithCounts]
+    () => (isAdmin ? [...branchCodes] : placementGotInBranchesWithCounts),
+    [isAdmin, branchCodes, placementGotInBranchesWithCounts]
   );
 
   const placementHubHint =
@@ -351,7 +377,9 @@ function StatsTab({
               type="button"
               onClick={() => {
                 if (!isEditingPlacementGotIn) {
-                  setDraftPlacementRows(buildFullPlacementDraftRows(placementGotInRows));
+                  setDraftPlacementRows(
+                    buildFullPlacementDraftRows(placementGotInRows, branchCodes)
+                  );
                 }
                 setIsEditingPlacementGotIn((v) => !v);
               }}
@@ -451,7 +479,7 @@ function StatsTab({
                 className="px-3 py-1.5 rounded-lg border border-theme-input bg-theme-input text-theme-primary text-sm focus:outline-none focus:ring-2 focus:ring-theme-accent"
               >
                 <option value="all">All branches</option>
-                {BRANCH_CODES.map((code) => (
+                {branchCodes.map((code) => (
                   <option key={code} value={code}>{code.toUpperCase()}</option>
                 ))}
               </select>
@@ -542,7 +570,7 @@ function StatsTab({
               type="button"
               onClick={() => {
                 if (!isEditingStats) {
-                  setDraftRows(normalizeBranchRows(company.ppoBranchStats));
+                  setDraftRows(normalizeBranchRows(company.ppoBranchStats, branchCodes));
                 }
                 setIsEditingStats((prev) => !prev);
               }}
@@ -560,7 +588,7 @@ function StatsTab({
                   onChange={(e) => setSelectedBranch(e.target.value)}
                   className="px-3 py-2 rounded-lg border border-theme-input bg-theme-input text-theme-primary text-sm focus:outline-none focus:ring-2 focus:ring-theme-accent"
                 >
-                  {BRANCH_CODES.map((code) => (
+                  {branchCodes.map((code) => (
                     <option key={code} value={code}>{code.toUpperCase()}</option>
                   ))}
                 </select>

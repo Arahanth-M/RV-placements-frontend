@@ -2086,50 +2086,12 @@ const AdminDashboard = () => {
                                 );
                               })()}
                             </div>
-                            
-                            {/* Company Details */}
-                            <div className="mt-4 space-y-3 text-sm">
-                              {company.interviewExperience && company.interviewExperience.length > 0 && (
-                                <div>
-                                  <p className="font-medium text-slate-300 mb-1">Interview Experience:</p>
-                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                                    {company.interviewExperience.map((exp, idx) => (
-                                      <p key={idx} className="text-slate-400 mb-1">{exp}</p>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {company.interviewQuestions && company.interviewQuestions.length > 0 && (
-                                <div>
-                                  <p className="font-medium text-slate-300 mb-1">Interview Questions:</p>
-                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                                    {company.interviewQuestions.map((q, idx) => (
-                                      <p key={idx} className="text-slate-400 mb-1">{q}</p>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {company.onlineQuestions && company.onlineQuestions.length > 0 && (
-                                <div>
-                                  <p className="font-medium text-slate-300 mb-1">Online Questions:</p>
-                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                                    {company.onlineQuestions.map((q, idx) => (
-                                      <p key={idx} className="text-slate-400 mb-1">{q}</p>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {company.Must_Do_Topics && company.Must_Do_Topics.length > 0 && (
-                                <div>
-                                  <p className="font-medium text-slate-300 mb-1">Must Do Topics:</p>
-                                  <div className="bg-slate-900 rounded p-2 max-h-32 overflow-y-auto">
-                                    {company.Must_Do_Topics.map((topic, idx) => (
-                                      <p key={idx} className="text-slate-400 mb-1">{topic}</p>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+
+                            <p className="mt-4 rounded-lg border border-slate-600/80 bg-slate-900/50 px-3 py-2 text-xs text-slate-400">
+                              OA questions, interview Q&amp;A, interview process, must-do topics, and internship write-ups
+                              are reviewed under{" "}
+                              <span className="font-medium text-slate-300">Submissions</span>, not on this card.
+                            </p>
                           </div>
                         ))}
                       </div>
