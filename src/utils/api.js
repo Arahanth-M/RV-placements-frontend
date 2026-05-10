@@ -415,12 +415,16 @@ export const interviewAPI = {
     }
     return res;
   },
-  async submitAnswer({ sessionId, answer }) {
-    const res = await API.post('/api/interview/submit-answer', { sessionId, answer }, { timeout: 30000 });
+  async submitAnswer({ sessionId, answer, language }) {
+    const body = { sessionId, answer };
+    if (language) body.language = language;
+    const res = await API.post('/api/interview/submit-answer', body, { timeout: 30000 });
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
   },
+  runPreview: ({ sessionId, code, language }) =>
+    API.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 30000 }),
   async beginQuestionReattempt({ sessionId }) {
     const res = await API.post('/api/interview/begin-question-reattempt', { sessionId });
     interviewDetailCache.delete(String(sessionId));
