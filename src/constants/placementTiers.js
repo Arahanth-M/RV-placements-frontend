@@ -11,6 +11,22 @@ export const PATH_COMPANY_STATS = "/companystats";
 export const PLACEMENT_CLUSTER_CS = "cs";
 export const PLACEMENT_CLUSTER_EC = "ec";
 export const PLACEMENT_CLUSTER_ME = "me";
+/** Chemical sciences hub: Chemical (CH), Civil, Biotechnology (BT). */
+export const PLACEMENT_CLUSTER_CHEM = "chem";
+
+/**
+ * Admin / company visit `cluster` field. Values must match backend
+ * `COMPANY_VISIT_CLUSTER_CANONICAL` (+ empty string for legacy default slot).
+ */
+export const COMPANY_VISIT_CLUSTER_FORM_OPTIONS = [
+  { value: "", label: "Default / legacy (CSE hub)" },
+  { value: "Computer Science and Engineering", label: "Computer Science & Engineering" },
+  { value: "Electronics and Communication", label: "Electronics & Communication" },
+  { value: "Mechanical Engineering", label: "Mechanical Engineering" },
+  { value: "Chemical Engineering", label: "Chemical Engineering (CH)" },
+  { value: "Civil Engineering", label: "Civil Engineering" },
+  { value: "Biotechnology", label: "Biotechnology (BT)" },
+];
 
 export function normalizeClusterParam(raw) {
   const v = String(raw ?? "")
@@ -19,6 +35,7 @@ export function normalizeClusterParam(raw) {
   if (v === "cs" || v === "cse") return PLACEMENT_CLUSTER_CS;
   if (v === "ec" || v === "ece") return PLACEMENT_CLUSTER_EC;
   if (v === "me") return PLACEMENT_CLUSTER_ME;
+  if (v === "chem" || v === "chemical" || v === "chemical_sciences") return PLACEMENT_CLUSTER_CHEM;
   return null;
 }
 

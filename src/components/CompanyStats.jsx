@@ -21,6 +21,7 @@ import {
   FaBolt,
   FaCogs,
   FaSearch,
+  FaFlask,
 } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { companyAPI, yearStatsAPI } from "../utils/api";
@@ -39,6 +40,7 @@ import {
   PATH_COMPANY_CATEGORY,
   PATH_COMPANY_STATS,
   PLACEMENT_CLUSTER_CS,
+  PLACEMENT_CLUSTER_CHEM,
   PLACEMENT_CLUSTER_EC,
   PLACEMENT_CLUSTER_ME,
   companystatsClusterCategoryUrl,
@@ -60,6 +62,24 @@ function normalizeType(type) {
     .toLowerCase();
 }
 
+function isPlacementHubCluster(cluster) {
+  return (
+    cluster === PLACEMENT_CLUSTER_CS ||
+    cluster === PLACEMENT_CLUSTER_EC ||
+    cluster === PLACEMENT_CLUSTER_ME ||
+    cluster === PLACEMENT_CLUSTER_CHEM
+  );
+}
+
+/** EC / ME / Chemical sciences: stricter tier heuristics (no cross-cluster placement flags). */
+function isNonCsStrictHubCluster(cluster) {
+  return (
+    cluster === PLACEMENT_CLUSTER_EC ||
+    cluster === PLACEMENT_CLUSTER_ME ||
+    cluster === PLACEMENT_CLUSTER_CHEM
+  );
+}
+
 function normalizeCompanyCluster(raw) {
   const v = String(raw || "").trim().toLowerCase();
   if (!v) return null;
@@ -75,6 +95,18 @@ function normalizeCompanyCluster(raw) {
 
   if (v === "me" || v === "mechanical" || v.includes("mechanical engineering")) {
     return PLACEMENT_CLUSTER_ME;
+  }
+
+  if (
+    v === "chem" ||
+    v === "ch" ||
+    v === "bt" ||
+    v.includes("chemical") ||
+    v.includes("civil") ||
+    v.includes("biotech") ||
+    v.includes("bio tech")
+  ) {
+    return PLACEMENT_CLUSTER_CHEM;
   }
 
   if (
@@ -167,12 +199,7 @@ function CompanyStats() {
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
-  const companyCacheScope =
-    clusterParam === PLACEMENT_CLUSTER_CS ||
-    clusterParam === PLACEMENT_CLUSTER_EC ||
-    clusterParam === PLACEMENT_CLUSTER_ME
-      ? clusterParam
-      : "all";
+  const companyCacheScope = isPlacementHubCluster(clusterParam) ? clusterParam : "all";
   const effectiveClusterParam =
     isPlacementCardsYear && placementTier
       ? clusterParam || PLACEMENT_CLUSTER_CS
@@ -231,12 +258,7 @@ function CompanyStats() {
     setSelectedYear(resolvedCardsYear);
     setPlacementTier(tier);
     const baseUrl = companystatsTierListUrl(tier);
-    const nextCluster =
-      clusterParam === PLACEMENT_CLUSTER_CS ||
-      clusterParam === PLACEMENT_CLUSTER_EC ||
-      clusterParam === PLACEMENT_CLUSTER_ME
-        ? clusterParam
-        : PLACEMENT_CLUSTER_CS;
+    const nextCluster = isPlacementHubCluster(clusterParam) ? clusterParam : PLACEMENT_CLUSTER_CS;
     navigate(`${baseUrl}&cluster=${encodeURIComponent(nextCluster)}`);
   }, [navigate, user?.userId, clusterParam]);
 
@@ -312,11 +334,7 @@ function CompanyStats() {
   }, [companies]);
 
   const clusterScopedCompanies = useMemo(() => {
-    if (
-      effectiveClusterParam === PLACEMENT_CLUSTER_CS ||
-      effectiveClusterParam === PLACEMENT_CLUSTER_EC ||
-      effectiveClusterParam === PLACEMENT_CLUSTER_ME
-    ) {
+    if (isPlacementHubCluster(effectiveClusterParam)) {
       return orderedCompanies.filter(
         (company) => getCompanyClusterKey(company) === effectiveClusterParam
       );
@@ -334,6 +352,10 @@ function CompanyStats() {
   );
   const csCompanies = useMemo(
     () => orderedCompanies.filter((company) => getCompanyClusterKey(company) === PLACEMENT_CLUSTER_CS),
+    [orderedCompanies]
+  );
+  const chemCompanies = useMemo(
+    () => orderedCompanies.filter((company) => getCompanyClusterKey(company) === PLACEMENT_CLUSTER_CHEM),
     [orderedCompanies]
   );
   const ecMeClusterCompanies = useMemo(() => {
@@ -533,10 +555,7 @@ function CompanyStats() {
   useEffect(() => {
     if (location.pathname !== PATH_COMPANY_STATS) return;
     if (!isPlacementCardsYear) return;
-    if (
-      clusterParam !== PLACEMENT_CLUSTER_EC &&
-      clusterParam !== PLACEMENT_CLUSTER_ME
-    ) {
+    if (!isNonCsStrictHubCluster(clusterParam)) {
       return;
     }
     const tierAllowedForEcMe =
@@ -736,12 +755,7 @@ function CompanyStats() {
       }
       (async () => {
         try {
-          const apiClusterParam =
-            clusterParam === PLACEMENT_CLUSTER_CS ||
-            clusterParam === PLACEMENT_CLUSTER_EC ||
-            clusterParam === PLACEMENT_CLUSTER_ME
-              ? clusterParam
-              : undefined;
+          const apiClusterParam = isPlacementHubCluster(clusterParam) ? clusterParam : undefined;
           const res = await companyAPI.getAllCompanies({
             year: selectedYear,
             cluster: apiClusterParam,
@@ -899,9 +913,7 @@ function CompanyStats() {
     return isCompanyMarkedOffCampus(company);
   };
 
-  const isStrictClusterTiering =
-    effectiveClusterParam === PLACEMENT_CLUSTER_EC ||
-    effectiveClusterParam === PLACEMENT_CLUSTER_ME;
+  const isStrictClusterTiering = isNonCsStrictHubCluster(effectiveClusterParam);
 
   /** Same rule as category-preview summer tiles: strict on-campus PPO row without FTE in visit type, then legacy PPO flags. */
   const qualifiesSummerInternshipTile = (company) => {
@@ -1387,18 +1399,23 @@ function CompanyStats() {
       "Aligned with the same card layout as year selection.",
     ],
     [PLACEMENT_CLUSTER_ME]: [
-      "Mechanical cluster hub.",
+      "Mechanical cluster hub (ME, ASE, IEM).",
       "Company cards and resources scoped to ME.",
-      "Same navigation style as the rest of the app.",
+      "PPO / branch stats: ASE, IEM, ME.",
     ],
     [PLACEMENT_CLUSTER_CS]: [
       "Computer Science & Engineering cluster.",
       "Dream, open dream, internships, and off-campus lists.",
-      "OA questions, interviews, and company-wise prep.",
+      "PPO / branch stats: CD, CY, ISE, CSE, AIML.",
+    ],
+    [PLACEMENT_CLUSTER_CHEM]: [
+      "Chemical sciences cluster hub (CH, Civil, BT).",
+      "Company cards and resources scoped to this cluster.",
+      "PPO / branch stats: BT, CH, Civil.",
     ],
   };
 
-  // Placement-card year /category (no cluster): pick EC / ME / CS.
+  // Placement-card year /category (no cluster): pick cluster hub.
   if (
     isPlacementCardsYear &&
     placementTier === null &&
@@ -1406,6 +1423,14 @@ function CompanyStats() {
     clusterParam === null
   ) {
     const clusters = [
+      {
+        id: PLACEMENT_CLUSTER_CS,
+        title: "CS cluster",
+        subtitle: "Computer Science & Engineering",
+        icon: FaLaptopCode,
+        bullets: clusterHubBullets[PLACEMENT_CLUSTER_CS],
+        companies: csCompanies,
+      },
       {
         id: PLACEMENT_CLUSTER_EC,
         title: "EC cluster",
@@ -1423,12 +1448,12 @@ function CompanyStats() {
         companies: meCompanies,
       },
       {
-        id: PLACEMENT_CLUSTER_CS,
-        title: "CS cluster",
-        subtitle: "Computer Science & Engineering",
-        icon: FaLaptopCode,
-        bullets: clusterHubBullets[PLACEMENT_CLUSTER_CS],
-        companies: csCompanies,
+        id: PLACEMENT_CLUSTER_CHEM,
+        title: "Chemical sciences",
+        subtitle: "CH · Civil · BT",
+        icon: FaFlask,
+        bullets: clusterHubBullets[PLACEMENT_CLUSTER_CHEM],
+        companies: chemCompanies,
       },
     ];
 
@@ -1461,7 +1486,7 @@ function CompanyStats() {
             <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
               Pick your branch cluster for the selected year company hub.
             </p>
-            <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
+            <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
               {clusters.map((c) => {
                 const Icon = c.icon;
                 return (
@@ -1580,18 +1605,16 @@ function CompanyStats() {
     );
   }
 
-  // CS / EC / ME cluster: category cards
+  // Hub cluster: category cards
   if (
     isPlacementCardsYear &&
     placementTier === null &&
     location.pathname === PATH_COMPANY_CATEGORY &&
-    (clusterParam === PLACEMENT_CLUSTER_CS ||
-      clusterParam === PLACEMENT_CLUSTER_EC ||
-      clusterParam === PLACEMENT_CLUSTER_ME)
+    isPlacementHubCluster(clusterParam)
   ) {
-    const isEcMeCluster =
-      clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME;
-    const useFullListForCategoryTiles = isEcMeCluster ? true : companies.length > 0;
+    const useFullListForCategoryTiles = isNonCsStrictHubCluster(clusterParam)
+      ? true
+      : companies.length > 0;
     const p = categoryPreview;
     const dreamLogoPreview = useFullListForCategoryTiles
       ? allDreamCompanies.slice(0, 5)
@@ -1827,9 +1850,7 @@ function CompanyStats() {
               navigate(
                 companystatsClusterCategoryUrl(
                   effectiveClusterParam ||
-                    (clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME
-                      ? clusterParam
-                      : PLACEMENT_CLUSTER_CS)
+                    (isNonCsStrictHubCluster(clusterParam) ? clusterParam : PLACEMENT_CLUSTER_CS)
                 )
               );
             }}

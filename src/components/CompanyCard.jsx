@@ -33,7 +33,7 @@ function CompanyCard({
   hidePlacementGotInCounts = false,
   /** Dream / Open dream / Summer internship lists — drives detail-page subtitle framing */
   placementListContext,
-  /** Hub cluster (cs|ec|me) — scopes GET /companies/:id when multiple visits share year/type */
+  /** Hub cluster (cs|ec|me|chem) — scopes GET /companies/:id when multiple visits share year/type */
   placementCluster,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";

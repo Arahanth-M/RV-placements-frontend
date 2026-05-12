@@ -13,9 +13,11 @@ import {
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../../constants/placementTiers.js";
 
-const CS_BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
+/** PPO / placement-got-in stats columns per hub (aligned with {@link PLACEMENT_CLUSTER_* }). */
+const CS_BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml"];
 const EC_BRANCH_CODES = ["ece", "ete", "eie", "eee"];
-const ME_BRANCH_CODES = ["ase", "ch", "civil", "iem", "me"];
+const ME_BRANCH_CODES = ["ase", "iem", "me"];
+const CHEM_BRANCH_CODES = ["bt", "ch", "civil"];
 
 function gotInForBranchCode(rows, branchCode) {
   const bc = String(branchCode || "").toLowerCase();
@@ -78,7 +80,9 @@ function StatsTab({
       ? EC_BRANCH_CODES
       : normalizedPlacementCluster === "me"
         ? ME_BRANCH_CODES
-        : CS_BRANCH_CODES;
+        : normalizedPlacementCluster === "chem"
+          ? CHEM_BRANCH_CODES
+          : CS_BRANCH_CODES;
   const isPpoCompany = String(company?.type || "").toLowerCase().includes("ppo");
   const hidePlacementGotInByYear =
     placementListContext === PLACEMENT_TIER_SUMMER_INTERNSHIP;

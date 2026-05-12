@@ -71,7 +71,9 @@ export const companyAPI = {
           ? "ec"
           : clusterRaw === "me"
             ? "me"
-            : "";
+            : clusterRaw === "chem" || clusterRaw === "ch" || clusterRaw === "bt"
+              ? "chem"
+              : "";
     const key = `${year == null ? "all" : `y${year}`}:c${cluster || "_"}`;
     if (!companiesListPromise) companiesListPromise = new Map();
     if (!companiesListPromise.has(key)) {
