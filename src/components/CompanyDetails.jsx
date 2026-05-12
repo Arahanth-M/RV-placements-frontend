@@ -667,6 +667,7 @@ function CompanyDetails() {
             >
               <CompanyLogo
                 company={company}
+                pixelSize={112}
                 className="w-full h-full object-contain p-0.5"
                 alt={company.name ? `${company.name} logo` : "Company logo"}
               />
@@ -689,6 +690,7 @@ function CompanyDetails() {
             >
               <CompanyLogo
                 company={company}
+                pixelSize={192}
                 className="w-full h-full object-contain p-1"
                 alt={company.name || "Company logo"}
               />

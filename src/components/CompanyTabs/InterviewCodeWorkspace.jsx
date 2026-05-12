@@ -1,68 +1,106 @@
-import React, { useMemo, useRef, useEffect, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { EditorState } from "@codemirror/state";
+import { indentWithTab } from "@codemirror/commands";
+import { defaultKeymap } from "@codemirror/commands";
+import {
+  bracketMatching,
+  defaultHighlightStyle,
+  indentUnit,
+  syntaxHighlighting,
+} from "@codemirror/language";
+import { python } from "@codemirror/lang-python";
+import { cpp } from "@codemirror/lang-cpp";
+import { java } from "@codemirror/lang-java";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { useTheme } from "../../utils/ThemeContext";
+
+function languageExtension(language) {
+  const l = String(language || "python").toLowerCase();
+  if (l === "cpp" || l === "c++") return cpp();
+  if (l === "java") return java();
+  return python();
+}
+
+const editorLightChrome = EditorView.theme(
+  {
+    "&": {
+      backgroundColor: "var(--input-bg)",
+      color: "var(--text-primary)",
+    },
+    ".cm-scroller": {
+      fontFamily:
+        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    },
+    ".cm-content": { caretColor: "var(--accent)" },
+    ".cm-gutters": {
+      backgroundColor: "var(--bg-card)",
+      color: "var(--text-muted)",
+      border: "none",
+      borderRight: "1px solid var(--input-border)",
+    },
+    ".cm-activeLineGutter": { backgroundColor: "transparent" },
+    "&.cm-focused .cm-cursor": { borderLeftColor: "var(--accent)" },
+    "&.cm-focused .cm-selectionBackground, &::selection .cm-selectionBackground, .cm-selectionBackground": {
+      background: "rgba(99, 102, 241, 0.22) !important",
+    },
+    ".cm-activeLine": { backgroundColor: "rgba(99, 102, 241, 0.06)" },
+  },
+  { dark: false }
+);
 
 /**
- * IDE-style editor for mock interview coding answers (single text blob submitted as answer).
- * Styling uses theme CSS variables via .ai-code-workspace-* classes in index.css.
+ * IDE-style editor for mock interview coding answers (syntax-highlighted; theme follows app light/dark).
  */
 export default function InterviewCodeWorkspace({
   value,
   onChange,
   disabled,
+  language = "python",
   placeholder = "// Write your solution here…",
   minHeightPx = 280,
   onSubmitShortcut,
 }) {
-  const textareaRef = useRef(null);
-  const gutterRef = useRef(null);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
-  const lineCount = useMemo(() => {
-    const text = String(value ?? "");
-    if (!text) return 1;
-    return text.split("\n").length;
-  }, [value]);
+  const extensions = useMemo(() => {
+    const lang = languageExtension(language);
+    const submitMap =
+      typeof onSubmitShortcut === "function"
+        ? keymap.of([
+            {
+              key: "Mod-Enter",
+              preventDefault: true,
+              run: () => {
+                onSubmitShortcut();
+                return true;
+              },
+            },
+          ])
+        : null;
 
-  const gutterLines = useMemo(
-    () => Array.from({ length: Math.max(1, lineCount) }, (_, i) => i + 1),
-    [lineCount]
+    const base = [
+      EditorState.tabSize.of(2),
+      indentUnit.of("  "),
+      lang,
+      lineNumbers(),
+      bracketMatching(),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      keymap.of([indentWithTab, ...defaultKeymap]),
+      isDark ? oneDark : editorLightChrome,
+    ];
+    if (submitMap) base.push(submitMap);
+    return base;
+  }, [language, isDark, onSubmitShortcut]);
+
+  const onChangeDoc = useCallback(
+    (doc) => {
+      onChange(doc);
+    },
+    [onChange]
   );
-
-  const syncScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    const g = gutterRef.current;
-    if (ta && g) {
-      g.scrollTop = ta.scrollTop;
-    }
-  }, []);
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    ta.style.height = `${Math.max(minHeightPx, ta.scrollHeight)}px`;
-    syncScroll();
-  }, [value, minHeightPx, syncScroll]);
-
-  const handleKeyDown = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      onSubmitShortcut?.();
-      return;
-    }
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const start = e.target.selectionStart;
-      const end = e.target.selectionEnd;
-      const next =
-        String(value ?? "").slice(0, start) + "  " + String(value ?? "").slice(end);
-      onChange(next);
-      requestAnimationFrame(() => {
-        const el = textareaRef.current;
-        if (el) {
-          el.selectionStart = el.selectionEnd = start + 2;
-        }
-      });
-    }
-  };
 
   return (
     <div className="ai-code-workspace rounded-xl overflow-hidden border border-theme-input shadow-inner">
@@ -72,38 +110,25 @@ export default function InterviewCodeWorkspace({
             Solution
           </span>
           <span className="hidden sm:inline text-xs text-theme-secondary truncate">
-            Monospace editor · Tab inserts two spaces
+            Syntax highlighting · Tab inserts two spaces · Ctrl+Enter submits
           </span>
         </div>
-        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-md ai-code-workspace-pill">
-          Pseudocode OK
-        </span>
       </div>
 
-      <div className="relative flex ai-code-workspace-body max-h-[min(52vh,520px)] min-h-[280px]">
-        <div
-          ref={gutterRef}
-          className="ai-code-workspace-gutter shrink-0 overflow-hidden select-none text-right py-3 pr-2 pl-2"
-          aria-hidden
-        >
-          {gutterLines.map((n) => (
-            <div key={`ln-${n}`} className="ai-code-workspace-gutter-line leading-[1.55]">
-              {n}
-            </div>
-          ))}
-        </div>
-        <textarea
-          ref={textareaRef}
+      <div
+        className="ai-interview-codemirror-host relative max-h-[min(52vh,520px)] min-h-[280px] overflow-hidden"
+        style={{ minHeight: `${minHeightPx}px` }}
+      >
+        <CodeMirror
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onScroll={syncScroll}
-          onKeyDown={handleKeyDown}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoComplete="off"
-          disabled={disabled}
+          height="min(52vh, 520px)"
+          theme={isDark ? "dark" : "light"}
+          extensions={extensions}
+          onChange={onChangeDoc}
+          editable={!disabled}
           placeholder={placeholder}
-          className="ai-code-workspace-editor flex-1 min-h-[280px] max-h-[min(52vh,520px)] w-full py-3 pr-3 resize-none border-0 bg-transparent focus:outline-none focus:ring-0 overflow-y-auto"
+          basicSetup={false}
+          className="text-[13px] leading-[1.55]"
           aria-label="Coding interview solution"
         />
       </div>

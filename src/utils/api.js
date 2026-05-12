@@ -106,12 +106,25 @@ export const companyAPI = {
   getPreviewLogos: (options = {}) => {
     let year = options.year != null ? Number(options.year) : null;
     if (year != null && !Number.isFinite(year)) year = null;
-    const key = year == null ? "all" : `y${year}`;
+    const clusterRaw =
+      typeof options.cluster === "string" ? options.cluster.trim().toLowerCase() : "";
+    const cluster =
+      clusterRaw === "cs" || clusterRaw === "cse"
+        ? "cs"
+        : clusterRaw === "ec" || clusterRaw === "ece"
+          ? "ec"
+          : clusterRaw === "me"
+            ? "me"
+            : "";
+    const key = `${year == null ? "all" : `y${year}`}:c${cluster || "_"}`;
     if (!previewLogosPromises.has(key)) {
       previewLogosPromises.set(
         key,
         API.get('/api/companies/preview-logos', {
-          params: year == null ? undefined : { year },
+          params: {
+            ...(year == null ? {} : { year }),
+            ...(cluster ? { cluster } : {}),
+          },
         }).finally(() => {
           previewLogosPromises.delete(key);
         })

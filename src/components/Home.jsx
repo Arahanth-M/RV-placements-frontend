@@ -419,6 +419,7 @@ function Home() {
                 const inner = (
                   <CompanyLogo
                     company={company}
+                    pixelSize={128}
                     className="max-h-[5rem] sm:max-h-[6rem] md:max-h-28 w-auto max-w-full object-contain pointer-events-none"
                     alt={company.name || "Company logo"}
                   />

@@ -56,13 +56,13 @@ const parseTypescriptLikeSignature = (functionSignature) => {
   return { name, params };
 };
 
-const parseFlexibleInterviewSignature = (functionSignature) => {
+export const parseFlexibleInterviewSignature = (functionSignature) => {
   const py = parsePythonDefSignature(functionSignature);
   if (py.name) return py;
   return parseTypescriptLikeSignature(functionSignature);
 };
 
-const parseDesignClassNameFromSignature = (functionSignature) => {
+export const parseDesignClassNameFromSignature = (functionSignature) => {
   const safe = typeof functionSignature === "string" ? functionSignature.trim() : "";
   const m = safe.match(/\bclass\s+([A-Za-z_]\w*)\s*\{/);
   return m?.[1] || "";
@@ -427,6 +427,17 @@ export function looksLikeCppInterviewCode(text) {
   if (/\bstd::/.test(s)) return true;
   if (/\busing\s+namespace\s+std\b/.test(s)) return true;
   if (/\bvector\s*</.test(s)) return true;
+
+  // Java shares C-family syntax (`int foo(...) {`); avoid false positives when the buffer is clearly Java.
+  const hasStrongJavaHints =
+    /\bpublic\s+class\b/.test(s) ||
+    /\bimport\s+java\./.test(s) ||
+    /\bnew\s+int\s*\[\s*\]/.test(s) ||
+    /\b(int|long|double|boolean|byte)(\s*\[\])+\s+\w/.test(s);
+  if (hasStrongJavaHints) {
+    return false;
+  }
+
   if (/\b(int|void|bool|char|long|unsigned|auto)\s+\w+\s*\([^)]*\)\s*\{/.test(s)) return true;
   return false;
 }

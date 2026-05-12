@@ -61,17 +61,23 @@ export function setCachedCompanies(year, data, clusterScope = "") {
   writeSessionCache(COMPANY_SESSION_PREFIX, scopedKey, wrapped);
 }
 
-export function getCachedCompanyPreview(year) {
-  const key = String(year ?? "");
-  if (!key) return null;
+function previewCacheKey(year, clusterScope = "") {
+  const y = String(year ?? "");
+  const c = String(clusterScope ?? "").trim().toLowerCase() || "all";
+  return `${y}::${c}`;
+}
+
+export function getCachedCompanyPreview(year, clusterScope = "") {
+  const key = previewCacheKey(year, clusterScope);
+  if (!String(year ?? "")) return null;
   const raw =
     companyPreviewCache[key] ?? readSessionCache(COMPANY_PREVIEW_SESSION_PREFIX, key);
   return unwrapTimedPayload(raw);
 }
 
-export function setCachedCompanyPreview(year, data) {
-  const key = String(year ?? "");
-  if (!key) return;
+export function setCachedCompanyPreview(year, data, clusterScope = "") {
+  const key = previewCacheKey(year, clusterScope);
+  if (!String(year ?? "")) return;
   const wrapped = { payload: data, cachedAt: Date.now() };
   companyPreviewCache[key] = wrapped;
   writeSessionCache(COMPANY_PREVIEW_SESSION_PREFIX, key, wrapped);

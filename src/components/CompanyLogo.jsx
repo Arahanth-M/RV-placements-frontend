@@ -63,8 +63,9 @@ function domainFromName(name) {
  * @param {Object} company - { name, domain? }
  * @param {string} [className] - applied to the img
  * @param {string} [alt] - alt text (defaults to company name or "Company logo")
+ * @param {number} [pixelSize] - logo.dev edge size (32–800); smaller = faster loads for thumbnails
  */
-function CompanyLogo({ company, className = "", alt }) {
+function CompanyLogo({ company, className = "", alt, pixelSize = 96 }) {
   const name = company?.name;
   const rawDomain = company?.domain?.trim() || "";
   const normalizedDomain = normalizeDomain(rawDomain);
@@ -74,9 +75,17 @@ function CompanyLogo({ company, className = "", alt }) {
       : ""
   ) || domainFromName(name);
 
+  const size = Number.isFinite(Number(pixelSize))
+    ? Math.min(800, Math.max(32, Math.trunc(Number(pixelSize))))
+    : 96;
+
   const getInitialSrc = () => {
     // The backend proxy adds centralized caching and avoids direct client-side logo.dev requests.
-    if (domain) return `${BASE_URL}/api/logo?domain=${encodeURIComponent(domain)}`;
+    if (domain) {
+      return `${BASE_URL}/api/logo?domain=${encodeURIComponent(domain)}&size=${encodeURIComponent(
+        String(size)
+      )}`;
+    }
     return getDefaultLogoSrc(name);
   };
 
@@ -84,7 +93,7 @@ function CompanyLogo({ company, className = "", alt }) {
 
   useEffect(() => {
     setSrc(getInitialSrc());
-  }, [company?._id, name, domain]);
+  }, [company?._id, name, domain, size]);
 
   const fallbackLogoSrc = useMemo(() => getDefaultLogoSrc(name), [name]);
 
