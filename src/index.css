@@ -133,10 +133,39 @@ body {
 /* AI mock interview — formal, legible question copy */
 .ai-interview-question-display {
   font-family: Georgia, "Times New Roman", Times, serif;
-  font-size: clamp(1.2rem, 2.8vw, 1.85rem);
-  line-height: 1.55;
+  font-size: clamp(0.95rem, 2vw, 1.2rem);
+  line-height: 1.5;
   color: var(--text-primary);
-  letter-spacing: 0.015em;
+  letter-spacing: 0.012em;
+}
+
+/* DSA coding: resizable two-pane layout (desktop). --coding-split-left set inline from React. */
+@media (min-width: 1024px) {
+  .ai-interview-coding-split {
+    display: grid;
+    grid-template-columns: var(--coding-split-left, 400px) 10px minmax(260px, 1fr);
+    column-gap: 0.75rem;
+    align-items: start;
+  }
+
+  .ai-interview-coding-split .ai-interview-coding-drag {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 1023px) {
+  .ai-interview-coding-split {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .ai-interview-coding-split .ai-interview-coding-drag {
+    display: none;
+  }
 }
 
 @keyframes ai-interview-caret-blink {
@@ -209,6 +238,16 @@ body {
 
 [data-theme="dark"] .ai-interview-code-workspace-wrap {
   border-color: rgba(148, 163, 184, 0.22);
+}
+
+/* @uiw/react-codemirror defaults to light chrome; align wrapper + inner host with editor theme */
+[data-theme="dark"] .ai-interview-codemirror-host {
+  background-color: #282c34;
+}
+
+[data-theme="dark"] .ai-interview-codemirror-host .cm-editor,
+[data-theme="dark"] .ai-interview-codemirror-host .cm-scroller {
+  background-color: #282c34 !important;
 }
 
 [data-theme="dark"] .ai-code-workspace-pill {

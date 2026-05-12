@@ -108,12 +108,25 @@ export const companyAPI = {
   getPreviewLogos: (options = {}) => {
     let year = options.year != null ? Number(options.year) : null;
     if (year != null && !Number.isFinite(year)) year = null;
-    const key = year == null ? "all" : `y${year}`;
+    const clusterRaw =
+      typeof options.cluster === "string" ? options.cluster.trim().toLowerCase() : "";
+    const cluster =
+      clusterRaw === "cs" || clusterRaw === "cse"
+        ? "cs"
+        : clusterRaw === "ec" || clusterRaw === "ece"
+          ? "ec"
+          : clusterRaw === "me"
+            ? "me"
+            : "";
+    const key = `${year == null ? "all" : `y${year}`}:c${cluster || "_"}`;
     if (!previewLogosPromises.has(key)) {
       previewLogosPromises.set(
         key,
         API.get('/api/companies/preview-logos', {
-          params: year == null ? undefined : { year },
+          params: {
+            ...(year == null ? {} : { year }),
+            ...(cluster ? { cluster } : {}),
+          },
         }).finally(() => {
           previewLogosPromises.delete(key);
         })
@@ -417,12 +430,16 @@ export const interviewAPI = {
     }
     return res;
   },
-  async submitAnswer({ sessionId, answer }) {
-    const res = await API.post('/api/interview/submit-answer', { sessionId, answer }, { timeout: 30000 });
+  async submitAnswer({ sessionId, answer, language }) {
+    const body = { sessionId, answer };
+    if (language) body.language = language;
+    const res = await API.post('/api/interview/submit-answer', body, { timeout: 30000 });
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
   },
+  runPreview: ({ sessionId, code, language }) =>
+    API.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 30000 }),
   async beginQuestionReattempt({ sessionId }) {
     const res = await API.post('/api/interview/begin-question-reattempt', { sessionId });
     interviewDetailCache.delete(String(sessionId));
