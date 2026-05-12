@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
-import { FaMoon, FaSun } from "react-icons/fa";
+import { FaChevronDown, FaMoon, FaPlay, FaSpinner, FaSun } from "react-icons/fa";
 import rvLogo from "../../assets/logo2.webp";
 import InterviewCodeWorkspace from "./InterviewCodeWorkspace";
 import {
@@ -12,7 +12,15 @@ import {
   looksLikeCppInterviewCode,
   looksLikePythonInterviewCode,
 } from "../../utils/cppInterviewStub";
+import { getJavaGraderContractHints, looksLikeJavaInterviewCode } from "../../utils/javaInterviewStub.js";
 import { buildPreviewCodeExecutionHints } from "../../utils/previewExecutionHints";
+
+/** Display labels with runtime versions — aligned with backend `executeCode.js` default images (Python 3.11, GCC 13 / C++17, Java 17). */
+const CODING_LANGUAGE_OPTION_LABELS = {
+  python: "Python 3.11",
+  cpp: "C++17 (GCC 13)",
+  java: "Java 17",
+};
 
 const EXIT_WARNING_MESSAGE =
   "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";
@@ -70,6 +78,24 @@ const toDisplayRelevance = (value) => {
   return ["relevant", "irrelevant"].includes(safe) ? safe : null;
 };
 
+/** DSA / code-execution round summary stats from backend `roundFeedback.dsaRoundStats`. */
+const normalizeDsaRoundStatsFromFeedback = (raw) => {
+  if (!raw || typeof raw !== "object") return null;
+  const totalQuestions = Number(raw.totalQuestions);
+  const answeredCorrectly = Number(raw.answeredCorrectly);
+  const partiallyAnswered = Number(raw.partiallyAnswered);
+  const notAnswered = Number(raw.notAnswered);
+  if (
+    !Number.isFinite(totalQuestions) ||
+    !Number.isFinite(answeredCorrectly) ||
+    !Number.isFinite(partiallyAnswered) ||
+    !Number.isFinite(notAnswered)
+  ) {
+    return null;
+  }
+  return { totalQuestions, answeredCorrectly, partiallyAnswered, notAnswered };
+};
+
 const previewValueLane = (label, value) => {
   const kind =
     value === null ? "null" : value === undefined ? "undefined" : Array.isArray(value) ? "array" : typeof value;
@@ -82,10 +108,23 @@ const previewValueLane = (label, value) => {
   return { label, kind, serialized };
 };
 
-/** Run preview outcome (coding / DSA only). */
-function InterviewPreviewResultPanel({ execution, hints, className = "" }) {
-  if (!execution || typeof execution !== "object") return null;
+/** Visible cases + run budget; after a run, merges per-case results into each visible row. */
+function InterviewPreviewExecutionCard({
+  previewRunsRemaining,
+  visibleTestCases,
+  execution = null,
+  hints = null,
+  loading = false,
+  className = "",
+}) {
+  const visibleResults = useMemo(() => {
+    if (!execution || !Array.isArray(execution.results)) return [];
+    return execution.results.filter((r) => r && r.isHidden !== true);
+  }, [execution]);
+
   const hintList = Array.isArray(hints?.hints) ? hints.hints : [];
+  const hasHints = Boolean(hints && (hints.summary || hintList.length > 0));
+  const summaryLower = String(hints?.summary || "").toLowerCase();
   const errText = typeof execution?.error === "string" ? execution.error.trim() : "";
   const errorDuplicatedByHints =
     Boolean(errText) &&
@@ -93,137 +132,169 @@ function InterviewPreviewResultPanel({ execution, hints, className = "" }) {
       if (typeof h !== "string") return false;
       return h.includes(errText.slice(0, Math.min(errText.length, 180)));
     });
-  const hasHints = Boolean(hints && (hints.summary || hintList.length > 0));
-  const summaryLower = String(hints?.summary || "").toLowerCase();
-  return (
-    <div
-      className={`rounded-xl border border-theme bg-theme-input p-4 space-y-2 ${className}`.trim()}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Preview result</p>
-      <p className="text-sm text-theme-primary">Status: {execution?.status || "unknown"}</p>
-      {typeof execution?.passedCount === "number" ? (
-        <div className="text-sm text-theme-secondary space-y-1">
-          <p>Executed: {Number(execution.totalCount) || 0}</p>
-          <p>Passed: {Number(execution.passedCount) || 0}</p>
-          <p>Failed: {Number(execution.failedCount) || 0}</p>
-        </div>
-      ) : (
-        <p className="text-sm text-theme-secondary">
-          {execution?.passed
-            ? "Run finished successfully."
-            : String(execution?.status || "") === "EXECUTION_SUCCESS"
-            ? "Run completed but the output did not match expectations."
-            : "Preview did not complete successfully — see hints and error details below."}
-        </p>
-      )}
-      {hasHints ? (
-        <div className="rounded-lg border border-theme-accent/35 bg-theme-accent/5 px-3 py-2.5 space-y-2">
-          {hints?.summary ? (
-            <p
-              className={`text-xs font-semibold ${
-                hintList.length === 0 &&
-                (summaryLower.includes("passed") || summaryLower.includes("matched"))
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-theme-primary"
-              }`}
-            >
-              {hints.summary}
-            </p>
-          ) : null}
-          {hintList.length > 0 ? (
-            <ul className="list-disc pl-4 space-y-1.5 text-[11px] sm:text-xs text-theme-secondary leading-relaxed">
-              {hintList.map((h, i) => (
-                <li key={`preview-hint-panel-${i}`}>{h}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
-      {Array.isArray(execution?.results) && execution.results.length > 0 ? (
-        <div className="space-y-2">
-          {execution.results.map((item, idx) => {
-            const expLane = previewValueLane("Expected", item?.expectedOutput);
-            const actLane = previewValueLane("Actual", item?.actualOutput);
-            return (
-              <div
-                key={`preview-result-panel-${idx}`}
-                className="rounded-lg border border-theme bg-theme-card p-2 text-xs space-y-1"
-              >
-                <p className={`font-semibold ${item?.passed ? "text-green-500" : "text-red-500"}`}>
-                  Case {idx + 1}
-                  {item?.isHidden ? " (hidden)" : ""}: {item?.passed ? "Passed" : "Failed"}
-                </p>
-                {item?.error ? <p className="text-theme-secondary">Error: {item.error}</p> : null}
-                <p className="text-theme-secondary">Input: {JSON.stringify(item?.input ?? null)}</p>
-                <p className="text-theme-secondary">
-                  {expLane.label} ({expLane.kind}): {expLane.serialized}
-                </p>
-                <p className="text-theme-secondary">
-                  {actLane.label} ({actLane.kind}): {actLane.serialized}
-                </p>
-                {!item?.passed && !item?.error ? (
-                  <p className="text-[11px] text-theme-muted leading-snug">
-                    If kinds and JSON match but Case still fails, check list element order and nested structure —
-                    preview uses strict equality.
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-      {execution?.error && !errorDuplicatedByHints ? (
-        <p className="text-xs text-red-500">{execution.error}</p>
-      ) : null}
-    </div>
-  );
-}
 
-/** Visible cases + run budget (DSA coding). */
-function InterviewPreviewExecutionCard({
-  previewRunsRemaining,
-  visibleTestCases,
-  className = "",
-}) {
+  const visiblePassedCount = visibleResults.filter((r) => r.passed).length;
+  const visibleRunCount = visibleResults.length;
+
   return (
-    <div
-      className={`rounded-xl border border-theme bg-theme-input p-4 space-y-3 ${className}`.trim()}
-    >
+    <div className={`rounded-xl border border-theme bg-theme-input p-4 space-y-3 ${className}`.trim()}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Preview execution</p>
         <p className="text-xs text-theme-secondary">
           Preview Runs Left: {Math.max(0, Number(previewRunsRemaining) || 0)}
         </p>
       </div>
+
+      {loading ? (
+        <p className="text-xs text-theme-secondary flex items-center gap-2">
+          <FaSpinner className="h-3.5 w-3.5 animate-spin shrink-0" aria-hidden />
+          Running tests…
+        </p>
+      ) : null}
+
       <div className="space-y-2">
         <p className="text-xs font-semibold text-theme-primary">Visible testcases</p>
         {Array.isArray(visibleTestCases) && visibleTestCases.length > 0 ? (
           <div className="space-y-2">
-            {visibleTestCases.map((testcase, idx) => (
-              <div
-                key={`visible-testcase-card-${idx}`}
-                className="rounded-lg border border-theme bg-theme-card p-2 text-xs"
-              >
-                <p className="text-theme-primary font-semibold">Case {idx + 1}</p>
-                <p className="text-theme-secondary whitespace-pre-wrap break-words">
-                  Input / prompt:{" "}
-                  {typeof testcase?.input === "string"
-                    ? testcase.input
-                    : JSON.stringify(testcase?.input ?? null)}
-                </p>
-                <p className="text-theme-secondary whitespace-pre-wrap break-words">
-                  Expected:{" "}
-                  {typeof testcase?.expectedOutput === "string"
-                    ? testcase.expectedOutput
-                    : JSON.stringify(testcase?.expectedOutput ?? null)}
-                </p>
-              </div>
-            ))}
+            {visibleTestCases.map((testcase, idx) => {
+              const runRow = visibleResults[idx];
+              const ran = Boolean(runRow);
+              const passed = Boolean(runRow?.passed);
+              const borderTone = ran
+                ? passed
+                  ? "border-green-500/45 bg-green-500/5"
+                  : "border-red-500/45 bg-red-500/5"
+                : "border-theme bg-theme-card";
+
+              const expLane = runRow
+                ? previewValueLane("Expected", runRow.expectedOutput)
+                : previewValueLane(
+                    "Expected",
+                    typeof testcase?.expectedOutput === "string"
+                      ? testcase.expectedOutput
+                      : testcase?.expectedOutput
+                  );
+              const actLane = runRow ? previewValueLane("Actual", runRow.actualOutput) : null;
+
+              return (
+                <div
+                  key={`visible-testcase-card-${idx}`}
+                  className={`rounded-lg border p-2.5 text-xs space-y-1.5 transition-colors ${borderTone}`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-theme-primary font-semibold">Case {idx + 1}</p>
+                    {ran ? (
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          passed
+                            ? "bg-green-500/20 text-green-700 dark:text-green-300"
+                            : "bg-red-500/20 text-red-700 dark:text-red-300"
+                        }`}
+                      >
+                        {passed ? "Passed" : "Failed"}
+                      </span>
+                    ) : (
+                      <span className="rounded-md bg-theme-input px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-theme-muted">
+                        Not run
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-theme-secondary whitespace-pre-wrap break-words">
+                    Input:{" "}
+                    {typeof testcase?.input === "string"
+                      ? testcase.input
+                      : JSON.stringify(testcase?.input ?? null)}
+                  </p>
+                  <p className="text-theme-secondary whitespace-pre-wrap break-words">
+                    {expLane.label}: {expLane.serialized}
+                  </p>
+                  {actLane ? (
+                    <p className="text-theme-secondary whitespace-pre-wrap break-words">
+                      {actLane.label} ({actLane.kind}): {actLane.serialized}
+                    </p>
+                  ) : null}
+                  {runRow?.error ? (
+                    <p className="text-[11px] text-red-600 dark:text-red-300 whitespace-pre-wrap break-words">
+                      Error: {runRow.error}
+                    </p>
+                  ) : null}
+                  {ran && !passed && !runRow?.error ? (
+                    <p className="text-[10px] text-theme-muted leading-snug">
+                      Output did not match expected (strict JSON / equality). Check types, nesting, and list order.
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="text-xs text-theme-secondary">No visible testcases available for this question yet.</p>
         )}
       </div>
+
+      {execution && !loading ? (
+        <div className="space-y-2 border-t border-theme pt-3">
+          {errText && !errorDuplicatedByHints ? (
+            <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+              {errText}
+            </div>
+          ) : null}
+          {visibleRunCount > 0 ? (
+            <p className="text-[11px] text-theme-secondary">
+              Visible in this run:{" "}
+              <span
+                className={
+                  visiblePassedCount === visibleRunCount
+                    ? "font-semibold text-green-600 dark:text-green-400"
+                    : "font-semibold text-amber-600 dark:text-amber-400"
+                }
+              >
+                {visiblePassedCount}/{visibleRunCount} passed
+              </span>
+              {typeof execution?.status === "string" ? (
+                <span className="text-theme-muted"> · {execution.status}</span>
+              ) : null}
+            </p>
+          ) : typeof execution?.passedCount === "number" ? (
+            <p className="text-[11px] text-theme-secondary">
+              Run finished — passed {execution.passedCount} / {Number(execution.totalCount) || 0} total tests
+              {typeof execution?.status === "string" ? (
+                <span className="text-theme-muted"> · {execution.status}</span>
+              ) : null}
+            </p>
+          ) : null}
+          {hasHints && hints?.summary ? (
+            <div className="rounded-lg border border-theme bg-theme-card/90 px-3 py-2">
+              <p
+                className={`text-xs font-semibold leading-snug ${
+                  hintList.length === 0 && (summaryLower.includes("passed") || summaryLower.includes("matched"))
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-theme-primary"
+                }`}
+              >
+                {hints.summary}
+              </p>
+            </div>
+          ) : null}
+          {hasHints && hintList.length > 0 ? (
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-theme-secondary leading-relaxed">
+              {hintList.map((h, i) => (
+                <li key={`preview-hint-inline-${i}`}>{h}</li>
+              ))}
+            </ul>
+          ) : null}
+          {typeof execution?.userDebugOutput === "string" && execution.userDebugOutput.trim() ? (
+            <div className="rounded-lg border border-theme bg-theme-card/90 p-3 space-y-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-muted">
+                Debug output (visible cases)
+              </p>
+              <pre className="text-[11px] text-theme-primary whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono leading-relaxed bg-theme-input/80 rounded-md p-2 border border-theme">
+                {execution.userDebugOutput}
+              </pre>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -450,6 +521,211 @@ function ThemedSelect({ value, options, onChange, placeholder = "Select option",
   );
 }
 
+function InterviewQuestionSourceLink({ url }) {
+  const href = String(url || "").trim();
+  if (!href || !/^https?:\/\//i.test(href)) return null;
+  return (
+    <p className="mt-3 text-sm text-theme-secondary">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-theme-accent font-medium underline underline-offset-2 decoration-theme-accent/50 hover:decoration-theme-accent break-all"
+      >
+        Problem reference (opens in new tab)
+      </a>
+    </p>
+  );
+}
+
+function normalizeQuestionComplexityPayload(raw) {
+  if (raw == null || typeof raw !== "object") return null;
+  const time = raw.time != null ? String(raw.time).trim() : "";
+  const space = raw.space != null ? String(raw.space).trim() : "";
+  if (!time && !space) return null;
+  return {
+    ...(time ? { time } : {}),
+    ...(space ? { space } : {}),
+  };
+}
+
+function formatQuestionComplexityLine(complexity) {
+  const c = normalizeQuestionComplexityPayload(complexity);
+  if (!c) return "";
+  const parts = [];
+  if (c.time) parts.push(`Time ${c.time}`);
+  if (c.space) parts.push(`Space ${c.space}`);
+  return parts.join(" · ");
+}
+
+const metaChipButtonClass =
+  "inline-flex max-w-full min-w-0 items-center gap-2 rounded-lg border border-theme-input bg-theme-card/90 px-2.5 py-2 text-left text-xs text-theme-primary shadow-sm transition-colors hover:border-theme-accent/60 hover:bg-theme-input focus:outline-none focus-visible:ring-2 focus-visible:ring-theme-accent";
+
+const metaLabelClass =
+  "shrink-0 text-[11px] font-semibold uppercase tracking-wide text-theme-muted whitespace-nowrap";
+
+/** Clickable chip: summary on the button; full detail in a dropdown panel. */
+function InterviewMetaDropdownChip({ id, label, summary, isOpen, onToggle, children }) {
+  const emptySummary = !summary || String(summary).trim() === "";
+  if (emptySummary) return null;
+  return (
+    <div className="relative max-w-full shrink-0">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(id);
+        }}
+        className={metaChipButtonClass}
+      >
+        <span className={metaLabelClass}>{label}</span>
+        <span className="min-w-0 max-w-[11rem] truncate font-medium text-theme-secondary sm:max-w-[14rem]">
+          {emptySummary ? "—" : summary}
+        </span>
+        <FaChevronDown
+          className={`h-3 w-3 shrink-0 text-theme-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {isOpen && !emptySummary ? (
+        <div
+          className="absolute left-0 z-[85] mt-1.5 min-w-[14rem] max-w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-theme bg-theme-card py-2.5 px-3 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
+          role="dialog"
+          aria-label={label}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Complexity, topics, and company tags as clickable chips with dropdown detail. */
+function InterviewQuestionMetaRow({
+  complexity,
+  topics,
+  subtopics,
+  companyTags,
+  variant = "inline",
+  /** When true, company chip is omitted (e.g. non-DSA interview questions). */
+  hideCompanyTags = false,
+}) {
+  const [openKey, setOpenKey] = useState(null);
+  const rootRef = useRef(null);
+
+  const listT = Array.isArray(topics) ? topics : [];
+  const listS = Array.isArray(subtopics) ? subtopics : [];
+  const listC = Array.isArray(companyTags) ? companyTags : [];
+  const complexityLine = formatQuestionComplexityLine(complexity);
+  const hasTopics = listT.length > 0 || listS.length > 0;
+  const hasCompany = listC.length > 0;
+
+  const topicEntries = useMemo(
+    () => [
+      ...listT.map((text, i) => ({ key: `topic-${i}`, text })),
+      ...listS.map((text, i) => ({ key: `sub-${i}`, text })),
+    ],
+    [listT, listS]
+  );
+
+  const companyEntries = useMemo(
+    () => listC.map((text, i) => ({ key: `co-${i}`, text })),
+    [listC]
+  );
+
+  useEffect(() => {
+    if (!openKey) return undefined;
+    const close = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) {
+        setOpenKey(null);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [openKey]);
+
+  if (!complexityLine && !hasTopics && (hideCompanyTags || !hasCompany)) return null;
+
+  const shell =
+    variant === "hero"
+      ? "mt-4 pt-4 border-t border-theme"
+      : "mt-3 pt-3 border-t border-theme";
+
+  const topicSummary = hasTopics
+    ? topicEntries.length === 1
+      ? topicEntries[0].text
+      : `${topicEntries[0].text} +${topicEntries.length - 1}`
+    : "";
+
+  const companySummary = hasCompany
+    ? companyEntries.length === 1
+      ? companyEntries[0].text
+      : `${companyEntries[0].text} +${companyEntries.length - 1}`
+    : "";
+
+  const toggleKey = (id) => {
+    setOpenKey((prev) => (prev === id ? null : id));
+  };
+
+  return (
+    <div
+      ref={rootRef}
+      className={`${shell} flex flex-wrap items-center gap-2 sm:gap-2.5`}
+      role="group"
+      aria-label="Question metadata"
+    >
+      <InterviewMetaDropdownChip
+        id="complexity"
+        label="Complexity"
+        summary={complexityLine}
+        isOpen={openKey === "complexity"}
+        onToggle={toggleKey}
+      >
+        <p className="text-xs font-semibold text-theme-primary mb-1.5">Expected complexity</p>
+        <p className="text-xs text-theme-secondary whitespace-pre-wrap leading-relaxed">{complexityLine}</p>
+      </InterviewMetaDropdownChip>
+
+      <InterviewMetaDropdownChip
+        id="topics"
+        label="Topics"
+        summary={topicSummary}
+        isOpen={openKey === "topics"}
+        onToggle={toggleKey}
+      >
+        <p className="text-xs font-semibold text-theme-primary mb-1.5">Topics & subtopics</p>
+        <ul className="max-h-48 overflow-y-auto space-y-1 pl-3 text-xs text-theme-secondary list-disc">
+          {topicEntries.map(({ key, text }) => (
+            <li key={key} className="leading-snug">
+              {text}
+            </li>
+          ))}
+        </ul>
+      </InterviewMetaDropdownChip>
+
+      {!hideCompanyTags ? (
+        <InterviewMetaDropdownChip
+          id="company"
+          label="Company"
+          summary={companySummary}
+          isOpen={openKey === "company"}
+          onToggle={toggleKey}
+        >
+          <p className="text-xs font-semibold text-theme-primary mb-1.5">Company tags</p>
+          <ul className="max-h-48 overflow-y-auto space-y-1 pl-3 text-xs text-theme-secondary list-disc">
+            {companyEntries.map(({ key, text }) => (
+              <li key={key} className="leading-snug">
+                {text}
+              </li>
+            ))}
+          </ul>
+        </InterviewMetaDropdownChip>
+      ) : null}
+    </div>
+  );
+}
+
 function AIInterviewTab({
   company,
   onInterviewLockChange,
@@ -460,6 +736,7 @@ function AIInterviewTab({
   const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState("");
   const [question, setQuestion] = useState("");
+  const [questionUrl, setQuestionUrl] = useState("");
   const [answerExplanation, setAnswerExplanation] = useState("");
   const [answerCode, setAnswerCode] = useState("");
   const [_feedback, setFeedback] = useState("");
@@ -500,10 +777,14 @@ function AIInterviewTab({
   /** Shown beside Run code when preview is blocked (e.g. language vs editor mismatch) — not the global error banner. */
   const [previewRunInlineHint, setPreviewRunInlineHint] = useState("");
   const [codingLanguage, setCodingLanguage] = useState("python");
-  const [supportedCodingLanguages, setSupportedCodingLanguages] = useState(["python", "cpp"]);
+  const [supportedCodingLanguages, setSupportedCodingLanguages] = useState(["python", "cpp", "java"]);
   const [codingFunctionSignature, setCodingFunctionSignature] = useState("");
   const [codingStarterCode, setCodingStarterCode] = useState("");
   const [codingQuestionId, setCodingQuestionId] = useState("");
+  const [questionTopics, setQuestionTopics] = useState([]);
+  const [questionSubtopics, setQuestionSubtopics] = useState([]);
+  const [questionCompanyTags, setQuestionCompanyTags] = useState([]);
+  const [questionComplexity, setQuestionComplexity] = useState(null);
   /** After each answer: full-screen feedback until user taps "Next question". */
   const [pendingQuestionFeedback, setPendingQuestionFeedback] = useState(null);
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
@@ -525,6 +806,21 @@ function AIInterviewTab({
   const interviewAnswerPollAbortedRef = useRef(false);
   /** Prevents overlapping run-preview calls (e.g. React Strict Mode or double-clicks). */
   const previewRunInFlightRef = useRef(false);
+  /** Resizable coding split: left pane width (px) on lg+; persisted in localStorage. */
+  const codingPaneWrapRef = useRef(null);
+  const codingSplitDragRef = useRef({ active: false, startX: 0, startW: 400 });
+  const codingLeftWidthRef = useRef(400);
+  const [codingLeftPanePx, setCodingLeftPanePx] = useState(() => {
+    if (typeof window === "undefined") return 400;
+    try {
+      const raw = window.localStorage.getItem("aiInterview.codingLeftPx");
+      const n = Number(raw);
+      if (Number.isFinite(n) && n >= 260 && n <= 720) return Math.round(n);
+    } catch {
+      /* ignore */
+    }
+    return 400;
+  });
   const tipsRef = useRef([]);
   tipsRef.current = tips;
   const pendingQuestionFeedbackRef = useRef(null);
@@ -613,6 +909,16 @@ function AIInterviewTab({
     [codingFunctionSignature, visibleTestCases]
   );
 
+  const javaGraderContractHints = useMemo(
+    () =>
+      getJavaGraderContractHints(
+        codingFunctionSignature,
+        visibleTestCases?.[0]?.input,
+        visibleTestCases?.[0]?.expectedOutput
+      ),
+    [codingFunctionSignature, visibleTestCases]
+  );
+
   const isSqlRoundUI = useMemo(() => {
     const hint =
       Array.isArray(roundsDetails) && roundsDetails[currentRoundIndex]
@@ -625,6 +931,9 @@ function AIInterviewTab({
     if (!isCodingRoundUI) return undefined;
     if (codingLanguage === "cpp") {
       return "Write your C++ to match the Grader contract above (class Solution, method name, and types). The editor stays empty until you type — no boilerplate is injected.";
+    }
+    if (codingLanguage === "java") {
+      return "Write your Java to match the Grader contract above (public class Solution, method name, and types). The editor stays empty until you type — no boilerplate is injected.";
     }
     return "Write your Python to match the Grader contract above (top-level def or class Solution). The editor stays empty until you type — no boilerplate is injected.";
   }, [isCodingRoundUI, codingLanguage]);
@@ -695,6 +1004,38 @@ function AIInterviewTab({
       );
     }
   }, [supportedCodingLanguages, codingLanguage]);
+
+  useEffect(() => {
+    codingLeftWidthRef.current = codingLeftPanePx;
+  }, [codingLeftPanePx]);
+
+  useEffect(() => {
+    const clamp = (w, maxW) => Math.max(240, Math.min(maxW, w));
+    const onMove = (e) => {
+      const d = codingSplitDragRef.current;
+      if (!d.active || !codingPaneWrapRef.current) return;
+      const rect = codingPaneWrapRef.current.getBoundingClientRect();
+      const maxLeft = Math.max(260, rect.width - 280);
+      const next = clamp(d.startW + (e.clientX - d.startX), maxLeft);
+      setCodingLeftPanePx(next);
+      codingLeftWidthRef.current = next;
+    };
+    const onUp = () => {
+      if (!codingSplitDragRef.current.active) return;
+      codingSplitDragRef.current.active = false;
+      try {
+        window.localStorage.setItem("aiInterview.codingLeftPx", String(codingLeftWidthRef.current));
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   useEffect(() => {
     activeSessionIdRef.current = sessionId;
@@ -1160,6 +1501,7 @@ function AIInterviewTab({
       answerTextAreaRef.current.style.height = "auto";
     }
     setQuestion("");
+    setQuestionUrl("");
     setAnswerExplanation("");
     setAnswerCode("");
     setFeedback("");
@@ -1248,6 +1590,7 @@ function AIInterviewTab({
 
       setSessionId(data.sessionId || "");
       setQuestion(data.question || "");
+      setQuestionUrl(String(data.questionUrl || "").trim());
       setStatus(data.status || "in_progress");
       setCurrentRound(data.currentRound || "");
       setRoundsPlan(Array.isArray(data.roundsPlan) ? data.roundsPlan : []);
@@ -1300,6 +1643,25 @@ function AIInterviewTab({
           }
           if (typeof freshStatus?.codingQuestionId === "string") {
             setCodingQuestionId(String(freshStatus.codingQuestionId || "").trim());
+          }
+          if (Array.isArray(freshStatus?.questionTopics)) {
+            setQuestionTopics(freshStatus.questionTopics);
+          } else {
+            setQuestionTopics([]);
+          }
+          if (Array.isArray(freshStatus?.questionSubtopics)) {
+            setQuestionSubtopics(freshStatus.questionSubtopics);
+          } else {
+            setQuestionSubtopics([]);
+          }
+          if (Array.isArray(freshStatus?.questionCompanyTags)) {
+            setQuestionCompanyTags(freshStatus.questionCompanyTags);
+          } else {
+            setQuestionCompanyTags([]);
+          }
+          setQuestionComplexity(normalizeQuestionComplexityPayload(freshStatus?.questionComplexity));
+          if (Object.prototype.hasOwnProperty.call(freshStatus || {}, "questionUrl")) {
+            setQuestionUrl(String(freshStatus.questionUrl || "").trim());
           }
           setCodingLanguage("python");
         } catch (statusErr) {
@@ -1371,10 +1733,27 @@ function AIInterviewTab({
     if (Object.prototype.hasOwnProperty.call(st || {}, "codingQuestionId")) {
       setCodingQuestionId(String(st.codingQuestionId || "").trim());
     }
+    if (Object.prototype.hasOwnProperty.call(st || {}, "questionTopics")) {
+      setQuestionTopics(Array.isArray(st.questionTopics) ? st.questionTopics : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st || {}, "questionSubtopics")) {
+      setQuestionSubtopics(Array.isArray(st.questionSubtopics) ? st.questionSubtopics : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st || {}, "questionCompanyTags")) {
+      setQuestionCompanyTags(Array.isArray(st.questionCompanyTags) ? st.questionCompanyTags : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st || {}, "questionComplexity")) {
+      setQuestionComplexity(normalizeQuestionComplexityPayload(st.questionComplexity));
+    }
 
     if (st.roundCompleted) {
       roundCompletedAtRef.current = Date.now();
       setQuestion("");
+      setQuestionUrl("");
+      setQuestionTopics([]);
+      setQuestionSubtopics([]);
+      setQuestionCompanyTags([]);
+      setQuestionComplexity(null);
       questionRef.current = "";
 
       /** Entire interview finished: never show per-answer feedback on top of the final summary. */
@@ -1394,6 +1773,7 @@ function AIInterviewTab({
           weaknesses: st?.roundFeedback?.weaknesses || [],
           summary: st?.roundFeedback?.summary || "",
           improvementTips: st?.roundFeedback?.improvementTips || [],
+          dsaRoundStats: normalizeDsaRoundStatsFromFeedback(st?.roundFeedback?.dsaRoundStats),
           nextRoundAvailable: Boolean(st?.nextRoundAvailable),
         };
         const codeExecSummaryRound = st.lastCodeExecutionSummary;
@@ -1414,6 +1794,7 @@ function AIInterviewTab({
               ? codeExecSummaryRound
               : null,
             nextQuestion: "",
+            nextQuestionUrl: "",
             deferredRoundSummary,
           });
           setRoundFeedbackView(null);
@@ -1438,6 +1819,7 @@ function AIInterviewTab({
         setFeedback(st.lastFeedback || "");
         setScore(typeof st.lastScore === "number" ? st.lastScore : null);
         setQuestion("");
+        setQuestionUrl("");
         questionRef.current = "";
       } else if (
         incomingQ &&
@@ -1457,9 +1839,11 @@ function AIInterviewTab({
             ? codeExecSummaryNext
             : null,
           nextQuestion: incomingQ,
+          nextQuestionUrl: String(st.questionUrl || "").trim(),
           deferredRoundSummary: null,
         });
         setQuestion("");
+        setQuestionUrl("");
         questionRef.current = "";
         setFeedback("");
         setScore(null);
@@ -1468,11 +1852,13 @@ function AIInterviewTab({
         setFeedback(st.lastFeedback || "");
         setScore(typeof st.lastScore === "number" ? st.lastScore : null);
         setQuestion(incomingQ);
+        setQuestionUrl(String(st.questionUrl || "").trim());
         questionRef.current = incomingQ;
       } else {
         setPendingQuestionFeedback(null);
         setFeedback(st.lastFeedback || "");
         setScore(typeof st.lastScore === "number" ? st.lastScore : null);
+        setQuestionUrl("");
       }
     }
 
@@ -1480,17 +1866,19 @@ function AIInterviewTab({
   }, []);
 
   const codingLanguageOptions = useMemo(() => {
-    const labels = { python: "Python", cpp: "C++" };
-    const order = ["python", "cpp"];
+    const order = ["python", "cpp", "java"];
     return order
       .filter((id) => supportedCodingLanguages.includes(id))
-      .map((id) => ({ value: id, label: labels[id] }));
+      .map((id) => ({
+        value: id,
+        label: CODING_LANGUAGE_OPTION_LABELS[id] || id,
+      }));
   }, [supportedCodingLanguages]);
 
   const handleCodingLanguageChange = useCallback(
     (next) => {
       const normalized = String(next || "").trim();
-      if (!["python", "cpp"].includes(normalized) || !supportedCodingLanguages.includes(normalized)) return;
+      if (!["python", "cpp", "java"].includes(normalized) || !supportedCodingLanguages.includes(normalized)) return;
       if (normalized === codingLanguage) return;
       setCodingLanguage(normalized);
     },
@@ -1531,6 +1919,34 @@ function AIInterviewTab({
         );
         return;
       }
+      if (codingLanguage === "java" && looksLikePythonInterviewCode(payloadCode)) {
+        setError("");
+        setPreviewRunInlineHint(
+          "Java is selected but the editor looks like Python. Use Java that matches the Grader contract, or switch the language to Python."
+        );
+        return;
+      }
+      if (codingLanguage === "java" && looksLikeCppInterviewCode(payloadCode)) {
+        setError("");
+        setPreviewRunInlineHint(
+          "Java is selected but the editor looks like C++. Use Java that matches the Grader contract, or switch the language to C++."
+        );
+        return;
+      }
+      if (codingLanguage === "python" && looksLikeJavaInterviewCode(payloadCode)) {
+        setError("");
+        setPreviewRunInlineHint(
+          "Python is selected but the editor looks like Java. Use Python that matches the Grader contract, or switch the language to Java."
+        );
+        return;
+      }
+      if (codingLanguage === "cpp" && looksLikeJavaInterviewCode(payloadCode)) {
+        setError("");
+        setPreviewRunInlineHint(
+          "C++ is selected but the editor looks like Java. Use C++ that matches the Grader contract, or switch the language to Java."
+        );
+        return;
+      }
     }
 
     if (previewRunInFlightRef.current) return;
@@ -1538,6 +1954,7 @@ function AIInterviewTab({
 
     setError("");
     setPreviewExecutionLoading(true);
+    setPreviewExecutionResult(null);
     try {
       const { data } = await interviewAPI.runPreview({
         sessionId,
@@ -1849,6 +2266,7 @@ function AIInterviewTab({
         if (data.roundCompleted) {
           roundCompletedAtRef.current = Date.now();
           setQuestion("");
+          setQuestionUrl("");
           questionRef.current = "";
 
           if (data.status === "completed") {
@@ -1867,6 +2285,7 @@ function AIInterviewTab({
               weaknesses: data?.roundFeedback?.weaknesses || [],
               summary: data?.roundFeedback?.summary || "",
               improvementTips: data?.roundFeedback?.improvementTips || [],
+              dsaRoundStats: normalizeDsaRoundStatsFromFeedback(data?.roundFeedback?.dsaRoundStats),
               nextRoundAvailable: Boolean(data?.nextRoundAvailable),
             };
             const codeExecSummaryData = data.lastCodeExecutionSummary;
@@ -1887,6 +2306,7 @@ function AIInterviewTab({
                   ? codeExecSummaryData
                   : null,
                 nextQuestion: "",
+                nextQuestionUrl: "",
                 deferredRoundSummary,
               });
               setRoundFeedbackView(null);
@@ -1913,24 +2333,27 @@ function AIInterviewTab({
               isCodeExecutionSummaryPayload(data.lastCodeExecutionSummary))
           ) {
             const sum = data.lastCodeExecutionSummary;
-            setPendingQuestionFeedback({
-              answeredQuestion: snap.questionText || "",
-              canReattempt: true,
-              feedback: data.feedback || "",
-              score: typeof data.score === "number" ? data.score : null,
-              correctness: toDisplayCorrectness(data.correctness),
-              relevance: toDisplayRelevance(data.relevance),
-              codeExecutionSummary: isCodeExecutionSummaryPayload(sum) ? sum : null,
-              nextQuestion: nextQ,
-              deferredRoundSummary: null,
-            });
+              setPendingQuestionFeedback({
+                answeredQuestion: snap.questionText || "",
+                canReattempt: true,
+                feedback: data.feedback || "",
+                score: typeof data.score === "number" ? data.score : null,
+                correctness: toDisplayCorrectness(data.correctness),
+                relevance: toDisplayRelevance(data.relevance),
+                codeExecutionSummary: isCodeExecutionSummaryPayload(sum) ? sum : null,
+                nextQuestion: nextQ,
+                nextQuestionUrl: String(data.questionUrl || "").trim(),
+                deferredRoundSummary: null,
+              });
             setQuestion("");
+            setQuestionUrl("");
             questionRef.current = "";
             setFeedback("");
             setScore(null);
           } else {
             setPendingQuestionFeedback(null);
             setQuestion(data.question || "");
+            setQuestionUrl(String(data.questionUrl || "").trim());
             questionRef.current = data.question || "";
             setFeedback(data.feedback || "");
             setScore(typeof data.score === "number" ? data.score : null);
@@ -1972,6 +2395,7 @@ function AIInterviewTab({
       return;
     }
     setQuestion(ctx.nextQuestion);
+    setQuestionUrl(String(ctx.nextQuestionUrl || "").trim());
     questionRef.current = ctx.nextQuestion;
     setPendingQuestionFeedback(null);
     setFeedback("");
@@ -1992,6 +2416,13 @@ function AIInterviewTab({
           if (typeof st.currentQuestionNumberWithinRound === "number") {
             setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
           }
+          if (Object.prototype.hasOwnProperty.call(st || {}, "questionUrl")) {
+            setQuestionUrl(String(st.questionUrl || "").trim());
+          }
+          setQuestionTopics(Array.isArray(st?.questionTopics) ? st.questionTopics : []);
+          setQuestionSubtopics(Array.isArray(st?.questionSubtopics) ? st.questionSubtopics : []);
+          setQuestionCompanyTags(Array.isArray(st?.questionCompanyTags) ? st.questionCompanyTags : []);
+          setQuestionComplexity(normalizeQuestionComplexityPayload(st?.questionComplexity));
         })
         .catch(() => {});
     }
@@ -2033,6 +2464,7 @@ function AIInterviewTab({
     try {
       const { data } = await interviewAPI.moveToNextRound({ sessionId });
       setQuestion(data.question || "");
+      setQuestionUrl(String(data.questionUrl || "").trim());
       setStatus(data.status || "in_progress");
       setCurrentRound(data.currentRound || "");
       setCurrentRoundIndex(Math.max(0, (Number(data.currentRound) || 1) - 1));
@@ -2253,18 +2685,30 @@ function AIInterviewTab({
               <p className="mt-2 text-[11px] text-theme-muted">{interviewRoundPlanLine}</p>
             ) : null}
           </div>
-          <div className="rounded-xl border border-theme-accent/40 bg-theme-input px-4 py-5 sm:px-7 sm:py-7 shadow-inner">
-            <p
-              className="ai-interview-question-display whitespace-pre-wrap"
-              aria-live="polite"
-              aria-busy={questionTypingIncomplete || undefined}
-            >
-              {typedQuestionText}
-              {questionTypingIncomplete ? (
-                <span className="ai-interview-typewriter-caret" aria-hidden />
-              ) : null}
-            </p>
-          </div>
+          {!isCodingRoundUI ? (
+            <div className="rounded-xl border border-theme-accent/40 bg-theme-input px-4 py-5 sm:px-7 sm:py-7 shadow-inner">
+              <p
+                className="ai-interview-question-display whitespace-pre-wrap"
+                aria-live="polite"
+                aria-busy={questionTypingIncomplete || undefined}
+              >
+                {typedQuestionText}
+                {questionTypingIncomplete ? (
+                  <span className="ai-interview-typewriter-caret" aria-hidden />
+                ) : null}
+              </p>
+              <InterviewQuestionSourceLink url={questionUrl} />
+              <InterviewQuestionMetaRow
+                key={codingQuestionId ? `meta-${codingQuestionId}` : `meta-${sessionId}-${currentQuestionNumberWithinRound}`}
+                complexity={questionComplexity}
+                topics={questionTopics}
+                subtopics={questionSubtopics}
+                companyTags={questionCompanyTags}
+                variant="hero"
+                hideCompanyTags={!isCodingRoundUI}
+              />
+            </div>
+          ) : null}
         </section>
       )}
       {quitConfirmOpen && (
@@ -2345,7 +2789,7 @@ function AIInterviewTab({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted mb-2">
                     Your question
                   </p>
-                  <p className="ai-interview-question-display whitespace-pre-wrap text-[clamp(1.05rem,2.4vw,1.45rem)] leading-snug">
+                  <p className="ai-interview-question-display whitespace-pre-wrap leading-snug">
                     {pendingQuestionFeedback.answeredQuestion}
                   </p>
                 </div>
@@ -2408,6 +2852,16 @@ function AIInterviewTab({
                     <p className="text-[11px] text-theme-muted mt-3 leading-snug">
                       Runner status: {pendingQuestionFeedback.codeExecutionSummary.status}
                     </p>
+                  ) : null}
+                  {String(pendingQuestionFeedback.codeExecutionSummary.userDebugOutput || "").trim() ? (
+                    <div className="mt-3 rounded-lg border border-theme bg-theme-card/80 p-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-muted mb-1">
+                        Debug output (visible cases only)
+                      </p>
+                      <pre className="text-xs text-theme-primary whitespace-pre-wrap break-words max-h-40 overflow-y-auto font-mono leading-relaxed">
+                        {pendingQuestionFeedback.codeExecutionSummary.userDebugOutput}
+                      </pre>
+                    </div>
                   ) : null}
                 </div>
               ) : null}
@@ -2686,46 +3140,75 @@ function AIInterviewTab({
                   </span>
                 </div>
               )}
+              {roundFeedbackView.dsaRoundStats ? (
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Total questions", value: roundFeedbackView.dsaRoundStats.totalQuestions },
+                    {
+                      label: "Answered correctly",
+                      value: roundFeedbackView.dsaRoundStats.answeredCorrectly,
+                    },
+                    {
+                      label: "Partially answered",
+                      value: roundFeedbackView.dsaRoundStats.partiallyAnswered,
+                    },
+                    { label: "Not answered", value: roundFeedbackView.dsaRoundStats.notAnswered },
+                  ].map((cell) => (
+                    <div
+                      key={cell.label}
+                      className="rounded-xl border border-theme bg-theme-input px-3 py-3 sm:px-4 sm:py-4"
+                    >
+                      <p className="text-xs font-medium uppercase tracking-wide text-theme-muted mb-1">
+                        {cell.label}
+                      </p>
+                      <p className="text-2xl sm:text-3xl font-bold tabular-nums text-theme-primary">
+                        {cell.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
-                <p className="text-sm font-semibold text-theme-accent mb-2">Strengths</p>
-                <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
-                  {(roundFeedbackView.strengths || []).length ? (
-                    (roundFeedbackView.strengths || []).map((item, idx) => (
-                      <li key={`rf-s-${idx}`}>{item}</li>
-                    ))
-                  ) : (
-                    <li className="list-none pl-0 text-theme-muted">—</li>
-                  )}
-                </ul>
-              </div>
-              <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
-                <p className="text-sm font-semibold text-theme-accent mb-2">Areas to improve</p>
-                <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
-                  {(roundFeedbackView.weaknesses || []).length ? (
-                    (roundFeedbackView.weaknesses || []).map((item, idx) => (
-                      <li key={`rf-w-${idx}`}>{item}</li>
-                    ))
-                  ) : (
-                    <li className="list-none pl-0 text-theme-muted">—</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-            {Array.isArray(roundFeedbackView.improvementTips) &&
-              (
-                roundFeedbackView.improvementTips
-              ).length > 0 && (
+            {!roundFeedbackView.dsaRoundStats ? (
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
-                  <p className="text-sm font-semibold text-theme-accent mb-2">Tips for next time</p>
+                  <p className="text-sm font-semibold text-theme-accent mb-2">Strengths</p>
                   <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
-                    {roundFeedbackView.improvementTips.map((item, idx) => (
-                      <li key={`rf-tip-${idx}`}>{item}</li>
-                    ))}
+                    {(roundFeedbackView.strengths || []).length ? (
+                      (roundFeedbackView.strengths || []).map((item, idx) => (
+                        <li key={`rf-s-${idx}`}>{item}</li>
+                      ))
+                    ) : (
+                      <li className="list-none pl-0 text-theme-muted">—</li>
+                    )}
                   </ul>
                 </div>
-              )}
+                <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                  <p className="text-sm font-semibold text-theme-accent mb-2">Areas to improve</p>
+                  <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
+                    {(roundFeedbackView.weaknesses || []).length ? (
+                      (roundFeedbackView.weaknesses || []).map((item, idx) => (
+                        <li key={`rf-w-${idx}`}>{item}</li>
+                      ))
+                    ) : (
+                      <li className="list-none pl-0 text-theme-muted">—</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            ) : null}
+            {!roundFeedbackView.dsaRoundStats &&
+            Array.isArray(roundFeedbackView.improvementTips) &&
+            roundFeedbackView.improvementTips.length > 0 ? (
+              <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
+                <p className="text-sm font-semibold text-theme-accent mb-2">Tips for next time</p>
+                <ul className="list-disc pl-5 text-sm text-theme-secondary space-y-1.5">
+                  {roundFeedbackView.improvementTips.map((item, idx) => (
+                    <li key={`rf-tip-${idx}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {roundFeedbackView.nextRoundAvailable ? (
               <button
                 type="button"
@@ -3089,7 +3572,11 @@ function AIInterviewTab({
         </div>
       )}
 
-      {!showInterviewQuestionHero && question && !isProcessing && !pendingQuestionFeedback && (
+      {!showInterviewQuestionHero &&
+        question &&
+        !isProcessing &&
+        !pendingQuestionFeedback &&
+        !isCodingRoundUI && (
         <div className="mb-4">
           <div className="mb-2 flex flex-wrap gap-2 text-xs">
             {currentRound && (
@@ -3118,7 +3605,7 @@ function AIInterviewTab({
           </p>
           <div className="p-4 rounded-lg border border-theme bg-theme-input text-theme-primary">
             <p
-              className="ai-interview-question-display whitespace-pre-wrap text-[clamp(1rem,2.2vw,1.35rem)]"
+              className="ai-interview-question-display whitespace-pre-wrap leading-snug"
               aria-live="polite"
               aria-busy={questionTypingIncomplete || undefined}
             >
@@ -3127,6 +3614,15 @@ function AIInterviewTab({
                 <span className="ai-interview-typewriter-caret" aria-hidden />
               ) : null}
             </p>
+            <InterviewQuestionSourceLink url={questionUrl} />
+            <InterviewQuestionMetaRow
+              key={codingQuestionId ? `meta-${codingQuestionId}` : `meta-${sessionId}-${currentQuestionNumberWithinRound}`}
+              complexity={questionComplexity}
+              topics={questionTopics}
+              subtopics={questionSubtopics}
+              companyTags={questionCompanyTags}
+              hideCompanyTags={!isCodingRoundUI}
+            />
           </div>
           {Array.isArray(roundsDetails) && roundsDetails.length > 0 ? (
             <div className="mt-2">
@@ -3200,17 +3696,98 @@ function AIInterviewTab({
           ) : null}
 
           {isCodingRoundUI ? (
-            <div className="space-y-5">
-              <div className="space-y-2">
+            <div
+              ref={codingPaneWrapRef}
+              className="ai-interview-coding-split w-full min-w-0"
+              style={{ "--coding-split-left": `${codingLeftPanePx}px` }}
+            >
+              {/* Left: problem statement, metadata, sandbox + grader */}
+              <div className="min-w-0 space-y-4 lg:sticky lg:top-2 lg:max-h-[min(100dvh-8rem,920px)] lg:overflow-y-auto lg:pr-1">
+                <div className="mb-1 flex flex-wrap gap-2 text-xs">
+                  {currentRound && (
+                    <span className="px-2 py-1 rounded-md bg-theme-card border border-theme text-theme-secondary">
+                      Round: {currentRound}
+                    </span>
+                  )}
+                  {totalRounds > 0 && (
+                    <span className="px-2 py-1 rounded-md bg-theme-card border border-theme text-theme-secondary">
+                      Stage: {Math.min(currentRoundIndex + 1, totalRounds)}/{totalRounds}
+                    </span>
+                  )}
+                  {difficultyLevel && (
+                    <span className="px-2 py-1 rounded-md bg-theme-card border border-theme text-theme-secondary">
+                      Session difficulty: {difficultyLevel}
+                    </span>
+                  )}
+                  <span className="px-2 py-1 rounded-md bg-theme-accent/10 border border-theme-accent text-theme-accent font-medium">
+                    Coding round
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-theme-secondary mb-2">Problem</p>
+                  <div className="p-4 rounded-lg border border-theme bg-theme-input text-theme-primary">
+                    <p
+                      className="ai-interview-question-display whitespace-pre-wrap leading-snug"
+                      aria-live="polite"
+                      aria-busy={questionTypingIncomplete || undefined}
+                    >
+                      {typedQuestionText}
+                      {questionTypingIncomplete ? (
+                        <span className="ai-interview-typewriter-caret" aria-hidden />
+                      ) : null}
+                    </p>
+                    <InterviewQuestionSourceLink url={questionUrl} />
+                    <InterviewQuestionMetaRow
+                      key={codingQuestionId ? `meta-${codingQuestionId}` : `meta-${sessionId}-${currentQuestionNumberWithinRound}`}
+                      complexity={questionComplexity}
+                      topics={questionTopics}
+                      subtopics={questionSubtopics}
+                      companyTags={questionCompanyTags}
+                      variant="hero"
+                      hideCompanyTags={!isCodingRoundUI}
+                    />
+                  </div>
+                </div>
+                {Array.isArray(roundsDetails) && roundsDetails.length > 0 ? (
+                  <div>
+                    <p className="text-xs text-theme-secondary mb-1">Round-wise question style</p>
+                    <ul className="list-disc pl-5 text-xs text-theme-secondary space-y-0.5">
+                      {roundsDetails.map((item, idx) => (
+                        <li key={`round-detail-coding-${idx}`}>
+                          <span className="text-theme-primary">{item.round}:</span> {item.questionType}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : roundsPlan.length > 0 ? (
+                  <p className="text-xs text-theme-secondary">
+                    Planned rounds: {roundsPlan.join(" -> ")}
+                  </p>
+                ) : null}
+
                 <div className="rounded-lg border border-theme-accent/40 bg-theme-accent/5 px-3 py-2.5 text-[11px] sm:text-xs text-theme-secondary leading-relaxed">
                   <p className="font-semibold text-theme-primary mb-1.5">Sandbox rules</p>
                   <ul className="list-disc pl-4 space-y-1">
                     <li>
                       Do not use <code className="text-theme-primary">input()</code>,{" "}
                       <code className="text-theme-primary">print()</code>, or{" "}
-                      <code className="text-theme-primary">solve()</code>.
+                      <code className="text-theme-primary">solve()</code> as your answer mechanism — grading uses return
+                      values. <span className="text-theme-muted">(Optional: </span>
+                      <code className="text-theme-primary">print</code>
+                      <span className="text-theme-muted"> / </span>
+                      <code className="text-theme-primary">System.out</code>
+                      <span className="text-theme-muted">
+                        {" "}
+                        output from <strong>visible</strong> preview runs appears under “Debug output” in the preview
+                        panel.)
+                      </span>
                     </li>
-                    <li>Only define the required function or class (see contract below).</li>
+                    <li>
+                      For Java, do not add <code className="text-theme-primary">main</code>,{" "}
+                      <code className="text-theme-primary">Scanner</code>, or{" "}
+                      <code className="text-theme-primary">System.in</code> — the runner calls your{" "}
+                      <code className="text-theme-primary">Solution</code> method directly.
+                    </li>
                     <li>
                       The platform passes testcase inputs and compares your return value to the expected output — you do
                       not read stdin or print the answer.
@@ -3231,11 +3808,16 @@ function AIInterviewTab({
                   ) : (
                     <p className="text-[11px] text-theme-muted">No function signature on this question yet.</p>
                   )}
-                  {codingContractHints?.kind === "design" || cppGraderContractHints?.kind === "design" ? (
+                  {codingContractHints?.kind === "design" ||
+                  cppGraderContractHints?.kind === "design" ||
+                  javaGraderContractHints?.kind === "design" ? (
                     <p className="text-[11px] text-theme-secondary">
                       Design problem: implement{" "}
                       <code className="text-theme-primary">
-                        class {codingContractHints?.designClassName || cppGraderContractHints?.designClassName}
+                        class{" "}
+                        {codingContractHints?.designClassName ||
+                          cppGraderContractHints?.designClassName ||
+                          javaGraderContractHints?.designClassName}
                       </code>{" "}
                       and the operations described in the prompt. Tests use a command sequence (see visible cases).
                     </p>
@@ -3278,8 +3860,24 @@ function AIInterviewTab({
                       </p>
                       <p className="text-theme-muted">
                         Method name in <code className="text-theme-secondary">Solution</code> is{" "}
-                        <code className="text-theme-primary">{cppGraderContractHints.solutionMethodName}</code> (snake_case
-                        names are camelCased like LeetCode).
+                        <code className="text-theme-primary">{cppGraderContractHints.solutionMethodName}</code>.
+                      </p>
+                    </div>
+                  ) : null}
+                  {javaGraderContractHints?.kind === "function" ? (
+                    <div className="text-[11px] space-y-1.5 border-t border-theme-input pt-2 mt-1">
+                      <p className="font-semibold text-theme-primary uppercase tracking-wide text-[10px]">Java</p>
+                      <p>
+                        <span className="text-theme-muted">Implement inside </span>
+                        <code className="text-theme-primary">public class Solution</code>
+                        <span className="text-theme-muted"> as: </span>
+                        <code className="text-theme-primary whitespace-pre-wrap break-all">
+                          {javaGraderContractHints.classMethodDecl}
+                        </code>
+                      </p>
+                      <p className="text-theme-muted">
+                        Method name is{" "}
+                        <code className="text-theme-primary">{javaGraderContractHints.solutionMethodName}</code>.
                       </p>
                     </div>
                   ) : null}
@@ -3294,119 +3892,186 @@ function AIInterviewTab({
                       the harness serializes your return value to JSON and compares to expected output the same way;
                       prefer exact structural match.
                     </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {codingLanguageOptions.length > 0 ? (
-                    <div className="flex flex-col items-start gap-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">Language</p>
-                      {codingLanguageOptions.length > 1 ? (
-                        <div className="w-full max-w-xs">
-                          <ThemedSelect
-                            value={codingLanguage}
-                            options={codingLanguageOptions}
-                            onChange={handleCodingLanguageChange}
-                            ariaLabel="Coding language for this question"
-                            placeholder="Select language"
-                            disabled={loading || isProcessing}
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className="rounded-xl border-2 border-theme-input bg-theme-card/90 px-3 py-2.5 text-sm font-semibold text-theme-primary"
-                          title="Only one language is enabled for this question"
-                        >
-                          {codingLanguageOptions[0].label}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Code</p>
-                    <div className="ai-interview-code-workspace-wrap">
-                      <InterviewCodeWorkspace
-                        value={answerCode}
-                        onChange={setAnswerCode}
-                        disabled={loading}
-                        placeholder={interviewCodeWorkspacePlaceholder}
-                        onSubmitShortcut={handleSubmitAnswer}
-                      />
-                    </div>
+                    <p>
+                      <span className="font-medium text-theme-secondary">Java: </span>
+                      same JSON comparison after serializing your return value; use{" "}
+                      <code className="text-theme-secondary">public class Solution</code> and do not add{" "}
+                      <code className="text-theme-secondary">main</code> — the sandbox calls your method directly.
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <InterviewPreviewExecutionCard
-                previewRunsRemaining={previewRunsRemaining}
-                visibleTestCases={visibleTestCases}
-              />
-            </div>
-          ) : null}
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize problem and code panels"
+                tabIndex={0}
+                className="ai-interview-coding-drag mx-0.5 w-2.5 shrink-0 cursor-col-resize select-none touch-none self-stretch rounded-md border border-transparent hover:border-theme-accent/45 hover:bg-theme-accent/10 min-h-[min(420px,45vh)] outline-none focus-visible:ring-2 focus-visible:ring-theme-accent"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  codingSplitDragRef.current = {
+                    active: true,
+                    startX: e.clientX,
+                    startW: codingLeftWidthRef.current,
+                  };
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                  e.preventDefault();
+                  const wrap = codingPaneWrapRef.current;
+                  const maxLeft = wrap
+                    ? Math.max(260, wrap.getBoundingClientRect().width - 280)
+                    : 720;
+                  const delta = e.key === "ArrowLeft" ? -20 : 20;
+                  setCodingLeftPanePx((w) => {
+                    const next = Math.max(240, Math.min(maxLeft, w + delta));
+                    codingLeftWidthRef.current = next;
+                    try {
+                      window.localStorage.setItem("aiInterview.codingLeftPx", String(next));
+                    } catch {
+                      /* ignore */
+                    }
+                    return next;
+                  });
+                }}
+              >
+                <span
+                  className="pointer-events-none my-auto h-28 w-1 rounded-full bg-theme-muted/55"
+                  aria-hidden
+                />
+              </div>
 
-          <div className="ai-interview-submit-row flex flex-wrap items-center justify-between gap-3">
-            {isCodingRoundUI ? (
-              <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={handleRunPreview}
-                  disabled={
-                    previewExecutionLoading ||
-                    loading ||
-                    isProcessing ||
-                    (Number(previewRunsRemaining) || 0) <= 0
-                  }
-                  className={`inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] shrink-0 ${
-                    previewExecutionLoading ||
-                    loading ||
-                    isProcessing ||
-                    (Number(previewRunsRemaining) || 0) <= 0
-                      ? "bg-theme-card text-theme-muted cursor-not-allowed"
-                      : "bg-theme-input border border-theme-accent text-theme-accent hover:bg-theme-accent/10"
-                  }`}
-                >
-                  {previewExecutionLoading ? "Running..." : "Run Code"}
-                </button>
+              {/* Right: language, run/submit, editor, visible test cases */}
+              <div className="min-w-0 flex flex-col gap-3">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 flex-col items-start gap-2 sm:max-w-xs">
+                    {codingLanguageOptions.length > 0 ? (
+                      <>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
+                          Language
+                        </p>
+                        {codingLanguageOptions.length > 1 ? (
+                          <div className="w-full max-w-xs">
+                            <ThemedSelect
+                              value={codingLanguage}
+                              options={codingLanguageOptions}
+                              onChange={handleCodingLanguageChange}
+                              ariaLabel="Coding language for this question"
+                              placeholder="Select language"
+                              disabled={loading || isProcessing}
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className="rounded-xl border-2 border-theme-input bg-theme-card/90 px-3 py-2.5 text-sm font-semibold text-theme-primary"
+                            title="Only one language is enabled for this question"
+                          >
+                            {codingLanguageOptions[0].label}
+                          </div>
+                        )}
+                      </>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-end justify-end gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleRunPreview}
+                      disabled={
+                        previewExecutionLoading ||
+                        loading ||
+                        isProcessing ||
+                        (Number(previewRunsRemaining) || 0) <= 0
+                      }
+                      className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
+                        previewExecutionLoading ||
+                        loading ||
+                        isProcessing ||
+                        (Number(previewRunsRemaining) || 0) <= 0
+                          ? "bg-theme-card text-theme-muted cursor-not-allowed"
+                          : "bg-theme-input border border-theme-accent text-theme-accent hover:bg-theme-accent/10"
+                      }`}
+                    >
+                      {previewExecutionLoading ? (
+                        <FaSpinner className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                      ) : (
+                        <FaPlay className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                      )}
+                      <span>{previewExecutionLoading ? "Running..." : "Run Code"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSubmitAnswer}
+                      disabled={!canSubmitAnswer}
+                      className={`inline-flex shrink-0 items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
+                        canSubmitAnswer
+                          ? "bg-theme-accent text-white hover:brightness-105 active:brightness-95"
+                          : "bg-theme-card text-theme-muted cursor-not-allowed"
+                      }`}
+                    >
+                      {loading ? "Submitting..." : "Submit Answer"}
+                    </button>
+                  </div>
+                </div>
                 {previewRunInlineHint ? (
                   <div
                     role="alert"
-                    className="relative flex max-w-[min(100%,20rem)] items-start gap-2 rounded-lg border border-theme-accent/45 bg-theme-accent/10 px-3 py-2 shadow-md"
+                    className="relative flex max-w-full items-start gap-2 rounded-lg border border-theme-accent/45 bg-theme-accent/10 px-3 py-2 shadow-md sm:max-w-xl"
                   >
-                    <p className="text-[11px] sm:text-xs text-theme-secondary leading-snug flex-1 min-w-0">
+                    <p className="min-w-0 flex-1 text-[11px] leading-snug text-theme-secondary sm:text-xs">
                       {previewRunInlineHint}
                     </p>
                     <button
                       type="button"
                       aria-label="Dismiss hint"
                       onClick={() => setPreviewRunInlineHint("")}
-                      className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold text-theme-muted hover:bg-theme-input hover:text-theme-primary transition-colors"
+                      className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold text-theme-muted transition-colors hover:bg-theme-input hover:text-theme-primary"
                     >
                       ×
                     </button>
                   </div>
                 ) : null}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Code</p>
+                  <div className="ai-interview-code-workspace-wrap">
+                    <InterviewCodeWorkspace
+                      value={answerCode}
+                      onChange={setAnswerCode}
+                      disabled={loading}
+                      language={codingLanguage}
+                      placeholder={interviewCodeWorkspacePlaceholder}
+                      onSubmitShortcut={handleSubmitAnswer}
+                    />
+                  </div>
+                </div>
+                <InterviewPreviewExecutionCard
+                  previewRunsRemaining={previewRunsRemaining}
+                  visibleTestCases={visibleTestCases}
+                  execution={previewExecutionResult}
+                  hints={previewFixHints}
+                  loading={previewExecutionLoading}
+                />
               </div>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleSubmitAnswer}
-              disabled={!canSubmitAnswer}
-              className={`inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
-                canSubmitAnswer
-                  ? "bg-theme-accent text-white hover:brightness-105 active:brightness-95"
-                  : "bg-theme-card text-theme-muted cursor-not-allowed"
-              }`}
-            >
-              {loading ? "Submitting..." : "Submit Answer"}
-            </button>
-          </div>
-
-          {previewExecutionResult && isCodingRoundUI ? (
-            <InterviewPreviewResultPanel
-              execution={previewExecutionResult}
-              hints={isCodingRoundUI ? previewFixHints : null}
-            />
+            </div>
           ) : null}
+
+          {!isCodingRoundUI ? (
+            <div className="ai-interview-submit-row flex flex-wrap items-center gap-3 justify-between">
+              <button
+                type="button"
+                onClick={handleSubmitAnswer}
+                disabled={!canSubmitAnswer}
+                className={`inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
+                  canSubmitAnswer
+                    ? "bg-theme-accent text-white hover:brightness-105 active:brightness-95"
+                    : "bg-theme-card text-theme-muted cursor-not-allowed"
+                }`}
+              >
+                {loading ? "Submitting..." : "Submit Answer"}
+              </button>
+            </div>
+          ) : null}
+
         </div>
       )}
     </div>

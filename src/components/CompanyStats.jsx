@@ -53,6 +53,9 @@ import {
   isPlacementDetailVisitYear,
 } from "../constants/placementYears.js";
 
+/** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
+const CATEGORY_TILE_LOGO_GRID = 4;
+
 function normalizeType(type) {
   return String(type || "")
     .trim()
@@ -711,9 +714,12 @@ function CompanyStats() {
       const shouldFetchCategoryPreview =
         location.pathname === PATH_COMPANY_CATEGORY &&
         placementTier === null &&
-        clusterParam === PLACEMENT_CLUSTER_CS;
+        (clusterParam === PLACEMENT_CLUSTER_CS ||
+          clusterParam === PLACEMENT_CLUSTER_EC ||
+          clusterParam === PLACEMENT_CLUSTER_ME);
       if (shouldFetchCategoryPreview) {
-        const cachedPreview = getCachedCompanyPreview(selectedYear);
+        const previewClusterKey = clusterParam;
+        const cachedPreview = getCachedCompanyPreview(selectedYear, previewClusterKey);
         if (cachedPreview) {
           setCategoryPreview(cachedPreview);
         } else {
@@ -721,11 +727,14 @@ function CompanyStats() {
         }
         (async () => {
           try {
-            const res = await companyAPI.getPreviewLogos({ year: selectedYear });
+            const res = await companyAPI.getPreviewLogos({
+              year: selectedYear,
+              cluster: previewClusterKey,
+            });
             if (!cancelled) {
               const nextPreview = res.data || null;
               setCategoryPreview(nextPreview);
-              if (nextPreview) setCachedCompanyPreview(selectedYear, nextPreview);
+              if (nextPreview) setCachedCompanyPreview(selectedYear, nextPreview, previewClusterKey);
             }
           } catch (err) {
             console.error("❌ Error fetching category preview:", err);
@@ -1591,22 +1600,23 @@ function CompanyStats() {
   ) {
     const isEcMeCluster =
       clusterParam === PLACEMENT_CLUSTER_EC || clusterParam === PLACEMENT_CLUSTER_ME;
-    const useFullListForCategoryTiles = isEcMeCluster ? true : companies.length > 0;
+    const useFullListForCategoryTiles = companies.length > 0;
     const p = categoryPreview;
+    const nTile = CATEGORY_TILE_LOGO_GRID;
     const dreamLogoPreview = useFullListForCategoryTiles
-      ? allDreamCompanies.slice(0, 5)
+      ? allDreamCompanies.slice(0, nTile)
       : p?.logos?.dream ?? [];
     const openDreamLogoPreview = useFullListForCategoryTiles
-      ? allOpenDreamCompanies.slice(0, 5)
+      ? allOpenDreamCompanies.slice(0, nTile)
       : p?.logos?.openDream ?? [];
     const internshipOnlyLogoPreview = useFullListForCategoryTiles
-      ? allInternshipOnlyCompanies.slice(0, 5)
+      ? allInternshipOnlyCompanies.slice(0, nTile)
       : p?.logos?.internshipOnly ?? [];
     const offCampusLogoPreview = useFullListForCategoryTiles
-      ? allOffCampusCompanies.slice(0, 5)
+      ? allOffCampusCompanies.slice(0, nTile)
       : p?.logos?.offCampus ?? [];
     const summerLogoPreview = useFullListForCategoryTiles
-      ? allSummerInternshipCompanies.slice(0, 5)
+      ? allSummerInternshipCompanies.slice(0, nTile)
       : p?.logos?.summerInternship ?? [];
     const dreamCount = useFullListForCategoryTiles
       ? allDreamCompanies.length
@@ -1666,8 +1676,9 @@ function CompanyStats() {
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={dreamLogoPreview}
-                    gridSize={5}
-                    interval={3500}
+                    gridSize={CATEGORY_TILE_LOGO_GRID}
+                    disableRotation
+                    pixelSize={72}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
@@ -1689,8 +1700,9 @@ function CompanyStats() {
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={openDreamLogoPreview}
-                    gridSize={5}
-                    interval={2800}
+                    gridSize={CATEGORY_TILE_LOGO_GRID}
+                    disableRotation
+                    pixelSize={72}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
@@ -1711,8 +1723,9 @@ function CompanyStats() {
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid
                     companies={summerLogoPreview}
-                    gridSize={5}
-                    interval={3200}
+                    gridSize={CATEGORY_TILE_LOGO_GRID}
+                    disableRotation
+                    pixelSize={72}
                   />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">

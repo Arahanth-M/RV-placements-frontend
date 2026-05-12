@@ -11,8 +11,16 @@ const MotionDiv = motion.div;
  * @param {Array} companies - Full pool of company objects.
  * @param {number} gridSize - Number of logos to show at once.
  * @param {number} interval - Time in ms between swaps.
+ * @param {boolean} [disableRotation] - If true, no random swaps (fewer /api/logo requests).
+ * @param {number} [pixelSize] - Passed to CompanyLogo for smaller/faster image fetches.
  */
-const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
+const AnimatedLogoGrid = ({
+  companies,
+  gridSize = 5,
+  interval = 3000,
+  disableRotation = false,
+  pixelSize = 80,
+}) => {
   // If pool is smaller than grid, just show all static
   const isSmallPool = companies.length <= gridSize;
   
@@ -34,6 +42,7 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
   }, [companies, gridSize, displayedCompanies.length]);
 
   useEffect(() => {
+    if (disableRotation) return;
     if (isSmallPool || companies.length === 0 || displayedCompanies.length === 0) return;
 
     const timer = setInterval(() => {
@@ -58,7 +67,14 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
     }, interval);
 
     return () => clearInterval(timer);
-  }, [companies, gridSize, interval, isSmallPool, displayedCompanies.length]);
+  }, [
+    companies,
+    gridSize,
+    interval,
+    isSmallPool,
+    displayedCompanies.length,
+    disableRotation,
+  ]);
 
   if (companies.length === 0) {
     return <p className="text-theme-muted text-sm italic">No logos available</p>;
@@ -100,6 +116,7 @@ const AnimatedLogoGrid = ({ companies, gridSize = 5, interval = 3000 }) => {
             >
               <CompanyLogo
                 company={company}
+                pixelSize={pixelSize}
                 className="h-12 w-12 object-contain p-1 sm:h-16 sm:w-16 sm:p-1"
                 alt={`${company?.name || 'Company'} logo`}
               />
