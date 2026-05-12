@@ -915,14 +915,10 @@ function CompanyStats() {
 
   const isStrictClusterTiering = isNonCsStrictHubCluster(effectiveClusterParam);
 
-  /** Same rule as category-preview summer tiles: strict on-campus PPO row without FTE in visit type, then legacy PPO flags. */
+  /** Same rule as category-preview summer tiles: trust cluster-scoped flags, then merged type. */
   const qualifiesSummerInternshipTile = (company) => {
-    // For EC/ME cluster pages, avoid cross-cluster leakage from merged placement flags.
-    // Use local row semantics only.
+    if (company.placementSummerInternshipForListingYear === true) return true;
     if (!isStrictClusterTiering) {
-      if (company.placementSummerInternshipForListingYear === true) return true;
-    // Keep cards visible even when current listing year has no visit.
-    // The detail page can still show the "No visit yet" state for that year.
       if (company.placementAnyYearPpoOnCampus === true) return true;
       if (company.placementAnyYearPpoOnCampus === false) return false;
     }
