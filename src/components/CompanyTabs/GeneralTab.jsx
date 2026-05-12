@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { adminAPI } from "../../utils/api";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
+import { COMPANY_VISIT_CLUSTER_FORM_OPTIONS } from "../../constants/placementTiers.js";
 import {
   CompensationAsterisk,
   CompensationDisclaimerFootnote,
@@ -38,6 +39,11 @@ function GeneralTab({
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [editEligibility, setEditEligibility] = useState(company.eligibility || "");
   const [editOffCampus, setEditOffCampus] = useState(company.offCampus === true);
+  const [editCluster, setEditCluster] = useState(
+    company.cluster != null && String(company.cluster).trim() !== ""
+      ? String(company.cluster).trim()
+      : ""
+  );
   const [isEditingPpoConversion, setIsEditingPpoConversion] = useState(false);
   const [savingPpoConversion, setSavingPpoConversion] = useState(false);
   const [editPpoConversionType, setEditPpoConversionType] = useState(
@@ -76,6 +82,16 @@ function GeneralTab({
   ]);
 
   useEffect(() => {
+    if (!isEditingGeneral) {
+      setEditCluster(
+        company.cluster != null && String(company.cluster).trim() !== ""
+          ? String(company.cluster).trim()
+          : ""
+      );
+    }
+  }, [company.cluster, isEditingGeneral]);
+
+  useEffect(() => {
     if (!isEditingVisitDate) {
       const raw =
         company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
@@ -106,6 +122,11 @@ function GeneralTab({
                 if (!isEditingGeneral) {
                   setEditEligibility(company.eligibility || "");
                   setEditOffCampus(company.offCampus === true);
+                  setEditCluster(
+                    company.cluster != null && String(company.cluster).trim() !== ""
+                      ? String(company.cluster).trim()
+                      : ""
+                  );
                 }
                 setIsEditingGeneral((prev) => !prev);
               }}
@@ -117,11 +138,29 @@ function GeneralTab({
         </div>
 
         {!isEditingGeneral ? (
-          <div className="bg-slate-800/60 rounded-lg p-4">
-            <p className="text-slate-200 whitespace-pre-wrap">
-              {company.eligibility ?? "Not provided"}
-            </p>
-          </div>
+          <div className="bg-slate-800/60 rounded-lg p-4 space-y-3">
+            {/* {isAdmin ? (
+              <div>
+                <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Visit cluster (hub)</p>
+                <p className="text-slate-200 font-medium">
+                  {(() => {
+                    const raw =
+                      company.cluster != null && String(company.cluster).trim() !== ""
+                        ? String(company.cluster).trim()
+                        : "";
+                    const hit = COMPANY_VISIT_CLUSTER_FORM_OPTIONS.find((o) => o.value === raw);
+                    return hit?.label || (raw ? raw : "Default / legacy (CSE hub)");
+                  })()}
+                </p>
+              </div>
+            ) : null}
+            <div>
+              <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">Eligibility</p> */}
+              <p className="text-slate-200 whitespace-pre-wrap">
+                {company.eligibility ?? "Not provided"}
+              </p>
+            </div>
+          // </div>
         ) : (
           <form
             onSubmit={async (e) => {
@@ -133,6 +172,7 @@ function GeneralTab({
                   {
                     eligibility: editEligibility,
                     offCampus: editOffCampus,
+                    cluster: editCluster,
                   },
                   { year: placementYear }
                 );
@@ -154,6 +194,29 @@ function GeneralTab({
             className="space-y-4"
           >
             <div className="grid gap-4">
+              <div>
+                <label
+                  htmlFor="visit-cluster-select"
+                  className="block text-slate-400 text-xs uppercase tracking-wide mb-2"
+                >
+                  Visit cluster (placement hub)
+                </label>
+                <select
+                  id="visit-cluster-select"
+                  value={editCluster}
+                  onChange={(e) => setEditCluster(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {COMPANY_VISIT_CLUSTER_FORM_OPTIONS.map((o) => (
+                    <option key={o.value || "default"} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Chemical sciences visits: use Chemical, Civil, or Biotechnology so cards and branch stats match the chem hub.
+                </p>
+              </div>
               <div>
                 <label htmlFor="placement-eligibility" className="sr-only">
                   Eligibility criteria

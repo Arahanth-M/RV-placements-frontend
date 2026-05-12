@@ -33,7 +33,7 @@ function CompanyCard({
   hidePlacementGotInCounts = false,
   /** Dream / Open dream / Summer internship lists — drives detail-page subtitle framing */
   placementListContext,
-  /** Hub cluster (cs|ec|me) — scopes GET /companies/:id when multiple visits share year/type */
+  /** Hub cluster (cs|ec|me|chem) — scopes GET /companies/:id when multiple visits share year/type */
   placementCluster,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
@@ -86,6 +86,15 @@ function CompanyCard({
     setTotalGotInByYear(normalizeTotalGotInByYear(company, cardPlacementYear));
   }, [company.totalGotIn, company.totalGotInByYear, cardPlacementYear]);
 
+  /**
+   * Summer cards show a fixed Internship(PPO) label, but `placementCompanyVisitId` on the list row
+   * is the first visit in that cluster/year (often Internship+FTE). Passing that hint forces the
+   * wrong merge on detail — same as CS when only one slot exists. Omit the hint so GET /companies/:id
+   * uses `placementContext=summer_internship` + cluster/year to pick the strict PPO row.
+   */
+  const shouldSendPlacementVisitIdHint =
+    placementListContext !== PLACEMENT_TIER_SUMMER_INTERNSHIP;
+
   const companyDetailPath = (() => {
     const cid = company._id;
     const params = new URLSearchParams();
@@ -95,7 +104,7 @@ function CompanyCard({
     if (placementListContext) {
       params.set("placementContext", placementListContext);
     }
-    if (company?.placementCompanyVisitId) {
+    if (shouldSendPlacementVisitIdHint && company?.placementCompanyVisitId) {
       params.set("placementCompanyVisitId", String(company.placementCompanyVisitId));
     }
     if (typeof placementCluster === "string" && placementCluster.trim() !== "") {
@@ -151,7 +160,7 @@ function CompanyCard({
     if (placementListContext) {
       prefetchOpts.placementContext = placementListContext;
     }
-    if (company?.placementCompanyVisitId) {
+    if (shouldSendPlacementVisitIdHint && company?.placementCompanyVisitId) {
       prefetchOpts.placementCompanyVisitId = company.placementCompanyVisitId;
     }
     if (
