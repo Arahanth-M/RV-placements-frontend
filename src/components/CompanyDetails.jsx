@@ -842,6 +842,7 @@ function CompanyDetails() {
                 onStatsUpdated={handleRefresh}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
+                placementCluster={placementClusterForApi}
               />
             ))}
           {activeTab === "oa" &&
