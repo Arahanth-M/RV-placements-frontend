@@ -96,6 +96,28 @@ const normalizeDsaRoundStatsFromFeedback = (raw) => {
   return { totalQuestions, answeredCorrectly, partiallyAnswered, notAnswered };
 };
 
+const normalizeTopicsCoveredFromFeedback = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map((t) => String(t || "").trim()).filter(Boolean))];
+};
+
+/** Per-round summary payload from interview-status `roundFeedback` (used for DSA + non-DSA round modals). */
+const buildDeferredRoundSummaryFromStatus = (st) => {
+  if (!st || typeof st !== "object") return null;
+  return {
+    score: typeof st?.roundFeedback?.score === "number" ? st.roundFeedback.score : null,
+    strengths: st?.roundFeedback?.strengths || [],
+    weaknesses: st?.roundFeedback?.weaknesses || [],
+    summary: st?.roundFeedback?.summary || "",
+    improvementTips: st?.roundFeedback?.improvementTips || [],
+    dsaRoundStats: normalizeDsaRoundStatsFromFeedback(st?.roundFeedback?.dsaRoundStats),
+    topicsCoveredThisRound: normalizeTopicsCoveredFromFeedback(
+      st?.roundFeedback?.topicsCoveredThisRound
+    ),
+    nextRoundAvailable: Boolean(st?.nextRoundAvailable),
+  };
+};
+
 const previewValueLane = (label, value) => {
   const kind =
     value === null ? "null" : value === undefined ? "undefined" : Array.isArray(value) ? "array" : typeof value;
@@ -742,7 +764,6 @@ function AIInterviewTab({
   const [_feedback, setFeedback] = useState("");
   const [_score, setScore] = useState(null);
   const [status, setStatus] = useState("idle");
-  const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [roundsPlan, setRoundsPlan] = useState([]);
@@ -1075,45 +1096,6 @@ function AIInterviewTab({
       setCurrentTipIndex(0);
     }
   }, [isProcessing]);
-
-  /** After every round is done, the server sets status to completed and attaches finalReport; poll if the client is briefly ahead of the report. */
-  useEffect(() => {
-    if (status !== "completed" || !sessionId || report) {
-      return undefined;
-    }
-
-    let cancelled = false;
-    let intervalId = null;
-
-    const tick = async () => {
-      try {
-        if (user?.betaAccess === false) return;
-        const { data } = await interviewAPI.getInterviewStatus(sessionId);
-        if (cancelled) return;
-        if (data?.report) {
-          setReport(data.report);
-        }
-        if (data?.status === "completed" && typeof data.totalRounds === "number") {
-          setTotalRounds(Number(data.totalRounds) || 0);
-        }
-      } catch {
-        // ignore transient errors while waiting for the final report
-      }
-    };
-
-    tick();
-    intervalId = window.setInterval(tick, 2000);
-    const timeoutId = window.setTimeout(() => {
-      if (intervalId) window.clearInterval(intervalId);
-      intervalId = null;
-    }, 120000);
-
-    return () => {
-      cancelled = true;
-      if (intervalId) window.clearInterval(intervalId);
-      window.clearTimeout(timeoutId);
-    };
-  }, [status, sessionId, report, user?.betaAccess]);
 
   const fetchVisitSlots = useCallback(async () => {
     if (!company?._id) {
@@ -1507,7 +1489,6 @@ function AIInterviewTab({
     setFeedback("");
     setScore(null);
     setStatus("idle");
-    setReport(null);
     setError("");
     setRoundsPlan([]);
     setRoundsDetails([]);
@@ -1570,7 +1551,6 @@ function AIInterviewTab({
     setError("");
     setFeedback("");
     setScore(null);
-    setReport(null);
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
     setPendingQuestionFeedback(null);
@@ -1691,7 +1671,6 @@ function AIInterviewTab({
     });
 
     setStatus(st.status || "in_progress");
-    setReport(st.report || null);
     setCurrentRound(st.currentRound ?? "");
     setCurrentRoundIndex(Math.max(0, (Number(st.currentRound) || 1) - 1));
     if (st.roundType != null && String(st.roundType).trim() !== "") {
@@ -1759,23 +1738,28 @@ function AIInterviewTab({
       /** Entire interview finished: never show per-answer feedback on top of the final summary. */
       if (st.status === "completed") {
         setPendingQuestionFeedback(null);
-        setRoundFeedbackView(null);
-        roundFeedbackRef.current = null;
+        const deferredRoundSummary = buildDeferredRoundSummaryFromStatus(st);
+        const hasRoundSummaryContent =
+          deferredRoundSummary &&
+          (deferredRoundSummary.dsaRoundStats ||
+            (deferredRoundSummary.summary && String(deferredRoundSummary.summary).trim()) ||
+            (Array.isArray(deferredRoundSummary.strengths) &&
+              deferredRoundSummary.strengths.length > 0) ||
+            (Array.isArray(deferredRoundSummary.weaknesses) &&
+              deferredRoundSummary.weaknesses.length > 0));
+        if (hasRoundSummaryContent) {
+          setRoundFeedbackView(deferredRoundSummary);
+          roundFeedbackRef.current = {
+            nextRoundAvailable: Boolean(st?.nextRoundAvailable),
+          };
+        } else {
+          setRoundFeedbackView(null);
+          roundFeedbackRef.current = null;
+        }
         setFeedback(st.lastFeedback || "");
         setScore(typeof st.lastScore === "number" ? st.lastScore : null);
       } else {
-        const deferredRoundSummary = {
-          score:
-            typeof st?.roundFeedback?.score === "number"
-              ? st.roundFeedback.score
-              : null,
-          strengths: st?.roundFeedback?.strengths || [],
-          weaknesses: st?.roundFeedback?.weaknesses || [],
-          summary: st?.roundFeedback?.summary || "",
-          improvementTips: st?.roundFeedback?.improvementTips || [],
-          dsaRoundStats: normalizeDsaRoundStatsFromFeedback(st?.roundFeedback?.dsaRoundStats),
-          nextRoundAvailable: Boolean(st?.nextRoundAvailable),
-        };
+        const deferredRoundSummary = buildDeferredRoundSummaryFromStatus(st);
         const codeExecSummaryRound = st.lastCodeExecutionSummary;
         const hasLastAnswerFeedback =
           String(st.lastFeedback || "").trim().length > 0 ||
@@ -1812,8 +1796,10 @@ function AIInterviewTab({
         }
       }
     } else {
-      roundFeedbackRef.current = null;
-      setRoundFeedbackView(null);
+      if (st.status !== "completed") {
+        roundFeedbackRef.current = null;
+        setRoundFeedbackView(null);
+      }
       if (st.status === "completed") {
         setPendingQuestionFeedback(null);
         setFeedback(st.lastFeedback || "");
@@ -2242,7 +2228,6 @@ function AIInterviewTab({
         });
         const nextQ = (data.question || "").trim();
         setStatus(data.status || "in_progress");
-        setReport(data.report || null);
         setCurrentRound(data.currentRound || "");
         setRoundsPlan(Array.isArray(data.roundsPlan) ? data.roundsPlan : []);
         setRoundsDetails(Array.isArray(data.roundsDetails) ? data.roundsDetails : []);
@@ -2286,6 +2271,9 @@ function AIInterviewTab({
               summary: data?.roundFeedback?.summary || "",
               improvementTips: data?.roundFeedback?.improvementTips || [],
               dsaRoundStats: normalizeDsaRoundStatsFromFeedback(data?.roundFeedback?.dsaRoundStats),
+              topicsCoveredThisRound: normalizeTopicsCoveredFromFeedback(
+                data?.roundFeedback?.topicsCoveredThisRound
+              ),
               nextRoundAvailable: Boolean(data?.nextRoundAvailable),
             };
             const codeExecSummaryData = data.lastCodeExecutionSummary;
@@ -2586,9 +2574,6 @@ function AIInterviewTab({
     }));
   }, [roundsQuestionSummary, roundsDetails, roundsPlan, totalRounds]);
 
-  /** Entire multi-round session finished (server only sets this after the last round’s report is generated). */
-  const showInterviewFinale =
-    interviewCompleted && Boolean(sessionId) && !isProcessing;
   /** Fullscreen + any loaded interview session (in progress or summary) — matches browser fullscreen during mock interview. */
   const showFullscreenThemeToggle =
     typeof document !== "undefined" &&
@@ -2627,6 +2612,28 @@ function AIInterviewTab({
           document.body
         )}
     <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 relative">
+      {interviewCompleted &&
+        Boolean(sessionId) &&
+        !roundFeedbackView &&
+        !isProcessing && (
+          <div
+            className="mb-4 rounded-xl border border-theme-accent/50 bg-theme-input p-4 sm:p-5"
+            role="status"
+          >
+            <p className="text-sm font-semibold text-theme-primary">All rounds complete</p>
+            <p className="mt-1 text-sm text-theme-secondary">
+              Your full interview summary is available under AI Interviews for this company. Use End
+              interview when you are ready to leave fullscreen.
+            </p>
+            <button
+              type="button"
+              onClick={handleEndInterview}
+              className="mt-3 px-6 py-2.5 rounded-xl bg-theme-accent text-white text-sm font-semibold shadow-md transition-colors"
+            >
+              End interview
+            </button>
+          </div>
+        )}
       {showInterviewQuestionHero && (
         <section
           className="mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-theme"
@@ -2909,195 +2916,7 @@ function AIInterviewTab({
         </div>
       )}
 
-      {showInterviewFinale &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 ai-interview-backdrop backdrop-blur-md"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="interview-final-summary-title"
-          >
-            <div className="w-full max-w-3xl max-h-[min(92vh,900px)] flex flex-col overflow-hidden rounded-2xl border border-theme-accent bg-theme-card shadow-2xl">
-              <div className="px-5 py-4 sm:px-8 sm:py-5 border-b border-theme bg-theme-input shrink-0">
-                <div className="flex items-start gap-3">
-                  <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                    <img
-                      src={rvLogo}
-                      alt="RV College logo"
-                      className="h-full w-full object-contain"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-theme-accent">
-                      All rounds complete
-                    </p>
-                    <h2
-                      id="interview-final-summary-title"
-                      className="text-xl sm:text-2xl font-bold text-theme-primary mt-1"
-                    >
-                      Full interview summary
-                      {company?.name ? (
-                        <span className="text-theme-secondary font-medium"> — {company.name}</span>
-                      ) : null}
-                    </h2>
-                    {totalRounds > 0 ? (
-                      <p className="text-sm text-theme-primary mt-2 font-medium">
-                        You finished every round ({totalRounds}{" "}
-                        {totalRounds === 1 ? "round" : "rounds"}).
-                      </p>
-                    ) : null}
-                    <p className="text-sm text-theme-secondary mt-2">
-                      The detailed summary is below. When you&apos;re done reading, use End interview to
-                      leave fullscreen and return to this company&apos;s General tab.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 min-h-0 overflow-y-auto">
-            {report ? (
-              <div className="p-5 sm:p-8 space-y-8 text-sm border-t border-theme">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-theme-accent mb-3">
-                    Interview summary
-                  </p>
-                  <p className="text-sm text-theme-secondary">
-                    Overall performance across the completed interview — review this section last,
-                    then end the session.
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-end gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-1">
-                      Overall score
-                    </p>
-                    <p className="text-4xl sm:text-5xl font-bold tabular-nums text-theme-accent">
-                      {report.overallScore ?? 0}
-                      <span className="text-xl sm:text-2xl font-semibold text-theme-secondary">
-                        /10
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent mb-2">
-                      Overall strength
-                    </p>
-                    <p className="text-theme-primary leading-relaxed">
-                      {report.overallStrength ||
-                        (report.strengths && report.strengths[0]) ||
-                        "Not enough signal to highlight a primary strength."}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent mb-2">
-                      Overall weakness
-                    </p>
-                    <p className="text-theme-primary leading-relaxed">
-                      {report.overallWeakness ||
-                        (report.weaknesses && report.weaknesses[0]) ||
-                        "No major weakness called out—review detailed notes below."}
-                    </p>
-                  </div>
-                </div>
-
-                {(report.summaryFeedback || "").trim() ? (
-                  <div className="rounded-xl border border-theme bg-theme-input/80 p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary mb-2">
-                      Feedback
-                    </p>
-                    <p className="text-theme-primary leading-relaxed whitespace-pre-wrap">
-                      {report.summaryFeedback}
-                    </p>
-                  </div>
-                ) : null}
-
-                {(report.companyRoadmap || []).length > 0 ? (
-                  <div className="rounded-xl border border-theme bg-theme-input p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent mb-3">
-                      Roadmap for this company&apos;s interview
-                    </p>
-                    <ol className="list-decimal pl-5 space-y-2 text-theme-secondary">
-                      {(report.companyRoadmap || []).map((step, index) => (
-                        <li key={`roadmap-overlay-${index}`} className="leading-relaxed text-theme-primary">
-                          {step}
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                ) : null}
-
-                <div className="grid sm:grid-cols-2 gap-6 pt-2 border-t border-theme">
-                  <div>
-                    <p className="font-semibold text-theme-primary text-sm mb-2">Strengths (detail)</p>
-                    <ul className="list-disc pl-5 text-theme-secondary space-y-1">
-                      {(report.strengths || []).length ? (
-                        (report.strengths || []).map((item, index) => (
-                          <li key={`strength-overlay-${index}`}>{item}</li>
-                        ))
-                      ) : (
-                        <li className="list-none pl-0 text-theme-muted">—</li>
-                      )}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-theme-primary text-sm mb-2">Weaknesses (detail)</p>
-                    <ul className="list-disc pl-5 text-theme-secondary space-y-1">
-                      {(report.weaknesses || []).length ? (
-                        (report.weaknesses || []).map((item, index) => (
-                          <li key={`weakness-overlay-${index}`}>{item}</li>
-                        ))
-                      ) : (
-                        <li className="list-none pl-0 text-theme-muted">—</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
-                {(report.improvementPlan || []).length > 0 ? (
-                  <div>
-                    <p className="font-semibold text-theme-primary text-sm mb-2">Improvement plan</p>
-                    <ul className="list-disc pl-5 text-theme-secondary space-y-1">
-                      {(report.improvementPlan || []).map((item, index) => (
-                        <li key={`plan-overlay-${index}`}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-4 py-16 px-6 text-center">
-                <div
-                    className="h-10 w-10 rounded-full border-2 border-theme-accent border-t-transparent animate-spin"
-                  aria-hidden
-                />
-                <p className="text-sm font-medium text-theme-primary">
-                  Preparing your full interview summary…
-                </p>
-                <p className="text-xs text-theme-secondary max-w-md">
-                  All rounds are finished. Your overall results will appear here in a moment. You can
-                  still use End interview below to exit.
-                </p>
-              </div>
-            )}
-              </div>
-
-              <div className="px-5 py-4 sm:px-8 border-t border-theme bg-theme-card shrink-0">
-                <button
-                  type="button"
-                  onClick={handleEndInterview}
-                  className="w-full px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors"
-                >
-                  End interview
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {roundFeedbackView && !interviewCompleted && (
+      {roundFeedbackView && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 ai-interview-backdrop backdrop-blur-md"
           role="dialog"
@@ -3122,16 +2941,16 @@ function AIInterviewTab({
                     Round complete
                   </p>
                   <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary">
-                    Round summary
+                    {roundFeedbackView.dsaRoundStats ? "DSA round summary" : "Round summary"}
                   </h3>
-                  {roundFeedbackView.summary && (
+                  {!roundFeedbackView.dsaRoundStats && roundFeedbackView.summary ? (
                     <p className="mt-4 text-theme-secondary text-sm sm:text-base leading-relaxed">
                       {roundFeedbackView.summary}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
-              {roundFeedbackView.score !== null && (
+              {!roundFeedbackView.dsaRoundStats && roundFeedbackView.score !== null ? (
                 <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme-accent px-4 py-3">
                   <span className="text-sm text-theme-secondary">Round score</span>
                   <span className="text-3xl font-bold tabular-nums text-theme-accent">
@@ -3139,33 +2958,36 @@ function AIInterviewTab({
                     <span className="text-lg font-semibold text-theme-secondary">/10</span>
                   </span>
                 </div>
-              )}
+              ) : null}
               {roundFeedbackView.dsaRoundStats ? (
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: "Total questions", value: roundFeedbackView.dsaRoundStats.totalQuestions },
-                    {
-                      label: "Answered correctly",
-                      value: roundFeedbackView.dsaRoundStats.answeredCorrectly,
-                    },
-                    {
-                      label: "Partially answered",
-                      value: roundFeedbackView.dsaRoundStats.partiallyAnswered,
-                    },
-                    { label: "Not answered", value: roundFeedbackView.dsaRoundStats.notAnswered },
-                  ].map((cell) => (
-                    <div
-                      key={cell.label}
-                      className="rounded-xl border border-theme bg-theme-input px-3 py-3 sm:px-4 sm:py-4"
-                    >
-                      <p className="text-xs font-medium uppercase tracking-wide text-theme-muted mb-1">
-                        {cell.label}
-                      </p>
-                      <p className="text-2xl sm:text-3xl font-bold tabular-nums text-theme-primary">
-                        {cell.value}
-                      </p>
-                    </div>
-                  ))}
+                <div className="mt-4 rounded-xl border border-theme bg-theme-input p-5 sm:p-6 space-y-3 text-sm sm:text-base text-theme-secondary">
+                  <p>
+                    <span className="font-semibold text-theme-primary">Total questions attempted:</span>{" "}
+                    <span className="tabular-nums text-theme-primary">
+                      {roundFeedbackView.dsaRoundStats.answeredCorrectly +
+                        roundFeedbackView.dsaRoundStats.partiallyAnswered}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-theme-primary">Total answered correctly:</span>{" "}
+                    <span className="tabular-nums text-theme-primary">
+                      {roundFeedbackView.dsaRoundStats.answeredCorrectly}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-theme-primary">Partial answers:</span>{" "}
+                    <span className="tabular-nums text-theme-primary">
+                      {roundFeedbackView.dsaRoundStats.partiallyAnswered}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-theme-primary">Topics covered during the round:</span>{" "}
+                    <span className="text-theme-primary">
+                      {(roundFeedbackView.topicsCoveredThisRound || []).length > 0
+                        ? (roundFeedbackView.topicsCoveredThisRound || []).join(", ")
+                        : "—"}
+                    </span>
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -3219,9 +3041,31 @@ function AIInterviewTab({
                 Next round
               </button>
             ) : (
-              <p className="text-center text-sm text-theme-secondary">
-                Final round completed. Generating final interview summary…
-              </p>
+              <div className="flex flex-col gap-3 w-full sm:w-auto sm:max-w-lg self-center sm:self-end">
+                <p className="text-center text-sm text-theme-secondary">
+                  Interview finished. Your full interview summary is available under{" "}
+                  <span className="font-semibold text-theme-primary">AI Interviews</span> for this company.
+                </p>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoundFeedbackView(null);
+                      roundFeedbackRef.current = null;
+                    }}
+                    className="px-6 py-3 rounded-xl border border-theme text-theme-primary font-semibold hover:bg-theme-nav transition-colors"
+                  >
+                    Close summary
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEndInterview}
+                    className="px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors"
+                  >
+                    End interview
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

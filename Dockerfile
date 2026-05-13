@@ -6,9 +6,11 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Backend API URL (injected at build time)
+# Backend API URL and optional feature flags (injected at build time)
 ARG REACT_APP_API_URL
+ARG REACT_APP_ENABLE_RESUME_BUILDER=1
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV REACT_APP_ENABLE_RESUME_BUILDER=${REACT_APP_ENABLE_RESUME_BUILDER}
 
 # Copy dependency manifests first for better caching
 COPY package.json package-lock.json ./
