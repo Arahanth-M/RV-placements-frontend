@@ -481,7 +481,7 @@ export default function SPCDashboard() {
                   <div className="min-w-0 flex-1">
                     <h2 className="text-lg font-semibold text-theme-primary">Pending student contributions</h2>
                     <p className="mt-1 text-sm text-theme-secondary">
-                      Approve or reject company submissions from students (same workflow as admin).
+                      Approve or reject company submissions from students.
                     </p>
                   </div>
                   <button

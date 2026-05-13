@@ -36,6 +36,8 @@ const spcCornerLinks = [
   { label: "SPC Dashboard", path: "/spc-dashboard", icon: FaTachometerAlt },
   { label: "Add Placement Data", path: "/spc/form", icon: FaFileAlt },
   { label: "Update conversion details", path: "/spc/conversion-details", icon: FaClipboardList },
+  {label: "view details added", path: "spc-dashboard?view=submissions", icon: FaFileAlt },
+  { label: "Approve Students Submissions", path: "/spc-dashboard?view=student-contributions", icon: FaExclamationCircle },
 ];
 
 const studentCornerLinksBase = [
