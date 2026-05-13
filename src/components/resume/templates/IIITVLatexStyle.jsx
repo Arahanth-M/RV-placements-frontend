@@ -30,7 +30,9 @@ export default function IIITVLatexStyle({ draft }) {
   const projects = draft?.projects || [];
   const experience = draft?.experience || [];
   const achievements = draft?.achievements || [];
-  const skills = draft?.skills || [];
+  const skills = Array.isArray(draft?.skills)
+    ? draft.skills.map((s) => String(s ?? "").trim()).filter(Boolean)
+    : [];
 
   return (
     <div className="bg-white text-black min-h-[900px] p-6 font-serif">
@@ -38,7 +40,7 @@ export default function IIITVLatexStyle({ draft }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-[24px] font-bold leading-tight">{personal.fullName || "Your Name"}</h1>
-            <p className="text-[12px]">{personal.location || "Indian Institute of Information Technology, Vadodara"}</p>
+            <p className="text-[12px]">{personal.location || "Your Location"}</p>
           </div>
           <div className="text-right text-[11px] leading-5">
             <p>{personal.phone || "+91-xxxxxxxxxx"}</p>

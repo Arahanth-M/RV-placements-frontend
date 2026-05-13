@@ -632,8 +632,26 @@ function CompanyDetails() {
     params.set("year", String(year));
     const ctx = readPlacementListContext(location, id);
     if (ctx) params.set("placementContext", ctx);
+
+    let urlYear = null;
+    try {
+      const qy = new URLSearchParams(location.search || "").get("year");
+      const n = Number(qy);
+      if (isPlacementDetailVisitYear(n)) urlYear = n;
+    } catch {
+      // ignore
+    }
     const visitId = readPlacementCompanyVisitIdFromLocation(location);
-    if (visitId) params.set("placementCompanyVisitId", visitId);
+    const nextY = Number(year);
+    const keepVisitHint =
+      visitId &&
+      isPlacementDetailVisitYear(nextY) &&
+      urlYear != null &&
+      urlYear === nextY;
+    if (keepVisitHint) {
+      params.set("placementCompanyVisitId", visitId);
+    }
+
     const pCluster = readPlacementClusterFromLocation(location);
     if (pCluster) params.set("placementCluster", pCluster);
     navigate(`/companies/${id}?${params.toString()}`, {

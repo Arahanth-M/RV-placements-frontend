@@ -144,6 +144,8 @@ const Header = () => {
   const isSpcCornerActive =
     isSpcUser &&
     (location.pathname === "/spc-dashboard" || location.pathname.startsWith("/spc/"));
+  /** Tighter desktop nav only when extra role controls crowd the bar (SPC / admin). */
+  const condensedHeader = Boolean(user && (isAdmin || isSpcUser));
 
   const handleLogout = async () => {
     await logout();
@@ -277,7 +279,11 @@ const Header = () => {
           <button
             type="button"
             onClick={() => setAccountMenuOpen((prev) => !prev)}
-            className={`inline-flex min-h-[2.5rem] sm:min-h-[2.75rem] items-center gap-2 sm:gap-3 rounded-full border-2 pl-1.5 pr-2.5 py-1 sm:pl-2 sm:pr-4 sm:py-1.5 text-left text-theme-primary transition-[background-color,border-color] duration-200 ${
+            className={`inline-flex items-center rounded-full border-2 text-left text-sm font-semibold text-theme-primary transition-[background-color,border-color] duration-200 ${
+              condensedHeader
+                ? "min-h-[2.5rem] gap-1.5 py-2 pl-1.5 pr-2.5 md:min-h-[2.75rem] md:pl-2 md:pr-3"
+                : "min-h-[2.5rem] gap-2 py-1 pl-1.5 pr-2.5 sm:min-h-[2.75rem] sm:gap-3 sm:py-1.5 sm:pl-2 sm:pr-4"
+            } ${
               accountMenuOpen
                 ? "border-theme-accent bg-theme-accent/12"
                 : "border-theme bg-theme-card hover:border-theme-accent/45 hover:bg-theme-hero"
@@ -289,15 +295,37 @@ const Header = () => {
                 src={user.picture}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full border-2 border-theme object-cover"
+                className={`shrink-0 rounded-full border-2 border-theme object-cover ${
+                  condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
+                }`}
                 onError={() => setAvatarFailed(true)}
               />
             ) : (
-              <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full border-2 border-theme bg-theme-hero">
-                <span className="text-xs font-semibold text-theme-primary sm:text-sm">{headerInitial}</span>
+              <div
+                className={`flex shrink-0 items-center justify-center rounded-full border-2 border-theme bg-theme-hero ${
+                  condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
+                }`}
+              >
+                <span
+                  className={`font-semibold text-theme-primary ${
+                    condensedHeader ? "text-xs" : "text-xs sm:text-sm"
+                  }`}
+                >
+                  {headerInitial}
+                </span>
               </div>
             )}
-            <span className="hidden min-w-0 max-w-[10rem] truncate text-sm font-semibold text-theme-primary sm:inline sm:max-w-[13rem]">
+            <span
+              className={`hidden min-w-0 truncate text-sm font-semibold text-theme-primary ${
+                isMobile
+                  ? condensedHeader
+                    ? "max-w-[9rem] sm:inline sm:max-w-[11rem]"
+                    : "max-w-[10rem] sm:inline sm:max-w-[13rem]"
+                  : condensedHeader
+                    ? "md:inline max-w-[7rem] lg:max-w-[10rem] xl:max-w-[13rem]"
+                    : "md:inline max-w-[10rem] md:max-w-[13rem]"
+              }`}
+            >
               {headerDisplayName}
             </span>
             <FaChevronDown className={`h-3 w-3 shrink-0 text-theme-secondary transition ${accountMenuOpen ? "rotate-180" : ""}`} />
@@ -393,7 +421,11 @@ const Header = () => {
           
         </div>
 
-        <div className="flex min-h-[3.25rem] min-w-0 flex-1 flex-col justify-center border-l border-theme py-2 pl-2 pr-2 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-2">
+        <div
+          className={`flex min-h-[3.25rem] min-w-0 flex-1 flex-col justify-center border-l border-theme py-2 pl-2 pr-2 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:py-2 ${
+            condensedHeader ? "sm:gap-2 sm:px-4 md:px-5" : "sm:gap-4 sm:px-6"
+          }`}
+        >
           {/* Mobile: compact actions + menu */}
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:hidden">
             {user && (
@@ -433,14 +465,22 @@ const Header = () => {
 
           {/* Desktop navigation (md+) */}
           <nav
-            className="hidden min-h-0 w-full min-w-0 flex-wrap items-center justify-end gap-2 overflow-visible md:flex md:gap-2 lg:gap-3"
+            className={`hidden min-h-0 w-full min-w-0 items-center justify-end overflow-visible py-0.5 md:flex ${
+              condensedHeader
+                ? "flex-nowrap gap-1.5 md:gap-2"
+                : "flex-wrap gap-2 md:gap-2 lg:gap-3"
+            }`}
             aria-label="Main"
           >
             {primaryLinks.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold transition lg:px-5 lg:py-3 lg:text-base ${
+                className={`shrink-0 whitespace-nowrap rounded-full font-semibold transition ${
+                  condensedHeader
+                    ? "px-3 py-2 text-sm md:px-3.5 md:py-2.5"
+                    : "px-4 py-2.5 text-sm lg:px-5 lg:py-3 lg:text-base"
+                } ${
                   location.pathname === item.path
                     ? "bg-theme-accent text-white"
                     : "text-theme-secondary hover:bg-theme-hero"
@@ -455,7 +495,11 @@ const Header = () => {
                 type="button"
                 onClick={() => setStudentMenuOpen((prev) => !prev)}
                 aria-label="Student Corner"
-                className={`inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base ${
+                className={`inline-flex items-center whitespace-nowrap rounded-full border-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 ${
+                  condensedHeader
+                    ? "min-h-[2.5rem] gap-1.5 px-3 py-2 md:min-h-[2.75rem] md:px-3.5"
+                    : "min-h-[2.75rem] gap-2 px-4 py-2 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base"
+                } ${
                   isStudentCornerActive
                     ? "border-theme-accent bg-theme-accent text-white"
                     : studentMenuOpen
@@ -464,7 +508,10 @@ const Header = () => {
                 }`}
               >
                 <FaGraduationCap className={`h-4 w-4 shrink-0 ${isStudentCornerActive ? "text-white" : "opacity-90"}`} />
-                <span>Student Corner</span>
+                <span>
+                  Student
+                  {condensedHeader ? <span className="hidden lg:inline"> Corner</span> : <span> Corner</span>}
+                </span>
                 <FaChevronDown
                   className={`h-3 w-3 transition ${studentMenuOpen ? "rotate-180" : ""} ${isStudentCornerActive ? "text-white/90" : ""}`}
                 />
@@ -496,7 +543,11 @@ const Header = () => {
                   type="button"
                   onClick={() => setSpcMenuOpen((prev) => !prev)}
                   aria-label="SPC Corner"
-                  className={`inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base ${
+                  className={`inline-flex items-center whitespace-nowrap rounded-full border-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 ${
+                    condensedHeader
+                      ? "min-h-[2.5rem] gap-1.5 px-3 py-2 md:min-h-[2.75rem] md:px-3.5"
+                      : "min-h-[2.75rem] gap-2 px-4 py-2 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base"
+                  } ${
                     isSpcCornerActive
                       ? "border-theme-accent bg-theme-accent text-white"
                       : spcMenuOpen
@@ -505,7 +556,10 @@ const Header = () => {
                   }`}
                 >
                   <FaBriefcase className={`h-4 w-4 shrink-0 ${isSpcCornerActive ? "text-white" : "opacity-90"}`} />
-                  <span>SPC Corner</span>
+                  <span>
+                    SPC
+                    {condensedHeader ? <span className="hidden lg:inline"> Corner</span> : <span> Corner</span>}
+                  </span>
                   <FaChevronDown
                     className={`h-3 w-3 transition ${spcMenuOpen ? "rotate-180" : ""} ${isSpcCornerActive ? "text-white/90" : ""}`}
                   />
@@ -538,7 +592,11 @@ const Header = () => {
                   type="button"
                   onClick={() => setAdminMenuOpen((prev) => !prev)}
                   aria-label="Admin"
-                  className={`inline-flex min-h-[2.75rem] items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base ${
+                  className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 ${
+                    condensedHeader
+                      ? "min-h-[2.5rem] gap-1.5 px-3 py-2 md:min-h-[2.75rem] md:px-3.5"
+                      : "min-h-[2.75rem] px-4 py-2 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base"
+                  } ${
                     location.pathname.startsWith("/admin")
                       ? "border-theme-accent bg-theme-accent text-white"
                       : adminMenuOpen
@@ -574,11 +632,17 @@ const Header = () => {
             <button
               type="button"
               onClick={toggleTheme}
-              className="shrink-0 rounded-full border border-theme bg-theme-card p-2.5 text-theme-primary hover:bg-theme-card-hover transition-colors lg:p-3"
+              className={`shrink-0 rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors ${
+                condensedHeader ? "p-2 md:p-2.5" : "p-2.5 lg:p-3"
+              }`}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {theme === "dark" ? <FaSun className="h-5 w-5" /> : <FaMoon className="h-5 w-5" />}
+              {theme === "dark" ? (
+                <FaSun className={condensedHeader ? "h-[1.15rem] w-[1.15rem] md:h-5 md:w-5" : "h-5 w-5"} />
+              ) : (
+                <FaMoon className={condensedHeader ? "h-[1.15rem] w-[1.15rem] md:h-5 md:w-5" : "h-5 w-5"} />
+              )}
             </button>
 
             {user && (
