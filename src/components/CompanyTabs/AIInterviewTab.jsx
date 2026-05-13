@@ -96,6 +96,11 @@ const normalizeDsaRoundStatsFromFeedback = (raw) => {
   return { totalQuestions, answeredCorrectly, partiallyAnswered, notAnswered };
 };
 
+const normalizeTopicsCoveredFromFeedback = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map((t) => String(t || "").trim()).filter(Boolean))];
+};
+
 const previewValueLane = (label, value) => {
   const kind =
     value === null ? "null" : value === undefined ? "undefined" : Array.isArray(value) ? "array" : typeof value;
@@ -1774,6 +1779,9 @@ function AIInterviewTab({
           summary: st?.roundFeedback?.summary || "",
           improvementTips: st?.roundFeedback?.improvementTips || [],
           dsaRoundStats: normalizeDsaRoundStatsFromFeedback(st?.roundFeedback?.dsaRoundStats),
+          topicsCoveredThisRound: normalizeTopicsCoveredFromFeedback(
+            st?.roundFeedback?.topicsCoveredThisRound
+          ),
           nextRoundAvailable: Boolean(st?.nextRoundAvailable),
         };
         const codeExecSummaryRound = st.lastCodeExecutionSummary;
@@ -2286,6 +2294,9 @@ function AIInterviewTab({
               summary: data?.roundFeedback?.summary || "",
               improvementTips: data?.roundFeedback?.improvementTips || [],
               dsaRoundStats: normalizeDsaRoundStatsFromFeedback(data?.roundFeedback?.dsaRoundStats),
+              topicsCoveredThisRound: normalizeTopicsCoveredFromFeedback(
+                data?.roundFeedback?.topicsCoveredThisRound
+              ),
               nextRoundAvailable: Boolean(data?.nextRoundAvailable),
             };
             const codeExecSummaryData = data.lastCodeExecutionSummary;
@@ -3122,16 +3133,16 @@ function AIInterviewTab({
                     Round complete
                   </p>
                   <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary">
-                    Round summary
+                    {roundFeedbackView.dsaRoundStats ? "DSA round summary" : "Round summary"}
                   </h3>
-                  {roundFeedbackView.summary && (
+                  {!roundFeedbackView.dsaRoundStats && roundFeedbackView.summary ? (
                     <p className="mt-4 text-theme-secondary text-sm sm:text-base leading-relaxed">
                       {roundFeedbackView.summary}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
-              {roundFeedbackView.score !== null && (
+              {!roundFeedbackView.dsaRoundStats && roundFeedbackView.score !== null ? (
                 <div className="mt-4 inline-flex items-center gap-3 rounded-xl bg-theme-input border border-theme-accent px-4 py-3">
                   <span className="text-sm text-theme-secondary">Round score</span>
                   <span className="text-3xl font-bold tabular-nums text-theme-accent">
@@ -3139,33 +3150,36 @@ function AIInterviewTab({
                     <span className="text-lg font-semibold text-theme-secondary">/10</span>
                   </span>
                 </div>
-              )}
+              ) : null}
               {roundFeedbackView.dsaRoundStats ? (
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { label: "Total questions", value: roundFeedbackView.dsaRoundStats.totalQuestions },
-                    {
-                      label: "Answered correctly",
-                      value: roundFeedbackView.dsaRoundStats.answeredCorrectly,
-                    },
-                    {
-                      label: "Partially answered",
-                      value: roundFeedbackView.dsaRoundStats.partiallyAnswered,
-                    },
-                    { label: "Not answered", value: roundFeedbackView.dsaRoundStats.notAnswered },
-                  ].map((cell) => (
-                    <div
-                      key={cell.label}
-                      className="rounded-xl border border-theme bg-theme-input px-3 py-3 sm:px-4 sm:py-4"
-                    >
-                      <p className="text-xs font-medium uppercase tracking-wide text-theme-muted mb-1">
-                        {cell.label}
-                      </p>
-                      <p className="text-2xl sm:text-3xl font-bold tabular-nums text-theme-primary">
-                        {cell.value}
-                      </p>
-                    </div>
-                  ))}
+                <div className="mt-4 rounded-xl border border-theme bg-theme-input p-5 sm:p-6 space-y-3 text-sm sm:text-base text-theme-secondary">
+                  <p>
+                    <span className="font-semibold text-theme-primary">Total questions attempted:</span>{" "}
+                    <span className="tabular-nums text-theme-primary">
+                      {roundFeedbackView.dsaRoundStats.answeredCorrectly +
+                        roundFeedbackView.dsaRoundStats.partiallyAnswered}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-theme-primary">Total answered correctly:</span>{" "}
+                    <span className="tabular-nums text-theme-primary">
+                      {roundFeedbackView.dsaRoundStats.answeredCorrectly}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-theme-primary">Partial answers:</span>{" "}
+                    <span className="tabular-nums text-theme-primary">
+                      {roundFeedbackView.dsaRoundStats.partiallyAnswered}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-semibold text-theme-primary">Topics covered during the round:</span>{" "}
+                    <span className="text-theme-primary">
+                      {(roundFeedbackView.topicsCoveredThisRound || []).length > 0
+                        ? (roundFeedbackView.topicsCoveredThisRound || []).join(", ")
+                        : "—"}
+                    </span>
+                  </p>
                 </div>
               ) : null}
             </div>
