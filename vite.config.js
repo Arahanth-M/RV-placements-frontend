@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'process.env.REACT_APP_API_URL': JSON.stringify(env.REACT_APP_API_URL),
+      'process.env.REACT_APP_ENABLE_RESUME_BUILDER': JSON.stringify(
+        env.REACT_APP_ENABLE_RESUME_BUILDER || ''
+      ),
     },
   };
 })

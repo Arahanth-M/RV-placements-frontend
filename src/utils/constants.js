@@ -64,12 +64,21 @@ export const FEEDBACK_FORM_URL =
     String(process.env.REACT_APP_FEEDBACK_FORM_URL).trim()) ||
   "https://docs.google.com/forms/d/e/1FAIpQLSfiUSw6yFFy-id7_jRv-GKGS3cBcvYPKY-zN7NalR7TqZxvIQ/viewform?usp=publish-editor";
 
-/** Feature flag for gradual production rollout of resume builder. */
+/** Hostnames where resume builder is on without rebuild (matches gradual rollout / prod domain). */
+function isResumeBuilderAllowedHostname(hostname) {
+  const h = String(hostname || "").trim().toLowerCase();
+  if (!h) return false;
+  if (h === "localhost" || h === "127.0.0.1") return true;
+  const domain = String(PRODUCTION_DOMAIN || "").trim().toLowerCase();
+  if (!domain) return false;
+  return h === domain || h === `www.${domain}`;
+}
+
+/** Feature flag: env `REACT_APP_ENABLE_RESUME_BUILDER=1`, localhost, or production domain at runtime. */
 export const RESUME_BUILDER_ENABLED =
   (typeof process !== "undefined" &&
     String(process.env.REACT_APP_ENABLE_RESUME_BUILDER || "").trim() === "1") ||
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1";
+  (typeof window !== "undefined" && isResumeBuilderAllowedHostname(window.location.hostname));
 
 // Configuration
 const FRONTEND_PORT = 5173;
