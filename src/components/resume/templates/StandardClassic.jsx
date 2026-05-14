@@ -20,6 +20,9 @@ function BulletList({ bullets = [] }) {
 
 export default function StandardClassic({ draft }) {
   const personal = draft?.personal || {};
+  const skillsList = Array.isArray(draft?.skills)
+    ? draft.skills.map((s) => String(s ?? "").trim()).filter(Boolean)
+    : [];
   return (
     <div className="bg-white text-gray-900 p-6 shadow-sm min-h-[900px]">
       <div className="text-center border-b border-gray-300 pb-3 mb-4">
@@ -58,7 +61,7 @@ export default function StandardClassic({ draft }) {
 
       <section className="mb-4">
         <h2 className={sectionTitleClass}>Skills</h2>
-        <p className="text-[13px] text-gray-800">{(draft?.skills || []).join(", ")}</p>
+        <p className="text-[13px] text-gray-800">{skillsList.length > 0 ? skillsList.join(", ") : "\u2014"}</p>
       </section>
 
       <section className="mb-4">

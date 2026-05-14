@@ -16,6 +16,10 @@ import {
   pageShellOuterClass,
 } from "./PageBackNav.jsx";
 
+/** Same row styling as Header student-corner links */
+const HEADER_DROPDOWN_ITEM_CLASS =
+  "flex w-full items-center gap-2 px-3 py-2 text-sm text-theme-secondary hover:text-theme-primary hover:bg-theme-nav rounded-md transition-colors";
+
 function createBullet() {
   return { text: "" };
 }
@@ -382,14 +386,56 @@ export default function ResumeBuilderPage() {
   }
 
   return (
-    <div className={`resume-builder-form min-h-screen ${pageShellOuterClass}`}>
+    <div className={`resume-builder-form events-page-theme min-h-screen ${pageShellOuterClass}`}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
+      `}</style>
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate(-1)} />
+          <PageBackButton onClick={() => navigate(-1)} label="Back" />
         </PageBackNavRow>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <h1 className="text-2xl font-bold text-theme-primary">Resume Builder</h1>
-          <div className="flex items-center gap-2 text-sm">
+
+        {/* ── Header (match Events / Resources) ── */}
+        <div className="mb-8 sm:mb-10 text-center">
+          <p
+            style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              letterSpacing: "0.13em",
+              textTransform: "uppercase",
+              color: "#6366F1",
+              marginBottom: "0.75rem",
+            }}
+          >
+            Placement prep
+          </p>
+          <h1
+            className="text-theme-primary"
+            style={{
+              fontFamily: "'DM Serif Display', Georgia, serif",
+              fontSize: "clamp(2.2rem, 5vw, 3.4rem)",
+              fontWeight: 400,
+              lineHeight: 1.13,
+              marginBottom: "1rem",
+            }}
+          >
+            Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
+          </h1>
+          <p
+            style={{
+              fontSize: "17px",
+              color: "var(--text-secondary)",
+              lineHeight: 1.7,
+              maxWidth: "620px",
+              margin: "0 auto",
+            }}
+          >
+            Fill in your details, pick a template, and export a PDF when you are ready.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-sm">
             <span className="text-theme-secondary">{statusText || "Ready"}</span>
             <button
               type="button"
@@ -401,11 +447,14 @@ export default function ResumeBuilderPage() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent text-white disabled:opacity-60"
+              //className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 text-sm font-semibold text-white transition-[background-color,border-color,filter] duration-200 min-h-[2.75rem] px-5 py-2.5 disabled:opacity-60 disabled:pointer-events-none border-theme-accent bg-theme-accent shadow-sm hover:brightness-110"
+              //className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent text-white disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent !text-white disabled:opacity-60"
               onClick={handleExport}
               disabled={isExporting || isSaving}
             >
-              <FaFileDownload /> {isExporting ? "Exporting..." : "Export PDF"}
+              <FaFileDownload className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
+              {isExporting ? "Exporting…" : "Export PDF"}
             </button>
           </div>
         </div>
@@ -422,27 +471,39 @@ export default function ResumeBuilderPage() {
           <div className="space-y-4">
             <div className="bg-theme-card border border-theme rounded-lg p-4 shadow-sm">
               <h2 className="font-semibold text-theme-primary mb-3">Template</h2>
-              <div className="relative" ref={templateMenuRef}>
+              <div className="relative shrink-0 inline-block w-full" ref={templateMenuRef}>
                 <button
                   type="button"
-                  className="resume-field w-full rounded-md border border-theme bg-theme-app px-3 text-sm text-theme-primary flex items-center justify-between"
                   onClick={() => setIsTemplateMenuOpen((prev) => !prev)}
+                  aria-haspopup="listbox"
+                  aria-expanded={isTemplateMenuOpen}
+                  className={`inline-flex w-full min-w-0 items-center justify-between gap-2 whitespace-nowrap rounded-full border-2 text-left text-sm font-semibold transition-[background-color,border-color,color] duration-200 min-h-[2.75rem] px-4 py-2 sm:px-5 ${
+                    isTemplateMenuOpen
+                      ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
+                      : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                  }`}
                 >
-                  <span>{selectedTemplateLabel}</span>
+                  <span className="min-w-0 truncate">{selectedTemplateLabel}</span>
                   <FaChevronDown
-                    className={`text-theme-secondary transition-transform ${isTemplateMenuOpen ? "rotate-180" : ""}`}
+                    className={`h-3 w-3 shrink-0 text-theme-secondary transition ${isTemplateMenuOpen ? "rotate-180" : ""}`}
+                    aria-hidden
                   />
                 </button>
                 {isTemplateMenuOpen ? (
-                  <div className="absolute z-20 mt-1 w-full rounded-md border border-theme bg-theme-card shadow-lg overflow-hidden">
+                  <div
+                    className="absolute left-0 right-0 top-full z-[100] mt-1 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1"
+                    role="listbox"
+                  >
                     {templateOptions.map((option) => (
                       <button
                         key={option.id}
                         type="button"
-                        className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                        role="option"
+                        aria-selected={draft.templateId === option.id}
+                        className={`${HEADER_DROPDOWN_ITEM_CLASS} w-full text-left ${
                           draft.templateId === option.id
-                            ? "bg-theme-accent text-white"
-                            : "text-theme-primary hover:bg-theme-card-hover"
+                            ? "bg-theme-accent/12 text-theme-primary font-semibold"
+                            : ""
                         }`}
                         onClick={() => {
                           setIsTemplateMenuOpen(false);
@@ -482,9 +543,13 @@ export default function ResumeBuilderPage() {
                 onChange={(event) => {
                   const rawValue = event.target.value;
                   setSkillsInput(rawValue);
+                  const skills = rawValue
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean);
                   applyDraftUpdate((prev) => ({
                     ...prev,
-                    skills: prev.skills,
+                    skills,
                   }));
                 }}
                 placeholder="JavaScript, React, Node.js"

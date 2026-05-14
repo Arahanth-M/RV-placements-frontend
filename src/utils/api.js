@@ -355,6 +355,10 @@ export const adminAPI = {
 export const eventAPI = {
   getAllEvents: () => API.get('/api/events'),
   getEvent: (id) => API.get(`/api/events/${id}`),
+  /** Student session: ids of events marked registered on the portal. */
+  getMyRegistrations: () => API.get('/api/events/me/registrations'),
+  /** Student session: append `event_id` to the student’s `registeredEventIds`. */
+  registerForEvent: (eventId) => API.post(`/api/events/${eventId}/register`),
   createEvent: (data) => API.post('/api/events', data),
   updateEvent: (id, data) => API.put(`/api/events/${id}`, data),
   deleteEvent: (id) => API.delete(`/api/events/${id}`),
@@ -383,6 +387,8 @@ export const studentAPI = {
 
 export const submissionAPI = {
   getMine: () => API.get("/api/submissions/mine"),
+  updateMine: (id, data) => API.put(`/api/submissions/${encodeURIComponent(String(id))}`, data),
+  deleteMine: (id) => API.delete(`/api/submissions/${encodeURIComponent(String(id))}`),
 };
 
 export const resumeAPI = {

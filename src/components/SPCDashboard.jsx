@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { spcAPI } from "../utils/api";
+import { spcAPI, adminAPI } from "../utils/api";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -25,6 +25,47 @@ function formatWhen(iso) {
   }
 }
 
+const SPC_MOD_PAGE_SIZE = 25;
+
+function parseSubmissionContentJson(contentString) {
+  try {
+    return JSON.parse(contentString);
+  } catch {
+    return { question: contentString, solution: "" };
+  }
+}
+
+function formatSubmissionDate(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+const SUBMISSION_TYPE_LABELS = {
+  onlineQuestions: "OA question",
+  interviewQuestions: "Interview question",
+  interviewProcess: "Interview process",
+  mustDoTopics: "Must-do topic",
+  internshipExperience: "Internship experience",
+};
+
+function getSubmissionTypeLabel(type) {
+  const t = String(type || "").trim();
+  if (t === "onlineQuestion" || t === "onlineQuestions") return "OA question";
+  return SUBMISSION_TYPE_LABELS[t] || (t ? t.replace(/([A-Z])/g, " $1").trim() : "Submission");
+}
+
 const EDIT_INITIAL = {
   studentName: "",
   studentEmail: "",
@@ -45,6 +86,7 @@ export default function SPCDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const showSubmissions = searchParams.get("view") === "submissions";
+  const showStudentMod = searchParams.get("view") === "student-contributions";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [placements, setPlacements] = useState([]);
@@ -92,13 +134,52 @@ export default function SPCDashboard() {
     }
   }, [showSubmissions, loadSubmissions]);
 
+  const [modList, setModList] = useState([]);
+  const [modMeta, setModMeta] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [modLoading, setModLoading] = useState(false);
+  const [modError, setModError] = useState("");
+  const [modApproving, setModApproving] = useState(() => new Set());
+  const [modRejecting, setModRejecting] = useState(() => new Set());
+  const [modSelected, setModSelected] = useState(null);
+
+  const loadModList = useCallback(async (page = 1) => {
+    setModLoading(true);
+    setModError("");
+    try {
+      const { data } = await adminAPI.getSubmissions({
+        params: { status: "pending", page, limit: SPC_MOD_PAGE_SIZE },
+      });
+      setModList(Array.isArray(data?.items) ? data.items : []);
+      setModMeta({
+        page: data?.page || page,
+        total: data?.total ?? 0,
+        totalPages: Math.max(1, data?.totalPages || 1),
+      });
+    } catch (e) {
+      setModError(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          "Could not load pending submissions."
+      );
+      setModList([]);
+    } finally {
+      setModLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showStudentMod) {
+      loadModList(modMeta.page);
+    }
+  }, [showStudentMod, loadModList, modMeta.page]);
+
   useEffect(() => {
     try {
       window.scrollTo(0, 0);
     } catch {
       // no-op for non-browser environments
     }
-  }, [showSubmissions]);
+  }, [showSubmissions, showStudentMod]);
 
   useEffect(() => {
     if (!companySuggestOpen) return undefined;
@@ -286,10 +367,70 @@ export default function SPCDashboard() {
     }
   };
 
+  const openModRow = async (row) => {
+    if (row.contentTruncated) {
+      try {
+        const res = await adminAPI.getSubmission(row._id);
+        setModSelected(res.data);
+      } catch {
+        setModSelected(row);
+      }
+    } else {
+      setModSelected(row);
+    }
+  };
+
+  const closeModModal = () => setModSelected(null);
+
+  const handleModApprove = async (id) => {
+    if (!window.confirm("Approve this submission? This updates the company database.")) return;
+    const sid = String(id);
+    setModApproving((prev) => new Set(prev).add(sid));
+    try {
+      await adminAPI.approveSubmission(id);
+      await loadModList(modMeta.page);
+      setModSelected((prev) => (prev && String(prev._id) === sid ? null : prev));
+    } catch (e) {
+      const msg =
+        e?.response?.data?.details ||
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        "Could not approve submission.";
+      window.alert(typeof msg === "string" ? msg : JSON.stringify(msg));
+    } finally {
+      setModApproving((prev) => {
+        const next = new Set(prev);
+        next.delete(sid);
+        return next;
+      });
+    }
+  };
+
+  const handleModReject = async (id) => {
+    if (!window.confirm("Reject will permanently delete this submission.")) return;
+    const sid = String(id);
+    setModRejecting((prev) => new Set(prev).add(sid));
+    try {
+      await adminAPI.rejectSubmission(id);
+      await loadModList(modMeta.page);
+      setModSelected((prev) => (prev && String(prev._id) === String(id) ? null : prev));
+    } catch (e) {
+      window.alert(
+        e?.response?.data?.error || e?.response?.data?.message || "Could not reject submission."
+      );
+    } finally {
+      setModRejecting((prev) => {
+        const next = new Set(prev);
+        next.delete(sid);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className={`min-h-screen ${pageShellOuterClass}`}>
       <div className={pageShellInnerClass}>
-        {!showSubmissions ? (
+        {!showSubmissions && !showStudentMod ? (
           <div className="mx-auto w-full max-w-5xl">
             <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
               <h1 className="text-3xl font-bold text-theme-primary">SPC Dashboard</h1>
@@ -315,9 +456,174 @@ export default function SPCDashboard() {
                 >
                   View submissions
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModMeta((m) => ({ ...m, page: 1 }));
+                    setSearchParams({ view: "student-contributions" });
+                  }}
+                  className={PRIMARY_ACTION_BTN_CLASS}
+                >
+                  Review student contributions
+                </button>
               </div>
             </div>
           </div>
+        ) : showStudentMod ? (
+          <>
+            <PageBackNavRow>
+              <PageBackButton onClick={() => setSearchParams({})} label="Back to Dashboard" />
+            </PageBackNavRow>
+
+            <div className="mx-auto w-full max-w-6xl">
+              <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
+                <div className="flex flex-wrap items-center gap-3 border-b border-theme-input pb-4">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg font-semibold text-theme-primary">Pending student contributions</h2>
+                    <p className="mt-1 text-sm text-theme-secondary">
+                      Approve or reject company submissions from students.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadModList(modMeta.page)}
+                    disabled={modLoading}
+                    className="h-10 shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {modLoading ? "Refreshing…" : "Refresh"}
+                  </button>
+                </div>
+
+                {modError ? (
+                  <div
+                    className="mt-4 rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-300"
+                    role="alert"
+                  >
+                    {modError}
+                  </div>
+                ) : null}
+
+                {modLoading && modList.length === 0 ? (
+                  <p className="mt-6 text-sm text-theme-muted">Loading pending submissions…</p>
+                ) : null}
+
+                {!modLoading && modList.length === 0 ? (
+                  <p className="mt-6 text-sm text-theme-muted">No pending submissions.</p>
+                ) : modList.length > 0 ? (
+                  <div className="mt-4 overflow-x-auto rounded-xl border border-theme-input">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="border-b border-theme-input bg-theme-input/80 text-theme-secondary">
+                        <tr>
+                          <th className="px-3 py-2.5 font-medium">Submitted by</th>
+                          <th className="px-3 py-2.5 font-medium">Company</th>
+                          <th className="px-3 py-2.5 font-medium">Type</th>
+                          <th className="hidden px-3 py-2.5 font-medium md:table-cell">Preview</th>
+                          <th className="px-3 py-2.5 font-medium">When</th>
+                          <th className="px-3 py-2.5 font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-theme-input text-theme-primary">
+                        {modList.map((row) => {
+                          const parsed = parseSubmissionContentJson(row.content);
+                          return (
+                            <tr
+                              key={row._id}
+                              className="cursor-pointer bg-theme-card hover:bg-theme-nav/40"
+                              onClick={() => openModRow(row)}
+                            >
+                              <td className="px-3 py-2 align-top">
+                                <div className="font-medium">{row.submittedBy?.name || "—"}</div>
+                                <div className="text-xs text-theme-secondary">{row.submittedBy?.email || ""}</div>
+                                {row.isAnonymous ? (
+                                  <span className="mt-1 inline-block text-xs text-amber-600 dark:text-amber-400">
+                                    Anonymous
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-2 align-top">
+                                {row.companyId?.name || "—"}
+                                <div className="text-xs text-theme-secondary">
+                                  {row.placementYear != null ? `Year ${row.placementYear}` : ""}
+                                  {row.cluster ? ` · ${row.cluster}` : ""}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 align-top">
+                                {getSubmissionTypeLabel(row.type)}
+                              </td>
+                              <td className="hidden max-w-xs px-3 py-2 align-top text-theme-secondary md:table-cell">
+                                {parsed.question ? (
+                                  <span className="line-clamp-2">Q: {parsed.question}</span>
+                                ) : (
+                                  <span className="line-clamp-2">{row.content}</span>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 align-top text-theme-secondary">
+                                {formatSubmissionDate(row.submittedAt)}
+                              </td>
+                              <td className="px-3 py-2 align-top" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex flex-col gap-1 sm:flex-row">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleModApprove(row._id)}
+                                    disabled={
+                                      modApproving.has(String(row._id)) ||
+                                      modRejecting.has(String(row._id)) ||
+                                      modLoading
+                                    }
+                                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {modApproving.has(String(row._id)) ? "…" : "Approve"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleModReject(row._id)}
+                                    disabled={
+                                      modApproving.has(String(row._id)) ||
+                                      modRejecting.has(String(row._id)) ||
+                                      modLoading
+                                    }
+                                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {modRejecting.has(String(row._id)) ? "…" : "Reject"}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+
+                {modMeta.total > 0 ? (
+                  <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-theme-input pt-4 text-sm text-theme-secondary sm:flex-row">
+                    <p>
+                      Page {modMeta.page} of {modMeta.totalPages} ({modMeta.total} total)
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={modMeta.page <= 1 || modLoading}
+                        onClick={() => setModMeta((m) => ({ ...m, page: Math.max(1, m.page - 1) }))}
+                        className="rounded-lg border border-theme-input px-3 py-1.5 text-sm font-medium hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        disabled={modMeta.page >= modMeta.totalPages || modLoading}
+                        onClick={() => setModMeta((m) => ({ ...m, page: Math.min(m.totalPages, m.page + 1) }))}
+                        className="rounded-lg border border-theme-input px-3 py-1.5 text-sm font-medium hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </>
         ) : (
           <>
             <PageBackNavRow>
@@ -348,6 +654,16 @@ export default function SPCDashboard() {
                       <h2 className="min-w-0 flex-1 text-lg font-semibold text-theme-primary">
                         Placement & conversion records
                       </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModMeta((m) => ({ ...m, page: 1 }));
+                          setSearchParams({ view: "student-contributions" });
+                        }}
+                        className="h-10 shrink-0 rounded-xl border border-theme-accent/40 bg-theme-accent/10 px-4 text-sm font-semibold text-theme-accent transition-colors hover:bg-theme-accent/20"
+                      >
+                        Student contributions
+                      </button>
                       <button
                         type="button"
                         onClick={loadSubmissions}
@@ -562,6 +878,104 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
                 {isSaving ? "Saving…" : "Save changes"}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+      {modSelected ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-theme bg-theme-card p-5 shadow-2xl sm:p-6">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-theme-primary">Submission detail</h3>
+                <p className="text-sm text-theme-secondary">
+                  {modSelected.companyId?.name || "Company"} · {getSubmissionTypeLabel(modSelected.type)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeModModal}
+                className="h-9 rounded-xl border border-theme-input px-3 text-sm font-medium text-theme-primary hover:bg-theme-nav"
+              >
+                Close
+              </button>
+            </div>
+            <div className="space-y-3 text-sm text-theme-secondary">
+              <p>
+                <span className="font-medium text-theme-primary">From:</span>{" "}
+                {modSelected.submittedBy?.name || "—"} ({modSelected.submittedBy?.email || "—"})
+                {modSelected.isAnonymous ? (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400">Anonymous</span>
+                ) : null}
+              </p>
+              <p>
+                <span className="font-medium text-theme-primary">Submitted:</span>{" "}
+                {formatSubmissionDate(modSelected.submittedAt)}
+              </p>
+            </div>
+            <div className="mt-4 rounded-xl border border-theme-input bg-theme-input/30 p-4">
+              {(() => {
+                const c = parseSubmissionContentJson(modSelected.content);
+                if (c.question || c.solution) {
+                  return (
+                    <div className="space-y-3 text-sm">
+                      {c.question ? (
+                        <div>
+                          <p className="font-semibold text-theme-primary">Question</p>
+                          <p className="mt-1 whitespace-pre-wrap text-theme-secondary">{c.question}</p>
+                        </div>
+                      ) : null}
+                      {c.solution ? (
+                        <div>
+                          <p className="font-semibold text-theme-primary">Solution</p>
+                          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-sans text-theme-secondary">
+                            {c.solution}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                }
+                return (
+                  <pre className="whitespace-pre-wrap font-sans text-sm text-theme-secondary">
+                    {modSelected.content}
+                  </pre>
+                );
+              })()}
+            </div>
+            {modSelected.status !== "approved" ? (
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleModApprove(modSelected._id);
+                    closeModModal();
+                  }}
+                  disabled={
+                    modApproving.has(String(modSelected._id)) ||
+                    modRejecting.has(String(modSelected._id)) ||
+                    modLoading
+                  }
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve"}
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleModReject(modSelected._id);
+                    closeModModal();
+                  }}
+                  disabled={
+                    modApproving.has(String(modSelected._id)) ||
+                    modRejecting.has(String(modSelected._id)) ||
+                    modLoading
+                  }
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {modRejecting.has(String(modSelected._id)) ? "Rejecting…" : "Reject"}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

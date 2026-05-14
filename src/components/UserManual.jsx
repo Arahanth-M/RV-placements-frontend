@@ -48,7 +48,7 @@ function UserManual() {
 
           <hr className="my-8 border-theme" />
 
-          <section className="space-y-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
+          {/* <section className="space-y-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
             <h2 className="text-base font-bold text-theme-primary sm:text-lg">
               Rollout scope (branches and batches)
             </h2>
@@ -60,7 +60,7 @@ function UserManual() {
               <strong className="text-theme-primary">shortly</strong> as we extend the rollout—check
               announcements or this manual again for updates.
             </p>
-          </section>
+          </section> */}
 
           <hr className="my-8 border-theme" />
 

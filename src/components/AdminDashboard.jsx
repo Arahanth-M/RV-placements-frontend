@@ -68,6 +68,8 @@ const AdminDashboard = () => {
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventForm, setEventForm] = useState({
+    type: '',
+    organizer: '',
     title: '',
     url: '',
     lastDateToRegister: '',
@@ -903,6 +905,8 @@ const AdminDashboard = () => {
       
       // Reset form
       setEventForm({
+        type: '',
+        organizer: '',
         title: '',
         url: '',
         lastDateToRegister: '',
@@ -923,6 +927,8 @@ const AdminDashboard = () => {
   const handleEditEvent = (event) => {
     setEditingEvent(event);
     setEventForm({
+      type: event.type || '',
+      organizer: event.organizer || '',
       title: event.title,
       url: event.url,
       lastDateToRegister: new Date(event.lastDateToRegister).toISOString().split('T')[0],
@@ -1834,6 +1840,9 @@ const AdminDashboard = () => {
                             <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
                               Approved At
                             </th>
+                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
+                              Reviewed by
+                            </th>
                             <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Status
                             </th>
@@ -1895,6 +1904,13 @@ const AdminDashboard = () => {
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
                                   {submission.approvedAt ? formatDate(submission.approvedAt) : 'N/A'}
+                                </td>
+                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-300 hidden lg:table-cell">
+                                  {submission.reviewedBy?.name
+                                    ? `${submission.reviewedBy.name}${
+                                        submission.reviewedBy.role === 'spc' ? ' (SPC)' : ''
+                                      }`
+                                    : '—'}
                                 </td>
                                 <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                                   <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-600 text-white">
@@ -2179,6 +2195,8 @@ const AdminDashboard = () => {
                       setShowEventForm(!showEventForm);
                       setEditingEvent(null);
                       setEventForm({
+                        type: '',
+                        organizer: '',
                         title: '',
                         url: '',
                         lastDateToRegister: '',
@@ -2195,6 +2213,37 @@ const AdminDashboard = () => {
               {showEventForm && (
                 <div className="px-4 sm:px-6 py-4 sm:py-6 border-b border-slate-700 bg-slate-800/60">
                   <form onSubmit={handleEventSubmit} className="space-y-3 sm:space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                          Type
+                        </label>
+                        <select
+                          value={eventForm.type}
+                          onChange={(e) => setEventForm({ ...eventForm, type: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-900 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                        >
+                          <option value="">Select type</option>
+                          <option value="hackathon">Hackathon</option>
+                          <option value="workshop">Workshop</option>
+                          <option value="competition">Competition</option>
+                          <option value="preplacement talk">Preplacement talk</option>
+                          <option value="placement">Placement</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                          Organizer
+                        </label>
+                        <input
+                          type="text"
+                          value={eventForm.organizer}
+                          onChange={(e) => setEventForm({ ...eventForm, organizer: e.target.value })}
+                          className="w-full px-3 py-2 border border-slate-600 rounded-md bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                          placeholder="Company / Community / Platform"
+                        />
+                      </div>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-300 mb-1">
                         Title *
@@ -2240,6 +2289,8 @@ const AdminDashboard = () => {
                           setShowEventForm(false);
                           setEditingEvent(null);
                           setEventForm({
+                            type: '',
+                            organizer: '',
                             title: '',
                             url: '',
                             lastDateToRegister: '',
@@ -2415,6 +2466,18 @@ const AdminDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-slate-400">Approved At</p>
                     <p className="text-base text-slate-200 mt-1">{formatDate(selectedSubmission.approvedAt)}</p>
+                  </div>
+                )}
+                {selectedSubmission.status === 'approved' && (
+                  <div>
+                    <p className="text-sm font-medium text-slate-400">Reviewed by</p>
+                    <p className="text-base text-slate-200 mt-1">
+                      {selectedSubmission.reviewedBy?.name
+                        ? `${selectedSubmission.reviewedBy.name}${
+                            selectedSubmission.reviewedBy.role === 'spc' ? ' (SPC)' : ' (Admin)'
+                          }`
+                        : 'Admin (legacy)'}
+                    </p>
                   </div>
                 )}
               </div>

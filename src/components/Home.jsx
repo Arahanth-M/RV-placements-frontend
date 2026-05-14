@@ -174,8 +174,8 @@ function Home() {
       text: "Detailed insights into company profiles and offered roles.",
     },
     {
-      title: "Interview Breakdown",
-      text: "Step-by-step breakdown of previous interview processes.",
+      title: "Resume Builder",
+      text: "A resume builder to help students build their resumes and get feedback on them.",
     },
     {
       title: "Performance Analysis",
@@ -189,16 +189,14 @@ function Home() {
 
   const vision = [
     { title: "Live Interactions", text: "Live interaction videos with seniors sharing experiences." },
-    { title: "Curated Resources", text: "More curated notes & resources for cutting-edge tech." },
     { title: "Continuous Updates", text: "Continuous feature updates to support student success." },
-    { title: "Resume Builder", text: "A resume builder to help students build their resumes and get feedback on them." },
   ];
 
   const stats = [
-    { value: 100, suffix: "+", label: "Companies Listed", duration: 1600 },
+    { value: 200, suffix: "+", label: "Companies Listed", duration: 1600 },
     { value: 200, suffix: "+", label: "Interview Experiences and Questions", duration: 1800 },
-    { value: 2, suffix: "+", label: "Years of Data", duration: 1000 },
-    { value: 4, suffix: "+", label: "Active Features", duration: 1000 },
+    { value: 3, suffix: "+", label: "Years of Data", duration: 1000 },
+    { value: 5, suffix: "+", label: "Active Features", duration: 1000 },
   ];
 
   return (
