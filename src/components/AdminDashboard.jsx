@@ -78,6 +78,9 @@ const AdminDashboard = () => {
   const [deletingCompanyIds, setDeletingCompanyIds] = useState(new Set());
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [submissionEnhancedContent, setSubmissionEnhancedContent] = useState(null);
+  const [submissionEnhancing, setSubmissionEnhancing] = useState(false);
+  const [submissionEnhanceError, setSubmissionEnhanceError] = useState('');
   const [approvingAll, setApprovingAll] = useState(false);
   const [approvingAllCompanies, setApprovingAllCompanies] = useState(false);
   const [subPendingMeta, setSubPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
@@ -504,15 +507,19 @@ const AdminDashboard = () => {
     );
   };
 
-  const handleApprove = async (submissionId) => {
-    if (!window.confirm('Are you sure you want to approve this submission? This will update the company database.')) {
+  const handleApprove = async (submissionId, mergeContent) => {
+    const withEnhanced = typeof mergeContent === 'string' && mergeContent.trim().length > 0;
+    const confirmMsg = withEnhanced
+      ? 'Approve using the AI-enhanced text? This will update the company database.'
+      : 'Are you sure you want to approve this submission? This will update the company database.';
+    if (!window.confirm(confirmMsg)) {
       return;
     }
 
     try {
       setApprovingIds(prev => new Set(prev).add(submissionId));
       
-      await adminAPI.approveSubmission(submissionId);
+      await adminAPI.approveSubmission(submissionId, withEnhanced ? { mergeContent } : {});
 
       const statsResponse = await adminAPI.getStats();
       setStats(statsResponse.data);
@@ -520,6 +527,12 @@ const AdminDashboard = () => {
       await loadApprovedSubmissionsList(subApprovedMeta.page);
 
       alert('Submission approved successfully!');
+      setSubmissionEnhancedContent(null);
+      setSubmissionEnhanceError('');
+      if (selectedSubmission && String(selectedSubmission._id) === String(submissionId)) {
+        setShowSubmissionModal(false);
+        setSelectedSubmission(null);
+      }
     } catch (err) {
       console.error('Error approving submission:', err);
       console.error('Error response:', err.response?.data);
@@ -743,7 +756,33 @@ const AdminDashboard = () => {
     } else {
       setSelectedSubmission(submission);
     }
+    setSubmissionEnhancedContent(null);
+    setSubmissionEnhanceError('');
     setShowSubmissionModal(true);
+  };
+
+  const handleSubmissionEnhance = async (submissionId) => {
+    setSubmissionEnhancing(true);
+    setSubmissionEnhanceError('');
+    setSubmissionEnhancedContent(null);
+    try {
+      const { data } = await adminAPI.enhanceSubmission(submissionId);
+      const next = data?.content;
+      if (typeof next !== 'string' || !next.trim()) {
+        setSubmissionEnhanceError('Enhancement returned empty content.');
+        return;
+      }
+      setSubmissionEnhancedContent(next);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Could not enhance submission.';
+      setSubmissionEnhanceError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setSubmissionEnhancing(false);
+    }
   };
 
   const handleApproveAll = async () => {
@@ -2411,6 +2450,8 @@ const AdminDashboard = () => {
                 onClick={() => {
                   setShowSubmissionModal(false);
                   setSelectedSubmission(null);
+                  setSubmissionEnhancedContent(null);
+                  setSubmissionEnhanceError('');
                 }}
                 className="text-slate-400 hover:text-slate-200 text-2xl font-bold"
               >
@@ -2516,33 +2557,150 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {submissionEnhanceError ? (
+                <p className="text-sm text-red-400 border-t border-slate-700 pt-4">{submissionEnhanceError}</p>
+              ) : null}
+
+              {submissionEnhancedContent ? (
+                <div className="border-t border-slate-700 pt-4">
+                  <p className="text-sm font-medium text-slate-400 mb-2">AI-enhanced preview</p>
+                  <div className="bg-slate-900/80 border border-violet-500/30 rounded-lg p-4">
+                    {(() => {
+                      const content = parseContent(submissionEnhancedContent);
+                      if (content.question || content.solution) {
+                        return (
+                          <div className="space-y-3">
+                            {content.question && (
+                              <div>
+                                <p className="text-sm font-semibold text-slate-300 mb-1">Question:</p>
+                                <p className="text-base text-slate-200 whitespace-pre-wrap break-words">{content.question}</p>
+                              </div>
+                            )}
+                            {content.solution && (
+                              <div>
+                                <p className="text-sm font-semibold text-slate-300 mb-1">Solution:</p>
+                                <pre className="text-base text-slate-200 whitespace-pre-wrap break-words font-sans bg-slate-800 p-3 rounded border border-slate-700 overflow-x-auto max-h-48">
+                                  {content.solution}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <p className="text-base text-slate-200 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                          {submissionEnhancedContent}
+                        </p>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Action Buttons for Pending Submissions */}
               {selectedSubmission.status !== 'approved' && (
-                <div className="border-t border-slate-700 pt-4 flex gap-3">
+                <div className="border-t border-slate-700 pt-4 flex flex-wrap gap-3">
                   <button
-                    onClick={async () => {
-                      await handleApprove(selectedSubmission._id);
-                      setShowSubmissionModal(false);
-                      setSelectedSubmission(null);
-                    }}
-                    disabled={approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)}
+                    type="button"
+                    onClick={() => handleSubmissionEnhance(selectedSubmission._id)}
+                    disabled={
+                      submissionEnhancing ||
+                      approvingIds.has(selectedSubmission._id) ||
+                      rejectingIds.has(selectedSubmission._id)
+                    }
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                      approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)
+                      submissionEnhancing ||
+                      approvingIds.has(selectedSubmission._id) ||
+                      rejectingIds.has(selectedSubmission._id)
                         ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                        : 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-violet-600 text-white hover:bg-violet-700'
                     }`}
                   >
-                    {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve'}
+                    {submissionEnhancing ? 'Enhancing...' : 'Enhance with AI'}
                   </button>
+                  {submissionEnhancedContent ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleApprove(selectedSubmission._id, submissionEnhancedContent);
+                        }}
+                        disabled={
+                          submissionEnhancing ||
+                          approvingIds.has(selectedSubmission._id) ||
+                          rejectingIds.has(selectedSubmission._id)
+                        }
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          submissionEnhancing ||
+                          approvingIds.has(selectedSubmission._id) ||
+                          rejectingIds.has(selectedSubmission._id)
+                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                      >
+                        {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve with enhanced'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await handleApprove(selectedSubmission._id);
+                        }}
+                        disabled={
+                          submissionEnhancing ||
+                          approvingIds.has(selectedSubmission._id) ||
+                          rejectingIds.has(selectedSubmission._id)
+                        }
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          submissionEnhancing ||
+                          approvingIds.has(selectedSubmission._id) ||
+                          rejectingIds.has(selectedSubmission._id)
+                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                            : 'border border-slate-500 text-slate-200 hover:bg-slate-700'
+                        }`}
+                      >
+                        {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve without enhancing'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await handleApprove(selectedSubmission._id);
+                      }}
+                      disabled={
+                        submissionEnhancing ||
+                        approvingIds.has(selectedSubmission._id) ||
+                        rejectingIds.has(selectedSubmission._id)
+                      }
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        submissionEnhancing ||
+                        approvingIds.has(selectedSubmission._id) ||
+                        rejectingIds.has(selectedSubmission._id)
+                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve'}
+                    </button>
+                  )}
                   <button
+                    type="button"
                     onClick={async () => {
                       await handleReject(selectedSubmission._id);
                       setShowSubmissionModal(false);
                       setSelectedSubmission(null);
+                      setSubmissionEnhancedContent(null);
+                      setSubmissionEnhanceError('');
                     }}
-                    disabled={approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)}
+                    disabled={
+                      submissionEnhancing ||
+                      approvingIds.has(selectedSubmission._id) ||
+                      rejectingIds.has(selectedSubmission._id)
+                    }
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                      approvingIds.has(selectedSubmission._id) || rejectingIds.has(selectedSubmission._id)
+                      submissionEnhancing ||
+                      approvingIds.has(selectedSubmission._id) ||
+                      rejectingIds.has(selectedSubmission._id)
                         ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                         : 'bg-red-600 text-white hover:bg-red-700'
                     }`}

@@ -140,6 +140,9 @@ export default function SPCDashboard() {
   const [modError, setModError] = useState("");
   const [modApproving, setModApproving] = useState(() => new Set());
   const [modRejecting, setModRejecting] = useState(() => new Set());
+  const [modEnhancedContent, setModEnhancedContent] = useState(null);
+  const [modEnhancing, setModEnhancing] = useState(false);
+  const [modEnhanceError, setModEnhanceError] = useState("");
   const [modSelected, setModSelected] = useState(null);
 
   const loadModList = useCallback(async (page = 1) => {
@@ -380,16 +383,50 @@ export default function SPCDashboard() {
     }
   };
 
-  const closeModModal = () => setModSelected(null);
+  const closeModModal = () => {
+    setModSelected(null);
+    setModEnhancedContent(null);
+    setModEnhanceError("");
+  };
 
-  const handleModApprove = async (id) => {
-    if (!window.confirm("Approve this submission? This updates the company database.")) return;
+  const handleModEnhance = async (id) => {
+    setModEnhancing(true);
+    setModEnhanceError("");
+    setModEnhancedContent(null);
+    try {
+      const { data } = await adminAPI.enhanceSubmission(id);
+      const next = data?.content;
+      if (typeof next !== "string" || !next.trim()) {
+        setModEnhanceError("Enhancement returned empty content.");
+        return;
+      }
+      setModEnhancedContent(next);
+    } catch (e) {
+      const msg =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Could not enhance submission.";
+      setModEnhanceError(typeof msg === "string" ? msg : JSON.stringify(msg));
+    } finally {
+      setModEnhancing(false);
+    }
+  };
+
+  const handleModApprove = async (id, mergeContent) => {
+    const withEnhanced = typeof mergeContent === "string" && mergeContent.trim().length > 0;
+    const confirmMsg = withEnhanced
+      ? "Approve using the AI-enhanced text? This updates the company database."
+      : "Approve this submission? This updates the company database.";
+    if (!window.confirm(confirmMsg)) return;
     const sid = String(id);
     setModApproving((prev) => new Set(prev).add(sid));
     try {
-      await adminAPI.approveSubmission(id);
+      await adminAPI.approveSubmission(id, withEnhanced ? { mergeContent } : {});
       await loadModList(modMeta.page);
       setModSelected((prev) => (prev && String(prev._id) === sid ? null : prev));
+      setModEnhancedContent(null);
+      setModEnhanceError("");
     } catch (e) {
       const msg =
         e?.response?.data?.details ||
@@ -566,6 +603,7 @@ export default function SPCDashboard() {
                                     type="button"
                                     onClick={() => handleModApprove(row._id)}
                                     disabled={
+                                      modEnhancing ||
                                       modApproving.has(String(row._id)) ||
                                       modRejecting.has(String(row._id)) ||
                                       modLoading
@@ -578,6 +616,7 @@ export default function SPCDashboard() {
                                     type="button"
                                     onClick={() => handleModReject(row._id)}
                                     disabled={
+                                      modEnhancing ||
                                       modApproving.has(String(row._id)) ||
                                       modRejecting.has(String(row._id)) ||
                                       modLoading
@@ -942,23 +981,112 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
                 );
               })()}
             </div>
+            {modEnhanceError ? (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{modEnhanceError}</p>
+            ) : null}
+            {modEnhancedContent ? (
+              <div className="mt-4 rounded-xl border border-violet-500/40 bg-violet-500/5 p-4">
+                <p className="text-sm font-semibold text-theme-primary">AI-enhanced preview</p>
+                <div className="mt-2 text-sm text-theme-secondary">
+                  {(() => {
+                    const c = parseSubmissionContentJson(modEnhancedContent);
+                    if (c.question || c.solution) {
+                      return (
+                        <div className="space-y-3">
+                          {c.question ? (
+                            <div>
+                              <p className="font-semibold text-theme-primary">Question</p>
+                              <p className="mt-1 whitespace-pre-wrap">{c.question}</p>
+                            </div>
+                          ) : null}
+                          {c.solution ? (
+                            <div>
+                              <p className="font-semibold text-theme-primary">Solution</p>
+                              <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap font-sans">
+                                {c.solution}
+                              </pre>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    }
+                    return (
+                      <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-sans">
+                        {modEnhancedContent}
+                      </pre>
+                    );
+                  })()}
+                </div>
+              </div>
+            ) : null}
             {modSelected.status !== "approved" ? (
               <div className="mt-5 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={async () => {
-                    await handleModApprove(modSelected._id);
-                    closeModModal();
-                  }}
+                  onClick={() => handleModEnhance(modSelected._id)}
                   disabled={
+                    modEnhancing ||
                     modApproving.has(String(modSelected._id)) ||
                     modRejecting.has(String(modSelected._id)) ||
                     modLoading
                   }
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-violet-500/60 bg-violet-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve"}
+                  {modEnhancing ? "Enhancing…" : "Enhance with AI"}
                 </button>
+                {modEnhancedContent ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await handleModApprove(modSelected._id, modEnhancedContent);
+                        closeModModal();
+                      }}
+                      disabled={
+                        modEnhancing ||
+                        modApproving.has(String(modSelected._id)) ||
+                        modRejecting.has(String(modSelected._id)) ||
+                        modLoading
+                      }
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve with enhanced"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await handleModApprove(modSelected._id);
+                        closeModModal();
+                      }}
+                      disabled={
+                        modEnhancing ||
+                        modApproving.has(String(modSelected._id)) ||
+                        modRejecting.has(String(modSelected._id)) ||
+                        modLoading
+                      }
+                      className="rounded-lg border border-theme-input bg-theme-card px-4 py-2 text-sm font-semibold text-theme-primary hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve without enhancing"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleModApprove(modSelected._id);
+                      closeModModal();
+                    }}
+                    disabled={
+                      modEnhancing ||
+                      modApproving.has(String(modSelected._id)) ||
+                      modRejecting.has(String(modSelected._id)) ||
+                      modLoading
+                    }
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={async () => {
@@ -966,6 +1094,7 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
                     closeModModal();
                   }}
                   disabled={
+                    modEnhancing ||
                     modApproving.has(String(modSelected._id)) ||
                     modRejecting.has(String(modSelected._id)) ||
                     modLoading
