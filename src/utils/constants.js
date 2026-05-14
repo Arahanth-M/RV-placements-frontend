@@ -1,25 +1,73 @@
 // Environment URLs
 export const LOCALHOST_HOSTNAME = "localhost";
+/** Legacy monolith local port (rollback default). */
 export const LOCALHOST_PORT = 7779;
 export const PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
 
-// Base URL for backend API, prefers environment variable
-export const BASE_URL = (() => {
-  const envUrl = process.env.REACT_APP_API_URL;
-  if (envUrl && typeof envUrl === 'string') {
-    return envUrl;
+function trimApiBase(value) {
+  if (value == null || typeof value !== "string") return "";
+  return value.trim().replace(/\/+$/, "");
+}
+
+const envMainApi = trimApiBase(
+  typeof process !== "undefined" ? process.env.REACT_APP_MAIN_API_URL : ""
+);
+const envInterviewApi = trimApiBase(
+  typeof process !== "undefined" ? process.env.REACT_APP_INTERVIEW_API_URL : ""
+);
+const envLegacyApi = trimApiBase(
+  typeof process !== "undefined" ? process.env.REACT_APP_API_URL : ""
+);
+
+/**
+ * Local split-backend mode: set BOTH in `.env.development.local` (Vite):
+ *   REACT_APP_MAIN_API_URL=http://localhost:7778
+ *   REACT_APP_INTERVIEW_API_URL=http://localhost:7777
+ * Rollback: remove both — app uses REACT_APP_API_URL or localhost:7779.
+ */
+export const IS_SPLIT_BACKEND_LOCAL =
+  Boolean(envMainApi && envInterviewApi);
+
+function resolveLegacyMonolithBaseUrl() {
+  if (envLegacyApi) {
+    return envLegacyApi;
   }
 
-  const hostname = window.location.hostname;
+  const hostname =
+    typeof window !== "undefined" && window.location ? window.location.hostname : "";
 
-  // Check for localhost or development environment
-  if (hostname === LOCALHOST_HOSTNAME || hostname === '127.0.0.1' || hostname.includes('localhost')) {
+  if (hostname === LOCALHOST_HOSTNAME || hostname === "127.0.0.1" || hostname.includes("localhost")) {
     return `http://${LOCALHOST_HOSTNAME}:${LOCALHOST_PORT}`;
   }
-  
-  // Production environment - use the actual hostname to handle www subdomain
+
   return `https://${hostname}`;
+}
+
+/** Main REST API (auth, companies, placement, …). In split local dev → :7778. */
+export const BASE_URL = (() => {
+  if (envMainApi) {
+    return envMainApi;
+  }
+  return resolveLegacyMonolithBaseUrl();
 })();
+
+/** Interview-only API. In split local dev → :7777; otherwise same as {@link BASE_URL}. */
+export const INTERVIEW_API_BASE_URL = (() => {
+  if (envInterviewApi) {
+    return envInterviewApi;
+  }
+  return BASE_URL;
+})();
+
+function backendPortForMessages() {
+  try {
+    const u = new URL(BASE_URL);
+    if (u.port) return u.port;
+    return u.protocol === "https:" ? "443" : "80";
+  } catch {
+    return String(LOCALHOST_PORT);
+  }
+}
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -32,7 +80,8 @@ export const API_ENDPOINTS = {
 
 // Messages
 export const MESSAGES = {
-  BACKEND_PORT_ERROR: (port) => `❌ Error: ${createError()}\n\nPlease check if the backend server is running on port ${port}.`,
+  BACKEND_PORT_ERROR: (port) =>
+    `❌ Error: ${createError()}\n\nPlease check if the backend server is running on port ${port}.`,
   SUBMISSION_SUCCESS: "Submission received and pending approval.",
   /** Shown in the submission success dialog alongside the server status message. */
   SUBMISSION_CONTRIBUTION_NOTE:
@@ -84,7 +133,8 @@ export const RESUME_BUILDER_ENABLED =
 const FRONTEND_PORT = 5173;
 export const CONFIG = {
   FRONTEND_PORT,
-  BACKEND_PORT: LOCALHOST_PORT,
+  /** Port derived from {@link BASE_URL} for dev messages (7778 / 7779 / …). */
+  BACKEND_PORT: backendPortForMessages(),
   PRODUCTION_URL: `https://${PRODUCTION_DOMAIN}`,
   LOCAL_URL: `http://${LOCALHOST_HOSTNAME}:${FRONTEND_PORT}`,
 };

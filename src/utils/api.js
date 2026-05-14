@@ -1,11 +1,38 @@
 import axios from 'axios';
-import { BASE_URL } from './constants';
+import { BASE_URL, INTERVIEW_API_BASE_URL } from './constants';
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from '../constants/placementYears.js';
+
+const debugApiRouting =
+  typeof process !== 'undefined' &&
+  String(process.env.REACT_APP_DEBUG_API_ROUTING || '').trim() === '1';
+
+function attachApiRoutingDebug(instance, clientLabel) {
+  if (!debugApiRouting) return;
+  instance.interceptors.request.use((config) => {
+    const method = String(config.method || 'get').toUpperCase();
+    const path = config.url || '';
+    const base = config.baseURL || '';
+    console.info(`[RV api] ${clientLabel} ${method} ${base}${path}`);
+    return config;
+  });
+}
 
 const API = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
 });
+
+/** Local split: interview routes on backend-interview (:7777). Otherwise same as {@link API}. */
+const interviewHttp = axios.create({
+  baseURL: INTERVIEW_API_BASE_URL,
+  withCredentials: true,
+});
+
+if (debugApiRouting) {
+  console.info('[RV api routing] main →', BASE_URL, '| interview →', INTERVIEW_API_BASE_URL);
+}
+attachApiRoutingDebug(API, 'main');
+attachApiRoutingDebug(interviewHttp, 'interview');
 
 // In-flight promise deduplication: only one network request for companies list at a time
 let companiesListPromise = null;
@@ -390,12 +417,12 @@ export const leaderboardAPI = {
 
 export const interviewAPI = {
   getInterviewVisitOptions: (companyId) =>
-    API.get(`/api/interview/visit-options/${encodeURIComponent(companyId)}`),
+    interviewHttp.get(`/api/interview/visit-options/${encodeURIComponent(companyId)}`),
   previewInterviewPlan: (
     companyId,
     { visitType = "", cluster = "", placementYear, mergePlacementByType } = {}
   ) =>
-    API.get(`/api/interview/preview-plan/${encodeURIComponent(companyId)}`, {
+    interviewHttp.get(`/api/interview/preview-plan/${encodeURIComponent(companyId)}`, {
       params: {
         placementVisitType: visitType,
         placementCluster: cluster,
@@ -413,7 +440,7 @@ export const interviewAPI = {
     interviewPlanMode = "custom",
     customRounds,
   }) {
-    const res = await API.post('/api/interview/start-interview', {
+    const res = await interviewHttp.post('/api/interview/start-interview', {
       userId,
       companyId,
       placementVisitType,
@@ -433,27 +460,27 @@ export const interviewAPI = {
   async submitAnswer({ sessionId, answer, language }) {
     const body = { sessionId, answer };
     if (language) body.language = language;
-    const res = await API.post('/api/interview/submit-answer', body, { timeout: 30000 });
+    const res = await interviewHttp.post('/api/interview/submit-answer', body, { timeout: 30000 });
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
   },
   runPreview: ({ sessionId, code, language }) =>
-    API.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 30000 }),
+    interviewHttp.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 30000 }),
   async beginQuestionReattempt({ sessionId }) {
-    const res = await API.post('/api/interview/begin-question-reattempt', { sessionId });
+    const res = await interviewHttp.post('/api/interview/begin-question-reattempt', { sessionId });
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
   },
   async moveToNextRound({ sessionId }) {
-    const res = await API.post('/api/interview/move-to-next-round', { sessionId });
+    const res = await interviewHttp.post('/api/interview/move-to-next-round', { sessionId });
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
   },
   async discardInterview(sessionId) {
-    const res = await API.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`);
+    const res = await interviewHttp.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`);
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
     return res;
@@ -466,7 +493,7 @@ export const interviewAPI = {
     placementYear,
     mergePlacementByType,
   }) =>
-    API.get('/api/interview/resume-interview', {
+    interviewHttp.get('/api/interview/resume-interview', {
       params: {
         userId,
         companyId,
@@ -477,7 +504,7 @@ export const interviewAPI = {
       },
     }),
   getInterviewStatus: (sessionId) =>
-    API.get(`/api/interview/interview-status/${encodeURIComponent(sessionId)}`, {
+    interviewHttp.get(`/api/interview/interview-status/${encodeURIComponent(sessionId)}`, {
       timeout: 15000,
     }),
   async getUserInterviewSessions(userId, options = {}) {
@@ -496,7 +523,7 @@ export const interviewAPI = {
     if (!interviewSummaryPromises.has(key)) {
       interviewSummaryPromises.set(
         key,
-        API.get(`/api/interview/sessions/${encodeURIComponent(userId)}`, {
+        interviewHttp.get(`/api/interview/sessions/${encodeURIComponent(userId)}`, {
           params: { page, limit },
         })
           .then((res) => {
@@ -524,7 +551,7 @@ export const interviewAPI = {
     if (!interviewDetailPromises.has(key)) {
       interviewDetailPromises.set(
         key,
-        API.get(`/api/interview/session/${encodeURIComponent(sessionId)}`)
+        interviewHttp.get(`/api/interview/session/${encodeURIComponent(sessionId)}`)
           .then((res) => {
             setCachedEntry(interviewDetailCache, key, res.data);
             return res;
@@ -542,7 +569,7 @@ export const interviewAPI = {
     interviewDetailPromises.delete(String(sessionId));
   },
   getUserAnalytics: (userId) =>
-    API.get(`/api/interview/analytics/${encodeURIComponent(userId)}`),
+    interviewHttp.get(`/api/interview/analytics/${encodeURIComponent(userId)}`),
 };
 
 export default API;
