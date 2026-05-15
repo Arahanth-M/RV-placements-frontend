@@ -6,8 +6,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
 /* ─── helpers ─────────────────────────────────────────────── */
@@ -258,9 +260,9 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className={`events-page-theme min-h-screen ${pageShellOuterClass}`}>
+    <div className={`events-page-theme min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
         @keyframes lb-fade-in {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -274,12 +276,6 @@ const Leaderboard = () => {
         .lb-row-hover:hover { background: rgba(79,70,229,0.08) !important; }
         .lb-search-input { outline: none; width: 100%; }
         .lb-search-input:focus { border-color: #6366F1 !important; }
-        .lb-header-wrap {
-          margin-bottom: 32px;
-        }
-        .lb-header-copy {
-          text-align: center;
-        }
         .lb-yesterday-card {
           margin: 0 auto 24px;
           max-width: 300px;
@@ -293,34 +289,9 @@ const Leaderboard = () => {
 
         <div style={{ maxWidth: 896, margin: "0 auto" }}>
 
-        {/* ── Header ── */}
-        <div className="lb-header-wrap">
-          <div className="lb-header-copy">
-            <p style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              letterSpacing: '0.13em',
-              textTransform: 'uppercase',
-              color: '#6366F1',
-              marginBottom: '0.75rem',
-            }}>
-              Placement prep
-            </p>
-            <h1 style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
-              fontWeight: 400,
-              lineHeight: 1.13,
-              marginBottom: '1rem',
-              color: 'var(--text-primary)',
-            }}>
-              Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
-            </h1>
-            <p style={{ fontSize: '17px', color: 'var(--text-secondary)', lineHeight: 1.7, maxWidth: '620px', margin: '0 auto' }}>
-              Top contributors who add questions and interview experiences to the platform.
-            </p>
-          </div>
-        </div>
+        <PageHeroHeader subtitle="Top contributors who add questions and interview experiences to the platform.">
+          Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
+        </PageHeroHeader>
 
         {!isRestricted && (
           <div

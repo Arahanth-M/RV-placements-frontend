@@ -1514,16 +1514,31 @@ html, body, #root {
 
 /* Resume Builder: keep form controls compact and consistent */
 .resume-builder-form .resume-field {
-  height: 2.5rem !important;
+  box-sizing: border-box !important;
   min-height: 2.5rem !important;
   line-height: 1.25rem !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+.resume-builder-form .resume-field-textarea {
+  min-height: 5.5rem !important;
+  resize: vertical;
+}
+
+.resume-builder-form .resume-field::placeholder {
+  opacity: 1;
+  color: var(--text-muted);
 }
 
 .resume-builder-form .resume-select {
   height: 2.5rem !important;
   min-height: 2.5rem !important;
+}
+
+/* Accent CTAs: stay white on colored background (events-page-theme remaps .text-white in light mode). */
+.resume-builder-form .resume-accent-btn,
+.resume-builder-form .resume-accent-btn svg {
+  color: #fff !important;
 }
 
 /* SPC forms: lock single-line control height (grid/flex stretch can inflate native inputs) */

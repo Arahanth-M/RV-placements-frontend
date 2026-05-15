@@ -4,8 +4,10 @@ import { FaEnvelope, FaExternalLinkAlt, FaUniversity } from "react-icons/fa";
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
 
@@ -17,55 +19,17 @@ function Contact() {
 };
 
   return (
-    <div className={`contact-page-theme min-h-screen ${pageShellOuterClass}`}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
-      `}</style>
+    <div className={`contact-page-theme min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
         <div className="mx-auto max-w-4xl">
-        {/* Header (match Leaderboard / Resources / Events) */}
-        <div className="mb-8 sm:mb-10 text-center">
-          <p
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              letterSpacing: '0.13em',
-              textTransform: 'uppercase',
-              color: '#6366F1',
-              marginBottom: '0.75rem',
-            }}
-          >
-            Placement prep
-          </p>
-          <h1
-            className="text-theme-primary"
-            style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
-              fontWeight: 400,
-              lineHeight: 1.13,
-              marginBottom: '1rem',
-            }}
-          >
-            Contact{' '}
-            <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Us</em>
-          </h1>
-          <p
-            style={{
-              fontSize: '17px',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.7,
-              maxWidth: '620px',
-              margin: '0 auto',
-            }}
-          >
-            Get in touch with the RVCE Placement Office for placement-related questions and support.
-          </p>
-        </div>
+        <PageHeroHeader subtitle="Get in touch with the RVCE Placement Office for placement-related questions and support.">
+          Contact <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Us</em>
+        </PageHeroHeader>
 
         {/* Contact Information Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">

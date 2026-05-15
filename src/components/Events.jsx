@@ -6,8 +6,10 @@ import { FaCalendarAlt, FaCheck, FaExternalLinkAlt, FaSearch, FaTimes } from 're
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
 /* ─── tag colour map ────────────────────────────────────────────────────────
@@ -124,13 +126,14 @@ const Events = () => {
     const idStr   = String(event._id);
     const expired = isExpired(event.lastDateToRegister);
 
-    if (expired) return <span className="text-theme-muted text-xs" aria-hidden>—</span>;
-
-    if (!user) return (
-      <span className={`text-theme-muted ${compact ? 'text-[11px]' : 'text-xs'}`}>
-        Sign in to record
-      </span>
-    );
+    if (!user) {
+      if (expired) return <span className="text-theme-muted text-xs" aria-hidden>—</span>;
+      return (
+        <span className={`text-theme-muted ${compact ? 'text-[11px]' : 'text-xs'}`}>
+          Sign in to record
+        </span>
+      );
+    }
 
     if (isAdmin || !canUsePortalRegistration)
       return <span className="text-theme-muted text-xs">—</span>;
@@ -139,6 +142,12 @@ const Events = () => {
       <span className={`inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 ${compact ? 'text-xs' : 'text-sm'}`}>
         <FaCheck className="shrink-0" aria-hidden />
         Registered
+      </span>
+    );
+
+    if (expired) return (
+      <span className={`text-theme-muted ${compact ? 'text-xs' : 'text-sm'}`}>
+        Not registered
       </span>
     );
 
@@ -181,55 +190,16 @@ const Events = () => {
 
   /* ════════════════════════════════════════════════════════════════════════ */
   return (
-    <div className={`events-page-theme ${pageShellOuterClass}`}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
-      `}</style>
+    <div className={`events-page-theme ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
-        {/* ── Header (match Leaderboard / Resources) ── */}
-        <div className="mb-8 sm:mb-10 text-center">
-          <p
-            style={{
-              fontSize: '13px',
-              fontWeight: 600,
-              letterSpacing: '0.13em',
-              textTransform: 'uppercase',
-              color: '#6366F1',
-              marginBottom: '0.75rem',
-            }}
-          >
-            Placement prep
-          </p>
-          <h1
-            className="text-theme-primary"
-            style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
-              fontWeight: 400,
-              lineHeight: 1.13,
-              marginBottom: '1rem',
-            }}
-          >
-            Events{' '}
-            
-          </h1>
-          <p
-            style={{
-              fontSize: '17px',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.7,
-              maxWidth: '620px',
-              margin: '0 auto',
-            }}
-          >
-            Stay updated with placements, hackathons, and other important events. After you register,
-            use &quot;Mark registered&quot; to keep track of events you have signed up for.
-          </p>
-        </div>
+        <PageHeroHeader subtitle='Stay updated with placements, hackathons, and other important events. After you register, use "Mark registered" to keep track of events you have signed up for.'>
+          Events
+        </PageHeroHeader>
 
         {/* ── Loading ── */}
         {loading && (
@@ -403,14 +373,12 @@ const Events = () => {
                                     Open registration
                                   </a>
                                 )}
-                                {!expired && (
-                                  <div className="pt-0.5 border-t border-theme/60">
-                                    <p className="text-[10px] uppercase tracking-wide text-theme-muted mb-1">
-                                      On this portal
-                                    </p>
-                                    {renderPortalRegistration(event, { compact: true })}
-                                  </div>
-                                )}
+                                <div className="pt-0.5 border-t border-theme/60">
+                                  <p className="text-[10px] uppercase tracking-wide text-theme-muted mb-1">
+                                    On this portal
+                                  </p>
+                                  {renderPortalRegistration(event, { compact: true })}
+                                </div>
                               </div>
                             </div>
                           );

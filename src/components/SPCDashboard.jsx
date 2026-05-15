@@ -4,22 +4,27 @@ import { spcAPI, adminAPI } from "../utils/api";
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+import {
+  FaDatabasePlus,
+  FaArrowRight,
+  FaClipboardList,
+  FaUsers,
+  FaSync,
+} from "react-icons/fa";
 
-const PRIMARY_ACTION_BTN_CLASS =
-  "inline-flex h-11 shrink-0 items-center justify-center rounded-xl bg-theme-accent px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90";
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 function formatWhen(iso) {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleString(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return "—";
   }
@@ -82,11 +87,113 @@ const EDIT_INITIAL = {
   sixMonthsInternshipStipend: "",
 };
 
+const PRIMARY_ACTION_BTN_CLASS =
+  "inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-theme-accent px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90";
+
+// ─── Dashboard landing ────────────────────────────────────────────────────────
+
+function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
+  const actions = [
+    {
+      key: "add",
+      title: "Add placement data",
+      desc: "Submit the data of a newly placed student.",
+      cta: "Get started",
+      accent: "border-l-violet-500",
+      ctaColor: "text-violet-500",
+      badge: null,
+    },
+    {
+      key: "conversion",
+      title: "Update conversion details",
+      desc: "Update the conversion details of a student who received a PPO.",
+      cta: "Get started",
+      accent: "border-l-emerald-500",
+      ctaColor: "text-emerald-600",
+      badge: null,
+    },
+    {
+      key: "submissions",
+      title: "View submissions",
+      desc: "View all your submitted placement related reocords",
+      cta: "See all",
+      accent: "border-l-amber-500",
+      ctaColor: "text-amber-600",
+      badge: null,
+    },
+    {
+      key: "mod",
+      title: "Review student contributions",
+      desc: "Approve, reject, or enhance student submissions.",
+      cta: "Start review",
+      accent: "border-l-rose-500",
+      ctaColor: "text-rose-600",
+      badge:
+        pendingLoading
+          ? null
+          : pendingCount > 0
+          ? { label: `${pendingCount} pending`, color: "bg-rose-500/10 text-rose-600 border border-rose-500/20" }
+          : null,
+    },
+  ];
+
+  return (
+    <div className="mx-auto w-full max-w-5xl">
+      <PageHeroHeader subtitle="Manage SPC placement workflows and review what you have submitted.">
+        SPC <em style={{ color: "#818CF8", fontStyle: "italic" }}>Dashboard</em>
+      </PageHeroHeader>
+
+      {/* Pending review stat card */}
+      {/* <div className="mb-6">
+        <div className="inline-flex flex-col rounded-xl border border-theme bg-theme-card px-5 py-3.5 shadow-sm">
+          <span className="text-xs font-medium text-theme-secondary mb-1">Pending review</span>
+          <span className="text-2xl font-bold text-amber-400">
+            {pendingLoading ? "…" : pendingCount}
+          </span>
+        </div>
+      </div> */}
+
+      {/* Action cards grid */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {actions.map(({ key, title, desc, cta, accent, ctaColor, badge }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onNavigate(key)}
+            className={`group flex flex-col gap-3.5 rounded-xl border border-theme bg-theme-card p-5 sm:p-6 text-left shadow-sm transition-colors hover:bg-theme-hero/40 border-l-[3px] ${accent}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 flex-1 text-lg font-semibold text-theme-primary sm:text-xl">{title}</p>
+              {badge ? (
+                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium ${badge.color}`}>
+                  {badge.label}
+                </span>
+              ) : null}
+            </div>
+            <p className="text-sm leading-6 text-theme-secondary sm:text-base sm:leading-7">{desc}</p>
+
+            {/* Footer CTA */}
+            <div className={`flex items-center gap-1.5 text-sm font-medium sm:text-base ${ctaColor}`}>
+              <span>{cta}</span>
+              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M4 8a.75.75 0 0 1 .75-.75h5.69L8.22 5.03a.75.75 0 0 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 0 1-1.06-1.06l2.22-2.22H4.75A.75.75 0 0 1 4 8z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function SPCDashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const showSubmissions = searchParams.get("view") === "submissions";
   const showStudentMod = searchParams.get("view") === "student-contributions";
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [placements, setPlacements] = useState([]);
@@ -102,11 +209,29 @@ export default function SPCDashboard() {
   const companySuggestDebounceRef = useRef(null);
   const pickedCompanyNameRef = useRef("");
 
+  // pending count for stat card
+  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingLoading, setPendingLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    adminAPI
+      .getSubmissions({ params: { status: "pending", page: 1, limit: 1 } })
+      .then(({ data }) => {
+        if (isMounted) setPendingCount(data?.total ?? 0);
+      })
+      .catch(() => {
+        if (isMounted) setPendingCount(0);
+      })
+      .finally(() => {
+        if (isMounted) setPendingLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
   useEffect(() => {
     return () => {
-      if (companySuggestDebounceRef.current) {
-        clearTimeout(companySuggestDebounceRef.current);
-      }
+      if (companySuggestDebounceRef.current) clearTimeout(companySuggestDebounceRef.current);
     };
   }, []);
 
@@ -129,9 +254,7 @@ export default function SPCDashboard() {
   }, []);
 
   useEffect(() => {
-    if (showSubmissions) {
-      loadSubmissions();
-    }
+    if (showSubmissions) loadSubmissions();
   }, [showSubmissions, loadSubmissions]);
 
   const [modList, setModList] = useState([]);
@@ -171,17 +294,11 @@ export default function SPCDashboard() {
   }, []);
 
   useEffect(() => {
-    if (showStudentMod) {
-      loadModList(modMeta.page);
-    }
+    if (showStudentMod) loadModList(modMeta.page);
   }, [showStudentMod, loadModList, modMeta.page]);
 
   useEffect(() => {
-    try {
-      window.scrollTo(0, 0);
-    } catch {
-      // no-op for non-browser environments
-    }
+    try { window.scrollTo(0, 0); } catch { /* no-op */ }
   }, [showSubmissions, showStudentMod]);
 
   useEffect(() => {
@@ -216,9 +333,7 @@ export default function SPCDashboard() {
         const rawItems = Array.isArray(res?.data?.items) ? res.data.items : [];
         const seenNames = new Set();
         const items = rawItems.filter((item) => {
-          const nameKey = String(item?.name || "")
-            .trim()
-            .toLowerCase();
+          const nameKey = String(item?.name || "").trim().toLowerCase();
           if (!nameKey || seenNames.has(nameKey)) return false;
           seenNames.add(nameKey);
           return true;
@@ -273,9 +388,7 @@ export default function SPCDashboard() {
     if (name === "companyPlaced") {
       const next = String(value || "").trim().toLowerCase();
       const picked = String(pickedCompanyNameRef.current || "").trim().toLowerCase();
-      if (next !== picked) {
-        pickedCompanyNameRef.current = "";
-      }
+      if (next !== picked) pickedCompanyNameRef.current = "";
     }
     setEditForm((prev) => ({ ...prev, [name]: value }));
     setSaveError("");
@@ -427,6 +540,7 @@ export default function SPCDashboard() {
       setModSelected((prev) => (prev && String(prev._id) === sid ? null : prev));
       setModEnhancedContent(null);
       setModEnhanceError("");
+      setPendingCount((n) => Math.max(0, n - 1));
     } catch (e) {
       const msg =
         e?.response?.data?.details ||
@@ -451,6 +565,7 @@ export default function SPCDashboard() {
       await adminAPI.rejectSubmission(id);
       await loadModList(modMeta.page);
       setModSelected((prev) => (prev && String(prev._id) === String(id) ? null : prev));
+      setPendingCount((n) => Math.max(0, n - 1));
     } catch (e) {
       window.alert(
         e?.response?.data?.error || e?.response?.data?.message || "Could not reject submission."
@@ -464,49 +579,32 @@ export default function SPCDashboard() {
     }
   };
 
-  return (
-    <div className={`min-h-screen ${pageShellOuterClass}`}>
-      <div className={pageShellInnerClass}>
-        {!showSubmissions && !showStudentMod ? (
-          <div className="mx-auto w-full max-w-5xl">
-            <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
-              <h1 className="text-3xl font-bold text-theme-primary">SPC Dashboard</h1>
-              <p className="mt-3 text-sm text-theme-secondary">
-                Manage SPC placement workflows and review what you have submitted.
-              </p>
+  // Navigation handler for action cards
+  const handleDashboardNavigate = (key) => {
+    if (key === "add") navigate("/spc/form");
+    else if (key === "conversion") navigate("/spc/conversion-details");
+    else if (key === "submissions") setSearchParams({ view: "submissions" });
+    else if (key === "mod") {
+      setModMeta((m) => ({ ...m, page: 1 }));
+      setSearchParams({ view: "student-contributions" });
+    }
+  };
 
-              <div className="mt-6 flex flex-wrap items-start gap-3">
-                <button type="button" onClick={() => navigate("/spc/form")} className={PRIMARY_ACTION_BTN_CLASS}>
-                  Add Placement Data
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/spc/conversion-details")}
-                  className={PRIMARY_ACTION_BTN_CLASS}
-                >
-                  Update conversion details
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSearchParams({ view: "submissions" })}
-                  className={PRIMARY_ACTION_BTN_CLASS}
-                >
-                  View submissions
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModMeta((m) => ({ ...m, page: 1 }));
-                    setSearchParams({ view: "student-contributions" });
-                  }}
-                  className={PRIMARY_ACTION_BTN_CLASS}
-                >
-                  Review student contributions
-                </button>
-              </div>
-            </div>
-          </div>
+  return (
+    <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
+      <div className={pageShellInnerClass}>
+
+        {/* ── Landing ── */}
+        {!showSubmissions && !showStudentMod ? (
+          <DashboardLanding
+            onNavigate={handleDashboardNavigate}
+            pendingCount={pendingCount}
+            pendingLoading={pendingLoading}
+          />
         ) : showStudentMod ? (
+
+          /* ── Student contributions ── */
           <>
             <PageBackNavRow>
               <PageBackButton onClick={() => setSearchParams({})} label="Back to Dashboard" />
@@ -516,7 +614,7 @@ export default function SPCDashboard() {
               <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
                 <div className="flex flex-wrap items-center gap-3 border-b border-theme-input pb-4">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg font-semibold text-theme-primary">Pending student contributions</h2>
+                    <h2 className="text-xl font-semibold text-theme-primary">Pending student contributions</h2>
                     <p className="mt-1 text-sm text-theme-secondary">
                       Approve or reject company submissions from students.
                     </p>
@@ -664,12 +762,11 @@ export default function SPCDashboard() {
             </div>
           </>
         ) : (
+
+          /* ── My submissions / placements ── */
           <>
             <PageBackNavRow>
-              <PageBackButton
-                onClick={() => setSearchParams({})}
-                label="Back to Dashboard"
-              />
+              <PageBackButton onClick={() => setSearchParams({})} label="Back to Dashboard" />
             </PageBackNavRow>
 
             <div className="mx-auto w-full max-w-5xl">
@@ -690,8 +787,8 @@ export default function SPCDashboard() {
 
                   <section className="space-y-3" aria-label="Placement and conversion records">
                     <div className="flex w-full flex-wrap items-center gap-3">
-                      <h2 className="min-w-0 flex-1 text-lg font-semibold text-theme-primary">
-                        Placement & conversion records
+                      <h2 className="min-w-0 flex-1 text-xl font-semibold text-theme-primary">
+                        Placement &amp; conversion records
                       </h2>
                       <button
                         type="button"
@@ -707,7 +804,7 @@ export default function SPCDashboard() {
                         type="button"
                         onClick={loadSubmissions}
                         disabled={loading}
-                        className="ml-auto h-10 shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-10 shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm font-medium text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {loading ? "Refreshing…" : "Refresh"}
                       </button>
@@ -743,26 +840,17 @@ export default function SPCDashboard() {
                                   {row.branchCode || "—"}
                                 </td>
                                 <td className="max-w-[10rem] px-3 py-2 align-middle">{row.typeOfOffer || "—"}</td>
-                                {/* <td className="max-w-[14rem] px-3 py-2 align-middle">
-                                  <button
-                                    type="button"
-                                    onClick={() => openRecordModal(row)}
-                                    className="inline-flex h-8 items-center justify-center rounded-lg border border-violet-500/40 bg-violet-600/15 px-3 text-xs font-semibold text-violet-300 transition-colors hover:bg-violet-600/25 hover:text-violet-200"
-                                  >
-                                    View details / Edit
-                                  </button>
-                                </td> */}
                                 <td className="px-3 py-2 align-middle">
-  <div className="flex items-center h-full">
-    <button
-      type="button"
-      onClick={() => openRecordModal(row)}
-className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
->
-      View details / Edit
-    </button>
-  </div>
-</td>
+                                  <div className="flex items-center h-full">
+                                    <button
+                                      type="button"
+                                      onClick={() => openRecordModal(row)}
+                                      className="h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                      View details / Edit
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -776,12 +864,14 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
           </>
         )}
       </div>
+
+      {/* ── Edit record modal ── */}
       {selectedRecord ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-theme bg-theme-card p-5 shadow-2xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-lg font-semibold text-theme-primary">Placement record details</h3>
+                <h3 className="text-xl font-semibold text-theme-primary">Placement record details</h3>
                 <p className="text-sm text-theme-secondary">
                   {selectedRecord.studentName || "—"} · {selectedRecord.companyName || "—"}
                 </p>
@@ -824,10 +914,7 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
                   value={editForm.companyPlaced}
                   onChange={onEditChange}
                   onFocus={() => {
-                    if (
-                      String(editForm.companyPlaced || "").trim().length >= 2 &&
-                      companySuggestions.length > 0
-                    ) {
+                    if (String(editForm.companyPlaced || "").trim().length >= 2 && companySuggestions.length > 0) {
                       setCompanySuggestOpen(true);
                     }
                   }}
@@ -837,10 +924,7 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
                   <p className="mt-1 text-xs text-theme-muted">Searching...</p>
                 ) : null}
                 {companySuggestOpen && companySuggestions.length > 0 ? (
-                  <ul
-                    className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme-input bg-theme-card py-1 shadow-lg"
-                    role="listbox"
-                  >
+                  <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme-input bg-theme-card py-1 shadow-lg" role="listbox">
                     {companySuggestions.map((item) => (
                       <li key={item.id} role="presentation">
                         <button
@@ -920,12 +1004,14 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
           </div>
         </div>
       ) : null}
+
+      {/* ── Mod detail modal ── */}
       {modSelected ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-theme bg-theme-card p-5 shadow-2xl sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-theme-primary">Submission detail</h3>
+                <h3 className="text-xl font-semibold text-theme-primary">Submission detail</h3>
                 <p className="text-sm text-theme-secondary">
                   {modSelected.companyId?.name || "Company"} · {getSubmissionTypeLabel(modSelected.type)}
                 </p>
@@ -986,7 +1072,7 @@ className= "h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white
             ) : null}
             {modEnhancedContent ? (
               <div className="mt-4 rounded-xl border border-violet-500/40 bg-violet-500/5 p-4">
-                <p className="text-sm font-semibold text-theme-primary">AI-enhanced preview</p>
+                <p className="text-base font-semibold text-theme-primary">AI-enhanced preview</p>
                 <div className="mt-2 text-sm text-theme-secondary">
                   {(() => {
                     const c = parseSubmissionContentJson(modEnhancedContent);

@@ -35,7 +35,7 @@ export default function IIITVLatexStyle({ draft }) {
     : [];
 
   return (
-    <div className="bg-white text-black min-h-[900px] p-6 font-serif">
+    <div data-resume-export-root className="bg-white text-black min-h-[900px] w-full p-6 font-serif">
       <header className="mb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -79,7 +79,7 @@ export default function IIITVLatexStyle({ draft }) {
         </div>
       ))}
 
-      <SectionTitle>Personal Projects</SectionTitle>
+      <SectionTitle>Projects</SectionTitle>
       {projects.map((item, idx) => (
         <div key={`project-${idx}`} className="mb-2">
           <DateRight

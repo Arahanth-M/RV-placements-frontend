@@ -4,8 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
 
@@ -114,9 +116,10 @@ const Resources = () => {
   };
 
   return (
-    <div className={`events-page-theme min-h-screen ${pageShellOuterClass}`}>
+    <div className={`events-page-theme min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
 
         .res-font { font-family: 'DM Sans', 'Helvetica Neue', sans-serif; }
 
@@ -185,29 +188,13 @@ const Resources = () => {
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
-        {/* ── Header ── */}
-        <div className="mb-8 sm:mb-10 text-center">
-          <p style={{
-            fontSize: '13px', fontWeight: 600, letterSpacing: '0.13em',
-            textTransform: 'uppercase', color: '#6366F1', marginBottom: '0.75rem',
-          }}>
-            Placement prep
-          </p>
-          <h1 style={{
-            fontFamily: "'DM Serif Display', Georgia, serif",
-            fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
-            fontWeight: 400, lineHeight: 1.13, marginBottom: '1rem',
-          }}
-            className="text-theme-primary"
-          >
-            Study <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Resources</em>
-          </h1>
-          <p className="text-slate-400" style={{ fontSize: '17px', maxWidth: '520px', margin: '0 auto', lineHeight: 1.7 }}>
-            Curated collection of resources to help you ace technical interviews and excel in your career
-          </p>
-
-          
-        </div>
+        <PageHeroHeader
+          subtitle="Curated collection of resources to help you ace technical interviews and excel in your career"
+          subtitleClassName="text-slate-400"
+          subtitleMaxWidth="520px"
+        >
+          Study <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Resources</em>
+        </PageHeroHeader>
 
         {/* ── Controls ── */}
         <div className="res-controls" style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap' }}>

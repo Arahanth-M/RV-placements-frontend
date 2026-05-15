@@ -6,8 +6,10 @@ import { useNavigate } from "react-router-dom";
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
 const toSafeString = (value) =>
@@ -124,41 +126,21 @@ function AIInterviews() {
   };
 
   return (
-    <div className={`min-h-screen ${pageShellOuterClass}`}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
-      `}</style>
+    <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
         <div className="mx-auto max-w-6xl">
-      {/* Header Section */}
-      <div className="mb-6 sm:mb-8 text-center">
-        <p style={{
-          fontSize: '13px',
-          fontWeight: 600,
-          letterSpacing: '0.13em',
-          textTransform: 'uppercase',
-          color: '#6366F1',
-          marginBottom: '0.75rem',
-        }}>
-          Placement prep
-        </p>
-        <h1 style={{
-          fontFamily: "'DM Serif Display', Georgia, serif",
-          fontSize: 'clamp(2.2rem, 5vw, 3.4rem)',
-          fontWeight: 400,
-          lineHeight: 1.13,
-          marginBottom: '1rem',
-        }} className="text-theme-primary">
-          Mock <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Interviews</em>
-        </h1>
-        <p className="text-theme-secondary" style={{ fontSize: '17px', maxWidth: '520px', margin: '0 auto', lineHeight: 1.7 }}>
-          Track your progress, review feedback, and analyze your performance in AI-driven interviews.
-        </p>
-      </div>
+      <PageHeroHeader
+        subtitle="Track your progress, review feedback, and analyze your performance in AI-driven interviews."
+        subtitleClassName="text-theme-secondary"
+        subtitleMaxWidth="520px"
+      >
+        Mock <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Interviews</em>
+      </PageHeroHeader>
 
       {/* Tab Navigation */}
       <div className="flex gap-2 mb-6 p-1 bg-theme-card border border-theme rounded-xl w-fit">

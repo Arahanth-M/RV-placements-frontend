@@ -24,7 +24,10 @@ export default function StandardClassic({ draft }) {
     ? draft.skills.map((s) => String(s ?? "").trim()).filter(Boolean)
     : [];
   return (
-    <div className="bg-white text-gray-900 p-6 shadow-sm min-h-[900px]">
+    <div
+      data-resume-export-root
+      className="bg-white text-gray-900 p-6 shadow-sm min-h-[900px] w-full"
+    >
       <div className="text-center border-b border-gray-300 pb-3 mb-4">
         <h1 className="text-2xl font-bold">{personal.fullName || "Your Name"}</h1>
         <p className="text-sm text-gray-700">

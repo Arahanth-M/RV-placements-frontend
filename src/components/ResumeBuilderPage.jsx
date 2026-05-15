@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus, FaTrash, FaFileDownload, FaChevronDown, FaSave } from "react-icons/fa";
 import { resumeAPI } from "../utils/api";
-import { exportResume } from "../utils/resumeExport";
+import { exportResume, normalizeResumePayload } from "../utils/resumeExport";
 import {
   createBlankResumeDraft,
   RESUME_TEMPLATE_IDS,
@@ -12,8 +12,10 @@ import IIITVLatexStyle from "./resume/templates/IIITVLatexStyle";
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
-  pageShellOuterClass,
+  pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
 /** Same row styling as Header student-corner links */
@@ -90,17 +92,80 @@ function updateAtIndex(array, index, nextValue) {
   return array.map((item, idx) => (idx === index ? nextValue : item));
 }
 
+const FIELD_LABELS = {
+  fullName: "Full Name",
+  email: "Email",
+  phone: "Phone",
+  location: "Location",
+  linkedin: "LinkedIn",
+  github: "GitHub",
+  summary: "Summary",
+  institution: "Institution",
+  degree: "Degree",
+  field: "Field of study",
+  startDate: "Start date",
+  endDate: "End date",
+  score: "Score",
+  name: "Project name",
+  techStack: "Tech stack",
+  link: "Link",
+  company: "Company",
+  role: "Role",
+  title: "Title",
+  detail: "Detail",
+};
+
+const FIELD_PLACEHOLDERS = {
+  fullName: "e.g. Jane Doe",
+  email: "name@rvce.edu.in",
+  phone: "+91 98765 43210",
+  location: "Bengaluru, Karnataka",
+  linkedin: "https://linkedin.com/in/your-profile",
+  github: "https://github.com/your-username",
+  summary: "Your skills, experience, and goals (max 500 characters)",
+  institution: "e.g. RV College of Engineering",
+  degree: "e.g. B.E. Computer Science",
+  field: "e.g. Computer Science",
+  startDate: "e.g. Aug 2022",
+  endDate: "e.g. May 2026",
+  score: "e.g. 9.2 CGPA or 85%",
+  name: "e.g. Placement Dashboard",
+  techStack: "e.g. React, Node.js, MongoDB",
+  link: "https://github.com/you/project",
+  company: "e.g. Acme Corp",
+  role: "e.g. Software Engineer Intern",
+  title: "e.g. Google Code Jam Qualifier",
+  detail: "Description of the achievement",
+};
+
 function formatFieldLabel(field) {
-  const labels = {
-    fullName: "Full Name",
-    email: "Email",
-    phone: "Phone",
-    location: "Location",
-    linkedin: "LinkedIn",
-    github: "GitHub",
-    summary: "Summary",
-  };
-  return labels[field] || field;
+  return FIELD_LABELS[field] || field.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+}
+
+function formatFieldPlaceholder(field) {
+  return (
+    FIELD_PLACEHOLDERS[field] ??
+    `Enter ${formatFieldLabel(field).toLowerCase()}`
+  );
+}
+
+const BULLET_PLACEHOLDERS = {
+  projects: [
+    "e.g. Built a full-stack feature  with React and Node.js",
+    "e.g. Improved load time by caching and query optimization",
+    "e.g. Wrote unit tests and docs",
+  ],
+  experience: [
+    "e.g. Built a full-stack feature  with React and Node.js",
+    "e.g. Improved load time by caching and query optimization",
+    "e.g. Wrote unit tests and docs",
+  ],
+};
+
+function getBulletPlaceholder(sectionKey, index) {
+  const hints = BULLET_PLACEHOLDERS[sectionKey];
+  if (hints?.length) return hints[index % hints.length];
+  return "Describe what you did, how you did it, and the outcome";
 }
 
 export default function ResumeBuilderPage() {
@@ -149,14 +214,7 @@ export default function ResumeBuilderPage() {
         const res = await resumeAPI.getDraft();
         if (!isMounted) return;
         const responseData = res.data || {};
-        const nextDraft = {
-          ...createBlankResumeDraft(),
-          ...responseData,
-          personal: {
-            ...createBlankResumeDraft().personal,
-            ...(responseData.personal || {}),
-          },
-        };
+        const nextDraft = normalizeResumePayload(responseData);
         setDraft(nextDraft);
         setSkillsInput((nextDraft.skills || []).join(", "));
         setVersion(Number(responseData.version || 0));
@@ -217,7 +275,7 @@ export default function ResumeBuilderPage() {
         <h3 className="font-semibold text-theme-primary">{title}</h3>
         <button
           type="button"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-theme-accent text-white text-sm"
+          className="resume-accent-btn inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-theme-accent text-sm font-medium"
           onClick={() =>
             applyDraftUpdate((prev) => ({
               ...prev,
@@ -237,8 +295,8 @@ export default function ResumeBuilderPage() {
                 <div key={field} className="space-y-1">
                   <label className="block text-[11px] font-medium text-theme-secondary">{formatFieldLabel(field)}</label>
                   <input
-                    className="resume-field w-full rounded-md border border-theme bg-theme-app px-3 text-sm text-theme-primary"
-                    placeholder={`Enter ${formatFieldLabel(field).toLowerCase()}`}
+                    className="resume-field w-full rounded-md border border-theme bg-theme-app text-sm text-theme-primary"
+                    placeholder={formatFieldPlaceholder(field)}
                     value={item[field] || ""}
                     onChange={(event) =>
                       applyDraftUpdate((prev) => ({
@@ -254,13 +312,13 @@ export default function ResumeBuilderPage() {
               ))}
           </div>
           {Array.isArray(item.bullets) ? (
-            <div className="mt-2 space-y-2">
+            <div className="mt-3 space-y-2">
+              <p className="text-[11px] font-medium text-theme-secondary">Bullet points</p>
               {(item.bullets || []).map((bullet, bulletIdx) => (
                 <div key={`${sectionKey}-bullet-${idx}-${bulletIdx}`} className="flex gap-2">
-                  <span className="flex items-center text-xs font-medium text-theme-secondary px-2">Explain</span>
                   <input
-                    className="resume-field w-full rounded-md border border-theme bg-theme-app px-3 text-sm text-theme-primary"
-                    placeholder="Explain"
+                    className="resume-field min-w-0 flex-1 rounded-md border border-theme bg-theme-app text-sm text-theme-primary"
+                    placeholder={getBulletPlaceholder(sectionKey, bulletIdx)}
                     value={bullet.text || ""}
                     onChange={(event) => {
                       const bullets = updateAtIndex(item.bullets, bulletIdx, { text: event.target.value });
@@ -322,10 +380,10 @@ export default function ResumeBuilderPage() {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-    const nextDraft = {
+    const nextDraft = normalizeResumePayload({
       ...draft,
       skills: normalizedSkills,
-    };
+    });
     const validationErrors = validateDraft(nextDraft);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
@@ -335,9 +393,19 @@ export default function ResumeBuilderPage() {
     setIsExporting(true);
     try {
       const result = await exportResume({ payload: nextDraft, previewElement: previewRef.current });
-      setStatusText(result.mode === "server" ? "Exported using server fallback." : "Exported");
-    } catch {
-      setStatusText("Export failed");
+      setStatusText(
+        result.mode === "server"
+          ? "PDF downloaded (text layout). For preview-style PDF, allow downloads in browser and retry."
+          : "PDF downloaded"
+      );
+    } catch (err) {
+      const apiErrors = err?.response?.data?.errors;
+      if (Array.isArray(apiErrors) && apiErrors.length > 0) {
+        setErrors(apiErrors);
+        setStatusText("Validation error");
+      } else {
+        setStatusText(err?.message || "Export failed");
+      }
     } finally {
       setIsExporting(false);
     }
@@ -348,10 +416,10 @@ export default function ResumeBuilderPage() {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean);
-    const nextDraft = {
+    const nextDraft = normalizeResumePayload({
       ...draft,
       skills: normalizedSkills,
-    };
+    });
     const validationErrors = validateDraft(nextDraft);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
@@ -369,12 +437,19 @@ export default function ResumeBuilderPage() {
       setStatusText("Saved");
       hasUnsavedChangesRef.current = false;
     } catch (error) {
+      const apiErrors = error?.response?.data?.errors;
+      if (Array.isArray(apiErrors) && apiErrors.length > 0) {
+        setErrors(apiErrors);
+        setSaveState("error");
+        setStatusText("Validation error");
+        return;
+      }
       if (error?.response?.status === 409) {
         setSaveState("conflict");
         setStatusText("Draft conflict: refresh page to sync latest version.");
       } else {
         setSaveState("error");
-        setStatusText("Save failed. Try again.");
+        setStatusText(error?.response?.data?.message || "Save failed. Try again.");
       }
     } finally {
       setIsSaving(false);
@@ -386,70 +461,33 @@ export default function ResumeBuilderPage() {
   }
 
   return (
-    <div className={`resume-builder-form events-page-theme min-h-screen ${pageShellOuterClass}`}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
-      `}</style>
+    <div className={`resume-builder-form events-page-theme min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(-1)} label="Back" />
         </PageBackNavRow>
 
-        {/* ── Header (match Events / Resources) ── */}
-        <div className="mb-8 sm:mb-10 text-center">
-          <p
-            style={{
-              fontSize: "13px",
-              fontWeight: 600,
-              letterSpacing: "0.13em",
-              textTransform: "uppercase",
-              color: "#6366F1",
-              marginBottom: "0.75rem",
-            }}
-          >
-            Placement prep
-          </p>
-          <h1
-            className="text-theme-primary"
-            style={{
-              fontFamily: "'DM Serif Display', Georgia, serif",
-              fontSize: "clamp(2.2rem, 5vw, 3.4rem)",
-              fontWeight: 400,
-              lineHeight: 1.13,
-              marginBottom: "1rem",
-            }}
-          >
-            Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
-          </h1>
-          <p
-            style={{
-              fontSize: "17px",
-              color: "var(--text-secondary)",
-              lineHeight: 1.7,
-              maxWidth: "620px",
-              margin: "0 auto",
-            }}
-          >
-            Fill in your details, pick a template, and export a PDF when you are ready.
-          </p>
-        </div>
+        <PageHeroHeader subtitle="Fill in your details, pick a template, and export a PDF when you are ready.">
+          Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
+        </PageHeroHeader>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6">
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-sm">
             <span className="text-theme-secondary">{statusText || "Ready"}</span>
-            <button
+            {/* <button
               type="button"
               className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-theme-primary disabled:opacity-60"
               onClick={handleSaveDraft}
               disabled={isSaving}
             >
               <FaSave /> {isSaving ? "Saving..." : "Save Draft"}
-            </button>
+            </button> */}
             <button
               type="button"
               //className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 text-sm font-semibold text-white transition-[background-color,border-color,filter] duration-200 min-h-[2.75rem] px-5 py-2.5 disabled:opacity-60 disabled:pointer-events-none border-theme-accent bg-theme-accent shadow-sm hover:brightness-110"
               //className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent text-white disabled:opacity-60"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent !text-white disabled:opacity-60"
+              className="resume-accent-btn inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent disabled:opacity-60"
               onClick={handleExport}
               disabled={isExporting || isSaving}
             >
@@ -522,14 +560,27 @@ export default function ResumeBuilderPage() {
               <h2 className="font-semibold text-theme-primary mb-3">Personal</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {Object.keys(draft.personal).map((field) => (
-                  <div key={field} className="space-y-1">
+                  <div
+                    key={field}
+                    className={`space-y-1 ${field === "summary" ? "md:col-span-2" : ""}`}
+                  >
                     <label className="block text-[11px] font-medium text-theme-secondary">{formatFieldLabel(field)}</label>
-                    <input
-                      className="resume-field w-full rounded-md border border-theme bg-theme-app px-3 text-sm text-theme-primary"
-                      placeholder={`Enter ${formatFieldLabel(field).toLowerCase()}`}
-                      value={draft.personal[field] || ""}
-                      onChange={(event) => updatePersonalField(field, event.target.value)}
-                    />
+                    {field === "summary" ? (
+                      <textarea
+                        className="resume-field resume-field-textarea w-full rounded-md border border-theme bg-theme-app text-sm text-theme-primary"
+                        placeholder={formatFieldPlaceholder(field)}
+                        rows={3}
+                        value={draft.personal[field] || ""}
+                        onChange={(event) => updatePersonalField(field, event.target.value)}
+                      />
+                    ) : (
+                      <input
+                        className="resume-field w-full rounded-md border border-theme bg-theme-app text-sm text-theme-primary"
+                        placeholder={formatFieldPlaceholder(field)}
+                        value={draft.personal[field] || ""}
+                        onChange={(event) => updatePersonalField(field, event.target.value)}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -565,7 +616,7 @@ export default function ResumeBuilderPage() {
           <div>
             <div className="sticky top-20">
               <h2 className="font-semibold text-theme-primary mb-2">Live Preview</h2>
-              <div ref={previewRef} className="border border-theme rounded-lg overflow-hidden">
+              <div ref={previewRef} className="border border-theme rounded-lg overflow-x-hidden overflow-y-auto max-h-[calc(100vh-6rem)]">
                 {previewNode}
               </div>
             </div>
