@@ -135,8 +135,8 @@ function StatCards({ submissions }) {
 
   const cards = [
     { label: "Total", value: total, color: "text-violet-400" },
-    { label: "Approved", value: approved, color: "text-emerald-400" },
-    { label: "Pending", value: pending, color: "text-amber-400" },
+    { label: "Approved", value: approved, color: "text-status-success" },
+    { label: "Pending", value: pending, color: "text-status-warning" },
   ];
 
   return (
@@ -457,14 +457,14 @@ function EditSubmissionModal({ submission, onClose, onSaved }) {
 function StatusBadge({ status }) {
   if (status === "approved") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300 border border-emerald-500/30">
+      <span className="status-badge-success">
         <FaCheck className="text-[10px]" />
         Approved
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-300 border border-amber-500/30">
+    <span className="status-badge-warning">
       <FaClock className="text-[10px]" />
       Pending
     </span>
@@ -481,16 +481,16 @@ function CardMeta({ submission }) {
     const label = name ? `${name}` : "Admin ";
     return (
       <div className="flex items-center gap-2 text-xs text-theme-secondary mt-1">
-        <FaUserShield className="shrink-0 text-emerald-400" />
+        <FaUserShield className="shrink-0 text-status-success" />
         <span>Approved by {label} </span>
-        <span className="ml-2 text-emerald-400/70 text-[10px] font-medium uppercase tracking-wide">
+        <span className="ml-2 text-status-success-muted text-[10px] font-medium uppercase tracking-wide">
           · Visible to all students
         </span>
       </div>
     );
   }
   return (
-    <div className="flex items-center gap-2 text-xs text-amber-400/90 mt-1">
+    <div className="flex items-center gap-2 text-xs text-status-warning mt-1">
       <FaHourglassHalf className="shrink-0" />
       <span>Awaiting review</span>
       <span className="ml-2 text-theme-secondary text-[10px] font-medium uppercase tracking-wide">
@@ -508,7 +508,7 @@ function SubmissionCard({ submission, isExpanded, onToggle, onEdit, onDelete }) 
   return (
     <article
       className={`bg-theme-card border border-theme rounded-xl shadow-sm overflow-hidden
-        border-l-[3px] ${isApproved ? "border-l-emerald-500" : "border-l-amber-500"}`}
+        border-l-[3px] ${isApproved ? "border-l-status-success" : "border-l-status-warning"}`}
     >
       {/* Header button */}
       <button

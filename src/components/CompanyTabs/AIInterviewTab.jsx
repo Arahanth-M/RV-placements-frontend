@@ -101,6 +101,36 @@ const normalizeTopicsCoveredFromFeedback = (raw) => {
   return [...new Set(raw.map((t) => String(t || "").trim()).filter(Boolean))];
 };
 
+function getFullscreenElement() {
+  if (typeof document === "undefined") return null;
+  return (
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement ||
+    null
+  );
+}
+
+async function exitFullscreenCompat() {
+  if (typeof document === "undefined") return;
+  const doc = document;
+  if (!getFullscreenElement()) return;
+  try {
+    if (doc.exitFullscreen) {
+      await doc.exitFullscreen();
+    } else if (doc.webkitExitFullscreen) {
+      await doc.webkitExitFullscreen();
+    } else if (doc.mozCancelFullScreen) {
+      await doc.mozCancelFullScreen();
+    } else if (doc.msExitFullscreen) {
+      await doc.msExitFullscreen();
+    }
+  } catch (err) {
+    console.warn("Fullscreen exit failed:", err);
+  }
+}
+
 /** Per-round summary payload from interview-status `roundFeedback` (used for DSA + non-DSA round modals). */
 const buildDeferredRoundSummaryFromStatus = (st) => {
   if (!st || typeof st !== "object") return null;
@@ -184,8 +214,8 @@ function InterviewPreviewExecutionCard({
               const passed = Boolean(runRow?.passed);
               const borderTone = ran
                 ? passed
-                  ? "border-green-500/45 bg-green-500/5"
-                  : "border-red-500/45 bg-red-500/5"
+                  ? "ui-test-result-pass"
+                  : "ui-test-result-fail"
                 : "border-theme bg-theme-card";
 
               const expLane = runRow
@@ -207,11 +237,7 @@ function InterviewPreviewExecutionCard({
                     <p className="text-theme-primary font-semibold">Case {idx + 1}</p>
                     {ran ? (
                       <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                          passed
-                            ? "bg-green-500/20 text-green-700 dark:text-green-300"
-                            : "bg-red-500/20 text-red-700 dark:text-red-300"
-                        }`}
+                        className={passed ? "status-pill-success" : "status-pill-danger"}
                       >
                         {passed ? "Passed" : "Failed"}
                       </span>
@@ -236,7 +262,7 @@ function InterviewPreviewExecutionCard({
                     </p>
                   ) : null}
                   {runRow?.error ? (
-                    <p className="text-[11px] text-red-600 dark:text-red-300 whitespace-pre-wrap break-words">
+                    <p className="text-[11px] text-status-danger whitespace-pre-wrap break-words">
                       Error: {runRow.error}
                     </p>
                   ) : null}
@@ -257,7 +283,7 @@ function InterviewPreviewExecutionCard({
       {execution && !loading ? (
         <div className="space-y-2 border-t border-theme pt-3">
           {errText && !errorDuplicatedByHints ? (
-            <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-300">
+            <div className="rounded-lg px-3 py-2 text-xs ui-test-error-banner">
               {errText}
             </div>
           ) : null}
@@ -267,8 +293,8 @@ function InterviewPreviewExecutionCard({
               <span
                 className={
                   visiblePassedCount === visibleRunCount
-                    ? "font-semibold text-green-600 dark:text-green-400"
-                    : "font-semibold text-amber-600 dark:text-amber-400"
+                    ? "font-semibold text-status-success"
+                    : "font-semibold text-status-warning"
                 }
               >
                 {visiblePassedCount}/{visibleRunCount} passed
@@ -290,7 +316,7 @@ function InterviewPreviewExecutionCard({
               <p
                 className={`text-xs font-semibold leading-snug ${
                   hintList.length === 0 && (summaryLower.includes("passed") || summaryLower.includes("matched"))
-                    ? "text-green-600 dark:text-green-400"
+                    ? "text-status-success"
                     : "text-theme-primary"
                 }`}
               >
@@ -810,7 +836,7 @@ function AIInterviewTab({
   const [pendingQuestionFeedback, setPendingQuestionFeedback] = useState(null);
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
   const [isInFullscreen, setIsInFullscreen] = useState(
-    Boolean(document.fullscreenElement)
+    Boolean(typeof document !== "undefined" && getFullscreenElement())
   );
   const [needsFullscreenResume, setNeedsFullscreenResume] = useState(false);
   const activeSessionIdRef = useRef("");
@@ -1236,11 +1262,17 @@ function AIInterviewTab({
 
 
   const enterFullscreen = useCallback(async () => {
-    if (document.fullscreenElement) return;
+    if (getFullscreenElement()) return;
     const element = document.documentElement;
-    if (!element?.requestFullscreen) return;
+    if (!element) return;
+    const requestFs =
+      element.requestFullscreen ||
+      element.webkitRequestFullscreen ||
+      element.mozRequestFullScreen ||
+      element.msRequestFullscreen;
+    if (!requestFs) return;
     try {
-      await element.requestFullscreen();
+      await requestFs.call(element);
       setNeedsFullscreenResume(false);
     } catch (err) {
       console.warn("Fullscreen request failed:", err);
@@ -1288,14 +1320,14 @@ function AIInterviewTab({
     setSessionId("");
     resetInterviewState();
     setNeedsFullscreenResume(false);
-    setIsInFullscreen(Boolean(document.fullscreenElement));
+    setIsInFullscreen(Boolean(getFullscreenElement()));
     if (typeof onInterviewLockChange === "function") {
       onInterviewLockChange(false);
     }
-    if (document.fullscreenElement && document.exitFullscreen) {
+    if (getFullscreenElement()) {
       try {
         suppressFullscreenExitPromptRef.current = true;
-        await document.exitFullscreen();
+        await exitFullscreenCompat();
       } catch {
         // Ignore fullscreen exit errors.
       } finally {
@@ -1326,7 +1358,7 @@ function AIInterviewTab({
     const sessionIdToDiscard = activeSessionIdRef.current;
     const shouldExit = await requestQuitConfirmation();
     if (!shouldExit) {
-      if (!document.fullscreenElement) {
+      if (!getFullscreenElement()) {
         await enterFullscreen();
       }
       return false;
@@ -1346,6 +1378,31 @@ function AIInterviewTab({
   const handleEndInterview = useCallback(async () => {
     await finalizeExitToGeneral();
   }, [finalizeExitToGeneral]);
+
+  const handleCloseFinalRoundSummary = useCallback(() => {
+    setRoundFeedbackView(null);
+    roundFeedbackRef.current = null;
+    if (typeof document === "undefined") return;
+    if (!getFullscreenElement()) return;
+    suppressFullscreenExitPromptRef.current = true;
+    void exitFullscreenCompat().finally(() => {
+      window.setTimeout(() => {
+        suppressFullscreenExitPromptRef.current = false;
+      }, 1200);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (status !== "completed") return;
+    if (typeof document === "undefined") return;
+    if (!getFullscreenElement()) return;
+    suppressFullscreenExitPromptRef.current = true;
+    void exitFullscreenCompat().finally(() => {
+      window.setTimeout(() => {
+        suppressFullscreenExitPromptRef.current = false;
+      }, 1200);
+    });
+  }, [status]);
 
   useEffect(() => {
     if (!isInterviewActive) return;
@@ -1386,15 +1443,18 @@ function AIInterviewTab({
 
   useEffect(() => {
     const updateFullscreenState = () => {
-      setIsInFullscreen(Boolean(document.fullscreenElement));
-      if (document.fullscreenElement) {
+      setIsInFullscreen(Boolean(getFullscreenElement()));
+      if (getFullscreenElement()) {
         setNeedsFullscreenResume(false);
       }
     };
 
     document.addEventListener("fullscreenchange", updateFullscreenState);
-    return () =>
+    document.addEventListener("webkitfullscreenchange", updateFullscreenState);
+    return () => {
       document.removeEventListener("fullscreenchange", updateFullscreenState);
+      document.removeEventListener("webkitfullscreenchange", updateFullscreenState);
+    };
   }, []);
 
   useEffect(() => {
@@ -1415,7 +1475,7 @@ function AIInterviewTab({
     const activeSessionId = sessionId;
 
     const handleFullscreenChange = () => {
-      if (document.fullscreenElement) return;
+      if (getFullscreenElement()) return;
       if (processingFullscreenExitRef.current) return;
       if (suppressFullscreenExitPromptRef.current) return;
       if (roundFeedbackRef.current || loadingRef.current || pendingQuestionFeedbackRef.current)
@@ -1438,8 +1498,11 @@ function AIInterviewTab({
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+    };
   }, [
     enterFullscreen,
     handleQuitInterview,
@@ -2623,7 +2686,7 @@ function AIInterviewTab({
             <p className="text-sm font-semibold text-theme-primary">All rounds complete</p>
             <p className="mt-1 text-sm text-theme-secondary">
               Your full interview summary is available under AI Interviews for this company. Use End
-              interview when you are ready to leave fullscreen.
+              interview when you are ready to return to the General tab.
             </p>
             <button
               type="button"
@@ -3049,10 +3112,7 @@ function AIInterviewTab({
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setRoundFeedbackView(null);
-                      roundFeedbackRef.current = null;
-                    }}
+                    onClick={handleCloseFinalRoundSummary}
                     className="px-6 py-3 rounded-xl border border-theme text-theme-primary font-semibold hover:bg-theme-nav transition-colors"
                   >
                     Close summary
@@ -3817,7 +3877,7 @@ function AIInterviewTab({
                       </>
                     ) : null}
                   </div>
-                  <div className="flex flex-wrap items-end justify-end gap-3 shrink-0">
+                  <div className="flex w-full min-w-0 flex-wrap items-end justify-end gap-2 sm:ms-auto sm:w-auto sm:flex-1 sm:gap-3">
                     <button
                       type="button"
                       onClick={handleRunPreview}
@@ -3827,7 +3887,7 @@ function AIInterviewTab({
                         isProcessing ||
                         (Number(previewRunsRemaining) || 0) <= 0
                       }
-                      className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
+                      className={`inline-flex min-w-0 max-w-full shrink-0 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-3 py-2 text-xs font-semibold sm:px-5 sm:py-2.5 sm:text-sm transition-[background-color,box-shadow,opacity] ${
                         previewExecutionLoading ||
                         loading ||
                         isProcessing ||
@@ -3839,21 +3899,33 @@ function AIInterviewTab({
                       {previewExecutionLoading ? (
                         <FaSpinner className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
                       ) : (
-                        <FaPlay className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                        <FaPlay className="h-3 w-3 shrink-0 opacity-90 sm:h-3.5 sm:w-3.5" aria-hidden />
                       )}
-                      <span>{previewExecutionLoading ? "Running..." : "Run Code"}</span>
+                      <span className="truncate">
+                        {previewExecutionLoading ? "Running..." : "Run Code"}
+                      </span>
                     </button>
                     <button
                       type="button"
                       onClick={handleSubmitAnswer}
                       disabled={!canSubmitAnswer}
-                      className={`inline-flex shrink-0 items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
+                      className={`inline-flex min-w-0 max-w-full shrink-0 items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold sm:px-5 sm:py-2.5 sm:text-sm transition-[background-color,box-shadow,opacity] ${
                         canSubmitAnswer
                           ? "bg-theme-accent text-white hover:brightness-105 active:brightness-95"
                           : "bg-theme-card text-theme-muted cursor-not-allowed"
                       }`}
                     >
-                      {loading ? "Submitting..." : "Submit Answer"}
+                      {loading ? (
+                        <>
+                          <span className="sm:hidden">…</span>
+                          <span className="hidden sm:inline">Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="sm:hidden">Submit</span>
+                          <span className="hidden sm:inline">Submit Answer</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -3900,18 +3972,28 @@ function AIInterviewTab({
           ) : null}
 
           {!isCodingRoundUI ? (
-            <div className="ai-interview-submit-row flex flex-wrap items-center gap-3 justify-between">
+            <div className="ai-interview-submit-row flex flex-wrap items-center gap-2 justify-end sm:gap-3 sm:justify-between">
               <button
                 type="button"
                 onClick={handleSubmitAnswer}
                 disabled={!canSubmitAnswer}
-                className={`inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-[background-color,box-shadow,opacity] ${
+                className={`inline-flex min-w-0 max-w-full items-center justify-center rounded-xl px-3 py-2 text-xs font-semibold sm:px-5 sm:py-2.5 sm:text-sm transition-[background-color,box-shadow,opacity] ${
                   canSubmitAnswer
                     ? "bg-theme-accent text-white hover:brightness-105 active:brightness-95"
                     : "bg-theme-card text-theme-muted cursor-not-allowed"
                 }`}
               >
-                {loading ? "Submitting..." : "Submit Answer"}
+                {loading ? (
+                  <>
+                    <span className="sm:hidden">…</span>
+                    <span className="hidden sm:inline">Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">Submit</span>
+                    <span className="hidden sm:inline">Submit Answer</span>
+                  </>
+                )}
               </button>
             </div>
           ) : null}

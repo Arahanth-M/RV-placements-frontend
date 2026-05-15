@@ -1514,8 +1514,8 @@ function CompanyStats() {
                           <li key={`${c.id}-${i}`}>{line}</li>
                         ))}
                       </ul>
-                      <div className="mt-5 flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
-                        <span>Open ({(c.companies || []).length})</span>
+                      <div className="mt-5 flex items-center justify-start gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
+                        <span>Open</span>
                         <FaChevronRight
                           className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
                           aria-hidden
