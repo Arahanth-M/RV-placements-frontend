@@ -8,6 +8,15 @@ import {
 } from '../constants/placementYears.js';
 import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel } from 'react-icons/fa';
 
+function submissionSupportsEnhancement(type) {
+  return String(type || '').trim() !== 'mustDoTopics';
+}
+
+function submissionSupportsAddAnswer(type) {
+  const t = String(type || '').trim();
+  return t === 'onlineQuestions' || t === 'interviewQuestions';
+}
+
 const ADMIN_PAGE_SIZE = 25;
 const ADMIN_BULK_FETCH_LIMIT = 5000;
 const ADMIN_COMPANY_YEARS = [
@@ -79,7 +88,9 @@ const AdminDashboard = () => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionEnhancedContent, setSubmissionEnhancedContent] = useState(null);
+  const [submissionAnswerGenerated, setSubmissionAnswerGenerated] = useState(false);
   const [submissionEnhancing, setSubmissionEnhancing] = useState(false);
+  const [submissionAddingAnswer, setSubmissionAddingAnswer] = useState(false);
   const [submissionEnhanceError, setSubmissionEnhanceError] = useState('');
   const [approvingAll, setApprovingAll] = useState(false);
   const [approvingAllCompanies, setApprovingAllCompanies] = useState(false);
@@ -510,7 +521,9 @@ const AdminDashboard = () => {
   const handleApprove = async (submissionId, mergeContent) => {
     const withEnhanced = typeof mergeContent === 'string' && mergeContent.trim().length > 0;
     const confirmMsg = withEnhanced
-      ? 'Approve using the AI-enhanced text? This will update the company database.'
+      ? submissionAnswerGenerated
+        ? 'Approve using the generated answer? This will update the company database.'
+        : 'Approve using the AI-enhanced text? This will update the company database.'
       : 'Are you sure you want to approve this submission? This will update the company database.';
     if (!window.confirm(confirmMsg)) {
       return;
@@ -528,6 +541,7 @@ const AdminDashboard = () => {
 
       alert('Submission approved successfully!');
       setSubmissionEnhancedContent(null);
+      setSubmissionAnswerGenerated(false);
       setSubmissionEnhanceError('');
       if (selectedSubmission && String(selectedSubmission._id) === String(submissionId)) {
         setShowSubmissionModal(false);
@@ -757,6 +771,7 @@ const AdminDashboard = () => {
       setSelectedSubmission(submission);
     }
     setSubmissionEnhancedContent(null);
+    setSubmissionAnswerGenerated(false);
     setSubmissionEnhanceError('');
     setShowSubmissionModal(true);
   };
@@ -765,6 +780,7 @@ const AdminDashboard = () => {
     setSubmissionEnhancing(true);
     setSubmissionEnhanceError('');
     setSubmissionEnhancedContent(null);
+    setSubmissionAnswerGenerated(false);
     try {
       const { data } = await adminAPI.enhanceSubmission(submissionId);
       const next = data?.content;
@@ -773,6 +789,7 @@ const AdminDashboard = () => {
         return;
       }
       setSubmissionEnhancedContent(next);
+      setSubmissionAnswerGenerated(false);
     } catch (err) {
       const msg =
         err?.response?.data?.error ||
@@ -784,6 +801,34 @@ const AdminDashboard = () => {
       setSubmissionEnhancing(false);
     }
   };
+
+  const handleSubmissionAddAnswer = async (submissionId) => {
+    setSubmissionAddingAnswer(true);
+    setSubmissionEnhanceError('');
+    setSubmissionEnhancedContent(null);
+    setSubmissionAnswerGenerated(false);
+    try {
+      const { data } = await adminAPI.addAnswerToSubmission(submissionId);
+      const next = data?.content;
+      if (typeof next !== 'string' || !next.trim()) {
+        setSubmissionEnhanceError('Answer generation returned empty content.');
+        return;
+      }
+      setSubmissionEnhancedContent(next);
+      setSubmissionAnswerGenerated(true);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Could not generate answer.';
+      setSubmissionEnhanceError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } finally {
+      setSubmissionAddingAnswer(false);
+    }
+  };
+
+  const submissionAiBusy = submissionEnhancing || submissionAddingAnswer;
 
   const handleApproveAll = async () => {
     if (submissions.length === 0) {
@@ -2451,6 +2496,7 @@ const AdminDashboard = () => {
                   setShowSubmissionModal(false);
                   setSelectedSubmission(null);
                   setSubmissionEnhancedContent(null);
+                  setSubmissionAnswerGenerated(false);
                   setSubmissionEnhanceError('');
                 }}
                 className="text-slate-400 hover:text-slate-200 text-2xl font-bold"
@@ -2563,7 +2609,9 @@ const AdminDashboard = () => {
 
               {submissionEnhancedContent ? (
                 <div className="border-t border-slate-700 pt-4">
-                  <p className="text-sm font-medium text-slate-400 mb-2">AI-enhanced preview</p>
+                  <p className="text-sm font-medium text-slate-400 mb-2">
+                    {submissionAnswerGenerated ? 'Generated answer preview' : 'AI-enhanced preview'}
+                  </p>
                   <div className="bg-slate-900/80 border border-violet-500/30 rounded-lg p-4">
                     {(() => {
                       const content = parseContent(submissionEnhancedContent);
@@ -2600,16 +2648,37 @@ const AdminDashboard = () => {
               {/* Action Buttons for Pending Submissions */}
               {selectedSubmission.status !== 'approved' && (
                 <div className="border-t border-slate-700 pt-4 flex flex-wrap gap-3">
+                  {submissionSupportsAddAnswer(selectedSubmission.type) ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSubmissionAddAnswer(selectedSubmission._id)}
+                      disabled={
+                        submissionAiBusy ||
+                        approvingIds.has(selectedSubmission._id) ||
+                        rejectingIds.has(selectedSubmission._id)
+                      }
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        submissionAiBusy ||
+                        approvingIds.has(selectedSubmission._id) ||
+                        rejectingIds.has(selectedSubmission._id)
+                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                          : 'bg-sky-600 text-white hover:bg-sky-700'
+                      }`}
+                    >
+                      {submissionAddingAnswer ? 'Generating answer...' : 'Add answer'}
+                    </button>
+                  ) : null}
+                  {submissionSupportsEnhancement(selectedSubmission.type) ? (
                   <button
                     type="button"
                     onClick={() => handleSubmissionEnhance(selectedSubmission._id)}
                     disabled={
-                      submissionEnhancing ||
+                      submissionAiBusy ||
                       approvingIds.has(selectedSubmission._id) ||
                       rejectingIds.has(selectedSubmission._id)
                     }
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                      submissionEnhancing ||
+                      submissionAiBusy ||
                       approvingIds.has(selectedSubmission._id) ||
                       rejectingIds.has(selectedSubmission._id)
                         ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
@@ -2618,6 +2687,7 @@ const AdminDashboard = () => {
                   >
                     {submissionEnhancing ? 'Enhancing...' : 'Enhance with AI'}
                   </button>
+                  ) : null}
                   {submissionEnhancedContent ? (
                     <>
                       <button
@@ -2626,19 +2696,23 @@ const AdminDashboard = () => {
                           await handleApprove(selectedSubmission._id, submissionEnhancedContent);
                         }}
                         disabled={
-                          submissionEnhancing ||
+                          submissionAiBusy ||
                           approvingIds.has(selectedSubmission._id) ||
                           rejectingIds.has(selectedSubmission._id)
                         }
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          submissionEnhancing ||
+                          submissionAiBusy ||
                           approvingIds.has(selectedSubmission._id) ||
                           rejectingIds.has(selectedSubmission._id)
                             ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                             : 'bg-green-600 text-white hover:bg-green-700'
                         }`}
                       >
-                        {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve with enhanced'}
+                        {approvingIds.has(selectedSubmission._id)
+                          ? 'Approving...'
+                          : submissionAnswerGenerated
+                            ? 'Approve with answer'
+                            : 'Approve with enhanced'}
                       </button>
                       <button
                         type="button"
@@ -2646,19 +2720,19 @@ const AdminDashboard = () => {
                           await handleApprove(selectedSubmission._id);
                         }}
                         disabled={
-                          submissionEnhancing ||
+                          submissionAiBusy ||
                           approvingIds.has(selectedSubmission._id) ||
                           rejectingIds.has(selectedSubmission._id)
                         }
                         className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          submissionEnhancing ||
+                          submissionAiBusy ||
                           approvingIds.has(selectedSubmission._id) ||
                           rejectingIds.has(selectedSubmission._id)
                             ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
                             : 'border border-slate-500 text-slate-200 hover:bg-slate-700'
                         }`}
                       >
-                        {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve without enhancing'}
+                        {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve original'}
                       </button>
                     </>
                   ) : (
@@ -2668,12 +2742,12 @@ const AdminDashboard = () => {
                         await handleApprove(selectedSubmission._id);
                       }}
                       disabled={
-                        submissionEnhancing ||
+                        submissionAiBusy ||
                         approvingIds.has(selectedSubmission._id) ||
                         rejectingIds.has(selectedSubmission._id)
                       }
                       className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        submissionEnhancing ||
+                        submissionAiBusy ||
                         approvingIds.has(selectedSubmission._id) ||
                         rejectingIds.has(selectedSubmission._id)
                           ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
@@ -2690,15 +2764,16 @@ const AdminDashboard = () => {
                       setShowSubmissionModal(false);
                       setSelectedSubmission(null);
                       setSubmissionEnhancedContent(null);
+                      setSubmissionAnswerGenerated(false);
                       setSubmissionEnhanceError('');
                     }}
                     disabled={
-                      submissionEnhancing ||
+                      submissionAiBusy ||
                       approvingIds.has(selectedSubmission._id) ||
                       rejectingIds.has(selectedSubmission._id)
                     }
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                      submissionEnhancing ||
+                      submissionAiBusy ||
                       approvingIds.has(selectedSubmission._id) ||
                       rejectingIds.has(selectedSubmission._id)
                         ? 'bg-slate-600 text-slate-400 cursor-not-allowed'

@@ -65,6 +65,15 @@ const SUBMISSION_TYPE_LABELS = {
   internshipExperience: "Internship experience",
 };
 
+function submissionSupportsEnhancement(type) {
+  return String(type || "").trim() !== "mustDoTopics";
+}
+
+function submissionSupportsAddAnswer(type) {
+  const t = String(type || "").trim();
+  return t === "onlineQuestions" || t === "interviewQuestions";
+}
+
 function getSubmissionTypeLabel(type) {
   const t = String(type || "").trim();
   if (t === "onlineQuestion" || t === "onlineQuestions") return "OA question";
@@ -132,8 +141,8 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
         pendingLoading
           ? null
           : pendingCount > 0
-          ? { label: `${pendingCount} pending`, color: "bg-rose-500/10 text-rose-600 border border-rose-500/20" }
-          : null,
+            ? { label: `${pendingCount} pending`, color: "bg-rose-500/10 text-rose-600 border border-rose-500/20" }
+            : null,
     },
   ];
 
@@ -244,8 +253,8 @@ export default function SPCDashboard() {
     } catch (e) {
       setError(
         e?.response?.data?.message ||
-          e?.response?.data?.error ||
-          "Could not load your submissions."
+        e?.response?.data?.error ||
+        "Could not load your submissions."
       );
       setPlacements([]);
     } finally {
@@ -264,7 +273,9 @@ export default function SPCDashboard() {
   const [modApproving, setModApproving] = useState(() => new Set());
   const [modRejecting, setModRejecting] = useState(() => new Set());
   const [modEnhancedContent, setModEnhancedContent] = useState(null);
+  const [modAnswerGenerated, setModAnswerGenerated] = useState(false);
   const [modEnhancing, setModEnhancing] = useState(false);
+  const [modAddingAnswer, setModAddingAnswer] = useState(false);
   const [modEnhanceError, setModEnhanceError] = useState("");
   const [modSelected, setModSelected] = useState(null);
 
@@ -284,8 +295,8 @@ export default function SPCDashboard() {
     } catch (e) {
       setModError(
         e?.response?.data?.message ||
-          e?.response?.data?.error ||
-          "Could not load pending submissions."
+        e?.response?.data?.error ||
+        "Could not load pending submissions."
       );
       setModList([]);
     } finally {
@@ -432,30 +443,7 @@ export default function SPCDashboard() {
         prev.map((row) =>
           row._id === selectedRecord._id
             ? {
-                ...row,
-                studentName: editForm.studentName,
-                studentEmail: editForm.studentEmail,
-                studentUsn: editForm.studentUsn,
-                companyPlaced: editForm.companyPlaced,
-                companyName: editForm.companyPlaced,
-                placementYear: editForm.placementYear ? Number(editForm.placementYear) : null,
-                branchCode: String(editForm.branchCode || "").trim().toLowerCase(),
-                typeOfOffer: editForm.typeOfOffer,
-                role: editForm.role,
-                ctc: editForm.ctc,
-                base: editForm.base,
-                stipend: editForm.stipend,
-                ppoConversionType: editForm.ppoConversionType,
-                sixMonthsInternshipStipend: editForm.sixMonthsInternshipStipend,
-                updatedAt: new Date().toISOString(),
-              }
-            : row
-        )
-      );
-      setSelectedRecord((prev) =>
-        prev
-          ? {
-              ...prev,
+              ...row,
               studentName: editForm.studentName,
               studentEmail: editForm.studentEmail,
               studentUsn: editForm.studentUsn,
@@ -472,6 +460,29 @@ export default function SPCDashboard() {
               sixMonthsInternshipStipend: editForm.sixMonthsInternshipStipend,
               updatedAt: new Date().toISOString(),
             }
+            : row
+        )
+      );
+      setSelectedRecord((prev) =>
+        prev
+          ? {
+            ...prev,
+            studentName: editForm.studentName,
+            studentEmail: editForm.studentEmail,
+            studentUsn: editForm.studentUsn,
+            companyPlaced: editForm.companyPlaced,
+            companyName: editForm.companyPlaced,
+            placementYear: editForm.placementYear ? Number(editForm.placementYear) : null,
+            branchCode: String(editForm.branchCode || "").trim().toLowerCase(),
+            typeOfOffer: editForm.typeOfOffer,
+            role: editForm.role,
+            ctc: editForm.ctc,
+            base: editForm.base,
+            stipend: editForm.stipend,
+            ppoConversionType: editForm.ppoConversionType,
+            sixMonthsInternshipStipend: editForm.sixMonthsInternshipStipend,
+            updatedAt: new Date().toISOString(),
+          }
           : prev
       );
     } catch (e) {
@@ -484,6 +495,9 @@ export default function SPCDashboard() {
   };
 
   const openModRow = async (row) => {
+    setModEnhancedContent(null);
+    setModAnswerGenerated(false);
+    setModEnhanceError("");
     if (row.contentTruncated) {
       try {
         const res = await adminAPI.getSubmission(row._id);
@@ -499,6 +513,7 @@ export default function SPCDashboard() {
   const closeModModal = () => {
     setModSelected(null);
     setModEnhancedContent(null);
+    setModAnswerGenerated(false);
     setModEnhanceError("");
   };
 
@@ -506,6 +521,7 @@ export default function SPCDashboard() {
     setModEnhancing(true);
     setModEnhanceError("");
     setModEnhancedContent(null);
+    setModAnswerGenerated(false);
     try {
       const { data } = await adminAPI.enhanceSubmission(id);
       const next = data?.content;
@@ -514,6 +530,7 @@ export default function SPCDashboard() {
         return;
       }
       setModEnhancedContent(next);
+      setModAnswerGenerated(false);
     } catch (e) {
       const msg =
         e?.response?.data?.error ||
@@ -526,10 +543,38 @@ export default function SPCDashboard() {
     }
   };
 
+  const handleModAddAnswer = async (id) => {
+    setModAddingAnswer(true);
+    setModEnhanceError("");
+    setModEnhancedContent(null);
+    setModAnswerGenerated(false);
+    try {
+      const { data } = await adminAPI.addAnswerToSubmission(id);
+      const next = data?.content;
+      if (typeof next !== "string" || !next.trim()) {
+        setModEnhanceError("Answer generation returned empty content.");
+        return;
+      }
+      setModEnhancedContent(next);
+      setModAnswerGenerated(true);
+    } catch (e) {
+      const msg =
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.message ||
+        "Could not generate answer.";
+      setModEnhanceError(typeof msg === "string" ? msg : JSON.stringify(msg));
+    } finally {
+      setModAddingAnswer(false);
+    }
+  };
+
   const handleModApprove = async (id, mergeContent) => {
     const withEnhanced = typeof mergeContent === "string" && mergeContent.trim().length > 0;
     const confirmMsg = withEnhanced
-      ? "Approve using the AI-enhanced text? This updates the company database."
+      ? modAnswerGenerated
+        ? "Approve using the generated answer? This updates the company database."
+        : "Approve using the AI-enhanced text? This updates the company database."
       : "Approve this submission? This updates the company database.";
     if (!window.confirm(confirmMsg)) return;
     const sid = String(id);
@@ -539,6 +584,7 @@ export default function SPCDashboard() {
       await loadModList(modMeta.page);
       setModSelected((prev) => (prev && String(prev._id) === sid ? null : prev));
       setModEnhancedContent(null);
+      setModAnswerGenerated(false);
       setModEnhanceError("");
       setPendingCount((n) => Math.max(0, n - 1));
     } catch (e) {
@@ -556,6 +602,8 @@ export default function SPCDashboard() {
       });
     }
   };
+
+  const modAiBusy = modEnhancing || modAddingAnswer;
 
   const handleModReject = async (id) => {
     if (!window.confirm("Reject will permanently delete this submission.")) return;
@@ -1072,7 +1120,9 @@ export default function SPCDashboard() {
             ) : null}
             {modEnhancedContent ? (
               <div className="mt-4 rounded-xl border border-violet-500/40 bg-violet-500/5 p-4">
-                <p className="text-base font-semibold text-theme-primary">AI-enhanced preview</p>
+                <p className="text-base font-semibold text-theme-primary">
+                  {modAnswerGenerated ? "Generated answer preview" : "AI-enhanced preview"}
+                </p>
                 <div className="mt-2 text-sm text-theme-secondary">
                   {(() => {
                     const c = parseSubmissionContentJson(modEnhancedContent);
@@ -1107,19 +1157,36 @@ export default function SPCDashboard() {
             ) : null}
             {modSelected.status !== "approved" ? (
               <div className="mt-5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleModEnhance(modSelected._id)}
-                  disabled={
-                    modEnhancing ||
-                    modApproving.has(String(modSelected._id)) ||
-                    modRejecting.has(String(modSelected._id)) ||
-                    modLoading
-                  }
-                  className="rounded-lg border border-violet-500/60 bg-violet-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {modEnhancing ? "Enhancing…" : "Enhance with AI"}
-                </button>
+                {submissionSupportsAddAnswer(modSelected.type) ? (
+                  <button
+                    type="button"
+                    onClick={() => handleModAddAnswer(modSelected._id)}
+                    disabled={
+                      modAiBusy ||
+                      modApproving.has(String(modSelected._id)) ||
+                      modRejecting.has(String(modSelected._id)) ||
+                      modLoading
+                    }
+                    className="rounded-lg border border-sky-500/60 bg-sky-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {modAddingAnswer ? "Generating answer…" : "Add answer"}
+                  </button>
+                ) : null}
+                {submissionSupportsEnhancement(modSelected.type) ? (
+                  <button
+                    type="button"
+                    onClick={() => handleModEnhance(modSelected._id)}
+                    disabled={
+                      modAiBusy ||
+                      modApproving.has(String(modSelected._id)) ||
+                      modRejecting.has(String(modSelected._id)) ||
+                      modLoading
+                    }
+                    className="rounded-lg border border-violet-500/60 bg-violet-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {modEnhancing ? "Enhancing…" : "Enhance with AI"}
+                  </button>
+                ) : null}
                 {modEnhancedContent ? (
                   <>
                     <button
@@ -1129,14 +1196,18 @@ export default function SPCDashboard() {
                         closeModModal();
                       }}
                       disabled={
-                        modEnhancing ||
+                        modAiBusy ||
                         modApproving.has(String(modSelected._id)) ||
                         modRejecting.has(String(modSelected._id)) ||
                         modLoading
                       }
                       className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve with enhanced"}
+                      {modApproving.has(String(modSelected._id))
+                        ? "Approving…"
+                        : modAnswerGenerated
+                          ? "Approve with answer"
+                          : "Approve with enhanced"}
                     </button>
                     <button
                       type="button"
@@ -1145,14 +1216,14 @@ export default function SPCDashboard() {
                         closeModModal();
                       }}
                       disabled={
-                        modEnhancing ||
+                        modAiBusy ||
                         modApproving.has(String(modSelected._id)) ||
                         modRejecting.has(String(modSelected._id)) ||
                         modLoading
                       }
                       className="rounded-lg border border-theme-input bg-theme-card px-4 py-2 text-sm font-semibold text-theme-primary hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve without enhancing"}
+                      {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve original"}
                     </button>
                   </>
                 ) : (
@@ -1163,7 +1234,7 @@ export default function SPCDashboard() {
                       closeModModal();
                     }}
                     disabled={
-                      modEnhancing ||
+                      modAiBusy ||
                       modApproving.has(String(modSelected._id)) ||
                       modRejecting.has(String(modSelected._id)) ||
                       modLoading
@@ -1180,7 +1251,7 @@ export default function SPCDashboard() {
                     closeModModal();
                   }}
                   disabled={
-                    modEnhancing ||
+                    modAiBusy ||
                     modApproving.has(String(modSelected._id)) ||
                     modRejecting.has(String(modSelected._id)) ||
                     modLoading

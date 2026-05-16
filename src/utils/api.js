@@ -284,6 +284,7 @@ export const adminAPI = {
   getSpcs: () => API.get('/api/admin/spcs'),
   revokeSpc: (id) => API.patch(`/api/admin/spcs/${id}/revoke`),
   enhanceSubmission: (id) => API.post(`/api/admin/submissions/${id}/enhance`),
+  addAnswerToSubmission: (id) => API.post(`/api/admin/submissions/${id}/add-answer`),
   approveSubmission: (id, body) =>
     API.post(`/api/admin/submissions/${id}/approve`, body != null ? body : {}),
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
