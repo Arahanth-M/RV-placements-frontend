@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import InterviewAnalytics from "./InterviewAnalytics";
+import {
+  InterviewQuestionAnswerBlock,
+  CompanyInterviewReadinessCard,
+} from "./InterviewHistoryAnswer";
 import { useNavigate } from "react-router-dom";
 import {
   PageBackButton,
@@ -36,37 +40,131 @@ const getRoundQuestionEntries = (session) => {
     .filter((roundEntry) => roundEntry.items.length > 0);
 };
 
+/** Completed mock interviews per page (server-side pagination). */
+const PAGE_SIZE = 5;
+
+function InterviewSessionsPagination({
+  page,
+  totalPages,
+  total,
+  pageSize,
+  loading,
+  onPageChange,
+}) {
+  if (totalPages <= 1 && total <= pageSize) return null;
+
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
+
+  return (
+    <div className="border-t border-theme pt-4 mt-4">
+      <p className="text-sm text-theme-muted text-center mb-3 px-2">
+        Showing {rangeStart}–{rangeEnd} of {total} (page {page} of {totalPages})
+      </p>
+      <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1 || loading}
+          className="px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold border border-theme bg-theme-card text-theme-secondary hover:bg-theme-nav disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Previous
+        </button>
+        <div className="flex items-center gap-1">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+            const shouldShow =
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              Math.abs(pageNum - page) <= 1 ||
+              (page <= 3 && pageNum <= 4) ||
+              (page >= totalPages - 2 && pageNum >= totalPages - 3);
+
+            if (!shouldShow) {
+              if (pageNum === 2 && page > 4) {
+                return (
+                  <span key={`ellipsis-start-${pageNum}`} className="px-1 text-theme-muted text-sm">
+                    …
+                  </span>
+                );
+              }
+              if (pageNum === totalPages - 1 && page < totalPages - 3) {
+                return (
+                  <span key={`ellipsis-end-${pageNum}`} className="px-1 text-theme-muted text-sm">
+                    …
+                  </span>
+                );
+              }
+              return null;
+            }
+
+            const isActive = pageNum === page;
+            return (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => onPageChange(pageNum)}
+                disabled={loading}
+                aria-current={isActive ? "page" : undefined}
+                className={`min-w-[2.25rem] px-2.5 py-2 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                  isActive
+                    ? "bg-theme-accent text-white"
+                    : "border border-theme bg-theme-card text-theme-secondary hover:bg-theme-nav disabled:opacity-50"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages || loading}
+          className="px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold border border-theme bg-theme-card text-theme-secondary hover:bg-theme-nav disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AIInterviews() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("sessions");
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const PAGE_SIZE = 10;
+  const [total, setTotal] = useState(0);
 
-  useEffect(() => {
-    const fetchSessions = async (targetPage, append = false) => {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const fetchSessions = useCallback(
+    async (targetPage, { isInitial = false } = {}) => {
       if (!user?.userId) {
         setSessions([]);
+        setTotal(0);
+        setPage(1);
         setLoading(false);
-        setHasMore(false);
+        setPageLoading(false);
         return;
       }
 
       if (user?.betaAccess === false) {
         setSessions([]);
+        setTotal(0);
+        setPage(1);
         setLoading(false);
-        setHasMore(false);
+        setPageLoading(false);
         return;
       }
 
-      if (append) {
-        setLoadingMore(true);
-      } else {
+      if (isInitial) {
         setLoading(true);
+      } else {
+        setPageLoading(true);
       }
       setError("");
       try {
@@ -75,48 +173,34 @@ function AIInterviews() {
           limit: PAGE_SIZE,
         });
         const items = Array.isArray(data) ? data : data?.items || [];
-        if (append) {
-          setSessions((prev) => [...prev, ...items]);
-        } else {
-          setSessions(items);
-        }
-        setHasMore(Boolean(data?.pagination?.hasMore));
+        setSessions(items);
+        setTotal(Number(data?.pagination?.total) || items.length);
+        setPage(Number(data?.pagination?.page) || targetPage);
       } catch (err) {
         console.error("Failed to fetch interview sessions:", err);
         setError("Failed to load interviews. Please try again.");
-      } finally {
-        if (append) {
-          setLoadingMore(false);
-        } else {
-          setLoading(false);
+        if (isInitial) {
+          setSessions([]);
+          setTotal(0);
         }
+      } finally {
+        setLoading(false);
+        setPageLoading(false);
       }
-    };
+    },
+    [user?.userId, user?.betaAccess]
+  );
 
+  useEffect(() => {
     setPage(1);
-    fetchSessions(1, false);
-  }, [user?.userId, user?.betaAccess]);
+    fetchSessions(1, { isInitial: true });
+  }, [fetchSessions]);
 
-  const handleLoadMore = async () => {
-    if (user?.betaAccess === false) return;
-    if (!user?.userId || loadingMore || !hasMore) return;
-    const nextPage = page + 1;
-    setLoadingMore(true);
-    try {
-      const { data } = await interviewAPI.getUserInterviewSessions(user.userId, {
-        page: nextPage,
-        limit: PAGE_SIZE,
-      });
-      const items = Array.isArray(data) ? data : data?.items || [];
-      setSessions((prev) => [...prev, ...items]);
-      setHasMore(Boolean(data?.pagination?.hasMore));
-      setPage(nextPage);
-    } catch (err) {
-      console.error("Failed to load more interview sessions:", err);
-      setError("Failed to load more interviews. Please try again.");
-    } finally {
-      setLoadingMore(false);
-    }
+  const handlePageChange = (nextPage) => {
+    const clamped = Math.max(1, Math.min(totalPages, nextPage));
+    if (clamped === page || pageLoading || loading) return;
+    fetchSessions(clamped);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const navigate = useNavigate();
@@ -184,14 +268,14 @@ function AIInterviews() {
       {/* Tab Content */}
       {!loading && !error && (
         <div className="space-y-6">
-          {activeTab === "analytics" && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <InterviewAnalytics />
-            </div>
-          )}
+          <div className={activeTab === "analytics" ? "" : "hidden"} aria-hidden={activeTab !== "analytics"}>
+            <InterviewAnalytics />
+          </div>
 
-          {activeTab === "sessions" && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div
+            className={`space-y-4 ${activeTab === "sessions" ? "" : "hidden"}`}
+            aria-hidden={activeTab !== "sessions"}
+          >
               {sessions.length === 0 ? (
                 <div className="bg-theme-card border border-theme rounded-xl p-8 text-center">
                   <div className="w-16 h-16 bg-theme-nav rounded-full flex items-center justify-center mx-auto mb-4">
@@ -205,40 +289,38 @@ function AIInterviews() {
               ) : (
                 <>
                   <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
-                    <h2 className="text-lg font-semibold text-theme-primary mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      Completed ({sessions.length})
+                    <h2 className="text-lg font-semibold text-theme-primary mb-1 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
+                      Completed interviews
                     </h2>
-                    {sessions.length === 0 ? (
-                      <p className="text-sm text-theme-secondary">No interviews found.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {sessions.map((session) => (
-                          <InterviewSessionCard key={session._id} session={session} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {hasMore && (
-                    <div className="flex justify-center">
-                      <button
-                        type="button"
-                        onClick={handleLoadMore}
-                        disabled={loadingMore}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                          loadingMore
-                            ? "bg-theme-card-hover text-theme-muted cursor-not-allowed"
-                            : "bg-theme-accent text-white hover:opacity-90"
-                        }`}
-                      >
-                        {loadingMore ? "Loading..." : "Load more interviews"}
-                      </button>
+                    <p className="text-xs text-theme-muted mb-3">
+                      {total} {total === 1 ? "company" : "companies"} · {PAGE_SIZE} per page
+                    </p>
+                    <div
+                      className={`space-y-3 ${pageLoading ? "opacity-60 pointer-events-none" : ""}`}
+                      aria-busy={pageLoading}
+                    >
+                      {sessions.map((session) => (
+                        <InterviewSessionCard key={session._id} session={session} />
+                      ))}
                     </div>
-                  )}
+                    {pageLoading ? (
+                      <p className="mt-3 text-center text-sm text-theme-muted animate-pulse">
+                        Loading page…
+                      </p>
+                    ) : null}
+                    <InterviewSessionsPagination
+                      page={page}
+                      totalPages={totalPages}
+                      total={total}
+                      pageSize={PAGE_SIZE}
+                      loading={pageLoading || loading}
+                      onPageChange={handlePageChange}
+                    />
+                  </div>
                 </>
               )}
-            </div>
-          )}
+          </div>
         </div>
       )}
         </div>
@@ -335,27 +417,11 @@ function InterviewSessionCard({ session }) {
 
                 <div className="space-y-2 mt-3">
                   {roundEntry.items.map((item, idx) => (
-                    <div
+                    <InterviewQuestionAnswerBlock
                       key={`${roundEntry.key}-q-${idx}`}
-                      className="p-3 rounded-md border border-theme bg-theme-input"
-                    >
-                      <p className="text-theme-primary">
-                        <span className="font-semibold">Q{idx + 1}:</span>{" "}
-                        {item?.question || "N/A"}
-                      </p>
-                      <p className="text-theme-secondary mt-1">
-                        <span className="font-semibold text-theme-primary">A:</span>{" "}
-                        {item?.answer || "N/A"}
-                      </p>
-                      <p className="text-theme-secondary mt-1">
-                        <span className="font-semibold text-theme-primary">Feedback:</span>{" "}
-                        {item?.feedback || "N/A"}
-                      </p>
-                      <p className="text-theme-secondary mt-1">
-                        <span className="font-semibold text-theme-primary">Score:</span>{" "}
-                        {typeof item?.score === "number" ? `${item.score}/10` : "N/A"}
-                      </p>
-                    </div>
+                      item={item}
+                      roundType={roundEntry.roundType}
+                    />
                   ))}
                 </div>
               </div>
@@ -364,26 +430,11 @@ function InterviewSessionCard({ session }) {
         ) : !detailLoading && !detailError && detailSession && hasHistory ? (
           <div className="space-y-2">
             {sessionData.history.map((item, idx) => (
-              <div
+              <InterviewQuestionAnswerBlock
                 key={`${sessionData._id}-item-${idx}`}
-                className="p-3 rounded-md border border-theme bg-theme-card"
-              >
-                <p className="text-theme-primary">
-                  <span className="font-semibold">Q:</span> {item.question || "N/A"}
-                </p>
-                <p className="text-theme-secondary mt-1">
-                  <span className="font-semibold text-theme-primary">A:</span>{" "}
-                  {item.answer || "N/A"}
-                </p>
-                <p className="text-theme-secondary mt-1">
-                  <span className="font-semibold text-theme-primary">Feedback:</span>{" "}
-                  {item.feedback || "N/A"}
-                </p>
-                <p className="text-theme-secondary mt-1">
-                  <span className="font-semibold text-theme-primary">Score:</span>{" "}
-                  {typeof item.score === "number" ? `${item.score}/10` : "N/A"}
-                </p>
-              </div>
+                item={item}
+                roundType={item?.round || ""}
+              />
             ))}
           </div>
         ) : (
@@ -391,7 +442,7 @@ function InterviewSessionCard({ session }) {
         )}
 
         {detailSession?.finalReport && (
-          <div className="p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 space-y-3 text-sm">
+          <div className="p-4 rounded-lg border border-theme bg-theme-card space-y-3 text-sm">
             <p className="text-theme-primary font-semibold">Final summary</p>
             <p className="text-theme-secondary">
               <span className="font-semibold text-theme-primary">Score:</span>{" "}
@@ -441,6 +492,10 @@ function InterviewSessionCard({ session }) {
               <span className="font-semibold text-theme-primary">Improvement plan:</span>{" "}
               {(detailSession.finalReport.improvementPlan || []).join("; ") || "N/A"}
             </p>
+            <CompanyInterviewReadinessCard
+              companyName={sessionData.companyName}
+              finalReport={detailSession.finalReport}
+            />
           </div>
         )}
       </div>

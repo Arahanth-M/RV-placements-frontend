@@ -99,6 +99,24 @@ const EDIT_INITIAL = {
 const PRIMARY_ACTION_BTN_CLASS =
   "inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-theme-accent px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90";
 
+const MOD_BTN_BASE =
+  "inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Helper actions (add answer, enhance) — same language as Header secondary buttons */
+const MOD_BTN_SECONDARY = `${MOD_BTN_BASE} border border-theme bg-theme-card px-4 py-2 text-theme-primary hover:bg-theme-hero hover:border-theme-accent/50`;
+
+const MOD_BTN_PRIMARY = `${MOD_BTN_BASE} bg-theme-accent px-4 py-2 text-white hover:opacity-90`;
+
+const MOD_BTN_MUTED = `${MOD_BTN_BASE} border border-theme bg-theme-input px-4 py-2 text-theme-secondary hover:bg-theme-nav hover:text-theme-primary`;
+
+const MOD_BTN_DANGER = `${MOD_BTN_BASE} border border-theme bg-theme-card px-4 py-2 text-theme-secondary hover:border-red-500/35 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400`;
+
+const MOD_BTN_SM_PRIMARY = `${MOD_BTN_BASE} bg-theme-accent px-3 py-1.5 text-xs text-white hover:opacity-90`;
+
+const MOD_BTN_SM_DANGER = `${MOD_BTN_BASE} border border-theme bg-theme-card px-3 py-1.5 text-xs text-theme-secondary hover:border-red-500/35 hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400`;
+
+const MOD_PREVIEW_PANEL = "mt-4 rounded-xl border border-theme-accent/25 bg-theme-hero p-4";
+
 // ─── Dashboard landing ────────────────────────────────────────────────────────
 
 function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
@@ -549,6 +567,10 @@ export default function SPCDashboard() {
     setModEnhancedContent(null);
     setModAnswerGenerated(false);
     try {
+      if (modSelected?.contentTruncated && String(modSelected._id) === String(id)) {
+        const res = await adminAPI.getSubmission(id);
+        setModSelected(res.data);
+      }
       const { data } = await adminAPI.addAnswerToSubmission(id);
       const next = data?.content;
       if (typeof next !== "string" || !next.trim()) {
@@ -754,7 +776,7 @@ export default function SPCDashboard() {
                                       modRejecting.has(String(row._id)) ||
                                       modLoading
                                     }
-                                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className={MOD_BTN_SM_PRIMARY}
                                   >
                                     {modApproving.has(String(row._id)) ? "…" : "Approve"}
                                   </button>
@@ -767,7 +789,7 @@ export default function SPCDashboard() {
                                       modRejecting.has(String(row._id)) ||
                                       modLoading
                                     }
-                                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className={MOD_BTN_SM_DANGER}
                                   >
                                     {modRejecting.has(String(row._id)) ? "…" : "Reject"}
                                   </button>
@@ -860,22 +882,22 @@ export default function SPCDashboard() {
                     {placements.length === 0 && !loading ? (
                       <p className="text-sm text-theme-muted">No placement or conversion entries yet.</p>
                     ) : placements.length > 0 ? (
-                      <div className="overflow-x-auto rounded-xl border border-theme-input">
-                        <table className="min-w-full text-left text-sm">
-                          <thead className="border-b border-theme-input bg-theme-input/80 text-theme-secondary">
+                      <div className="overflow-x-auto rounded-xl border border-theme">
+                        <table className="min-w-full divide-y divide-[var(--border)] text-left text-sm">
+                          <thead className="bg-theme-hero">
                             <tr>
-                              <th className="whitespace-nowrap px-3 py-2.5 font-medium">Updated</th>
-                              <th className="whitespace-nowrap px-3 py-2.5 font-medium">Student</th>
-                              <th className="whitespace-nowrap px-3 py-2.5 font-medium">Company</th>
-                              <th className="whitespace-nowrap px-3 py-2.5 font-medium">Year</th>
-                              <th className="whitespace-nowrap px-3 py-2.5 font-medium">Branch</th>
-                              <th className="whitespace-nowrap px-3 py-2.5 font-medium">Offer</th>
-                              <th className="min-w-[8rem] px-3 py-2.5 font-medium">Actions</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Updated</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Student</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Company</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Year</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Branch</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Offer</th>
+                              <th className="min-w-[8rem] px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Actions</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-theme-input text-theme-primary">
+                          <tbody className="bg-theme-card text-theme-primary">
                             {placements.map((row) => (
-                              <tr key={row._id} className="bg-theme-card hover:bg-theme-nav/50">
+                              <tr key={row._id} className="hover:bg-theme-nav/50">
                                 <td className="whitespace-nowrap px-3 py-2 align-middle text-theme-secondary">
                                   {formatWhen(row.updatedAt || row.createdAt)}
                                 </td>
@@ -1037,7 +1059,7 @@ export default function SPCDashboard() {
             </div>
 
             {saveError ? <p className="mt-3 text-sm text-red-400">{saveError}</p> : null}
-            {saveSuccess ? <p className="mt-3 text-sm text-emerald-400">{saveSuccess}</p> : null}
+            {saveSuccess ? <p className="mt-3 text-sm text-theme-accent">{saveSuccess}</p> : null}
 
             <div className="mt-5 flex justify-end">
               <button
@@ -1116,10 +1138,12 @@ export default function SPCDashboard() {
               })()}
             </div>
             {modEnhanceError ? (
-              <p className="mt-3 text-sm text-red-600 dark:text-red-400">{modEnhanceError}</p>
+              <p className="mt-3 rounded-xl border border-red-300/60 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-300">
+                {modEnhanceError}
+              </p>
             ) : null}
             {modEnhancedContent ? (
-              <div className="mt-4 rounded-xl border border-violet-500/40 bg-violet-500/5 p-4">
+              <div className={MOD_PREVIEW_PANEL}>
                 <p className="text-base font-semibold text-theme-primary">
                   {modAnswerGenerated ? "Generated answer preview" : "AI-enhanced preview"}
                 </p>
@@ -1167,7 +1191,7 @@ export default function SPCDashboard() {
                       modRejecting.has(String(modSelected._id)) ||
                       modLoading
                     }
-                    className="rounded-lg border border-sky-500/60 bg-sky-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={MOD_BTN_SECONDARY}
                   >
                     {modAddingAnswer ? "Generating answer…" : "Add answer"}
                   </button>
@@ -1182,7 +1206,7 @@ export default function SPCDashboard() {
                       modRejecting.has(String(modSelected._id)) ||
                       modLoading
                     }
-                    className="rounded-lg border border-violet-500/60 bg-violet-600/90 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={MOD_BTN_SECONDARY}
                   >
                     {modEnhancing ? "Enhancing…" : "Enhance with AI"}
                   </button>
@@ -1201,7 +1225,7 @@ export default function SPCDashboard() {
                         modRejecting.has(String(modSelected._id)) ||
                         modLoading
                       }
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      className={MOD_BTN_PRIMARY}
                     >
                       {modApproving.has(String(modSelected._id))
                         ? "Approving…"
@@ -1221,7 +1245,7 @@ export default function SPCDashboard() {
                         modRejecting.has(String(modSelected._id)) ||
                         modLoading
                       }
-                      className="rounded-lg border border-theme-input bg-theme-card px-4 py-2 text-sm font-semibold text-theme-primary hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                      className={MOD_BTN_MUTED}
                     >
                       {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve original"}
                     </button>
@@ -1239,7 +1263,7 @@ export default function SPCDashboard() {
                       modRejecting.has(String(modSelected._id)) ||
                       modLoading
                     }
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={MOD_BTN_PRIMARY}
                   >
                     {modApproving.has(String(modSelected._id)) ? "Approving…" : "Approve"}
                   </button>
@@ -1256,7 +1280,7 @@ export default function SPCDashboard() {
                     modRejecting.has(String(modSelected._id)) ||
                     modLoading
                   }
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className={MOD_BTN_DANGER}
                 >
                   {modRejecting.has(String(modSelected._id)) ? "Rejecting…" : "Reject"}
                 </button>

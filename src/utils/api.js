@@ -41,11 +41,14 @@ const previewLogosPromises = new Map();
 
 const INTERVIEW_SUMMARY_CACHE_TTL_MS = 30 * 1000;
 const INTERVIEW_DETAIL_CACHE_TTL_MS = 120 * 1000;
+const INTERVIEW_ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const interviewSummaryCache = new Map();
 const interviewDetailCache = new Map();
+const interviewAnalyticsCache = new Map();
 const interviewSummaryPromises = new Map();
 const interviewDetailPromises = new Map();
+const interviewAnalyticsPromises = new Map();
 
 function getInterviewSummaryCacheKey(userId, page, limit) {
   return `${encodeURIComponent(String(userId || ''))}|${Number(page) || 1}|${Number(limit) || 10}`;
@@ -427,18 +430,6 @@ export const leaderboardAPI = {
 export const interviewAPI = {
   getInterviewVisitOptions: (companyId) =>
     interviewHttp.get(`/api/interview/visit-options/${encodeURIComponent(companyId)}`),
-  previewInterviewPlan: (
-    companyId,
-    { visitType = "", cluster = "", placementYear, mergePlacementByType } = {}
-  ) =>
-    interviewHttp.get(`/api/interview/preview-plan/${encodeURIComponent(companyId)}`, {
-      params: {
-        placementVisitType: visitType,
-        placementCluster: cluster,
-        placementYear,
-        mergePlacementByType,
-      },
-    }),
   async startInterview({
     userId,
     companyId,
@@ -577,8 +568,37 @@ export const interviewAPI = {
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
   },
-  getUserAnalytics: (userId) =>
-    interviewHttp.get(`/api/interview/analytics/${encodeURIComponent(userId)}`),
+  async getUserAnalytics(userId) {
+    const key = encodeURIComponent(String(userId || ""));
+    const cached = getFreshCachedEntry(
+      interviewAnalyticsCache,
+      key,
+      INTERVIEW_ANALYTICS_CACHE_TTL_MS
+    );
+    if (cached) {
+      return { data: cached };
+    }
+
+    if (!interviewAnalyticsPromises.has(key)) {
+      interviewAnalyticsPromises.set(
+        key,
+        interviewHttp
+          .get(`/api/interview/analytics/${encodeURIComponent(userId)}`)
+          .then((res) => {
+            setCachedEntry(interviewAnalyticsCache, key, res.data);
+            return res;
+          })
+          .finally(() => {
+            interviewAnalyticsPromises.delete(key);
+          })
+      );
+    }
+    return interviewAnalyticsPromises.get(key);
+  },
+  invalidateUserInterviewAnalyticsCache: (userId) => {
+    interviewAnalyticsCache.delete(encodeURIComponent(String(userId || "")));
+    interviewAnalyticsPromises.delete(encodeURIComponent(String(userId || "")));
+  },
 };
 
 export default API;

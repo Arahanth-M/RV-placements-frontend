@@ -12,30 +12,21 @@ import {
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 
-/* ─── tag colour map ────────────────────────────────────────────────────────
- * Light mode: bright tinted fills + `text-black` (readable; avoid `text-white` —
- * light theme CSS remaps `.text-white` inside `.events-page-theme`).
- * Dark mode: softer translucent chips with light label text.
- */
+/** Event type chips — theme tokens only (light + dark). */
+const TAG_CHIP_BASE =
+  'inline-block max-w-full rounded-full border px-2 py-0.5 text-[10px] font-semibold';
+
 const TAG_STYLES = {
-  hackathon:
-    'border border-violet-600 bg-violet-200 text-black shadow-sm ring-1 ring-violet-400/80 dark:border-violet-700 dark:bg-violet-900/45 dark:text-violet-200 dark:ring-0 dark:shadow-none',
-  placement:
-    'border border-emerald-600 bg-emerald-200 text-black shadow-sm ring-1 ring-emerald-400/80 dark:border-emerald-700 dark:bg-emerald-900/45 dark:text-emerald-200 dark:ring-0 dark:shadow-none',
-  workshop:
-    'border-2 border-amber-500 bg-amber-200 text-black shadow-sm ring-1 ring-amber-400/70 dark:border-amber-700 dark:bg-amber-900/45 dark:text-amber-200 dark:ring-0 dark:shadow-none',
-  competition:
-    'border border-sky-600 bg-sky-200 text-black shadow-sm ring-1 ring-sky-400/80 dark:border-sky-700 dark:bg-sky-900/45 dark:text-sky-200 dark:ring-0 dark:shadow-none',
-  'preplacement talk':
-    'border border-fuchsia-600 bg-fuchsia-200 text-black shadow-sm ring-1 ring-fuchsia-400/80 dark:border-fuchsia-700 dark:bg-fuchsia-900/45 dark:text-fuchsia-200 dark:ring-0 dark:shadow-none',
-  default:
-    'border border-indigo-500 bg-indigo-100 text-black shadow-sm ring-1 ring-indigo-300/80 dark:border-theme dark:bg-theme-hero dark:text-theme-secondary dark:ring-0 dark:shadow-none',
+  default: `${TAG_CHIP_BASE} border-theme bg-theme-hero text-theme-secondary`,
+  hackathon: `${TAG_CHIP_BASE} border-theme-accent/35 bg-theme-accent/10 text-theme-primary`,
+  placement: `${TAG_CHIP_BASE} border-theme-accent/30 bg-theme-accent/8 text-theme-primary`,
+  workshop: `${TAG_CHIP_BASE} border-theme bg-theme-nav/40 text-theme-secondary`,
+  competition: `${TAG_CHIP_BASE} border-theme bg-theme-hero text-theme-primary`,
+  'preplacement talk': `${TAG_CHIP_BASE} border-theme-accent/25 bg-theme-accent/6 text-theme-secondary`,
 };
 
 const getTagStyle = (type = '') => {
-  const key = String(type ?? '')
-    .trim()
-    .toLowerCase();
+  const key = String(type ?? '').trim().toLowerCase();
   return TAG_STYLES[key] ?? TAG_STYLES.default;
 };
 
@@ -139,7 +130,7 @@ const Events = () => {
       return <span className="text-theme-muted text-xs">—</span>;
 
     if (registeredIds.has(idStr)) return (
-      <span className={`inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 ${compact ? 'text-xs' : 'text-sm'}`}>
+      <span className={`inline-flex items-center gap-1.5 font-medium text-theme-accent ${compact ? 'text-xs' : 'text-sm'}`}>
         <FaCheck className="shrink-0" aria-hidden />
         Registered
       </span>
@@ -237,7 +228,7 @@ const Events = () => {
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { label: 'Total events',     value: sortedEvents.length,  color: 'text-theme-accent' },
-                      { label: 'Upcoming',          value: upcomingCount,         color: 'text-emerald-500' },
+                      { label: 'Upcoming',          value: upcomingCount,         color: 'text-theme-primary' },
                       { label: "You've registered", value: registeredCount,       color: 'text-theme-primary' },
                     ].map(({ label, value, color }) => (
                       <div

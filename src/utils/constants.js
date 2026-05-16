@@ -2,6 +2,10 @@
 export const LOCALHOST_HOSTNAME = "localhost";
 /** Legacy monolith local port (rollback default). */
 export const LOCALHOST_PORT = 7779;
+/** Split stack: backend-main (compose.main.yml). */
+export const LOCALHOST_MAIN_PORT = 7778;
+/** Split stack: backend-interview (compose.interview.yml). */
+export const LOCALHOST_INTERVIEW_PORT = 7777;
 export const PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
 
 function trimApiBase(value) {
@@ -28,6 +32,17 @@ const envLegacyApi = trimApiBase(
 export const IS_SPLIT_BACKEND_LOCAL =
   Boolean(envMainApi && envInterviewApi);
 
+/** UI on :5173 with split compose — use even if build-time env vars were missing. */
+function isBrowserLocalSplitDev() {
+  if (typeof window === "undefined" || !window.location) return false;
+  const host = window.location.hostname;
+  const port = window.location.port;
+  const onLocalHost =
+    host === LOCALHOST_HOSTNAME || host === "127.0.0.1" || host.includes("localhost");
+  const onDevUiPort = port === "5173" || port === "" || port === "80";
+  return onLocalHost && onDevUiPort;
+}
+
 function resolveLegacyMonolithBaseUrl() {
   if (envLegacyApi) {
     return envLegacyApi;
@@ -48,6 +63,9 @@ export const BASE_URL = (() => {
   if (envMainApi) {
     return envMainApi;
   }
+  if (isBrowserLocalSplitDev()) {
+    return `http://${LOCALHOST_HOSTNAME}:${LOCALHOST_MAIN_PORT}`;
+  }
   return resolveLegacyMonolithBaseUrl();
 })();
 
@@ -55,6 +73,9 @@ export const BASE_URL = (() => {
 export const INTERVIEW_API_BASE_URL = (() => {
   if (envInterviewApi) {
     return envInterviewApi;
+  }
+  if (isBrowserLocalSplitDev()) {
+    return `http://${LOCALHOST_HOSTNAME}:${LOCALHOST_INTERVIEW_PORT}`;
   }
   return BASE_URL;
 })();
