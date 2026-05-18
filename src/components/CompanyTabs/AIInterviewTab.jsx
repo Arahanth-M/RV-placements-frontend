@@ -14,6 +14,11 @@ import {
 } from "../../utils/cppInterviewStub";
 import { getJavaGraderContractHints, looksLikeJavaInterviewCode } from "../../utils/javaInterviewStub.js";
 import { buildPreviewCodeExecutionHints } from "../../utils/previewExecutionHints";
+import {
+  getDefaultFocusForRoundType,
+  getFocusOptionsForRoundType,
+  roundTypeHasFocusPicker,
+} from "../../constants/interviewRoundFocus";
 
 /** Display labels with runtime versions — aligned with backend `executeCode.js` default images (Python 3.11, GCC 13 / C++17, Java 17). */
 const CODING_LANGUAGE_OPTION_LABELS = {
@@ -34,6 +39,29 @@ const ROUND_TYPE_OPTIONS = [
   "HR",
 ];
 const ROUND_DIFFICULTY_OPTIONS = ["easy", "medium", "hard"];
+
+/** Border-only hover (cluster-card style); plan-setup-control blocks global card lift. */
+const PLAN_PICKER_TRIGGER_CLASS =
+  "plan-setup-control w-full min-w-0 rounded-xl border-2 border-theme bg-theme-input px-3 py-2.5 text-sm text-theme-primary text-left flex items-center justify-between gap-2 focus:outline-none focus:border-theme-accent hover:border-theme-accent";
+
+const PLAN_SLOT_TRIGGER_CLASS =
+  "plan-setup-control w-full min-w-0 rounded-xl border-2 border-theme bg-theme-input px-4 py-3 text-left flex items-center justify-between gap-3 focus:outline-none focus:border-theme-accent hover:border-theme-accent";
+
+const PLAN_PICKER_MENU_CLASS =
+  "plan-setup-menu absolute mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border-2 border-theme bg-theme-card shadow-lg py-1.5 px-1.5 space-y-1";
+
+const planPickerOptionClass = ({ isActive, isHovered }) =>
+  [
+    "plan-setup-option w-full text-left text-sm rounded-lg border-2",
+    isActive
+      ? "border-theme-accent text-theme-primary font-medium"
+      : isHovered
+        ? "border-theme-accent text-theme-primary"
+        : "border-transparent text-theme-secondary hover:border-theme-accent hover:text-theme-primary",
+  ].join(" ");
+
+const PLAN_ROUND_ROW_CLASS =
+  "grid grid-cols-1 min-w-0 gap-3 items-center rounded-lg border-2 border-theme p-3 bg-theme-input";
 
 const buildDefaultCustomRounds = (count = 2) =>
   Array.from({ length: Math.min(MAX_CUSTOM_ROUNDS, Math.max(1, Number(count) || 1)) }, () => ({
@@ -511,15 +539,13 @@ function ThemedSelect({ value, options, onChange, placeholder = "Select option",
           if (disabled) return;
           setOpen((prev) => !prev);
         }}
-        className={`w-full min-w-[140px] px-3 py-2.5 rounded-xl border-2 border-theme-input bg-theme-input text-sm text-theme-primary text-left flex items-center justify-between gap-2 focus:outline-none focus:border-theme-accent transition-[border-color,background-color,opacity] ${
-          disabled
-            ? "opacity-60 cursor-not-allowed hover:bg-theme-input"
-            : "hover:bg-theme-card hover:border-theme-accent/50"
+        className={`${PLAN_PICKER_TRIGGER_CLASS} ${
+          disabled ? "opacity-60 cursor-not-allowed hover:border-theme" : ""
         }`}
       >
         <span className="truncate">{active?.label || placeholder}</span>
         <svg
-          className={`h-4 w-4 shrink-0 text-theme-accent transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-theme-accent ${open ? "rotate-180" : ""}`}
           viewBox="0 0 20 20"
           fill="currentColor"
           aria-hidden
@@ -533,15 +559,16 @@ function ThemedSelect({ value, options, onChange, placeholder = "Select option",
       </button>
 
       {open && !disabled && (
-        <ul
-          role="listbox"
-          className="absolute z-40 mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border-2 border-theme-accent bg-theme-card shadow-2xl py-1.5"
-        >
+        <ul role="listbox" className={`${PLAN_PICKER_MENU_CLASS} z-40`}>
           {options.map((item) => {
             const isActive = String(item.value) === String(value);
             const isHovered = String(item.value) === String(hoveredValue);
             return (
-              <li key={`${ariaLabel || "select"}-${item.value}`} role="option" aria-selected={isActive}>
+              <li
+                key={`${ariaLabel || "select"}-${item.value}`}
+                role="option"
+                aria-selected={isActive}
+              >
                 <button
                   type="button"
                   onMouseEnter={() => setHoveredValue(item.value)}
@@ -550,13 +577,7 @@ function ThemedSelect({ value, options, onChange, placeholder = "Select option",
                     onChange(item.value);
                     setOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors border-l-2 ${
-                    isActive
-                      ? "border-theme-accent bg-theme-accent/10 text-theme-primary font-semibold"
-                      : isHovered
-                      ? "border-theme-accent bg-theme-input text-theme-primary font-semibold"
-                      : "border-transparent text-theme-secondary hover:bg-theme-input hover:text-theme-primary"
-                  }`}
+                  className={`px-3 py-2.5 ${planPickerOptionClass({ isActive, isHovered })}`}
                 >
                   {item.label}
                 </button>
@@ -890,12 +911,21 @@ function AIInterviewTab({
     () =>
       (Array.isArray(customRounds) ? customRounds : [])
         .slice(0, MAX_CUSTOM_ROUNDS)
-        .map((round) => ({
-          type: ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "DSA",
-          difficulty: ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
+        .map((round) => {
+          const type = ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "DSA";
+          const difficulty = ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
             ? round.difficulty
-            : "medium",
-        })),
+            : "medium";
+          if (!roundTypeHasFocusPicker(type)) {
+            return { type, difficulty };
+          }
+          const focusOptions = getFocusOptionsForRoundType(type);
+          const validFocusIds = new Set(focusOptions.map((opt) => opt.id));
+          const focus = validFocusIds.has(round?.focus)
+            ? round.focus
+            : getDefaultFocusForRoundType(type);
+          return { type, difficulty, focus };
+        }),
     [customRounds]
   );
 
@@ -1200,9 +1230,24 @@ function AIInterviewTab({
       (Array.isArray(prev) ? prev : []).map((round, roundIndex) => {
         if (roundIndex !== index) return round;
         if (field === "type") {
+          const nextType = ROUND_TYPE_OPTIONS.includes(value) ? value : "DSA";
+          if (!roundTypeHasFocusPicker(nextType)) {
+            const { focus: _removed, ...withoutFocus } = round;
+            return { ...withoutFocus, type: nextType };
+          }
           return {
             ...round,
-            type: ROUND_TYPE_OPTIONS.includes(value) ? value : "DSA",
+            type: nextType,
+            focus: getDefaultFocusForRoundType(nextType),
+          };
+        }
+        if (field === "focus") {
+          const type = ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "DSA";
+          const focusOptions = getFocusOptionsForRoundType(type);
+          const validFocusIds = new Set(focusOptions.map((opt) => opt.id));
+          return {
+            ...round,
+            focus: validFocusIds.has(value) ? value : getDefaultFocusForRoundType(type),
           };
         }
         return {
@@ -3165,7 +3210,7 @@ function AIInterviewTab({
       {user?.userId && user?.betaAccess !== false && showStartPrompt && (
         <div
           ref={slotPickerRef}
-          className="mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
+          className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
         >
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex flex-col gap-1">
@@ -3183,10 +3228,10 @@ function AIInterviewTab({
                 onClick={() => visitSlots.length > 1 && setSlotMenuOpen((open) => !open)}
                 aria-expanded={slotMenuOpen}
                 aria-haspopup="listbox"
-                className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-theme-accent bg-theme-input text-left transition-colors ${
+                className={`${PLAN_SLOT_TRIGGER_CLASS} ${
                   visitSlots.length > 1
-                    ? "hover:bg-theme-card/80 focus:outline-none focus:border-theme-accent cursor-pointer"
-                    : "cursor-default"
+                    ? "cursor-pointer"
+                    : "cursor-default hover:border-theme"
                 }`}
               >
                 <div className="min-w-0">
@@ -3201,9 +3246,7 @@ function AIInterviewTab({
                 </div>
                 {visitSlots.length > 1 ? (
                   <svg
-                    className={`shrink-0 h-5 w-5 text-theme-accent transition-transform ${
-                      slotMenuOpen ? "rotate-180" : ""
-                    }`}
+                    className={`shrink-0 h-5 w-5 text-theme-accent ${slotMenuOpen ? "rotate-180" : ""}`}
                     viewBox="0 0 20 20"
                     fill="currentColor"
                     aria-hidden
@@ -3221,10 +3264,7 @@ function AIInterviewTab({
                 )}
               </button>
               {slotMenuOpen && visitSlots.length > 1 && (
-                <ul
-                  className="absolute z-30 mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border border-theme-accent bg-theme-card shadow-2xl py-1.5"
-                  role="listbox"
-                >
+                <ul className={`${PLAN_PICKER_MENU_CLASS} z-30`} role="listbox">
                   {visitSlots.map((slot) => {
                     const key = placementSlotKey(slot);
                     const active = key === selectedSlotKey;
@@ -3232,11 +3272,7 @@ function AIInterviewTab({
                       <li key={key} role="option" aria-selected={active}>
                         <button
                           type="button"
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-l-2 ${
-                            active
-                              ? "border-theme-accent bg-theme-accent/10 text-theme-primary font-semibold"
-                              : "border-transparent text-theme-secondary hover:bg-theme-input hover:text-theme-primary"
-                          }`}
+                          className={`px-3 py-2.5 ${planPickerOptionClass({ isActive: active, isHovered: false })}`}
                           onClick={() => {
                             setSelectedSlotKey(key);
                             setSlotMenuOpen(false);
@@ -3260,12 +3296,13 @@ function AIInterviewTab({
       )}
 
       {user?.userId && user?.betaAccess !== false && showStartPrompt && (
-        <div className="mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-theme-primary">Interview plan mode</p>
               <p className="text-xs text-theme-secondary">
-                Customize your round order, type and difficulty (up to {MAX_CUSTOM_ROUNDS} rounds).
+                Customize round order, type, difficulty, and focus area for non-DSA rounds (up to{" "}
+                {MAX_CUSTOM_ROUNDS} rounds).
               </p>
             </div>
           </div>
@@ -3274,7 +3311,7 @@ function AIInterviewTab({
               <label className="text-sm font-medium text-theme-primary">
                 Number of rounds
               </label>
-              <div>
+              <div className="min-w-0 flex-1 sm:flex-none sm:min-w-[8rem]">
                 <ThemedSelect
                   ariaLabel="Number of rounds"
                   value={normalizedCustomRounds.length}
@@ -3288,7 +3325,7 @@ function AIInterviewTab({
             </div>
 
             <div
-              className="space-y-2"
+              className="space-y-3"
               onDragOver={(event) => {
                 event.preventDefault();
                 if (draggedRoundIndex !== null) {
@@ -3306,49 +3343,72 @@ function AIInterviewTab({
                   {draggedRoundIndex !== null &&
                     dragOverRoundIndex === idx &&
                     draggedRoundIndex !== idx && (
-                      <div className="h-4 rounded-md border border-dashed border-theme-accent bg-theme-accent/10 transition-all duration-200" />
+                      <div className="h-4 rounded-md border border-dashed border-theme-accent bg-theme-accent/10" />
                     )}
                   <div
-                    draggable
-                    onDragStart={() => handleRoundDragStart(idx)}
                     onDragOver={(event) => handleRoundDragOver(event, idx)}
                     onDrop={() => handleRoundDrop(idx)}
-                    onDragEnd={handleRoundDragEnd}
-                    className={`grid grid-cols-1 sm:grid-cols-3 gap-2 items-center rounded-lg border p-3 bg-theme-card transition-all duration-200 ease-out cursor-grab active:cursor-grabbing ${
+                    className={`${PLAN_ROUND_ROW_CLASS} ${
+                      roundTypeHasFocusPicker(round.type)
+                        ? "sm:grid-cols-2 lg:grid-cols-4"
+                        : "sm:grid-cols-3"
+                    } ${
                       draggedRoundIndex === idx
-                        ? "opacity-50 border-theme-accent scale-[0.99] shadow-sm"
+                        ? "opacity-50"
                         : dragOverRoundIndex === idx
-                        ? "border-theme-accent/70 shadow-sm"
-                        : "border-theme hover:border-theme-accent/60"
+                          ? "border-theme-accent"
+                          : ""
                     }`}
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted flex items-center gap-2">
+                    <p
+                      draggable
+                      onDragStart={() => handleRoundDragStart(idx)}
+                      onDragEnd={handleRoundDragEnd}
+                      className="text-xs font-semibold uppercase tracking-wide text-theme-muted flex items-center gap-2 min-w-0 cursor-grab active:cursor-grabbing select-none"
+                    >
                       <span className="text-theme-accent">::</span> Round {idx + 1}
                     </p>
-                    <ThemedSelect
-                      ariaLabel={`Round ${idx + 1} type`}
-                      value={round.type}
-                      onChange={(next) => handleCustomRoundFieldChange(idx, "type", next)}
-                      options={ROUND_TYPE_OPTIONS.map((type) => ({
-                        value: type,
-                        label: type,
-                      }))}
-                    />
-                    <ThemedSelect
-                      ariaLabel={`Round ${idx + 1} difficulty`}
-                      value={round.difficulty}
-                      onChange={(next) => handleCustomRoundFieldChange(idx, "difficulty", next)}
-                      options={ROUND_DIFFICULTY_OPTIONS.map((difficulty) => ({
-                        value: difficulty,
-                        label: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
-                      }))}
-                    />
+                    <div className="relative min-w-0">
+                      <ThemedSelect
+                        ariaLabel={`Round ${idx + 1} type`}
+                        value={round.type}
+                        onChange={(next) => handleCustomRoundFieldChange(idx, "type", next)}
+                        options={ROUND_TYPE_OPTIONS.map((type) => ({
+                          value: type,
+                          label: type,
+                        }))}
+                      />
+                    </div>
+                    {roundTypeHasFocusPicker(round.type) && (
+                      <div className="relative min-w-0">
+                        <ThemedSelect
+                          ariaLabel={`Round ${idx + 1} focus`}
+                          value={round.focus}
+                          onChange={(next) => handleCustomRoundFieldChange(idx, "focus", next)}
+                          options={getFocusOptionsForRoundType(round.type).map((opt) => ({
+                            value: opt.id,
+                            label: opt.label,
+                          }))}
+                        />
+                      </div>
+                    )}
+                    <div className="relative min-w-0">
+                      <ThemedSelect
+                        ariaLabel={`Round ${idx + 1} difficulty`}
+                        value={round.difficulty}
+                        onChange={(next) => handleCustomRoundFieldChange(idx, "difficulty", next)}
+                        options={ROUND_DIFFICULTY_OPTIONS.map((difficulty) => ({
+                          value: difficulty,
+                          label: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
+                        }))}
+                      />
+                    </div>
                   </div>
                 </React.Fragment>
               ))}
               {draggedRoundIndex !== null &&
                 dragOverRoundIndex === normalizedCustomRounds.length && (
-                  <div className="h-4 rounded-md border border-dashed border-theme-accent bg-theme-accent/10 transition-all duration-200" />
+                  <div className="h-4 rounded-md border border-dashed border-theme-accent bg-theme-accent/10" />
                 )}
             </div>
 

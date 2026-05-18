@@ -1643,7 +1643,7 @@ html, body, #root {
 /* Global smooth hover transitions for card-like surfaces across routes */
 :where(
   .company-card,
-  .bg-theme-card[class*="rounded"][class*="shadow"],
+  .bg-theme-card[class*="rounded"][class*="shadow"]:not(.plan-setup-panel):not(.plan-setup-menu),
   .content-cards-page-theme [class*="rounded"][class*="shadow"],
   .contact-page-theme [class*="rounded"][class*="shadow"],
   .admin-dashboard-theme [class*="rounded"][class*="shadow"],
@@ -1658,7 +1658,7 @@ html, body, #root {
 
 :where(
   .company-card,
-  .bg-theme-card[class*="rounded"][class*="shadow"],
+  .bg-theme-card[class*="rounded"][class*="shadow"]:not(.plan-setup-panel):not(.plan-setup-menu),
   .content-cards-page-theme [class*="rounded"][class*="shadow"],
   .contact-page-theme [class*="rounded"][class*="shadow"],
   .admin-dashboard-theme [class*="rounded"][class*="shadow"],
@@ -1668,10 +1668,33 @@ html, body, #root {
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
 }
 
+/* AI interview plan / placement pickers: border highlight only (no card lift). */
+.plan-setup-panel:hover,
+.plan-setup-menu,
+.plan-setup-menu:hover {
+  transform: none !important;
+}
+
+.plan-setup-control,
+.plan-setup-option {
+  transition: border-color 300ms ease !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.plan-setup-control:hover,
+.plan-setup-control:focus-visible,
+.plan-setup-option:hover,
+.plan-setup-option:focus-visible {
+  transform: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :where(
     .company-card,
-    .bg-theme-card[class*="rounded"][class*="shadow"],
+    .bg-theme-card[class*="rounded"][class*="shadow"]:not(.plan-setup-panel):not(.plan-setup-menu),
     .content-cards-page-theme [class*="rounded"][class*="shadow"],
     .contact-page-theme [class*="rounded"][class*="shadow"],
     .admin-dashboard-theme [class*="rounded"][class*="shadow"],
@@ -1682,7 +1705,7 @@ html, body, #root {
 
   :where(
     .company-card,
-    .bg-theme-card[class*="rounded"][class*="shadow"],
+    .bg-theme-card[class*="rounded"][class*="shadow"]:not(.plan-setup-panel):not(.plan-setup-menu),
     .content-cards-page-theme [class*="rounded"][class*="shadow"],
     .contact-page-theme [class*="rounded"][class*="shadow"],
     .admin-dashboard-theme [class*="rounded"][class*="shadow"],
