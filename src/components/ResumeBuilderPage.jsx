@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaTrash, FaFileDownload, FaChevronDown, FaSave } from "react-icons/fa";
+import { FaPlus, FaTrash, FaFileDownload, FaSave, FaChevronDown } from "react-icons/fa";
 import { resumeAPI } from "../utils/api";
-import { exportResume, normalizeResumePayload } from "../utils/resumeExport";
+import { exportResumeAsDocx, normalizeResumePayload } from "../utils/resumeExport";
 import {
   createBlankResumeDraft,
   RESUME_TEMPLATE_IDS,
@@ -53,6 +53,7 @@ function createExperienceItem() {
   return {
     company: "",
     role: "",
+    techStack: "",
     location: "",
     startDate: "",
     endDate: "",
@@ -62,6 +63,10 @@ function createExperienceItem() {
 
 function createAchievementItem() {
   return { title: "", detail: "" };
+}
+
+function createCertificationItem() {
+  return { title: "", link: "" };
 }
 
 function hasAtLeastOneFilledEducation(education = []) {
@@ -117,14 +122,14 @@ const FIELD_LABELS = {
 
 const FIELD_PLACEHOLDERS = {
   fullName: "e.g. Jane Doe",
-  email: "name@rvce.edu.in",
+  email: "enter mail",
   phone: "+91 98765 43210",
   location: "Bengaluru, Karnataka",
   linkedin: "https://linkedin.com/in/your-profile",
   github: "https://github.com/your-username",
   summary: "Your skills, experience, and goals (max 500 characters)",
   institution: "e.g. RV College of Engineering",
-  degree: "e.g. B.E. Computer Science",
+  degree: "e.g. B.E. ",
   field: "e.g. Computer Science",
   startDate: "e.g. Aug 2022",
   endDate: "e.g. May 2026",
@@ -135,14 +140,22 @@ const FIELD_PLACEHOLDERS = {
   company: "e.g. Acme Corp",
   role: "e.g. Software Engineer Intern",
   title: "e.g. Google Code Jam Qualifier",
-  detail: "Description of the achievement",
+  detail: "Description (optional)",
+};
+
+const CERTIFICATION_PLACEHOLDERS = {
+  title: "e.g. AWS Cloud Practitioner",
+  link: "Link (Optional)",
 };
 
 function formatFieldLabel(field) {
   return FIELD_LABELS[field] || field.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
 }
 
-function formatFieldPlaceholder(field) {
+function formatFieldPlaceholder(field, sectionKey) {
+  if (sectionKey === "certifications" && CERTIFICATION_PLACEHOLDERS[field]) {
+    return CERTIFICATION_PLACEHOLDERS[field];
+  }
   return (
     FIELD_PLACEHOLDERS[field] ??
     `Enter ${formatFieldLabel(field).toLowerCase()}`
@@ -269,9 +282,17 @@ export default function ResumeBuilderPage() {
   const selectedTemplateLabel =
     templateOptions.find((option) => option.id === draft.templateId)?.label || "Select template";
 
-  const renderArraySection = (title, sectionKey, createItem) => (
+  const SECTION_ORDER_HINTS = {
+    education: "List your latest education first.",
+    projects: "List your latest projects first.",
+    experience: "List your latest experience first.",
+  };
+
+  const renderArraySection = (title, sectionKey, createItem) => {
+    const orderHint = SECTION_ORDER_HINTS[sectionKey];
+    return (
     <div className="bg-theme-card border border-theme rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className={`flex items-center justify-between ${orderHint ? "mb-1" : "mb-3"}`}>
         <h3 className="font-semibold text-theme-primary">{title}</h3>
         <button
           type="button"
@@ -286,6 +307,9 @@ export default function ResumeBuilderPage() {
           <FaPlus /> Add
         </button>
       </div>
+      {orderHint ? (
+        <p className="text-xs text-theme-secondary mb-3">{orderHint}</p>
+      ) : null}
       {(draft[sectionKey] || []).map((item, idx) => (
         <div key={`${sectionKey}-${idx}`} className="border border-theme rounded-md p-3 mb-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -296,7 +320,7 @@ export default function ResumeBuilderPage() {
                   <label className="block text-[11px] font-medium text-theme-secondary">{formatFieldLabel(field)}</label>
                   <input
                     className="resume-field w-full rounded-md border border-theme bg-theme-app text-sm text-theme-primary"
-                    placeholder={formatFieldPlaceholder(field)}
+                    placeholder={formatFieldPlaceholder(field, sectionKey)}
                     value={item[field] || ""}
                     onChange={(event) =>
                       applyDraftUpdate((prev) => ({
@@ -373,9 +397,10 @@ export default function ResumeBuilderPage() {
         </div>
       ))}
     </div>
-  );
+    );
+  };
 
-  const handleExport = async () => {
+  const handleExportDocx = async () => {
     const normalizedSkills = skillsInput
       .split(",")
       .map((item) => item.trim())
@@ -392,12 +417,8 @@ export default function ResumeBuilderPage() {
     setErrors([]);
     setIsExporting(true);
     try {
-      const result = await exportResume({ payload: nextDraft, previewElement: previewRef.current });
-      setStatusText(
-        result.mode === "server"
-          ? "PDF downloaded (text layout). For preview-style PDF, allow downloads in browser and retry."
-          : "PDF downloaded"
-      );
+      await exportResumeAsDocx({ payload: nextDraft });
+      setStatusText("Word document downloaded.");
     } catch (err) {
       const apiErrors = err?.response?.data?.errors;
       if (Array.isArray(apiErrors) && apiErrors.length > 0) {
@@ -468,13 +489,13 @@ export default function ResumeBuilderPage() {
           <PageBackButton onClick={() => navigate(-1)} label="Back" />
         </PageBackNavRow>
 
-        <PageHeroHeader subtitle="Fill in your details, pick a template, and export a PDF when you are ready.">
+        <PageHeroHeader subtitle="Fill in your details, pick a template, and download a Word resume when you are ready.">
           Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
         </PageHeroHeader>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6">
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-sm">
-            <span className="text-theme-secondary">{statusText || "Ready"}</span>
+            {/*<span className="text-theme-secondary">{statusText || "Ready"}</span>*/}
             {/* <button
               type="button"
               className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-theme-primary disabled:opacity-60"
@@ -485,14 +506,12 @@ export default function ResumeBuilderPage() {
             </button> */}
             <button
               type="button"
-              //className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 text-sm font-semibold text-white transition-[background-color,border-color,filter] duration-200 min-h-[2.75rem] px-5 py-2.5 disabled:opacity-60 disabled:pointer-events-none border-theme-accent bg-theme-accent shadow-sm hover:brightness-110"
-              //className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent text-white disabled:opacity-60"
               className="resume-accent-btn inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent disabled:opacity-60"
-              onClick={handleExport}
+              onClick={handleExportDocx}
               disabled={isExporting || isSaving}
             >
               <FaFileDownload className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
-              {isExporting ? "Exporting…" : "Export PDF"}
+              {isExporting ? "Exporting..." : "Export Word"}
             </button>
           </div>
         </div>
@@ -610,6 +629,7 @@ export default function ResumeBuilderPage() {
             {renderArraySection("Education", "education", createEducationItem)}
             {renderArraySection("Projects", "projects", createProjectItem)}
             {renderArraySection("Experience", "experience", createExperienceItem)}
+            {renderArraySection("Certifications", "certifications", createCertificationItem)}
             {renderArraySection("Achievements", "achievements", createAchievementItem)}
           </div>
 

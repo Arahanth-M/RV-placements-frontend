@@ -400,8 +400,8 @@ export const submissionAPI = {
 export const resumeAPI = {
   getDraft: () => API.get("/api/resume/draft"),
   saveDraft: ({ payload, version }) => API.put("/api/resume/draft", { payload, version }),
-  exportPdf: (payload) =>
-    API.post("/api/resume/export", { payload }, { responseType: "blob" }),
+  exportDocx: (payload) =>
+    API.post("/api/resume/export/docx", { payload }, { responseType: "blob" }),
 };
 
 export const placementAPI = {

@@ -136,7 +136,7 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
       desc: "Update the conversion details of a student who received a PPO.",
       cta: "Get started",
       accent: "border-l-emerald-500",
-      ctaColor: "text-emerald-600",
+      ctaColor: "text-violet-600",
       badge: null,
     },
     {
@@ -153,13 +153,13 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
       title: "Review student contributions",
       desc: "Approve, reject, or enhance student submissions.",
       cta: "Start review",
-      accent: "border-l-rose-500",
-      ctaColor: "text-rose-600",
+      accent: "border-l-amber-500",
+      ctaColor: "text-amber-600",
       badge:
         pendingLoading
           ? null
           : pendingCount > 0
-            ? { label: `${pendingCount} pending`, color: "bg-rose-500/10 text-rose-600 border border-rose-500/20" }
+            ? { label: `${pendingCount} pending`, color: "bg-amber-500/10 text-amber-600 border border-amber-500/20" }
             : null,
     },
   ];

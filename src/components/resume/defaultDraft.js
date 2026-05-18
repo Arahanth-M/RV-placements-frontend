@@ -19,6 +19,7 @@ export function createBlankResumeDraft() {
     skills: [],
     projects: [],
     experience: [],
+    certifications: [],
     achievements: [],
   };
 }
