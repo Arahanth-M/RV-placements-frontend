@@ -14,6 +14,23 @@ export const PLACEMENT_CLUSTER_ME = "me";
 /** Chemical sciences hub: Chemical (CH), Civil, Biotechnology (BT). */
 export const PLACEMENT_CLUSTER_CHEM = "chem";
 
+/** Hub keys for per-cluster Open dream LPA threshold (matches backend `PLACEMENT_HUB_CLUSTER_KEYS`). */
+export const PLACEMENT_HUB_CLUSTER_KEYS = [
+  PLACEMENT_CLUSTER_CS,
+  PLACEMENT_CLUSTER_EC,
+  PLACEMENT_CLUSTER_ME,
+  PLACEMENT_CLUSTER_CHEM,
+];
+
+export const PLACEMENT_HUB_CLUSTER_LABELS = {
+  [PLACEMENT_CLUSTER_CS]: "Computer Science & Engineering",
+  [PLACEMENT_CLUSTER_EC]: "Electronics & Communication",
+  [PLACEMENT_CLUSTER_ME]: "Mechanical Engineering",
+  [PLACEMENT_CLUSTER_CHEM]: "Chemical Sciences (CH / Civil / BT)",
+};
+
+export const DEFAULT_OPEN_DREAM_MIN_LPA = 10;
+
 /**
  * Admin / company visit `cluster` field. Values must match backend
  * `COMPANY_VISIT_CLUSTER_CANONICAL` (+ empty string for legacy default slot).

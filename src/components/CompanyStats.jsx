@@ -24,7 +24,7 @@ import {
   FaFlask,
 } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
-import { companyAPI, yearStatsAPI } from "../utils/api";
+import { companyAPI, yearStatsAPI, getPlacementHubSettings } from "../utils/api";
 import {
   getCachedCompanies,
   getCachedCompanyPreview,
@@ -32,6 +32,7 @@ import {
   setCachedCompanyPreview,
 } from "../utils/companyListCache";
 import {
+  DEFAULT_OPEN_DREAM_MIN_LPA,
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_INTERNSHIP_ONLY,
   PLACEMENT_TIER_OFF_CAMPUS,
@@ -171,6 +172,7 @@ function CompanyStats() {
   const [selectedYear, setSelectedYear] = useState(null);
   const [yearStatsData, setYearStatsData] = useState([]);
   const [loadingYearStats, setLoadingYearStats] = useState(false);
+  const [openDreamMinLpaByYear, setOpenDreamMinLpaByYear] = useState(null);
 
   // Company cards state (for 2026)
   const [companies, setCompanies] = useState([]);
@@ -795,6 +797,32 @@ function CompanyStats() {
     };
   }, [selectedYear, location.pathname, placementTier, clusterParam, companyCacheScope]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getPlacementHubSettings();
+        if (!cancelled && res.data?.openDreamMinLpaByYear) {
+          setOpenDreamMinLpaByYear(res.data.openDreamMinLpaByYear);
+        }
+      } catch {
+        /* keep defaults */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const yearStatsOpenDreamMinLpa = useMemo(() => {
+    const clusterKey = effectiveClusterParam || PLACEMENT_CLUSTER_CS;
+    const yearKey = selectedYear != null ? String(selectedYear) : null;
+    const fromSettings =
+      yearKey != null ? openDreamMinLpaByYear?.[yearKey]?.[clusterKey] : undefined;
+    const n = Number(fromSettings);
+    return Number.isFinite(n) && n >= 0 ? n : DEFAULT_OPEN_DREAM_MIN_LPA;
+  }, [openDreamMinLpaByYear, effectiveClusterParam, selectedYear]);
+
   // Fetch year stats when 2024 or 2025 is selected
   useEffect(() => {
     if (selectedYear === 2024 || selectedYear === 2025) {
@@ -1385,6 +1413,7 @@ function CompanyStats() {
             <YearStatsTable
               year={selectedYear}
               data={yearStatsData}
+              openDreamMinLpa={yearStatsOpenDreamMinLpa}
               onBack={() => {
                 navigate(PATH_COMPANY_STATS, { replace: true });
                 setSelectedYear(null);

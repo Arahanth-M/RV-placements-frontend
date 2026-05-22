@@ -25,6 +25,7 @@ import {
   CompensationAsterisk,
   CompensationDisclaimerFootnote,
 } from "./PlacementCompensationNote.jsx";
+import { formatInternshipStipendDisplay } from "../utils/compensationDisplay.js";
 
 const StudentProfilePage = () => {
   const navigate = useNavigate();
@@ -259,14 +260,14 @@ const StudentProfilePage = () => {
                                 Stipend
                                 <CompensationAsterisk />
                               </>,
-                              p?.stipend ?? p?.Stipend
+                              formatInternshipStipendDisplay(p?.stipend ?? p?.Stipend)
                             )}
                             {renderSplitRow(
                               <>
                                 6 Months Internship Stipend
                                 <CompensationAsterisk />
                               </>,
-                              p?.["6-months-internship-stipend"]
+                              formatInternshipStipendDisplay(p?.["6-months-internship-stipend"])
                             )}
                             {renderSplitRow(
                               <>

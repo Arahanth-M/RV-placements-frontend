@@ -1,11 +1,12 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { FaSearch, FaFilter } from "react-icons/fa";
 import { PageBackButton, PageBackNavRow } from "./PageBackNav.jsx";
 import Analytics from "./Analytics";
+import { DEFAULT_OPEN_DREAM_MIN_LPA } from "../constants/placementTiers.js";
 
 const PAGE_SIZE = 100;
 
-function YearStatsTable({ year, data, onBack }) {
+function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DREAM_MIN_LPA }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("Table");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -29,36 +30,47 @@ function YearStatsTable({ year, data, onBack }) {
     return null;
   };
 
-  const resolveRowCategory = (row) => {
-    const entries = Object.entries(row || {});
+  const thresholdLpa =
+    Number.isFinite(Number(openDreamMinLpa)) && Number(openDreamMinLpa) >= 0
+      ? Number(openDreamMinLpa)
+      : DEFAULT_OPEN_DREAM_MIN_LPA;
 
-    // Priority 1: Explicit category/tier-like fields
-    const explicitCategory = entries.find(([key]) =>
-      /(category|tier|type)/i.test(key)
-    );
-    const explicitValue = explicitCategory ? String(explicitCategory[1] || "").toLowerCase().trim() : "";
-    if (explicitValue.includes("open-dream") || explicitValue.includes("open dream")) return "open_dream";
-    if (explicitValue.includes("dream")) return "dream";
+  const resolveRowCategory = useCallback(
+    (row) => {
+      const entries = Object.entries(row || {});
 
-    // Priority 2: Any textual marker in the row
-    const rowText = entries
-      .map(([, value]) => String(value ?? "").toLowerCase())
-      .join(" | ");
-    if (rowText.includes("open-dream") || rowText.includes("open dream")) return "open_dream";
-    if (/\bdream\b/.test(rowText)) return "dream";
+      // Priority 1: Explicit category/tier-like fields
+      const explicitCategory = entries.find(([key]) =>
+        /(category|tier|type)/i.test(key)
+      );
+      const explicitValue = explicitCategory
+        ? String(explicitCategory[1] || "").toLowerCase().trim()
+        : "";
+      if (explicitValue.includes("open-dream") || explicitValue.includes("open dream"))
+        return "open_dream";
+      if (explicitValue.includes("dream")) return "dream";
 
-    // Priority 3: Infer by package threshold (>= 10 LPA => Open-Dream)
-    const packageValues = entries
-      .filter(([key]) => /(ctc|package|salary|lpa)/i.test(key))
-      .map(([, value]) => toLpa(value))
-      .filter((v) => v !== null && v > 0);
-    if (packageValues.length > 0) {
-      const bestLpa = Math.max(...packageValues);
-      return bestLpa >= 10 ? "open_dream" : "dream";
-    }
+      // Priority 2: Any textual marker in the row
+      const rowText = entries
+        .map(([, value]) => String(value ?? "").toLowerCase())
+        .join(" | ");
+      if (rowText.includes("open-dream") || rowText.includes("open dream")) return "open_dream";
+      if (/\bdream\b/.test(rowText)) return "dream";
 
-    return "other";
-  };
+      // Priority 3: Infer by package threshold (cluster-configured LPA => Open dream)
+      const packageValues = entries
+        .filter(([key]) => /(ctc|package|salary|lpa)/i.test(key))
+        .map(([, value]) => toLpa(value))
+        .filter((v) => v !== null && v > 0);
+      if (packageValues.length > 0) {
+        const bestLpa = Math.max(...packageValues);
+        return bestLpa >= thresholdLpa ? "open_dream" : "dream";
+      }
+
+      return "other";
+    },
+    [thresholdLpa]
+  );
 
   // Filter data based on search term
   // Search in all fields, but prioritize company name fields
@@ -123,7 +135,7 @@ function YearStatsTable({ year, data, onBack }) {
         return valueStr.includes(searchLower);
       });
     });
-  }, [data, searchTerm, categoryFilter, branchFilter, branchFieldKey]);
+  }, [data, searchTerm, categoryFilter, branchFilter, branchFieldKey, resolveRowCategory]);
 
   useEffect(() => {
     setPage(1);

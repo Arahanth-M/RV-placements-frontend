@@ -1,6 +1,7 @@
 /**
  * Pure helpers for mapping roster-shaped profile documents into UI sections.
  */
+import { formatInternshipStipendDisplay } from "./compensationDisplay.js";
 
 const PERSONAL_INFO_FIELDS = ["USN", "Name", "Email", "Phone", "DOB", "Gender"];
 const ACADEMIC_FIELDS = ["Branch", "Semester", "CGPA", "Year", "Section"];
@@ -110,14 +111,8 @@ function formatPlacementRecord(obj) {
   const parts = [String(company).trim()];
   if (offer) parts.push(`(${String(offer).trim()})`);
   let line = parts.filter(Boolean).join(" ");
-  if (stipend != null && String(stipend).trim())
-    line += ` · Stipend: ${String(stipend).trim()}`;
-  if (
-    sixMonthsInternshipStipend != null &&
-    String(sixMonthsInternshipStipend).trim()
-  ) {
-    line += ` · 6 Months Internship Stipend: ${String(sixMonthsInternshipStipend).trim()}`;
-  }
+  line += ` · Stipend: ${formatInternshipStipendDisplay(stipend)}`;
+  line += ` · 6 Months Internship Stipend: ${formatInternshipStipendDisplay(sixMonthsInternshipStipend)}`;
   if (baseVal != null && String(baseVal).trim())
     line += ` · Base: ${String(baseVal).trim()}`;
   if (ctcVal != null && String(ctcVal).trim())

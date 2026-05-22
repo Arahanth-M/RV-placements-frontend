@@ -120,7 +120,7 @@ export default function IIITVLatexStyle({ draft }) {
               left={item.company || "Company Name"}
               right={item.location || "City"}
               subLeft={item.role || "Role"}
-              subRight={[item.startDate, item.endDate].filter(Boolean).join(" - ") || "Event Dates"}
+              subRight={[item.startDate, item.endDate].filter(Boolean).join(" - ") || "Dates"}
             />
             {item.techStack ? (
               <p className={`${rowMetaClass} italic mb-1`}>{item.techStack}</p>

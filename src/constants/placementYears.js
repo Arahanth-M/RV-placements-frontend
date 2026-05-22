@@ -4,6 +4,13 @@
  */
 export const PLACEMENT_DETAIL_VISIT_YEARS = Object.freeze([2026, 2027, 2028]);
 
+/** Years with admin-configurable Open dream LPA (legacy stats + hub). */
+export const PLACEMENT_OPEN_DREAM_SETTING_YEARS = Object.freeze([
+  2024,
+  2025,
+  ...PLACEMENT_DETAIL_VISIT_YEARS,
+]);
+
 /** Default ?year= when omitted (aligned with backend COMPANY_VISIT_DEFAULT_YEAR). */
 export const DEFAULT_PLACEMENT_DETAIL_YEAR = 2026;
 

@@ -195,7 +195,7 @@ const AuthCallback = () => {
               onClick={() => navigate("/", { replace: true })}
               className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
-              Back to students corner
+              Back to Home Page
             </button>
           </div>
         </div>

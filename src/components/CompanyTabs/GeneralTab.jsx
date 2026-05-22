@@ -8,6 +8,7 @@ import {
   CompensationAsterisk,
   CompensationDisclaimerFootnote,
 } from "../PlacementCompensationNote.jsx";
+import { formatInternshipStipendDisplay } from "../../utils/compensationDisplay.js";
 
 /** Whole-field placeholders — hide from students; admins still see them so they can replace with a real date. */
 function isPlaceholderVisitDateOnly(raw) {
@@ -27,7 +28,9 @@ function GeneralTab({
     (company.roles || []).map((role) => ({
       roleName: role.roleName || "",
       internshipStipend:
-        role.internshipStipend !== undefined && role.internshipStipend !== null
+        role.internshipStipend !== undefined &&
+        role.internshipStipend !== null &&
+        Number(role.internshipStipend) !== 0
           ? String(role.internshipStipend)
           : "",
       ctc: { ...(role.ctc || {}) },
@@ -528,7 +531,7 @@ function GeneralTab({
                   <CompensationAsterisk className="text-slate-500" />
                 </p>
                 <p className="text-slate-200 font-medium mt-1">
-                  ₹ {role.internshipStipend ?? 0}
+                  {formatInternshipStipendDisplay(role.internshipStipend)}
                 </p>
               </div>
             </div>
@@ -586,8 +589,9 @@ function GeneralTab({
                       <CompensationAsterisk className="text-slate-400" />
                     </label>
                     <input
-                      type="number"
-                      min="0"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="N/A if not applicable"
                       value={role.internshipStipend}
                       onChange={(e) => {
                         const next = [...rolesDraft];

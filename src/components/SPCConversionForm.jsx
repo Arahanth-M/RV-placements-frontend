@@ -6,14 +6,20 @@ import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from "../constants/placementYears.js";
+import { formatPpoBranchLabel, PPO_BRANCH_CODES } from "../constants/ppoBranchCodes.js";
 import {
   PageBackButton,
   PageBackNavRow,
   pageShellInnerClass,
   pageShellOuterClass,
 } from "./PageBackNav.jsx";
-
-const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
+import SpcRoleField from "./SpcRoleField.jsx";
+import SpcFormField from "./SpcFormField.jsx";
+import SpcCompanySuggestField from "./SpcCompanySuggestField.jsx";
+import {
+  SPC_COMPENSATION_TBD_HINT,
+  validateSpcConversionSubmit,
+} from "../utils/spcFormValidation.js";
 
 function formatSpcSubmitError(err, fallbackMessage) {
   const base =
@@ -30,7 +36,7 @@ function formatSpcSubmitError(err, fallbackMessage) {
 /** Custom picker options — native `<select>` popups ignore dark theme on Windows (white list + light text). */
 const BRANCH_PICKER_OPTIONS = [
   { value: "", label: "Select branch" },
-  ...BRANCH_CODES.map((b) => ({ value: b, label: b.toUpperCase() })),
+  ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
 ];
 
 const CONVERSION_TYPES = [
@@ -145,25 +151,6 @@ function SimplePicker({ value, onChange, options, placeholder, labelId }) {
   );
 }
 
-function Field({ label, name, value, onChange, type = "text", placeholder = "" }) {
-  return (
-    <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-      <label htmlFor={`conv-field-${name}`} className="block text-sm font-medium text-theme-primary">
-        {label}
-      </label>
-      <input
-        id={`conv-field-${name}`}
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={INPUT_CLASS}
-      />
-    </div>
-  );
-}
-
 export default function SPCConversionForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -211,7 +198,25 @@ export default function SPCConversionForm() {
     setSuccess("");
     if (name === "companyQuery") {
       setSelectedCompany(null);
-      setForm((prev) => ({ ...prev, companyQuery: value }));
+      selectedCompanyRef.current = null;
+      setForm((prev) => ({ ...prev, companyQuery: value, role: "" }));
+      return;
+    }
+    if (name === "branchCode" || name === "placementYear") {
+      setForm((prev) => ({
+        ...prev,
+        [name]: name === "placementYear" ? Number(value) : value,
+        role: "",
+      }));
+      return;
+    }
+    if (name === "conversionType") {
+      setForm((prev) => ({
+        ...prev,
+        conversionType: value,
+        stipend: value === "fte" ? "" : prev.stipend,
+        role: prev.role,
+      }));
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -255,7 +260,7 @@ export default function SPCConversionForm() {
     }
     setSelectedCompany({ id: item.id, name: item.name });
     selectedCompanyRef.current = { id: item.id, name: item.name };
-    setForm((prev) => ({ ...prev, companyQuery: item.name }));
+    setForm((prev) => ({ ...prev, companyQuery: item.name, role: "" }));
     setSuggestOpen(false);
     setSuggestions([]);
     setError("");
@@ -266,12 +271,9 @@ export default function SPCConversionForm() {
     setError("");
     setSuccess("");
 
-    if (!selectedCompany?.id) {
-      setError("Select a company from the suggestions list.");
-      return;
-    }
-    if (!String(form.branchCode || "").trim()) {
-      setError("Please select a branch.");
+    const validationErrors = validateSpcConversionSubmit(form, selectedCompany);
+    if (validationErrors.length) {
+      setError(validationErrors[0]);
       return;
     }
 
@@ -300,6 +302,7 @@ export default function SPCConversionForm() {
       setSuccess("Conversion details saved successfully.");
       setForm(INITIAL_FORM);
       setSelectedCompany(null);
+      selectedCompanyRef.current = null;
       setSuggestions([]);
     } catch (err) {
       setError(formatSpcSubmitError(err, "Failed to save conversion details"));
@@ -309,6 +312,7 @@ export default function SPCConversionForm() {
   };
 
   const showStipend = form.conversionType === "fte_internship";
+  const placementCtxForRoles = placementContextHintForSpc(selectedCompany?.id, searchParams);
 
   const yearOptions = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -323,11 +327,10 @@ export default function SPCConversionForm() {
         <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
           <div>
             <h1 className="text-3xl font-bold text-theme-primary">Update conversion details</h1>
-            {/* <p className="mt-2 text-sm text-theme-secondary">
-              Record compensation and conversion type with a verified company. Each new student + company
-              + placement year increments placement got-in and visit total on the visit
-              (placementGotInBranchStats), separate from PPO conversion stats on the Stats tab.
-            </p> */}
+            <p className="mt-2 text-sm text-theme-secondary">
+              Pick company, year, and branch from the list so roles load from that hub&apos;s visit. CTC,
+              base, and stipend merge into the company card (same rules as add placement).
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
@@ -335,17 +338,27 @@ export default function SPCConversionForm() {
               <h2 className="text-lg font-semibold text-theme-primary">Student</h2>
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="sm:col-span-2">
-                  <Field
+                  <SpcFormField
                     label="Email"
                     name="email"
                     value={form.email}
                     onChange={handleChange}
                     type="email"
                     placeholder="student@rvce.edu.in"
+                    required
+                    idPrefix="conv"
                   />
                 </div>
-                <Field label="Name" name="name" value={form.name} onChange={handleChange} placeholder="Full name" />
-                <Field
+                <SpcFormField
+                  label="Name"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder="Full name"
+                  required
+                  idPrefix="conv"
+                />
+                <SpcFormField
                   label="USN"
                   name="usn"
                   value={form.usn}
@@ -355,6 +368,8 @@ export default function SPCConversionForm() {
                     })
                   }
                   placeholder="1RV22CS001"
+                  required
+                  idPrefix="conv"
                 />
               </div>
             </section>
@@ -364,7 +379,7 @@ export default function SPCConversionForm() {
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label id="conv-year-label" className="block text-sm font-medium text-theme-primary">
-                    Year
+                    Year <span className="text-theme-accent">*</span>
                   </label>
                   <SimplePicker
                     value={form.placementYear}
@@ -380,14 +395,14 @@ export default function SPCConversionForm() {
                 </div>
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label id="conv-branch-label" className="block text-sm font-medium text-theme-primary">
-                    Branch
+                    Branch <span className="text-theme-accent">*</span>
                   </label>
                   <SimplePicker
                     value={form.branchCode}
                     onChange={(v) => {
                       setError("");
                       setSuccess("");
-                      setForm((prev) => ({ ...prev, branchCode: v }));
+                      setForm((prev) => ({ ...prev, branchCode: v, role: "" }));
                     }}
                     options={BRANCH_PICKER_OPTIONS}
                     placeholder="Select branch"
@@ -399,48 +414,23 @@ export default function SPCConversionForm() {
 
             <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
               <h2 className="text-lg font-semibold text-theme-primary">Company</h2>
-              <div ref={suggestRootRef} className="relative flex min-h-0 w-full flex-col gap-2 self-start">
-                <label htmlFor="conv-company" className="block text-sm font-medium text-theme-primary">
-                  Company name
-                </label>
-                <input
-                  id="conv-company"
-                  name="companyQuery"
-                  autoComplete="off"
-                  value={form.companyQuery}
-                  onChange={handleChange}
-                  onFocus={() => {
-                    if (form.companyQuery.trim().length >= 2 && suggestions.length > 0) setSuggestOpen(true);
-                  }}
-                  placeholder="Type at least 2 characters to pick from suggestions"
-                  className={INPUT_CLASS}
-                />
-                {selectedCompany?.id && form.companyQuery === selectedCompany.name && (
-                  <p className="text-xs text-theme-secondary">Linked company ID ready for submit.</p>
-                )}
-                {suggestLoading && (
-                  <p className="text-xs text-theme-muted">Searching…</p>
-                )}
-                {suggestOpen && suggestions.length > 0 && (
-                  <ul
-                    className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme bg-theme-card py-1 shadow-lg"
-                    role="listbox"
-                  >
-                    {suggestions.map((item) => (
-                      <li key={item.id} role="presentation">
-                        <button
-                          type="button"
-                          className="flex w-full px-4 py-2.5 text-left text-sm text-theme-primary hover:bg-theme-nav"
-                          onMouseDown={(ev) => ev.preventDefault()}
-                          onClick={() => pickCompany(item)}
-                        >
-                          {item.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <SpcCompanySuggestField
+                inputId="conv-company"
+                label="Company name"
+                companyQuery={form.companyQuery}
+                selectedCompany={selectedCompany}
+                suggestions={suggestions}
+                suggestOpen={suggestOpen}
+                suggestLoading={suggestLoading}
+                suggestRootRef={suggestRootRef}
+                onQueryChange={handleChange}
+                onPickCompany={pickCompany}
+                onFocusOpen={() => {
+                  if (form.companyQuery.trim().length >= 2 && suggestions.length > 0) {
+                    setSuggestOpen(true);
+                  }
+                }}
+              />
             </section>
 
             <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
@@ -448,7 +438,7 @@ export default function SPCConversionForm() {
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="sm:col-span-2 flex min-h-0 w-full flex-col gap-2 self-start">
                   <label className="block text-sm font-medium text-theme-primary" id="conv-type-label">
-                    Conversion type
+                    Conversion type <span className="text-theme-accent">*</span>
                   </label>
                   <SimplePicker
                     value={form.conversionType}
@@ -466,38 +456,46 @@ export default function SPCConversionForm() {
                     labelId="conv-type-label"
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <Field
-                    label="Role"
-                    name="role"
-                    value={form.role}
-                    onChange={handleChange}
-                    placeholder="e.g. Analyst, SDE"
-                  />
-                  
-                </div>
-                <Field
-                  label="CTC "
+                <SpcRoleField
+                  inputId="conv-role"
+                  companyId={selectedCompany?.id}
+                  placementYear={form.placementYear}
+                  placementContext={placementCtxForRoles}
+                  branchCode={form.branchCode}
+                  value={form.role}
+                  onChange={handleChange}
+                />
+                <SpcFormField
+                  label="CTC"
                   name="ctc"
                   value={form.ctc}
                   onChange={handleChange}
-                  placeholder="e.g. 18 LPA"
+                  placeholder="e.g. 18 LPA or TBD"
+                  required
+                  hint={SPC_COMPENSATION_TBD_HINT}
+                  idPrefix="conv"
                 />
-                <Field
+                <SpcFormField
                   label="Base"
                   name="base"
                   value={form.base}
                   onChange={handleChange}
-                  placeholder="e.g. 12 LPA"
+                  placeholder="e.g. 12 LPA or TBD"
+                  required
+                  hint={SPC_COMPENSATION_TBD_HINT}
+                  idPrefix="conv"
                 />
                 {showStipend ? (
                   <div className="sm:col-span-2">
-                    <Field
+                    <SpcFormField
                       label="Stipend (for 6 month internship)"
                       name="stipend"
                       value={form.stipend}
                       onChange={handleChange}
-                      placeholder="e.g. 50,000"
+                      placeholder="e.g. 50,000 or TBD"
+                      required
+                      hint={SPC_COMPENSATION_TBD_HINT}
+                      idPrefix="conv"
                     />
                   </div>
                 ) : null}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { spcAPI, adminAPI } from "../utils/api";
 import {
@@ -16,6 +16,30 @@ import {
   FaUsers,
   FaSync,
 } from "react-icons/fa";
+import { formatPpoBranchLabel, PPO_BRANCH_CODES } from "../constants/ppoBranchCodes.js";
+import {
+  DEFAULT_PLACEMENT_DETAIL_YEAR,
+  PLACEMENT_DETAIL_VISIT_YEARS,
+} from "../constants/placementYears.js";
+import SpcCompanySuggestField from "./SpcCompanySuggestField.jsx";
+import SpcRoleField from "./SpcRoleField.jsx";
+import SpcFormField, { INPUT_CLASS } from "./SpcFormField.jsx";
+import {
+  compensationVisibilityForTypeOfOffer,
+  SPC_COMPENSATION_TBD_HINT,
+  validateSpcEditPlacement,
+} from "../utils/spcFormValidation.js";
+
+function placementContextHintForSpc(companyId) {
+  if (!companyId) return "";
+  try {
+    return String(
+      sessionStorage.getItem(`company_detail_placement_ctx:${companyId}`) || ""
+    ).trim();
+  } catch {
+    return "";
+  }
+}
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -85,7 +109,7 @@ const EDIT_INITIAL = {
   studentEmail: "",
   studentUsn: "",
   companyPlaced: "",
-  placementYear: "",
+  placementYear: DEFAULT_PLACEMENT_DETAIL_YEAR,
   branchCode: "",
   typeOfOffer: "",
   role: "",
@@ -234,7 +258,19 @@ export default function SPCDashboard() {
   const [companySuggestLoading, setCompanySuggestLoading] = useState(false);
   const companySuggestRootRef = useRef(null);
   const companySuggestDebounceRef = useRef(null);
-  const pickedCompanyNameRef = useRef("");
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const selectedCompanyRef = useRef(null);
+
+  const editPlacementContext = useMemo(
+    () => placementContextHintForSpc(selectedCompany?.id),
+    [selectedCompany?.id]
+  );
+  const editCompVisibility = useMemo(
+    () => compensationVisibilityForTypeOfOffer(editForm.typeOfOffer),
+    [editForm.typeOfOffer]
+  );
+  const showEditSixMonthStipend =
+    String(editForm.ppoConversionType || "").trim() === "Internship+FTE";
 
   // pending count for stat card
   const [pendingCount, setPendingCount] = useState(0);
@@ -342,12 +378,6 @@ export default function SPCDashboard() {
   useEffect(() => {
     const q = String(editForm.companyPlaced || "").trim();
     if (!selectedRecord) return;
-    const pickedName = String(pickedCompanyNameRef.current || "").trim().toLowerCase();
-    if (pickedName && q.toLowerCase() === pickedName) {
-      setCompanySuggestLoading(false);
-      setCompanySuggestOpen(false);
-      return;
-    }
     if (companySuggestDebounceRef.current) clearTimeout(companySuggestDebounceRef.current);
     if (q.length < 2) {
       setCompanySuggestions([]);
@@ -368,7 +398,10 @@ export default function SPCDashboard() {
           return true;
         });
         setCompanySuggestions(items);
-        setCompanySuggestOpen(items.length > 0);
+        const locked = selectedCompanyRef.current;
+        const matchesLocked =
+          locked?.id && q.trim() === String(locked.name || "").trim();
+        setCompanySuggestOpen(Boolean(items.length > 0 && !matchesLocked));
       } catch {
         setCompanySuggestions([]);
         setCompanySuggestOpen(false);
@@ -380,13 +413,16 @@ export default function SPCDashboard() {
 
   const openRecordModal = (row) => {
     setSelectedRecord(row);
+    const companyName = String(row?.companyPlaced || row?.companyName || "").trim();
+    const companyId = row?.companyId ? String(row.companyId) : "";
     setEditForm({
       studentName: String(row?.studentName || ""),
       studentEmail: String(row?.studentEmail || ""),
       studentUsn: String(row?.studentUsn || ""),
-      companyPlaced: String(row?.companyPlaced || row?.companyName || ""),
-      placementYear: row?.placementYear == null ? "" : String(row.placementYear),
-      branchCode: String(row?.branchCode || ""),
+      companyPlaced: companyName,
+      placementYear:
+        row?.placementYear == null ? DEFAULT_PLACEMENT_DETAIL_YEAR : Number(row.placementYear),
+      branchCode: String(row?.branchCode || "").trim().toLowerCase(),
       typeOfOffer: String(row?.typeOfOffer || ""),
       role: String(row?.role || ""),
       ctc: String(row?.ctc || ""),
@@ -395,7 +431,17 @@ export default function SPCDashboard() {
       ppoConversionType: String(row?.ppoConversionType || ""),
       sixMonthsInternshipStipend: String(row?.sixMonthsInternshipStipend || ""),
     });
-    pickedCompanyNameRef.current = "";
+    if (companyId && companyName) {
+      const linked = { id: companyId, name: companyName };
+      setSelectedCompany(linked);
+      selectedCompanyRef.current = linked;
+    } else {
+      setSelectedCompany(null);
+      selectedCompanyRef.current = null;
+    }
+    setCompanySuggestions([]);
+    setCompanySuggestOpen(false);
+    setCompanySuggestLoading(false);
     setSaveError("");
     setSaveSuccess("");
   };
@@ -404,7 +450,8 @@ export default function SPCDashboard() {
     if (isSaving) return;
     setSelectedRecord(null);
     setEditForm(EDIT_INITIAL);
-    pickedCompanyNameRef.current = "";
+    setSelectedCompany(null);
+    selectedCompanyRef.current = null;
     setCompanySuggestions([]);
     setCompanySuggestOpen(false);
     setCompanySuggestLoading(false);
@@ -415,24 +462,41 @@ export default function SPCDashboard() {
   const onEditChange = (e) => {
     const { name, value } = e.target;
     if (name === "companyPlaced") {
-      const next = String(value || "").trim().toLowerCase();
-      const picked = String(pickedCompanyNameRef.current || "").trim().toLowerCase();
-      if (next !== picked) pickedCompanyNameRef.current = "";
+      const next = String(value || "").trim();
+      const locked = selectedCompanyRef.current;
+      if (!locked?.id || next !== String(locked.name || "").trim()) {
+        setSelectedCompany(null);
+        selectedCompanyRef.current = null;
+      }
+      setEditForm((prev) => ({
+        ...prev,
+        companyPlaced: value,
+        role: next !== String(prev.companyPlaced || "").trim() ? "" : prev.role,
+      }));
+    } else if (name === "branchCode" || name === "placementYear") {
+      setEditForm((prev) => ({
+        ...prev,
+        [name]: name === "placementYear" ? Number(value) : value,
+        role: "",
+      }));
+    } else {
+      setEditForm((prev) => ({ ...prev, [name]: value }));
     }
-    setEditForm((prev) => ({ ...prev, [name]: value }));
     setSaveError("");
     setSaveSuccess("");
   };
 
   const pickSuggestedCompany = (item) => {
     const pickedName = String(item?.name || "").trim();
-    if (!pickedName) return;
+    if (!pickedName || !item?.id) return;
     if (companySuggestDebounceRef.current) {
       clearTimeout(companySuggestDebounceRef.current);
       companySuggestDebounceRef.current = null;
     }
-    pickedCompanyNameRef.current = pickedName.toLowerCase();
-    setEditForm((prev) => ({ ...prev, companyPlaced: pickedName }));
+    const linked = { id: String(item.id), name: pickedName };
+    setSelectedCompany(linked);
+    selectedCompanyRef.current = linked;
+    setEditForm((prev) => ({ ...prev, companyPlaced: pickedName, role: "" }));
     setCompanySuggestions([]);
     setCompanySuggestOpen(false);
     setCompanySuggestLoading(false);
@@ -442,16 +506,18 @@ export default function SPCDashboard() {
 
   const saveRecord = async () => {
     if (!selectedRecord?._id) return;
+    const validationErrors = validateSpcEditPlacement(editForm, selectedCompany);
+    if (validationErrors.length > 0) {
+      setSaveError(validationErrors.join(" "));
+      return;
+    }
     setIsSaving(true);
     setSaveError("");
     setSaveSuccess("");
     try {
       const updatePayload = {
         ...editForm,
-        placementYear:
-          String(editForm.placementYear || "").trim() === ""
-            ? null
-            : Number(editForm.placementYear),
+        placementYear: Number(editForm.placementYear) || null,
         branchCode: String(editForm.branchCode || "").trim().toLowerCase(),
         studentUsn: String(editForm.studentUsn || "").trim().toUpperCase(),
       };
@@ -963,99 +1029,213 @@ export default function SPCDashboard() {
               <p><span className="font-medium text-theme-primary">Type Of Offer:</span> {selectedRecord.typeOfOffer || "—"}</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="text-sm text-theme-secondary">
-                Student Name
-                <input name="studentName" value={editForm.studentName} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Student Email
-                <input name="studentEmail" type="email" value={editForm.studentEmail} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Student USN
-                <input name="studentUsn" value={editForm.studentUsn} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="relative text-sm text-theme-secondary" ref={companySuggestRootRef}>
-                Company
-                <input
-                  name="companyPlaced"
-                  autoComplete="off"
-                  value={editForm.companyPlaced}
+            <div className="space-y-5">
+              <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <SpcFormField
+                  label="Student name"
+                  name="studentName"
+                  value={editForm.studentName}
                   onChange={onEditChange}
-                  onFocus={() => {
-                    if (String(editForm.companyPlaced || "").trim().length >= 2 && companySuggestions.length > 0) {
+                  required
+                  idPrefix="spc-edit"
+                />
+                <SpcFormField
+                  label="Student email"
+                  name="studentEmail"
+                  type="email"
+                  value={editForm.studentEmail}
+                  onChange={onEditChange}
+                  required
+                  idPrefix="spc-edit"
+                />
+                <SpcFormField
+                  label="Student USN"
+                  name="studentUsn"
+                  value={editForm.studentUsn}
+                  onChange={onEditChange}
+                  required
+                  idPrefix="spc-edit"
+                />
+              </section>
+
+              <section className="space-y-4 rounded-xl border border-theme-input bg-theme-input/30 p-4">
+                <h4 className="text-sm font-semibold text-theme-primary">Placement details</h4>
+                <SpcCompanySuggestField
+                  inputId="spc-edit-company"
+                  fieldName="companyPlaced"
+                  label="Company"
+                  companyQuery={editForm.companyPlaced}
+                  selectedCompany={selectedCompany}
+                  suggestions={companySuggestions}
+                  suggestOpen={companySuggestOpen}
+                  suggestLoading={companySuggestLoading}
+                  suggestRootRef={companySuggestRootRef}
+                  onQueryChange={onEditChange}
+                  onPickCompany={pickSuggestedCompany}
+                  onFocusOpen={() => {
+                    if (
+                      String(editForm.companyPlaced || "").trim().length >= 2 &&
+                      companySuggestions.length > 0
+                    ) {
                       setCompanySuggestOpen(true);
                     }
                   }}
-                  className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent"
                 />
-                {companySuggestLoading ? (
-                  <p className="mt-1 text-xs text-theme-muted">Searching...</p>
-                ) : null}
-                {companySuggestOpen && companySuggestions.length > 0 ? (
-                  <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme-input bg-theme-card py-1 shadow-lg" role="listbox">
-                    {companySuggestions.map((item) => (
-                      <li key={item.id} role="presentation">
-                        <button
-                          type="button"
-                          className="flex w-full px-4 py-2.5 text-left text-sm text-theme-primary hover:bg-theme-nav"
-                          onMouseDown={(ev) => ev.preventDefault()}
-                          onClick={() => pickSuggestedCompany(item)}
-                        >
-                          {item.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Placement Year
-                <input name="placementYear" type="number" value={editForm.placementYear} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Branch Code
-                <input name="branchCode" value={editForm.branchCode} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Type Of Offer
-                <select name="typeOfOffer" value={editForm.typeOfOffer} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent">
-                  <option value="Internship(PPO)">Internship(PPO)</option>
-                  <option value="FTE">FTE</option>
-                  <option value="Internship+FTE">Internship+FTE</option>
-                  <option value="Internship + FTE (PBC)">Internship + FTE (PBC)</option>
-                  <option value="Only internship(6 months)">Only internship(6 months)</option>
-                </select>
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Role
-                <input name="role" value={editForm.role} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                CTC
-                <input name="ctc" value={editForm.ctc} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Base
-                <input name="base" value={editForm.base} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                Summer Internship Stipend
-                <input name="stipend" value={editForm.stipend} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
-              <label className="text-sm text-theme-secondary">
-                PPO Conversion Type
-                <select name="ppoConversionType" value={editForm.ppoConversionType} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent">
-                  <option value="">None</option>
-                  <option value="FTE">FTE</option>
-                  <option value="Internship+FTE">Internship+FTE</option>
-                </select>
-              </label>
-              <label className="text-sm text-theme-secondary">
-                6 Months Internship Stipend
-                <input name="sixMonthsInternshipStipend" value={editForm.sixMonthsInternshipStipend} onChange={onEditChange} className="mt-1 h-10 w-full rounded-lg border border-theme-input bg-theme-input px-3 text-theme-primary outline-none focus:border-theme-accent" />
-              </label>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex min-h-0 w-full flex-col gap-2 self-start">
+                    <label htmlFor="spc-edit-year" className="block text-sm font-medium text-theme-primary">
+                      Placement year <span className="text-theme-accent">*</span>
+                    </label>
+                    <select
+                      id="spc-edit-year"
+                      name="placementYear"
+                      required
+                      value={editForm.placementYear}
+                      onChange={onEditChange}
+                      className={INPUT_CLASS}
+                    >
+                      {PLACEMENT_DETAIL_VISIT_YEARS.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex min-h-0 w-full flex-col gap-2 self-start">
+                    <label htmlFor="spc-edit-branch" className="block text-sm font-medium text-theme-primary">
+                      Branch <span className="text-theme-accent">*</span>
+                    </label>
+                    <select
+                      id="spc-edit-branch"
+                      name="branchCode"
+                      required
+                      value={editForm.branchCode}
+                      onChange={onEditChange}
+                      className={INPUT_CLASS}
+                    >
+                      <option value="">Select branch</option>
+                      {PPO_BRANCH_CODES.map((b) => (
+                        <option key={b} value={b}>
+                          {formatPpoBranchLabel(b)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex min-h-0 w-full flex-col gap-2 self-start sm:col-span-2">
+                    <label htmlFor="spc-edit-offer" className="block text-sm font-medium text-theme-primary">
+                      Type of offer <span className="text-theme-accent">*</span>
+                    </label>
+                    <select
+                      id="spc-edit-offer"
+                      name="typeOfOffer"
+                      required
+                      value={editForm.typeOfOffer}
+                      onChange={onEditChange}
+                      className={INPUT_CLASS}
+                    >
+                      <option value="">Select type of offer</option>
+                      <option value="Internship(PPO)">Internship(PPO)</option>
+                      <option value="FTE">FTE</option>
+                      <option value="Internship+FTE">Internship+FTE</option>
+                      <option value="Internship + FTE (PBC)">Internship + FTE (PBC)</option>
+                      <option value="Only internship(6 months)">Only internship(6 months)</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4 rounded-xl border border-theme-input bg-theme-input/30 p-4">
+                <h4 className="text-sm font-semibold text-theme-primary">Role &amp; compensation</h4>
+                <p className="text-xs text-theme-muted">
+                  With company, placement year, and branch from the list, roles load from that hub&apos;s visit.
+                  If not known, use TBD.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 items-start">
+                  <SpcRoleField
+                    inputId="spc-edit-role"
+                    companyId={selectedCompany?.id}
+                    placementYear={Number(editForm.placementYear) || DEFAULT_PLACEMENT_DETAIL_YEAR}
+                    placementContext={editPlacementContext}
+                    branchCode={editForm.branchCode}
+                    value={editForm.role}
+                    onChange={onEditChange}
+                  />
+                  {editCompVisibility.stipend ? (
+                    <SpcFormField
+                      label="Stipend"
+                      name="stipend"
+                      value={editForm.stipend}
+                      onChange={onEditChange}
+                      placeholder="e.g. 50,000 or TBD"
+                      required
+                      hint={SPC_COMPENSATION_TBD_HINT}
+                      idPrefix="spc-edit"
+                    />
+                  ) : null}
+                  {editCompVisibility.fte ? (
+                    <>
+                      <SpcFormField
+                        label="CTC"
+                        name="ctc"
+                        value={editForm.ctc}
+                        onChange={onEditChange}
+                        placeholder="e.g. 18 LPA or TBD"
+                        required
+                        hint={SPC_COMPENSATION_TBD_HINT}
+                        idPrefix="spc-edit"
+                      />
+                      <SpcFormField
+                        label="Base"
+                        name="base"
+                        value={editForm.base}
+                        onChange={onEditChange}
+                        placeholder="e.g. 12 LPA or TBD"
+                        required
+                        hint={SPC_COMPENSATION_TBD_HINT}
+                        idPrefix="spc-edit"
+                      />
+                    </>
+                  ) : null}
+                </div>
+              </section>
+
+              {(String(editForm.typeOfOffer || "").trim() === "Internship(PPO)" ||
+                editForm.ppoConversionType ||
+                editForm.sixMonthsInternshipStipend) ? (
+                <section className="space-y-4 rounded-xl border border-theme-input bg-theme-input/30 p-4">
+                  <h4 className="text-sm font-semibold text-theme-primary">PPO conversion</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="flex min-h-0 w-full flex-col gap-2 self-start">
+                      <label htmlFor="spc-edit-conv" className="block text-sm font-medium text-theme-primary">
+                        PPO conversion type
+                      </label>
+                      <select
+                        id="spc-edit-conv"
+                        name="ppoConversionType"
+                        value={editForm.ppoConversionType}
+                        onChange={onEditChange}
+                        className={INPUT_CLASS}
+                      >
+                        <option value="">None</option>
+                        <option value="FTE">FTE</option>
+                        <option value="Internship+FTE">Internship+FTE</option>
+                      </select>
+                    </div>
+                    {showEditSixMonthStipend ? (
+                      <SpcFormField
+                        label="6-month internship stipend"
+                        name="sixMonthsInternshipStipend"
+                        value={editForm.sixMonthsInternshipStipend}
+                        onChange={onEditChange}
+                        placeholder="e.g. 50,000 or TBD"
+                        required
+                        hint={SPC_COMPENSATION_TBD_HINT}
+                        idPrefix="spc-edit"
+                      />
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
             </div>
 
             {saveError ? <p className="mt-3 text-sm text-red-400">{saveError}</p> : null}

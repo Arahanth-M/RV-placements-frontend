@@ -356,7 +356,13 @@ export const adminAPI = {
     formData.append('file', file);
     return API.post('/api/admin/students/batch-import', formData);
   },
+  getPlacementHubSettings: () => API.get('/api/admin/placement-hub-settings'),
+  updatePlacementHubSettings: (body) =>
+    API.put('/api/admin/placement-hub-settings', body),
 };
+
+export const getPlacementHubSettings = () =>
+  API.get('/api/companies/placement-hub-settings');
 
 export const eventAPI = {
   getAllEvents: () => API.get('/api/events'),
@@ -414,6 +420,15 @@ export const spcAPI = {
   companySuggest: (q, limit) =>
     API.get('/api/placement/spc/company-suggest', {
       params: { q, ...(limit != null ? { limit } : {}) },
+    }),
+  getCompanyRoles: ({ companyId, placementYear, placementContext, branchCode }) =>
+    API.get('/api/placement/spc/company-roles', {
+      params: {
+        companyId,
+        placementYear,
+        ...(placementContext ? { placementContext } : {}),
+        ...(branchCode ? { branchCode } : {}),
+      },
     }),
   submitConversionDetails: (data) => API.post('/api/placement/spc/conversion-details', data),
   /** Company contribution submissions + placement/conversion rows filed by this SPC. */

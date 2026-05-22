@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
+import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
@@ -61,7 +62,7 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'assign-spc', 'add-next-batch'
+  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'assign-spc', 'add-next-batch', 'placement-settings'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
@@ -1188,6 +1189,18 @@ const AdminDashboard = () => {
                 <FaUpload />
                 Add next batch
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('placement-settings')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'placement-settings'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaChartLine />
+                Dream thresholds
+              </button>
             </div>
 
             {/* Main Content Area */}
@@ -1516,52 +1529,17 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeMainTab === 'add-next-batch' && (
+            {/* {activeMainTab === 'add-next-batch' && (
               <div className="space-y-6">
                 <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
                   <div className="mb-5">
                     <h2 className="text-xl font-semibold text-theme-accent">Add next batch</h2>
                     <p className="mt-1 text-sm text-theme-secondary">
-                      Upload an Excel workbook (.xlsx) with a header row. Required columns use common labels such as
-                      Name, Email, and USN; optional Phone and Branch. Rows with validation errors block the entire
-                      import. Duplicate USN or email in the file or in the database are skipped (first row in the file
-                      wins). Inserts run in a single database transaction (all or nothing).
+                      Upload an Excel sheet (.xlsx) with a header row. Required columns use common labels such as
+                      Name, Email, and USN.
                     </p>
                   </div>
-
-                  <div className="mb-6 overflow-x-auto rounded-lg border border-theme">
-                    <table className="min-w-full divide-y divide-theme text-sm">
-                      <thead className="bg-theme-hero">
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-                          <th className="px-4 py-3">Accepted header labels (examples)</th>
-                          <th className="px-4 py-3">Stored as</th>
-                          <th className="px-4 py-3">Required</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-theme text-theme-primary">
-                        {(studentBatchColumnGuide.length
-                          ? studentBatchColumnGuide
-                          : [
-                              { labels: ['Name'], field: 'name', required: true },
-                              { labels: ['Email'], field: 'email', required: true },
-                              { labels: ['USN'], field: 'usn', required: true },
-                              { labels: ['Phone'], field: 'phoneNumber', required: false },
-                              { labels: ['Branch'], field: 'branch', required: false },
-                            ]
-                        ).map((row) => (
-                          <tr key={row.field}>
-                            <td className="px-4 py-3 text-theme-secondary">
-                              {Array.isArray(row.labels) ? row.labels.join(', ') : row.labels}
-                            </td>
-                            <td className="px-4 py-3 font-mono text-xs">{row.field}</td>
-                            <td className="px-4 py-3">{row.required ? 'Yes' : 'No'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <form
+                                    <form
                     key={studentBatchFileKey}
                     onSubmit={handleStudentBatchImport}
                     className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
@@ -1604,7 +1582,38 @@ const AdminDashboard = () => {
                       {studentBatchImportLoading ? 'Importing…' : 'Upload and import'}
                     </button>
                   </form>
-                </div>
+
+                  <div className="mb-6 overflow-x-auto rounded-lg border border-theme">
+                    <table className="min-w-full divide-y divide-theme text-sm">
+                      <thead className="bg-theme-hero">
+                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                          <th className="px-4 py-3">Accepted header labels (examples)</th>
+                          <th className="px-4 py-3">Stored as</th>
+                          <th className="px-4 py-3">Required</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-theme text-theme-primary">
+                        {(studentBatchColumnGuide.length
+                          ? studentBatchColumnGuide
+                          : [
+                              { labels: ['Name'], field: 'name', required: true },
+                              { labels: ['Email'], field: 'email', required: true },
+                              { labels: ['USN'], field: 'usn', required: true },
+        
+                            ]
+                        ).map((row) => (
+                          <tr key={row.field}>
+                            <td className="px-4 py-3 text-theme-secondary">
+                              {Array.isArray(row.labels) ? row.labels.join(', ') : row.labels}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs">{row.field}</td>
+                            <td className="px-4 py-3">{row.required ? 'Yes' : 'No'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div> 
 
                 {studentBatchImportResult && (
                   <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
@@ -1718,6 +1727,264 @@ const AdminDashboard = () => {
                   </div>
                 )}
               </div>
+            )} */}
+            {activeMainTab === 'add-next-batch' && (
+  <div className="space-y-6">
+    <div className="rounded-xl border border-theme bg-theme-card p-6 shadow-sm">
+      {/* Header */}
+      <div className="mb-6">
+        {/* <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-theme-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Batch import
+        </p> */}
+        <h2 className="text-xl font-semibold text-theme-accent">Add next batch</h2>
+        <p className="mt-1 text-sm text-theme-secondary">
+          Upload an Excel sheet (.xlsx) with a header row. Required columns use common labels such as Name, Email, and USN.
+        </p>
+      </div>
+
+      <form
+        key={studentBatchFileKey}
+        onSubmit={handleStudentBatchImport}
+        className="flex flex-col gap-5"
+      >
+        {/* Drop zone */}
+        <label
+          htmlFor="student-batch-file-input"
+          className={`group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 text-center transition-colors
+            ${studentBatchSelectedFileName
+              ? 'border-indigo-400 dark:border-indigo-500'
+              : 'border-theme hover:border-indigo-400 hover:bg-indigo-50 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20'
+            }`}
+        >
+          {studentBatchSelectedFileName ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <div>
+                <p className="text-sm font-semibold text-indigo-400 dark:text-indigo-400">
+                  {studentBatchSelectedFileName}
+                </p>
+                <p className="mt-0.5 text-xs text-theme-secondary">Ready to import · click to replace</p>
+              </div>
+            </>
+          ) : (
+            <>
+            
+              {/* Empty state */}
+              <div className="flex h-12 w-12 items-center justify-center">
+                <FaFileExcel className="h-10 w-10 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-theme-primary">Drop your Excel file here</p>
+                <p className="mt-0.5 text-xs text-theme-secondary">Supports .xlsx files with a header row</p>
+              </div>
+              <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-theme bg-theme-card px-4 py-1.5 text-xs font-semibold text-theme-secondary transition hover:bg-theme-hero">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Choose file
+              </span>
+            </>
+          )}
+          <input
+            id="student-batch-file-input"
+            type="file"
+            name="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              setStudentBatchSelectedFileName(file?.name || '');
+            }}
+            className="hidden"
+          />
+        </label>
+
+        {/* Expected columns table */}
+        <div>
+          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-theme-secondary">
+            Expected columns
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-theme">
+            <table className="min-w-full divide-y divide-theme text-sm">
+              <thead className="bg-theme-hero">
+                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                  <th className="px-4 py-3">Accepted header labels</th>
+                  <th className="px-4 py-3">Stored as</th>
+                  <th className="px-4 py-3 text-center">Required</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-theme text-theme-primary">
+                {(studentBatchColumnGuide.length
+                  ? studentBatchColumnGuide
+                  : [
+                      { labels: ['Name'], field: 'name', required: true },
+                      { labels: ['Email', 'Email ID'], field: 'email', required: true },
+                      { labels: ['USN'], field: 'usn', required: true },
+                    ]
+                ).map((row) => (
+                  <tr key={row.field}>
+                    <td className="px-4 py-3 text-theme-secondary">
+                      {Array.isArray(row.labels) ? row.labels.join(', ') : row.labels}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-md bg-theme-hero px-2 py-0.5 font-mono text-xs text-theme-secondary">
+                        {row.field}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {row.required ? (
+                        <span className="rounded-md bg-theme-hero px-2 py-0.5 font-mono text-xs text-theme-secondary">
+                          {/* <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> */}
+                          Yes
+                        </span>
+                      ) : (
+                        <span className="text-xs text-theme-muted">No</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer row */}
+        <div className="flex items-center justify-between border-t border-theme pt-4">
+          <p className="flex items-center gap-1.5 text-xs text-theme-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Column names are case-insensitive
+          </p>
+          <button
+            type="submit"
+            disabled={studentBatchImportLoading || !studentBatchSelectedFileName}
+            className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            {studentBatchImportLoading ? 'Importing…' : 'Upload and import'}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {/* Import result section — unchanged */}
+    {studentBatchImportResult && (
+      <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
+        <h3 className="text-lg font-semibold text-theme-primary">Import result</h3>
+        <p
+          className={`mt-2 text-sm ${
+            studentBatchImportResult.success
+              ? 'text-indigo-600 dark:text-indigo-400'
+              : 'text-red-600 dark:text-red-400'
+          }`}
+        >
+          {studentBatchImportResult.message ||
+            studentBatchImportResult.error ||
+            (studentBatchImportResult.success ? 'Completed.' : 'Import did not complete.')}
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
+            <p className="text-xs font-semibold uppercase text-theme-secondary">Inserted</p>
+            <p className="mt-1 text-2xl font-bold text-theme-primary">
+              {studentBatchImportResult.inserted ?? 0}
+            </p>
+          </div>
+          <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
+            <p className="text-xs font-semibold uppercase text-theme-secondary">Skipped</p>
+            <p className="mt-1 text-2xl font-bold text-theme-primary">
+              {studentBatchImportResult.skippedCount ??
+                (Array.isArray(studentBatchImportResult.skipped)
+                  ? studentBatchImportResult.skipped.length
+                  : 0)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
+            <p className="text-xs font-semibold uppercase text-theme-secondary">Failed (validation)</p>
+            <p className="mt-1 text-2xl font-bold text-theme-primary">
+              {studentBatchImportResult.failedCount ??
+                (Array.isArray(studentBatchImportResult.failed)
+                  ? studentBatchImportResult.failed.length
+                  : 0)}
+            </p>
+          </div>
+        </div>
+
+        {Array.isArray(studentBatchImportResult.failed) && studentBatchImportResult.failed.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-semibold text-theme-primary">Failed rows</h4>
+            <p className="mt-1 text-xs text-theme-secondary">
+              Each sheet row number matches Excel (row 1 is the header; the first data row is 2). Fix these
+              cells and upload again — nothing was saved for this attempt.
+            </p>
+            <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-theme">
+              <table className="min-w-full divide-y divide-theme text-sm">
+                <thead className="sticky top-0 bg-theme-hero">
+                  <tr className="text-left text-xs font-semibold uppercase text-theme-secondary">
+                    <th className="px-3 py-2">Sheet row</th>
+                    <th className="px-3 py-2">Reason</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-theme">
+                  {studentBatchImportResult.failed.map((f, idx) => (
+                    <tr key={`${f.excelRow}-${idx}`}>
+                      <td className="px-3 py-2 font-mono text-theme-primary">{f.excelRow}</td>
+                      <td className="px-3 py-2 text-theme-secondary">{f.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {Array.isArray(studentBatchImportResult.skipped) && studentBatchImportResult.skipped.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-semibold text-theme-primary">Skipped rows</h4>
+            <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-theme">
+              <table className="min-w-full divide-y divide-theme text-sm">
+                <thead className="sticky top-0 bg-theme-hero">
+                  <tr className="text-left text-xs font-semibold uppercase text-theme-secondary">
+                    <th className="px-3 py-2">Sheet row</th>
+                    <th className="px-3 py-2">Reason</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-theme">
+                  {studentBatchImportResult.skipped.map((s, idx) => (
+                    <tr key={`${s.excelRow}-${idx}`}>
+                      <td className="px-3 py-2 font-mono text-theme-primary">{s.excelRow}</td>
+                      <td className="px-3 py-2 text-theme-secondary">{s.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {studentBatchImportResult.success &&
+          Array.isArray(studentBatchImportResult.insertedExcelRows) &&
+          studentBatchImportResult.insertedExcelRows.length > 0 && (
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold text-theme-primary">Inserted sheet rows</h4>
+              <p className="mt-1 max-h-40 overflow-y-auto break-all font-mono text-xs text-theme-secondary">
+                {(() => {
+                  const rows = studentBatchImportResult.insertedExcelRows;
+                  const cap = 200;
+                  const head = rows.slice(0, cap);
+                  const more = rows.length - head.length;
+                  return more > 0
+                    ? `${head.join(', ')} …and ${more} more row number(s).`
+                    : head.join(', ');
+                })()}
+              </p>
+            </div>
+          )}
+      </div>
+    )}
+  </div>
+)}
+
+            {activeMainTab === 'placement-settings' && (
+              <PlacementHubSettingsTab
+                onToast={(message) => setAdminToast({ type: 'success', message })}
+              />
             )}
 
             {activeMainTab === 'submissions' && (

@@ -14,6 +14,11 @@ export function CompensationAsterisk({ className }) {
   );
 }
 
+export {
+  formatInternshipStipendDisplay,
+  isStipendNotApplicable,
+} from "../utils/compensationDisplay.js";
+
 /** Single-line disclaimer shown below compensation figures */
 export function CompensationDisclaimerFootnote({ className }) {
   return (

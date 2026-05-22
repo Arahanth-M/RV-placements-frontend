@@ -8,12 +8,19 @@ import {
   pageShellInnerClass,
   pageShellOuterClass,
 } from "./PageBackNav.jsx";
+import SpcRoleField from "./SpcRoleField.jsx";
+import SpcFormField, { INPUT_CLASS } from "./SpcFormField.jsx";
+import SpcCompanySuggestField from "./SpcCompanySuggestField.jsx";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from "../constants/placementYears.js";
-
-const BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml", "bt"];
+import { formatPpoBranchLabel, PPO_BRANCH_CODES } from "../constants/ppoBranchCodes.js";
+import {
+  compensationVisibilityForTypeOfOffer,
+  SPC_COMPENSATION_TBD_HINT,
+  validateSpcPlacementSubmit,
+} from "../utils/spcFormValidation.js";
 
 function formatSpcSubmitError(err, fallbackMessage) {
   const base =
@@ -62,19 +69,6 @@ const SPC_TYPE_OF_OFFER_OPTIONS = [
   "Internship + FTE (PBC)",
   "Only internship(6 months)",
 ];
-
-/** Which compensation inputs to show for the selected type of offer. */
-function compensationVisibilityForTypeOfOffer(typeOfOffer) {
-  const t = String(typeOfOffer || "").trim();
-  if (t === "FTE") return { stipend: false, fte: true };
-  if (t === "Internship(PPO)" || t === "Only internship(6 months)") return { stipend: true, fte: false };
-  if (t === "Internship+FTE" || t === "Internship + FTE (PBC)") return { stipend: true, fte: true };
-  return { stipend: true, fte: true };
-}
-
-/* ─── Shared input class ────────────────────────────────────────────────── */
-const INPUT_CLASS =
-  "spc-field-control h-11 min-h-[2.75rem] max-h-[2.75rem] w-full shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm text-theme-primary outline-none focus:border-theme-accent transition-colors placeholder:text-theme-muted box-border";
 
 /* ─── TypeOfOfferPicker ─────────────────────────────────────────────────── */
 function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
@@ -152,26 +146,6 @@ function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
   );
 }
 
-/* ─── Field ─────────────────────────────────────────────────────────────── */
-function Field({ label, name, value, onChange, type = "text", placeholder = "" }) {
-  return (
-    <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-      <label htmlFor={`field-${name}`} className="block text-sm font-medium text-theme-primary">
-        {label}
-      </label>
-      <input
-        id={`field-${name}`}
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={INPUT_CLASS}
-      />
-    </div>
-  );
-}
-
 /* ─── Main Form ─────────────────────────────────────────────────────────── */
 export default function SPCPlacementForm() {
   const navigate = useNavigate();
@@ -219,7 +193,11 @@ export default function SPCPlacementForm() {
     setSuccess("");
     if (name === "companyQuery") {
       setSelectedCompany(null);
-      setForm((prev) => ({ ...prev, companyQuery: value, companyPlaced: "" }));
+      setForm((prev) => ({ ...prev, companyQuery: value, companyPlaced: "", role: "" }));
+      return;
+    }
+    if (name === "branchCode") {
+      setForm((prev) => ({ ...prev, branchCode: value, role: "" }));
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -263,6 +241,7 @@ export default function SPCPlacementForm() {
       ...prev,
       companyQuery: item.name,
       companyPlaced: item.name,
+      role: "",
     }));
     setSuggestOpen(false);
     setSuggestions([]);
@@ -276,19 +255,9 @@ export default function SPCPlacementForm() {
     setIsSubmitting(true);
 
     try {
-      if (!String(form.typeOfOffer || "").trim()) {
-        setError("Please select a type of offer.");
-        return;
-      }
-      if (selectedCompany?.id && !String(form.branchCode || "").trim()) {
-        setError("Select a branch when a company is chosen from suggestions so visit got-in can be updated.");
-        return;
-      }
-
-      const companyPlaced =
-        (selectedCompany?.name || form.companyPlaced || form.companyQuery || "").trim();
-      if (!companyPlaced) {
-        setError("Company placed is required (pick from suggestions or type the name).");
+      const validationErrors = validateSpcPlacementSubmit(form, selectedCompany);
+      if (validationErrors.length) {
+        setError(validationErrors[0]);
         return;
       }
 
@@ -300,22 +269,21 @@ export default function SPCPlacementForm() {
         email: form.email.trim(),
         name: form.name.trim(),
         usn: form.usn.trim(),
-        companyPlaced,
+        companyPlaced: selectedCompany.name.trim(),
         typeOfOffer: form.typeOfOffer.trim(),
+        companyId: selectedCompany.id,
+        placementYear: Number(form.placementYear),
+        branchCode: form.branchCode,
+        role: String(form.role ?? "").trim(),
       };
-      if (sendStipend && form.stipend?.trim()) cleaned.stipend = form.stipend.trim();
-      if (sendFte && form.base?.trim()) cleaned.base = form.base.trim();
-      if (sendFte && form.ctc?.trim()) cleaned.ctc = form.ctc.trim();
-      if (form.role?.trim()) cleaned.role = form.role.trim();
-
-      if (selectedCompany?.id && form.branchCode) {
-        cleaned.companyId = selectedCompany.id;
-        cleaned.placementYear = Number(form.placementYear);
-        cleaned.branchCode = form.branchCode;
-        const placementCtx = placementContextHintForSpc(selectedCompany.id, searchParams);
-        if (placementCtx) {
-          cleaned.placementContext = placementCtx;
-        }
+      if (sendStipend) cleaned.stipend = String(form.stipend ?? "").trim();
+      if (sendFte) {
+        cleaned.base = String(form.base ?? "").trim();
+        cleaned.ctc = String(form.ctc ?? "").trim();
+      }
+      const placementCtx = placementContextHintForSpc(selectedCompany.id, searchParams);
+      if (placementCtx) {
+        cleaned.placementContext = placementCtx;
       }
 
       await spcAPI.submitPlacement(cleaned);
@@ -331,6 +299,7 @@ export default function SPCPlacementForm() {
   };
 
   const compFields = compensationVisibilityForTypeOfOffer(form.typeOfOffer);
+  const placementCtxForRoles = placementContextHintForSpc(selectedCompany?.id, searchParams);
 
   return (
     <div className={`spc-placement-form min-h-screen ${pageShellOuterClass}`}>
@@ -355,23 +324,27 @@ export default function SPCPlacementForm() {
               <h2 className="text-lg font-semibold text-theme-primary">Student Details</h2>
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="sm:col-span-2">
-                  <Field
+                  <SpcFormField
                     label="Email of student"
                     name="email"
                     value={form.email}
                     onChange={handleChange}
                     type="email"
                     placeholder="student@rvce.edu.in"
+                    required
+                    idPrefix="spc-pl"
                   />
                 </div>
-                <Field
+                <SpcFormField
                   label="Name"
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   placeholder="Student full name"
+                  required
+                  idPrefix="spc-pl"
                 />
-                <Field
+                <SpcFormField
                   label="USN"
                   name="usn"
                   value={form.usn}
@@ -379,6 +352,8 @@ export default function SPCPlacementForm() {
                     handleChange({ target: { name: "usn", value: e.target.value.toUpperCase() } })
                   }
                   placeholder="1RV22CS001"
+                  required
+                  idPrefix="spc-pl"
                 />
               </div>
             </section>
@@ -387,62 +362,33 @@ export default function SPCPlacementForm() {
             <section className="space-y-4 rounded-2xl border border-theme bg-theme-app/40 p-5">
               <h2 className="text-lg font-semibold text-theme-primary">Placement Details</h2>
 
-              <div ref={suggestRootRef} className="relative flex min-h-0 w-full flex-col gap-2 self-start">
-                <label htmlFor="spc-pl-company" className="block text-sm font-medium text-theme-primary">
-                  Company 
-                </label>
-                <input
-                  id="spc-pl-company"
-                  name="companyQuery"
-                  autoComplete="off"
-                  value={form.companyQuery}
-                  onChange={handleChange}
-                  onFocus={() => {
-                    if (form.companyQuery.trim().length >= 2 && suggestions.length > 0) {
-                      setSuggestOpen(true);
-                    }
-                  }}
-                  placeholder="Type at least 2 characters to pick from suggestions"
-                  className={INPUT_CLASS}
-                />
-                {/* {selectedCompany?.id && form.companyQuery === selectedCompany.name && (
-                  <p className="text-xs text-theme-secondary">Linked for visit got-in updates.</p>
-                )} */}
-                {suggestLoading && <p className="text-xs text-theme-muted">Searching…</p>}
-                {suggestOpen && suggestions.length > 0 && (
-                  <ul
-                    className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-auto rounded-xl border border-theme bg-theme-card py-1 shadow-lg"
-                    role="listbox"
-                  >
-                    {suggestions.map((item) => (
-                      <li key={item.id} role="presentation">
-                        <button
-                          type="button"
-                          className="flex w-full px-4 py-2.5 text-left text-sm text-theme-primary hover:bg-theme-nav"
-                          onMouseDown={(ev) => ev.preventDefault()}
-                          onClick={() => pickCompany(item)}
-                        >
-                          {item.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* <p className="text-xs text-theme-muted">
-                Or type a company name only (no list pick) to record placement without changing visit
-                counters.
-              </p> */}
+              <SpcCompanySuggestField
+                inputId="spc-pl-company"
+                label="Company"
+                companyQuery={form.companyQuery}
+                selectedCompany={selectedCompany}
+                suggestions={suggestions}
+                suggestOpen={suggestOpen}
+                suggestLoading={suggestLoading}
+                suggestRootRef={suggestRootRef}
+                onQueryChange={handleChange}
+                onPickCompany={pickCompany}
+                onFocusOpen={() => {
+                  if (form.companyQuery.trim().length >= 2 && suggestions.length > 0) {
+                    setSuggestOpen(true);
+                  }
+                }}
+              />
 
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label htmlFor="spc-pl-year" className="block text-sm font-medium text-theme-primary">
-                    Placement year
+                    Placement year <span className="text-theme-accent">*</span>
                   </label>
                   <select
                     id="spc-pl-year"
                     name="placementYear"
+                    required
                     value={form.placementYear}
                     onChange={(e) =>
                       setForm((prev) => ({
@@ -461,19 +407,20 @@ export default function SPCPlacementForm() {
                 </div>
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label htmlFor="spc-pl-branch" className="block text-sm font-medium text-theme-primary">
-                    Branch 
+                    Branch <span className="text-theme-accent">*</span>
                   </label>
                   <select
                     id="spc-pl-branch"
                     name="branchCode"
+                    required
                     value={form.branchCode}
                     onChange={handleChange}
                     className={INPUT_CLASS}
                   >
                     <option value="">Select branch</option>
-                    {BRANCH_CODES.map((b) => (
+                    {PPO_BRANCH_CODES.map((b) => (
                       <option key={b} value={b}>
-                        {b.toUpperCase()}
+                        {formatPpoBranchLabel(b)}
                       </option>
                     ))}
                   </select>
@@ -483,7 +430,7 @@ export default function SPCPlacementForm() {
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label className="block text-sm font-medium text-theme-primary" id="spc-type-of-offer-label">
-                    Type of offer
+                    Type of offer <span className="text-theme-accent">*</span>
                   </label>
                   <TypeOfOfferPicker
                     value={form.typeOfOffer}
@@ -496,39 +443,48 @@ export default function SPCPlacementForm() {
               </div>
 
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
-                <div className="sm:col-span-2">
-                  <Field
-                    label="Role"
-                    name="role"
-                    value={form.role}
-                    onChange={handleChange}
-                    placeholder="e.g. Analyst, SDE"
-                  />
-                </div>
+                <SpcRoleField
+                  inputId="spc-pl-role"
+                  companyId={selectedCompany?.id}
+                  placementYear={form.placementYear}
+                  placementContext={placementCtxForRoles}
+                  branchCode={form.branchCode}
+                  value={form.role}
+                  onChange={handleChange}
+                />
                 {compFields.stipend ? (
-                  <Field
+                  <SpcFormField
                     label="Stipend"
                     name="stipend"
                     value={form.stipend}
                     onChange={handleChange}
-                    placeholder="e.g. 50,000"
+                    placeholder="e.g. 50,000 or TBD"
+                    required
+                    hint={SPC_COMPENSATION_TBD_HINT}
+                    idPrefix="spc-pl"
                   />
                 ) : null}
                 {compFields.fte ? (
                   <>
-                    <Field
+                    <SpcFormField
                       label="CTC"
                       name="ctc"
                       value={form.ctc}
                       onChange={handleChange}
-                      placeholder="e.g. 18 LPA"
+                      placeholder="e.g. 18 LPA or TBD"
+                      required
+                      hint={SPC_COMPENSATION_TBD_HINT}
+                      idPrefix="spc-pl"
                     />
-                    <Field
+                    <SpcFormField
                       label="Base"
                       name="base"
                       value={form.base}
                       onChange={handleChange}
-                      placeholder="e.g. 12 LPA"
+                      placeholder="e.g. 12 LPA or TBD"
+                      required
+                      hint={SPC_COMPENSATION_TBD_HINT}
+                      idPrefix="spc-pl"
                     />
                   </>
                 ) : null}

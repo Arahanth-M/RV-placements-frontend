@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { adminAPI } from "../utils/api";
 import { FaChevronDown, FaFileExcel } from "react-icons/fa";
+import { formatInternshipStipendDisplay } from "../utils/compensationDisplay.js";
 
 const YEAR_OPTIONS_FALLBACK = [];
 
@@ -20,6 +21,7 @@ export default function StudentPlacementStatsTab() {
   const [exporting, setExporting] = useState(false);
   const [yearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [addedByViewer, setAddedByViewer] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
   const totalStudents = useMemo(
     () => branches.reduce((sum, b) => sum + (Number(b?.count) || 0), 0),
@@ -48,6 +50,7 @@ export default function StudentPlacementStatsTab() {
       } else {
         setOpenBranchCode("");
       }
+      setExpandedRows(new Set());
     } catch (e) {
       console.error("Failed to load student placement stats:", e);
       setError("Failed to load student placement stats. Please try again.");
@@ -60,12 +63,6 @@ export default function StudentPlacementStatsTab() {
   useEffect(() => {
     loadData();
   }, []);
-
-  const handleYearChange = async (event) => {
-    const year = event.target.value;
-    setSelectedYear(year);
-    await loadData(year);
-  };
 
   const handleYearSelect = async (year) => {
     setYearDropdownOpen(false);
@@ -81,11 +78,10 @@ export default function StudentPlacementStatsTab() {
       const response = await adminAPI.exportStudentPlacementStats(year);
       const contentDisposition = response?.headers?.["content-disposition"] || "";
       const match = /filename=\"?([^"]+)\"?/i.exec(contentDisposition);
-      const fileName = match?.[1] || `student-placement-stats-${selectedYear || "all"}.xlsx`;
-
+      const fileName =
+        match?.[1] || `student-placement-stats-${selectedYear || "all"}.xlsx`;
       const blob = new Blob([response.data], {
-        type:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -103,8 +99,40 @@ export default function StudentPlacementStatsTab() {
     }
   };
 
+  const toggleRow = (key) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  // Small helper: renders a labelled detail card inside the expanded panel
+  const DetailField = ({ label, value, accent = false, stipend = false }) => {
+    const display = stipend ? formatInternshipStipendDisplay(value) : String(value ?? "").trim();
+    if (!stipend && (!display || display === "-")) return null;
+    if (!stipend && !display) return null;
+    return (
+      <div className="rounded-lg border border-theme bg-theme-card px-3 py-2.5">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+          {label}
+        </p>
+        <p
+          className={`text-sm font-medium break-words ${
+            accent
+              ? "text-indigo-600 dark:text-indigo-400"
+              : "text-theme-primary"
+          }`}
+        >
+          {display}
+        </p>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header card */}
       <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -136,7 +164,6 @@ export default function StudentPlacementStatsTab() {
                   }`}
                 />
               </button>
-
               {yearDropdownOpen && years.length > 0 ? (
                 <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-lg border border-theme bg-theme-card shadow-xl">
                   <div className="max-h-56 overflow-y-auto py-1">
@@ -169,13 +196,13 @@ export default function StudentPlacementStatsTab() {
             </div>
           </div>
         </div>
-
         <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-secondary">
           Total placed students shown:{" "}
           <span className="font-semibold text-theme-primary">{totalStudents}</span>
         </div>
       </div>
 
+      {/* Body */}
       {loading ? (
         <div className="rounded-xl border border-theme bg-theme-card p-8 text-center text-sm text-theme-secondary">
           Loading student placement stats...
@@ -190,10 +217,11 @@ export default function StudentPlacementStatsTab() {
         </div>
       ) : (
         <div className="space-y-4">
+          {/* Branch selector */}
           <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-                Branch Codes
+                Branches
               </p>
               <button
                 type="button"
@@ -213,100 +241,188 @@ export default function StudentPlacementStatsTab() {
                   <button
                     type="button"
                     key={code}
-                    onClick={() => setOpenBranchCode(code)}
-                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    onClick={() => {
+                      setOpenBranchCode(code);
+                      setExpandedRows(new Set());
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                       isActive
                         ? "border-indigo-500 bg-indigo-600 text-white"
                         : "border-theme bg-theme-hero text-theme-primary hover:bg-theme-nav"
                     }`}
                   >
-                    {titleCaseBranch(code)} ({Number(branch.count) || 0})
+                    {titleCaseBranch(code)}{" "}
+                    <span className={isActive ? "opacity-80" : "opacity-60"}>
+                      {Number(branch.count) || 0}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </div>
 
+          {/* Student list — expandable rows */}
           {branches
             .filter((branch) => String(branch.branchCode) === openBranchCode)
-            .map((branch) => (
-          <div
-            key={String(branch.branchCode)}
-            className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm"
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-theme-primary">
-                {titleCaseBranch(branch.branchCode)}
-              </h3>
-              <span className="rounded-full bg-indigo-600/15 px-3 py-1 text-xs font-semibold text-indigo-400">
-                {Number(branch.count) || 0} students
-              </span>
-            </div>
+            .map((branch) => {
+              const students = Array.isArray(branch.students)
+                ? branch.students
+                : [];
+              return (
+                <div
+                  key={String(branch.branchCode)}
+                  className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm"
+                >
+                  {/* Card header */}
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-theme-primary">
+                      {titleCaseBranch(branch.branchCode)}
+                    </h3>
+                    <span className="rounded-full bg-indigo-600/15 px-3 py-1 text-xs font-semibold text-indigo-400">
+                      {Number(branch.count) || 0} students
+                    </span>
+                  </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-theme">
-                <thead>
-                  <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">USN</th>
-                    <th className="px-3 py-2">Email ID</th>
-                    <th className="px-3 py-2">Company Placed</th>
-                    <th className="px-3 py-2">Type of Offer</th>
-                    <th className="px-3 py-2">Stipend</th>
-                    <th className="px-3 py-2">6 Months Internship Stipend</th>
-                    <th className="px-3 py-2">CTC</th>
-                    <th className="px-3 py-2">Role</th>
-                    <th className="px-3 py-2">PPO Conversion Type</th>
-                    <th className="px-3 py-2">Added By</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-theme text-sm text-theme-primary">
-                  {(Array.isArray(branch.students) ? branch.students : []).map(
-                    (student, idx) => (
-                      <tr key={`${student.usn || student.email || "row"}-${idx}`}>
-                        <td className="px-3 py-2">{student.name || "-"}</td>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          {student.usn || "-"}
-                        </td>
-                        <td className="px-3 py-2">{student.email || "-"}</td>
-                        <td className="px-3 py-2">{student.companyPlaced || "-"}</td>
-                        <td className="px-3 py-2">{student.typeOfOffer || "-"}</td>
-                        <td className="px-3 py-2">{student.stipend || "-"}</td>
-                        <td className="px-3 py-2">{student.sixMonthsInternshipStipend || "-"}</td>
-                        <td className="px-3 py-2">{student.ctc || "-"}</td>
-                        <td className="px-3 py-2">{student.role || "-"}</td>
-                        <td className="px-3 py-2">
-                          {student.ppoConversionType || ""}
-                        </td>
-                        <td className="px-3 py-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setAddedByViewer({
-                                addedByName: student.addedByName || "",
-                                addedByUsn: student.addedByUsn || "",
-                                addedByEmail: student.addedByEmail || "",
-                              })
-                            }
-                            className="rounded-md border border-theme bg-theme-hero px-2.5 py-1.5 text-xs font-semibold text-theme-primary transition hover:bg-theme-nav"
-                          >
-                            View Added By
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
+                  {/* Column headers — same grid template as rows */}
+                  <div
+                    className="mb-1 grid items-center gap-x-3 px-4 py-1"
+                    style={{ gridTemplateColumns: "1rem 1.8fr 1.4fr 1fr 0.6fr 0.8fr 3rem" }}
+                  >
+                    <span />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Name / USN</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Company</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Offer</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">CTC</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Role</span>
+                    <span />
+                  </div>
+
+                  {/* Rows */}
+                  <div className="divide-y divide-theme rounded-lg border border-theme overflow-hidden">
+                    {students.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-sm text-theme-secondary">
+                        No students found for this branch.
+                      </p>
+                    ) : (
+                      students.map((student, idx) => {
+                        const rowKey = `${student.usn || student.email || "row"}-${idx}`;
+                        const isOpen = expandedRows.has(rowKey);
+
+                        return (
+                          <div key={rowKey}>
+                            {/* Summary row — identical grid template to headers */}
+                            <button
+                              type="button"
+                              onClick={() => toggleRow(rowKey)}
+                              className={`w-full text-left transition-colors ${
+                                isOpen
+                                  ? "bg-indigo-50 dark:bg-indigo-950/20"
+                                  : "bg-theme-card hover:bg-theme-hero"
+                              }`}
+                            >
+                              <div
+                                className="grid items-center gap-x-3 px-4 py-3"
+                                style={{ gridTemplateColumns: "1rem 1.8fr 1.4fr 1fr 0.6fr 0.8fr 3rem" }}
+                              >
+                                {/* Chevron */}
+                                <FaChevronDown
+                                  className={`h-3 w-3 shrink-0 text-theme-secondary transition-transform duration-200 ${
+                                    isOpen ? "rotate-180 text-indigo-500" : ""
+                                  }`}
+                                />
+                                {/* Name + USN */}
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-theme-primary">
+                                    {student.name || "—"}
+                                  </p>
+                                  <p className="font-mono text-xs text-theme-secondary">
+                                    {student.usn || "—"}
+                                  </p>
+                                </div>
+                                {/* Company */}
+                                <span className="truncate text-sm text-theme-secondary">
+                                  {student.companyPlaced || "—"}
+                                </span>
+                                {/* Offer type */}
+                                <span className="truncate text-sm text-theme-secondary">
+                                  {student.typeOfOffer || "—"}
+                                </span>
+                                {/* CTC */}
+                                <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                                  {student.ctc || "—"}
+                                </span>
+                                {/* Role */}
+                                <span className="truncate text-sm text-theme-secondary">
+                                  {student.role || "—"}
+                                </span>
+                                {/* Details label */}
+                                <span className="text-right text-xs text-theme-secondary">
+                                  {isOpen ? "Hide" : "Details"}
+                                </span>
+                              </div>
+                            </button>
+
+                            {/* Expanded detail panel */}
+                            {isOpen && (
+                              <div className="border-t border-indigo-200 bg-theme-hero px-4 py-4 dark:border-indigo-800">
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                  <DetailField label="Email ID" value={student.email} />
+                                  <DetailField label="Company placed" value={student.companyPlaced} />
+                                  <DetailField label="Type of offer" value={student.typeOfOffer} />
+                                  <DetailField label="Role" value={student.role} />
+                                  <DetailField label="Stipend" value={student.stipend} stipend />
+                                  <DetailField
+                                    label="6 mo. internship stipend"
+                                    value={student.sixMonthsInternshipStipend}
+                                    stipend
+                                  />
+                                  <DetailField label="CTC" value={student.ctc} accent />
+                                  <DetailField
+                                    label="PPO conversion type"
+                                    value={student.ppoConversionType}
+                                  />
+                                </div>
+
+                                {/* Added by */}
+                                <div className="mt-3 flex items-center justify-between gap-3 border-t border-theme pt-3">
+                                  <p className="text-xs text-theme-secondary">
+                                    Placement record source
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAddedByViewer({
+                                        addedByName: student.addedByName || "",
+                                        addedByUsn: student.addedByUsn || "",
+                                        addedByEmail: student.addedByEmail || "",
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-theme bg-theme-card px-2.5 py-1.5 text-xs font-semibold text-theme-primary transition hover:bg-theme-nav"
+                                  >
+                                    View added by
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
         </div>
       )}
+
+      {/* Added-by modal — unchanged */}
       {addedByViewer ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl border border-theme bg-theme-card p-5 shadow-xl">
-            <h4 className="text-base font-semibold text-theme-primary">Placement Record Source</h4>
+            <h4 className="text-base font-semibold text-theme-primary">
+              Placement Record Source
+            </h4>
             <div className="mt-3 space-y-2 text-sm text-theme-secondary">
               <p>
                 <span className="font-semibold text-theme-primary">Name:</span>{" "}
