@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaCheckCircle, FaChevronDown, FaExclamationCircle } from "react-icons/fa";
+import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import { spcAPI } from "../utils/api";
 import {
   PageBackButton,
@@ -10,6 +10,7 @@ import {
 } from "./PageBackNav.jsx";
 import SpcRoleField from "./SpcRoleField.jsx";
 import SpcFormField, { INPUT_CLASS } from "./SpcFormField.jsx";
+import SpcThemeSelect from "./SpcThemeSelect.jsx";
 import SpcCompanySuggestField from "./SpcCompanySuggestField.jsx";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
@@ -70,81 +71,20 @@ const SPC_TYPE_OF_OFFER_OPTIONS = [
   "Only internship(6 months)",
 ];
 
-/* ─── TypeOfOfferPicker ─────────────────────────────────────────────────── */
-function TypeOfOfferPicker({ value, onChange, options, placeholder, labelId }) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
+const PLACEMENT_FORM_YEAR_OPTIONS = PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
+  value: y,
+  label: String(y),
+}));
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKeyDown = (e) => { if (e.key === "Escape") setOpen(false); };
-    const onPointerDown = (e) => {
-      if (!rootRef.current?.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [open]);
+const PLACEMENT_FORM_BRANCH_OPTIONS = [
+  { value: "", label: "Select branch" },
+  ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
+];
 
-  const pick = (next) => {
-    onChange({ target: { name: "typeOfOffer", value: next } });
-    setOpen(false);
-  };
-
-  return (
-    <div ref={rootRef} className="relative w-full">
-      <button
-        type="button"
-        id="spc-type-of-offer-trigger"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-labelledby={labelId}
-        className={`${INPUT_CLASS} flex cursor-pointer items-center justify-between gap-2 text-left`}
-        onClick={() => setOpen((p) => !p)}
-      >
-        <span className={value ? "text-theme-primary" : "text-theme-muted"}>
-          {value || placeholder}
-        </span>
-        <FaChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-theme-secondary transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-      </button>
-
-      {open && (
-        <ul
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-xl border border-theme-input bg-theme-card py-1 shadow-lg"
-          role="listbox"
-          aria-labelledby={labelId}
-        >
-          {options.map((opt) => {
-            const selected = value === opt;
-            return (
-              <li key={opt} role="presentation">
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  className={`flex w-full px-4 py-2.5 text-left text-sm transition-colors ${
-                    selected
-                      ? "bg-theme-nav font-medium text-theme-primary"
-                      : "text-theme-primary hover:bg-theme-nav"
-                  }`}
-                  onClick={() => pick(opt)}
-                >
-                  {opt}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
+const TYPE_OF_OFFER_OPTIONS = SPC_TYPE_OF_OFFER_OPTIONS.map((o) => ({
+  value: o,
+  label: o,
+}));
 
 /* ─── Main Form ─────────────────────────────────────────────────────────── */
 export default function SPCPlacementForm() {
@@ -198,6 +138,10 @@ export default function SPCPlacementForm() {
     }
     if (name === "branchCode") {
       setForm((prev) => ({ ...prev, branchCode: value, role: "" }));
+      return;
+    }
+    if (name === "placementYear") {
+      setForm((prev) => ({ ...prev, placementYear: Number(value) }));
       return;
     }
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -382,48 +326,32 @@ export default function SPCPlacementForm() {
 
               <div className="grid auto-rows-auto grid-cols-1 gap-4 sm:grid-cols-2 items-start min-h-0">
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                  <label htmlFor="spc-pl-year" className="block text-sm font-medium text-theme-primary">
+                  <label htmlFor="spc-pl-year" id="spc-pl-year-label" className="block text-sm font-medium text-theme-primary">
                     Placement year <span className="text-theme-accent">*</span>
                   </label>
-                  <select
+                  <SpcThemeSelect
                     id="spc-pl-year"
                     name="placementYear"
                     required
                     value={form.placementYear}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        placementYear: Number(e.target.value),
-                      }))
-                    }
-                    className={INPUT_CLASS}
-                  >
-                    {PLACEMENT_DETAIL_VISIT_YEARS.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={handleChange}
+                    options={PLACEMENT_FORM_YEAR_OPTIONS}
+                    labelId="spc-pl-year-label"
+                  />
                 </div>
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                  <label htmlFor="spc-pl-branch" className="block text-sm font-medium text-theme-primary">
+                  <label htmlFor="spc-pl-branch" id="spc-pl-branch-label" className="block text-sm font-medium text-theme-primary">
                     Branch <span className="text-theme-accent">*</span>
                   </label>
-                  <select
+                  <SpcThemeSelect
                     id="spc-pl-branch"
                     name="branchCode"
                     required
                     value={form.branchCode}
                     onChange={handleChange}
-                    className={INPUT_CLASS}
-                  >
-                    <option value="">Select branch</option>
-                    {PPO_BRANCH_CODES.map((b) => (
-                      <option key={b} value={b}>
-                        {formatPpoBranchLabel(b)}
-                      </option>
-                    ))}
-                  </select>
+                    options={PLACEMENT_FORM_BRANCH_OPTIONS}
+                    labelId="spc-pl-branch-label"
+                  />
                 </div>
               </div>
 
@@ -432,10 +360,12 @@ export default function SPCPlacementForm() {
                   <label className="block text-sm font-medium text-theme-primary" id="spc-type-of-offer-label">
                     Type of offer <span className="text-theme-accent">*</span>
                   </label>
-                  <TypeOfOfferPicker
+                  <SpcThemeSelect
+                    name="typeOfOffer"
+                    required
                     value={form.typeOfOffer}
                     onChange={handleChange}
-                    options={SPC_TYPE_OF_OFFER_OPTIONS}
+                    options={TYPE_OF_OFFER_OPTIONS}
                     placeholder="Select type of offer"
                     labelId="spc-type-of-offer-label"
                   />

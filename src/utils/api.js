@@ -443,6 +443,7 @@ export const leaderboardAPI = {
 };
 
 export const interviewAPI = {
+  getInterviewEligibility: () => interviewHttp.get("/api/interview/eligibility"),
   getInterviewVisitOptions: (companyId) =>
     interviewHttp.get(`/api/interview/visit-options/${encodeURIComponent(companyId)}`),
   async startInterview({

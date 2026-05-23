@@ -86,6 +86,29 @@ body {
 .bg-theme-input { background-color: var(--input-bg); }
 .border-theme-input { border-color: var(--input-border); }
 
+/*
+ * Native <select> used with Tailwind INPUT_CLASS (.spc-field-control) — SPC placement forms etc.
+ * WebKit/macOS renders system “glossy” controls unless appearance is stripped; Chrome looks flat by default.
+ * This makes the closed state match Chrome (flat field + consistent chevron) across Safari/Chrome/Firefox.
+ * Note: the opened dropdown list is still partly OS-rendered on macOS Safari.
+ */
+select.spc-field-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  background-color: var(--input-bg);
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem 1rem;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23647896' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] select.spc-field-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237f8caf' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 /* Theme-aware backdrops for AI interview modals.
    Tailwind theme tokens handle card/content colors; we only need backdrop opacity to match light vs dark. */
 .ai-interview-backdrop {
