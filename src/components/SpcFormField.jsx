@@ -1,6 +1,9 @@
 const INPUT_CLASS =
   "spc-field-control h-11 min-h-[2.75rem] max-h-[2.75rem] w-full shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm text-theme-primary outline-none focus:border-theme-accent transition-colors placeholder:text-theme-muted box-border";
 
+/** Same token stack as INPUT_CLASS; paired with global `select.spc-field-control` styles in index.css for cross-browser selects. */
+const SELECT_CLASS = INPUT_CLASS;
+
 /** Text field with optional required marker and hint (e.g. TBD note for compensation). */
 export default function SpcFormField({
   label,
@@ -35,4 +38,4 @@ export default function SpcFormField({
   );
 }
 
-export { INPUT_CLASS };
+export { INPUT_CLASS, SELECT_CLASS };
