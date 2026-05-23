@@ -89,7 +89,7 @@ import React, { useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { adminAPI } from "../../utils/api";
+import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.webp";
@@ -102,6 +102,7 @@ function InterviewTab({
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
+  placementCluster,
 }) {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
@@ -119,6 +120,12 @@ function InterviewTab({
   const [editIPContent, setEditIPContent] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const adminOpts = adminCompanyVisitOpts({
+    placementYear,
+    placementListContext,
+    placementCompanyVisitId: placementCompanyVisitId || company?.placementCompanyVisitId,
+    placementCluster,
+  });
 
   // Normalize interview questions
   const interviewQuestions = Array.isArray(company.interviewQuestions)
@@ -383,7 +390,7 @@ function InterviewTab({
         company._id,
         editIQIndex,
         { question: editIQQuestion, solution: editIQSolution },
-        { year: placementYear }
+        adminOpts
       );
       if (onCompanyUpdate) onCompanyUpdate();
       setEditIQIndex(null);
@@ -401,7 +408,7 @@ function InterviewTab({
     if (!company?._id || !window.confirm("Delete this interview question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewQuestion(company._id, index, { year: placementYear });
+      await adminAPI.deleteInterviewQuestion(company._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenIndexQ(null);
     } catch (err) {
@@ -426,7 +433,7 @@ function InterviewTab({
         company._id,
         editIPIndex,
         { content: editIPContent },
-        { year: placementYear }
+        adminOpts
       );
       if (onCompanyUpdate) onCompanyUpdate();
       setEditIPIndex(null);
@@ -443,7 +450,7 @@ function InterviewTab({
     if (!company?._id || !window.confirm("Delete this interview process entry?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewProcess(company._id, index, { year: placementYear });
+      await adminAPI.deleteInterviewProcess(company._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
     } catch (err) {
       console.error(err);

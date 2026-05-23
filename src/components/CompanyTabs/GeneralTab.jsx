@@ -1,7 +1,7 @@
 
 
 import React, { useEffect, useState } from "react";
-import { adminAPI } from "../../utils/api";
+import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { COMPANY_VISIT_CLUSTER_FORM_OPTIONS } from "../../constants/placementTiers.js";
 import {
@@ -21,7 +21,16 @@ function GeneralTab({
   isAdmin = false,
   onRolesUpdated,
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
+  placementListContext,
+  placementCompanyVisitId,
+  placementCluster,
 }) {
+  const adminOpts = adminCompanyVisitOpts({
+    placementYear,
+    placementListContext,
+    placementCompanyVisitId: placementCompanyVisitId || company?.placementCompanyVisitId,
+    placementCluster,
+  });
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
   const [rolesDraft, setRolesDraft] = useState(() =>
@@ -177,7 +186,7 @@ function GeneralTab({
                     offCampus: editOffCampus,
                     cluster: editCluster,
                   },
-                  { year: placementYear }
+                  adminOpts
                 );
                 if (typeof onRolesUpdated === "function") {
                   await onRolesUpdated();
@@ -322,7 +331,7 @@ function GeneralTab({
                   await adminAPI.updateCompanyGeneralInfo(
                     company._id,
                     { date_of_visit: visitDateDraft.trim() },
-                    { year: placementYear }
+                    adminOpts
                   );
                   if (typeof onRolesUpdated === "function") {
                     await onRolesUpdated();
@@ -418,7 +427,7 @@ function GeneralTab({
                     {
                       ppoConversionType: editPpoConversionType,
                     },
-                    { year: placementYear }
+                    adminOpts
                   );
                   if (typeof onRolesUpdated === "function") {
                     await onRolesUpdated();
@@ -545,7 +554,7 @@ function GeneralTab({
               e.preventDefault();
               try {
                 setSavingRoles(true);
-                await adminAPI.updateCompanyRoles(company._id, rolesDraft, { year: placementYear });
+                await adminAPI.updateCompanyRoles(company._id, rolesDraft, adminOpts);
                 if (typeof onRolesUpdated === "function") {
                   await onRolesUpdated();
                 }

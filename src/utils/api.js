@@ -275,7 +275,27 @@ function adminPlacementYearParams(opts = {}) {
       ? String(opts.placementContext).trim()
       : '';
   if (ctx) params.placementContext = ctx;
+  const cluster =
+    opts.placementCluster != null && String(opts.placementCluster).trim() !== ""
+      ? String(opts.placementCluster).trim()
+      : "";
+  if (cluster) params.placementCluster = cluster;
   return params;
+}
+
+/** Admin company tab edits: target the same year + cluster visit row as the detail page. */
+export function adminCompanyVisitOpts({
+  placementYear,
+  placementListContext,
+  placementCompanyVisitId,
+  placementCluster,
+} = {}) {
+  return adminPlacementYearParams({
+    year: placementYear,
+    placementContext: placementListContext,
+    companyVisitId: placementCompanyVisitId,
+    placementCluster,
+  });
 }
 
 export const adminAPI = {

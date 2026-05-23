@@ -49,9 +49,11 @@ function joinInline(items, separator = " | ") {
 function BulletList({ bullets = [] }) {
   if (!Array.isArray(bullets) || bullets.length === 0) return null;
   return (
-    <ul className={`list-disc ml-5 mt-1 space-y-1 ${bodyTextClass}`}>
+    <ul className={`list-disc ml-5 mt-1 space-y-1 min-w-0 max-w-full ${bodyTextClass}`}>
       {bullets.map((item, idx) => (
-        <li key={`${item?.text || "bullet"}-${idx}`}>{item?.text}</li>
+        <li key={`${item?.text || "bullet"}-${idx}`} className="break-words [overflow-wrap:anywhere]">
+          {item?.text}
+        </li>
       ))}
     </ul>
   );
@@ -107,7 +109,7 @@ export default function StandardClassic({ draft }) {
   return (
     <div
       data-resume-export-root
-      className="bg-white text-gray-900 p-6 w-full text-base"
+      className="bg-white text-gray-900 p-6 w-full min-w-0 max-w-full text-base"
     >
       <div className="text-center mb-4">
         <h1 className="text-3xl font-bold">{personal.fullName || "Your Name"}</h1>

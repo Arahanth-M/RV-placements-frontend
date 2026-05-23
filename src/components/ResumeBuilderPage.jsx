@@ -1,7 +1,12 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaPlus, FaTrash, FaFileDownload, FaSave, FaChevronDown } from "react-icons/fa";
 import { resumeAPI } from "../utils/api";
+import { useAuth } from "../utils/AuthContext";
+import {
+  readResumeDraftCache,
+  writeResumeDraftCache,
+} from "../utils/resumeDraftCache";
 import { exportResumeAsDocx, normalizeResumePayload } from "../utils/resumeExport";
 import {
   createBlankResumeDraft,
@@ -181,13 +186,32 @@ function getBulletPlaceholder(sectionKey, index) {
   return "Describe what you did, how you did it, and the outcome";
 }
 
+const AUTO_SAVE_DELAY_MS = 2000;
+
+function buildDraftPayload(draft, skillsInput) {
+  const normalizedSkills = String(skillsInput || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return normalizeResumePayload({
+    ...draft,
+    skills: normalizedSkills,
+  });
+}
+
+function draftSnapshot(payload, version) {
+  return JSON.stringify({ payload, version });
+}
+
 export default function ResumeBuilderPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const ownerEmail = String(user?.email || "").trim().toLowerCase();
   const [draft, setDraft] = useState(createBlankResumeDraft());
   const [skillsInput, setSkillsInput] = useState("");
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [_saveState, setSaveState] = useState("idle");
+  const [saveState, setSaveState] = useState("idle");
   const [statusText, setStatusText] = useState("");
   const [errors, setErrors] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -197,6 +221,10 @@ export default function ResumeBuilderPage() {
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const isHydratingRef = useRef(true);
   const hasUnsavedChangesRef = useRef(false);
+  const savedSnapshotRef = useRef("");
+  const versionRef = useRef(0);
+  const saveInFlightRef = useRef(false);
+  const autoSaveTimerRef = useRef(null);
 
   useEffect(() => {
     const beforeUnloadHandler = (event) => {
@@ -220,22 +248,130 @@ export default function ResumeBuilderPage() {
     return () => document.removeEventListener("click", onDocumentClick);
   }, []);
 
+  const applyLoadedDraft = useCallback((responseData) => {
+    const nextDraft = normalizeResumePayload(responseData);
+    const nextVersion = Number(responseData.version || 0);
+    setDraft(nextDraft);
+    setSkillsInput((nextDraft.skills || []).join(", "));
+    setVersion(nextVersion);
+    versionRef.current = nextVersion;
+    savedSnapshotRef.current = draftSnapshot(nextDraft, nextVersion);
+    hasUnsavedChangesRef.current = false;
+    setSaveState("saved");
+    setStatusText("Draft loaded");
+  }, []);
+
+  const persistDraft = useCallback(
+    async ({ manual = false } = {}) => {
+      if (isHydratingRef.current || saveInFlightRef.current) return false;
+
+      const nextDraft = buildDraftPayload(draft, skillsInput);
+      const currentVersion = versionRef.current;
+      const snapshot = draftSnapshot(nextDraft, currentVersion);
+      if (!manual && snapshot === savedSnapshotRef.current) return true;
+
+      saveInFlightRef.current = true;
+      setIsSaving(true);
+      setSaveState("saving");
+      setStatusText("Saving draft...");
+
+      writeResumeDraftCache(ownerEmail, {
+        payload: nextDraft,
+        version: currentVersion,
+      });
+
+      try {
+        const res = await resumeAPI.saveDraft({ payload: nextDraft, version: currentVersion });
+        const nextVersion = Number(res.data?.version ?? currentVersion);
+        setDraft(nextDraft);
+        setVersion(nextVersion);
+        versionRef.current = nextVersion;
+        savedSnapshotRef.current = draftSnapshot(nextDraft, nextVersion);
+        hasUnsavedChangesRef.current = false;
+        setSaveState("saved");
+        setStatusText(manual ? "Draft saved" : "All changes saved");
+        writeResumeDraftCache(ownerEmail, { payload: nextDraft, version: nextVersion });
+        return true;
+      } catch (error) {
+        if (error?.response?.status === 409) {
+          const latestVersion = Number(error?.response?.data?.latestVersion ?? currentVersion);
+          versionRef.current = latestVersion;
+          setVersion(latestVersion);
+          try {
+            const retry = await resumeAPI.saveDraft({
+              payload: nextDraft,
+              version: latestVersion,
+            });
+            const nextVersion = Number(retry.data?.version ?? latestVersion);
+            setDraft(nextDraft);
+            setVersion(nextVersion);
+            versionRef.current = nextVersion;
+            savedSnapshotRef.current = draftSnapshot(nextDraft, nextVersion);
+            hasUnsavedChangesRef.current = false;
+            setSaveState("saved");
+            setStatusText(manual ? "Draft saved" : "All changes saved");
+            writeResumeDraftCache(ownerEmail, { payload: nextDraft, version: nextVersion });
+            return true;
+          } catch {
+            // fall through to error state
+          }
+        }
+        const apiErrors = error?.response?.data?.errors;
+        const apiMessage =
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message;
+        if (Array.isArray(apiErrors) && apiErrors.length > 0) {
+          setErrors(apiErrors);
+        }
+        setSaveState("error");
+        setStatusText(
+          manual
+            ? Array.isArray(apiErrors) && apiErrors.length > 0
+              ? apiErrors[0]
+              : apiMessage || "Save failed. Try again."
+            : Array.isArray(apiErrors) && apiErrors.length > 0
+              ? apiErrors[0]
+              : "Could not save draft. Changes are kept in this browser session."
+        );
+        return false;
+      } finally {
+        saveInFlightRef.current = false;
+        setIsSaving(false);
+      }
+    },
+    [applyLoadedDraft, draft, ownerEmail, skillsInput]
+  );
+
+  useEffect(() => {
+    versionRef.current = version;
+  }, [version]);
+
   useEffect(() => {
     let isMounted = true;
     async function loadDraft() {
       try {
         const res = await resumeAPI.getDraft();
         if (!isMounted) return;
-        const responseData = res.data || {};
-        const nextDraft = normalizeResumePayload(responseData);
-        setDraft(nextDraft);
-        setSkillsInput((nextDraft.skills || []).join(", "));
-        setVersion(Number(responseData.version || 0));
+        applyLoadedDraft(res.data || {});
       } catch {
         if (!isMounted) return;
-        setDraft(createBlankResumeDraft());
-        setSkillsInput("");
-        setVersion(0);
+        const cached = readResumeDraftCache(ownerEmail);
+        if (cached?.payload) {
+          applyLoadedDraft({
+            ...cached.payload,
+            version: Number(cached.version || 0),
+          });
+          setStatusText("Loaded draft from this browser session");
+        } else {
+          setDraft(createBlankResumeDraft());
+          setSkillsInput("");
+          setVersion(0);
+          versionRef.current = 0;
+          savedSnapshotRef.current = draftSnapshot(createBlankResumeDraft(), 0);
+          setSaveState("idle");
+          setStatusText("");
+        }
       } finally {
         if (isMounted) {
           isHydratingRef.current = false;
@@ -247,7 +383,32 @@ export default function ResumeBuilderPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [applyLoadedDraft, ownerEmail]);
+
+  useEffect(() => {
+    if (isHydratingRef.current) return undefined;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (hasUnsavedChangesRef.current) {
+        persistDraft();
+      }
+    }, AUTO_SAVE_DELAY_MS);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [draft, skillsInput, persistDraft]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden" && hasUnsavedChangesRef.current) {
+        persistDraft();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [persistDraft]);
 
   const previewNode = useMemo(() => {
     if (draft.templateId === RESUME_TEMPLATE_IDS.IIITV) {
@@ -433,48 +594,8 @@ export default function ResumeBuilderPage() {
   };
 
   const handleSaveDraft = async () => {
-    const normalizedSkills = skillsInput
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const nextDraft = normalizeResumePayload({
-      ...draft,
-      skills: normalizedSkills,
-    });
-    const validationErrors = validateDraft(nextDraft);
-    if (validationErrors.length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
     setErrors([]);
-    setIsSaving(true);
-    setSaveState("saving");
-    setStatusText("Saving...");
-    try {
-      const res = await resumeAPI.saveDraft({ payload: nextDraft, version });
-      setDraft(nextDraft);
-      setVersion(Number(res.data?.version || version));
-      setSaveState("saved");
-      setStatusText("Saved");
-      hasUnsavedChangesRef.current = false;
-    } catch (error) {
-      const apiErrors = error?.response?.data?.errors;
-      if (Array.isArray(apiErrors) && apiErrors.length > 0) {
-        setErrors(apiErrors);
-        setSaveState("error");
-        setStatusText("Validation error");
-        return;
-      }
-      if (error?.response?.status === 409) {
-        setSaveState("conflict");
-        setStatusText("Draft conflict: refresh page to sync latest version.");
-      } else {
-        setSaveState("error");
-        setStatusText(error?.response?.data?.message || "Save failed. Try again.");
-      }
-    } finally {
-      setIsSaving(false);
-    }
+    await persistDraft({ manual: true });
   };
 
   if (loading) {
@@ -489,21 +610,29 @@ export default function ResumeBuilderPage() {
           <PageBackButton onClick={() => navigate(-1)} label="Back" />
         </PageBackNavRow>
 
-        <PageHeroHeader subtitle="Fill in your details, pick a template, and download a Word resume when you are ready.">
+        <PageHeroHeader subtitle="Your draft saves automatically while you are logged in. Export Word when you are ready.">
           Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
         </PageHeroHeader>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6">
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-sm">
-            {/*<span className="text-theme-secondary">{statusText || "Ready"}</span>*/}
-            {/* <button
+            <span
+              className={`text-theme-secondary ${
+                saveState === "error" || saveState === "conflict" ? "text-amber-600 dark:text-amber-400" : ""
+              }`}
+              aria-live="polite"
+            >
+              {statusText ||
+                (saveState === "dirty" ? "Unsaved changes" : "Draft auto-saves while you work")}
+            </span>
+            <button
               type="button"
               className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-theme-primary disabled:opacity-60"
               onClick={handleSaveDraft}
-              disabled={isSaving}
+              disabled={isSaving || isExporting}
             >
-              <FaSave /> {isSaving ? "Saving..." : "Save Draft"}
-            </button> */}
+              <FaSave /> {isSaving ? "Saving..." : "Save now"}
+            </button>
             <button
               type="button"
               className="resume-accent-btn inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent disabled:opacity-60"
@@ -633,10 +762,10 @@ export default function ResumeBuilderPage() {
             {renderArraySection("Achievements", "achievements", createAchievementItem)}
           </div>
 
-          <div>
-            <div className="sticky top-20">
+          <div className="min-w-0">
+            <div className="sticky top-20 min-w-0">
               <h2 className="font-semibold text-theme-primary mb-2">Live Preview</h2>
-              <div ref={previewRef} className="border border-theme rounded-lg overflow-x-hidden overflow-y-auto max-h-[calc(100vh-6rem)]">
+              <div ref={previewRef} className="min-w-0 border border-theme rounded-lg overflow-x-hidden overflow-y-auto max-h-[calc(100vh-6rem)]">
                 {previewNode}
               </div>
             </div>

@@ -73,7 +73,7 @@ export default function IIITVLatexStyle({ draft }) {
   return (
     <div
       data-resume-export-root
-      className="bg-white text-black w-full p-6 font-serif leading-normal text-base"
+      className="bg-white text-black w-full min-w-0 max-w-full p-6 font-serif leading-normal text-base"
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
       <header className="mb-4">
@@ -125,9 +125,11 @@ export default function IIITVLatexStyle({ draft }) {
             {item.techStack ? (
               <p className={`${rowMetaClass} italic mb-1`}>{item.techStack}</p>
             ) : null}
-            <ul className={`list-disc ml-5 mt-1 space-y-1 ${bodyTextClass}`}>
+            <ul className={`list-disc ml-5 mt-1 space-y-1 min-w-0 max-w-full ${bodyTextClass}`}>
               {(item.bullets || []).map((bullet, bulletIdx) => (
-                <li key={`exp-b-${idx}-${bulletIdx}`}>{bullet.text}</li>
+                <li key={`exp-b-${idx}-${bulletIdx}`} className="break-words [overflow-wrap:anywhere]">
+                  {bullet.text}
+                </li>
               ))}
             </ul>
           </div>
@@ -148,9 +150,11 @@ export default function IIITVLatexStyle({ draft }) {
                 subRight={linkLabel}
                 subRightHref={link || null}
               />
-              <ul className={`list-disc ml-5 mt-1 space-y-1 ${bodyTextClass}`}>
+              <ul className={`list-disc ml-5 mt-1 space-y-1 min-w-0 max-w-full ${bodyTextClass}`}>
                 {(item.bullets || []).map((bullet, bulletIdx) => (
-                  <li key={`proj-b-${idx}-${bulletIdx}`}>{bullet.text}</li>
+                  <li key={`proj-b-${idx}-${bulletIdx}`} className="break-words [overflow-wrap:anywhere]">
+                    {bullet.text}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -168,7 +172,7 @@ export default function IIITVLatexStyle({ draft }) {
       {certifications.length > 0 ? (
         <section className="mb-4">
           <SectionTitle>Certifications</SectionTitle>
-          <ul className={`list-disc ml-5 mt-1 space-y-1 ${bodyTextClass}`}>
+          <ul className={`list-disc ml-5 mt-1 space-y-1 min-w-0 max-w-full ${bodyTextClass}`}>
             {certifications.map((item, idx) => {
               const title = String(item.title || "").trim() || "Certification";
               const link = String(item.link || item.detail || "").trim();
@@ -178,7 +182,7 @@ export default function IIITVLatexStyle({ draft }) {
                   : `https://${link.replace(/^\/\//, "")}`
                 : null;
               return (
-                <li key={`cert-${idx}`}>
+                <li key={`cert-${idx}`} className="break-words [overflow-wrap:anywhere]">
                   {href ? (
                     <ContactLink type="link" value={href} className="font-semibold underline text-blue-700">
                       {title}
@@ -196,9 +200,9 @@ export default function IIITVLatexStyle({ draft }) {
       {achievements.length > 0 ? (
         <section>
           <SectionTitle>Achievements</SectionTitle>
-          <ul className={`list-disc ml-5 mt-1 space-y-1 ${bodyTextClass}`}>
+          <ul className={`list-disc ml-5 mt-1 space-y-1 min-w-0 max-w-full ${bodyTextClass}`}>
             {achievements.map((item, idx) => (
-              <li key={`ach-${idx}`}>
+              <li key={`ach-${idx}`} className="break-words [overflow-wrap:anywhere]">
                 <span className="font-semibold">{item.title || "Achievement"}</span>
                 {item.detail ? ` - ${item.detail}` : ""}
               </li>

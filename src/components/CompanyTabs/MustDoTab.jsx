@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { adminAPI } from "../../utils/api";
+import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import rvLogo from "../../assets/logo2.webp";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
@@ -11,6 +11,7 @@ function MustDoTab({
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
+  placementCluster,
   isAdmin = false,
   onCompanyUpdate,
 }) {
@@ -22,11 +23,12 @@ function MustDoTab({
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const topics = company.Must_Do_Topics ?? [];
 
-  const adminOpts = {
-    year: placementYear,
-    ...(placementListContext ? { placementContext: placementListContext } : {}),
-    ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
-  };
+  const adminOpts = adminCompanyVisitOpts({
+    placementYear,
+    placementListContext,
+    placementCompanyVisitId: placementCompanyVisitId || company?.placementCompanyVisitId,
+    placementCluster,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();

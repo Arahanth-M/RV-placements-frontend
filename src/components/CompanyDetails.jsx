@@ -859,6 +859,9 @@ function CompanyDetails() {
                 isAdmin={isAdmin}
                 onRolesUpdated={handleRefresh}
                 placementYear={placementYear}
+                placementListContext={placementContextForApi}
+                placementCompanyVisitId={company?.placementCompanyVisitId}
+                placementCluster={placementClusterForApi}
               />
             ))}
           {activeTab === "stats" &&
@@ -885,6 +888,7 @@ function CompanyDetails() {
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
+                placementCluster={placementClusterForApi}
               />
             ))}
           {activeTab === "coding" &&
@@ -904,6 +908,7 @@ function CompanyDetails() {
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
+                placementCluster={placementClusterForApi}
               />
             ))}
           {activeTab === "internship" &&
@@ -938,6 +943,7 @@ function CompanyDetails() {
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
+                placementCluster={placementClusterForApi}
               />
             ))}
           {activeTab === "offcampus" &&

@@ -225,8 +225,19 @@ function CompanyCard({
     e.stopPropagation();
     setIsSavingType(true);
     try {
-      const { adminAPI } = await import("../utils/api");
-      await adminAPI.updateCompanyGeneralInfo(company._id, { type: editTypeValue });
+      const { adminAPI, adminCompanyVisitOpts } = await import("../utils/api");
+      await adminAPI.updateCompanyGeneralInfo(
+        company._id,
+        { type: editTypeValue },
+        adminCompanyVisitOpts({
+          placementYear: cardPlacementYear,
+          placementListContext,
+          placementCompanyVisitId: shouldSendPlacementVisitIdHint
+            ? company.placementCompanyVisitId
+            : undefined,
+          placementCluster,
+        })
+      );
       if (onStatsUpdated) onStatsUpdated(company._id, { type: editTypeValue });
       setIsEditingType(false);
     } catch (err) {
@@ -255,10 +266,18 @@ function CompanyCard({
 
     try {
       setIsUpdatingTotalGotIn(true);
-      const { adminAPI } = await import("../utils/api");
-      const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta, {
-        year: adminGotInYear,
-      });
+      const { adminAPI, adminCompanyVisitOpts } = await import("../utils/api");
+      const response = await adminAPI.adjustCompanyTotalGotIn(
+        company._id,
+        delta,
+        adminCompanyVisitOpts({
+          placementYear: adminGotInYear,
+          placementListContext,
+          placementCompanyVisitId: shouldSendPlacementVisitIdHint
+            ? company.placementCompanyVisitId
+            : undefined,
+        })
+      );
       const nextByYear =
         response.data?.totalGotInByYear != null &&
         typeof response.data.totalGotInByYear === "object"

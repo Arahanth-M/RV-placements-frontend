@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { clearAllResumeDraftCaches } from './resumeDraftCache.js';
 import { authAPI } from './api';
 import { BASE_URL } from './constants';
 
@@ -237,6 +238,7 @@ export const AuthProvider = ({ children }) => {
       clearLoginTimestamp();
       localStorage.removeItem(LAST_USER_KEY);
       localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
+      clearAllResumeDraftCaches();
     } catch (error) {
       console.error('Logout failed:', error);
       
@@ -273,6 +275,7 @@ export const AuthProvider = ({ children }) => {
       clearLoginTimestamp();
       localStorage.removeItem(LAST_USER_KEY);
       localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
+      clearAllResumeDraftCaches();
     }
   }, []);
 

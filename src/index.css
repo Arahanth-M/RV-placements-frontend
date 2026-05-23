@@ -1512,6 +1512,25 @@ html, body, #root {
   transform: translate(0);
 }
 
+/* Resume preview/export: wrap long lines inside the page width */
+[data-resume-export-root] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-resume-export-root] ul {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-resume-export-root] li,
+[data-resume-export-root] p {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* Resume Builder: keep form controls compact and consistent */
 .resume-builder-form .resume-field {
   box-sizing: border-box !important;

@@ -44,9 +44,13 @@ async function downloadDocxResponse(response) {
   window.URL.revokeObjectURL(url);
 }
 
+function clampText(value, maxLen) {
+  return String(value ?? "").slice(0, maxLen);
+}
+
 function pickBullets(bullets = []) {
   return (Array.isArray(bullets) ? bullets : [])
-    .map((b) => ({ text: String(b?.text ?? "").trim() }))
+    .map((b) => ({ text: clampText(String(b?.text ?? "").trim(), 250) }))
     .filter((b) => b.text.length > 0);
 }
 
@@ -113,15 +117,21 @@ export function normalizeResumePayload(draft = {}) {
     ? draft.templateId
     : base.templateId;
 
+  const personal = draft.personal || {};
   return {
     templateId,
     personal: {
-      ...base.personal,
-      ...(draft.personal || {}),
+      fullName: clampText(personal.fullName ?? base.personal.fullName, 120),
+      email: clampText(personal.email ?? base.personal.email, 320),
+      phone: clampText(personal.phone ?? base.personal.phone, 30),
+      location: clampText(personal.location ?? base.personal.location, 120),
+      linkedin: clampText(personal.linkedin ?? base.personal.linkedin, 300),
+      github: clampText(personal.github ?? base.personal.github, 300),
+      summary: clampText(personal.summary ?? base.personal.summary, 500),
     },
     education: (Array.isArray(draft.education) ? draft.education : []).map(pickEducation),
     skills: (Array.isArray(draft.skills) ? draft.skills : [])
-      .map((s) => String(s).trim())
+      .map((s) => clampText(String(s).trim(), 80))
       .filter(Boolean),
     projects: (Array.isArray(draft.projects) ? draft.projects : []).map(pickProject),
     experience: (Array.isArray(draft.experience) ? draft.experience : []).map(pickExperience),

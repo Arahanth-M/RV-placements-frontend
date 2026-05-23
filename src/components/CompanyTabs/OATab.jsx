@@ -272,7 +272,7 @@ import React, { useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
-import { adminAPI } from "../../utils/api";
+import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import rvLogo from "../../assets/logo2.webp";
@@ -285,6 +285,7 @@ function OATab({
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
+  placementCluster,
 }) {
   const [showModal, setShowModal] = useState(false);
   const [question, setQuestion] = useState("");
@@ -299,6 +300,12 @@ function OATab({
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
 
   const safeCompany = company || {};
+  const adminOpts = adminCompanyVisitOpts({
+    placementYear,
+    placementListContext,
+    placementCompanyVisitId: placementCompanyVisitId || safeCompany.placementCompanyVisitId,
+    placementCluster,
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -358,7 +365,12 @@ function OATab({
     if (editIndex == null || !safeCompany._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateOAQuestion(safeCompany._id, editIndex, { question: editQuestion, solution: editSolution });
+      await adminAPI.updateOAQuestion(
+        safeCompany._id,
+        editIndex,
+        { question: editQuestion, solution: editSolution },
+        adminOpts
+      );
       if (onCompanyUpdate) onCompanyUpdate();
       setEditIndex(null);
       setEditQuestion("");
@@ -375,12 +387,16 @@ function OATab({
     if (!safeCompany._id || !window.confirm("Delete this OA question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteOAQuestion(safeCompany._id, index, { year: placementYear });
+      await adminAPI.deleteOAQuestion(safeCompany._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenQuestionIndex(null);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete question.");
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to delete question."
+      );
     } finally {
       setActionLoading(false);
     }

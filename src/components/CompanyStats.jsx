@@ -1092,6 +1092,28 @@ function CompanyStats() {
     summerInternshipPage,
   ]);
 
+  useEffect(() => {
+    if (!companiesFetchDone || !isPlacementCardsYear || !placementTier) return;
+    if (location.pathname !== PATH_COMPANY_STATS) return;
+    if (String(search || "").trim()) return;
+    if (tierListConfig.pool.length > 0) return;
+    const cluster =
+      effectiveClusterParam ||
+      (isNonCsStrictHubCluster(clusterParam) ? clusterParam : PLACEMENT_CLUSTER_CS);
+    setPlacementTier(null);
+    navigate(companystatsClusterCategoryUrl(cluster), { replace: true });
+  }, [
+    companiesFetchDone,
+    isPlacementCardsYear,
+    placementTier,
+    location.pathname,
+    search,
+    tierListConfig.pool.length,
+    navigate,
+    effectiveClusterParam,
+    clusterParam,
+  ]);
+
   const visibleCompanyIds = useMemo(
     () => tierListConfig.slice.map((company) => company?._id).filter(Boolean),
     [tierListConfig]
@@ -1682,6 +1704,62 @@ function CompanyStats() {
       ? allOffCampusCompanies.length
       : p?.counts?.offCampus ?? 0;
 
+    const categoryTiles = [
+      {
+        tier: PLACEMENT_TIER_DREAM,
+        title: "Dream companies",
+        shortLabel: "Dream",
+        count: dreamCount,
+        logos: dreamLogoPreview,
+        logoGrid: { gridSize: CATEGORY_TILE_LOGO_GRID, disableRotation: true, pixelSize: 72 },
+      },
+      {
+        tier: PLACEMENT_TIER_OPEN_DREAM,
+        title: "Open dream companies",
+        shortLabel: "Open dream",
+        count: openDreamCount,
+        logos: openDreamLogoPreview,
+        logoGrid: { gridSize: CATEGORY_TILE_LOGO_GRID, disableRotation: true, pixelSize: 72 },
+      },
+      {
+        tier: PLACEMENT_TIER_SUMMER_INTERNSHIP,
+        title: "Summer internship companies",
+        shortLabel: "Summer internship",
+        count: summerCount,
+        logos: summerLogoPreview,
+        logoGrid: { gridSize: CATEGORY_TILE_LOGO_GRID, disableRotation: true, pixelSize: 72 },
+      },
+      {
+        tier: PLACEMENT_TIER_INTERNSHIP_ONLY,
+        title: "Internship only companies",
+        shortLabel: "Internship only (6 months)",
+        count: internshipOnlyCount,
+        logos: internshipOnlyLogoPreview,
+        logoGrid: { gridSize: 5, interval: 3000 },
+      },
+      {
+        tier: PLACEMENT_TIER_OFF_CAMPUS,
+        title: "Off campus companies",
+        shortLabel: "Off-campus",
+        count: offCampusCount,
+        logos: offCampusLogoPreview,
+        logoGrid: { gridSize: 5, interval: 3000 },
+      },
+    ].filter((tile) => tile.count > 0);
+
+    const categorySubtitle = (() => {
+      const labels = categoryTiles.map((tile) => tile.shortLabel);
+      if (labels.length === 0) {
+        return "No companies are listed in any category for this cluster yet.";
+      }
+      if (labels.length === 1) {
+        return `Choose ${labels[0]} to browse company cards`;
+      }
+      const last = labels[labels.length - 1];
+      const rest = labels.slice(0, -1).join(", ");
+      return `Choose ${rest}, or ${last} to browse company cards`;
+    })();
+
     return (
       <div className={`min-h-screen ${pageShellOuterClass}`}>
         <div className={pageShellInnerClass}>
@@ -1700,155 +1778,47 @@ function CompanyStats() {
                 Select category
               </h2>
               <p className="mx-auto mt-2 max-w-lg px-1 text-center text-sm leading-snug text-theme-secondary sm:max-w-2xl sm:px-0 sm:text-base sm:leading-normal md:text-lg">
-                <>
-                  Choose Dream, Open dream, Summer internship, Internship only (6 months), or
-                  <br />
-                  {" "}
-                  Off-campus to browse company cards
-                </>
+                {categorySubtitle}
               </p>
-              
             </div>
           </div>
+          {categoryTiles.length === 0 ? (
+            <div
+              className="company-card mx-auto max-w-xl rounded-2xl border-2 border-dashed border-theme bg-theme-card/40 px-6 py-12 text-center"
+              role="status"
+            >
+              <p className="text-base font-medium text-theme-primary sm:text-lg">No categories yet</p>
+              <p className="mt-2 text-sm text-theme-secondary">
+                When companies are added for this cluster, their categories will appear here.
+              </p>
+            </div>
+          ) : (
           <div className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch">
+            {categoryTiles.map((tile) => (
             <button
+              key={tile.tier}
               type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_DREAM)}
+              onClick={() => openPlacementTierList(tile.tier)}
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
-
                 <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Dream companies
+                  {tile.title}
                 </h3>
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={dreamLogoPreview}
-                    gridSize={CATEGORY_TILE_LOGO_GRID}
-                    disableRotation
-                    pixelSize={72}
-                  />
+                  <AnimatedLogoGrid companies={tile.logos} {...tile.logoGrid} />
                 </div>
                 <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{dreamCount} companies</span>
+                  <span className="text-sm sm:text-base">
+                    {tile.count} {tile.count === 1 ? "company" : "companies"}
+                  </span>
                   <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
                 </div>
               </div>
             </button>
-            <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_OPEN_DREAM)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Open dream companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={openDreamLogoPreview}
-                    gridSize={CATEGORY_TILE_LOGO_GRID}
-                    disableRotation
-                    pixelSize={72}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{openDreamCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
-                        <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Summer internship companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={summerLogoPreview}
-                    gridSize={CATEGORY_TILE_LOGO_GRID}
-                    disableRotation
-                    pixelSize={72}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{summerCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_INTERNSHIP_ONLY)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Internship only companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={internshipOnlyLogoPreview}
-                    gridSize={5}
-                    interval={3000}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{internshipOnlyCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
-            {/* <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_SUMMER_INTERNSHIP)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Summer internship companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={summerLogoPreview}
-                    gridSize={5}
-                    interval={3200}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{summerCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button> */}
-            <button
-              type="button"
-              onClick={() => openPlacementTierList(PLACEMENT_TIER_OFF_CAMPUS)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
-            >
-              <div className="flex h-full min-h-0 min-w-0 flex-col">
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  Off campus companies
-                </h3>
-                <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
-                  <AnimatedLogoGrid
-                    companies={offCampusLogoPreview}
-                    gridSize={5}
-                    interval={3000}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-theme-primary font-medium mt-auto pt-1 border-t border-theme">
-                  <span className="text-sm sm:text-base">{offCampusCount} companies</span>
-                  <FaChevronRight className="text-theme-muted shrink-0" aria-hidden />
-                </div>
-              </div>
-            </button>
+            ))}
           </div>
+          )}
         </div>
         </div>
       </div>
