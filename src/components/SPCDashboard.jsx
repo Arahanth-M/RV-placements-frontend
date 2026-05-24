@@ -23,7 +23,8 @@ import {
 } from "../constants/placementYears.js";
 import SpcCompanySuggestField from "./SpcCompanySuggestField.jsx";
 import SpcRoleField from "./SpcRoleField.jsx";
-import SpcFormField, { INPUT_CLASS } from "./SpcFormField.jsx";
+import SpcFormField from "./SpcFormField.jsx";
+import SpcThemeSelect from "./SpcThemeSelect.jsx";
 import {
   compensationVisibilityForTypeOfOffer,
   SPC_COMPENSATION_TBD_HINT,
@@ -119,6 +120,31 @@ const EDIT_INITIAL = {
   ppoConversionType: "",
   sixMonthsInternshipStipend: "",
 };
+
+const SPC_EDIT_YEAR_OPTIONS = PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
+  value: y,
+  label: String(y),
+}));
+
+const SPC_EDIT_BRANCH_OPTIONS = [
+  { value: "", label: "Select branch" },
+  ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
+];
+
+const SPC_EDIT_TYPE_OF_OFFER_OPTIONS = [
+  { value: "", label: "Select type of offer" },
+  { value: "Internship(PPO)", label: "Internship(PPO)" },
+  { value: "FTE", label: "FTE" },
+  { value: "Internship+FTE", label: "Internship+FTE" },
+  { value: "Internship + FTE (PBC)", label: "Internship + FTE (PBC)" },
+  { value: "Only internship(6 months)", label: "Only internship(6 months)" },
+];
+
+const SPC_EDIT_PPO_CONV_OPTIONS = [
+  { value: "", label: "None" },
+  { value: "FTE", label: "FTE" },
+  { value: "Internship+FTE", label: "Internship+FTE" },
+];
 
 const PRIMARY_ACTION_BTN_CLASS =
   "inline-flex h-10 shrink-0 items-center justify-center rounded-xl bg-theme-accent px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90";
@@ -1083,63 +1109,58 @@ export default function SPCDashboard() {
                 />
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                    <label htmlFor="spc-edit-year" className="block text-sm font-medium text-theme-primary">
+                    <label
+                      htmlFor="spc-edit-year"
+                      id="spc-edit-year-label"
+                      className="block text-sm font-medium text-theme-primary"
+                    >
                       Placement year <span className="text-theme-accent">*</span>
                     </label>
-                    <select
+                    <SpcThemeSelect
                       id="spc-edit-year"
                       name="placementYear"
                       required
                       value={editForm.placementYear}
                       onChange={onEditChange}
-                      className={INPUT_CLASS}
-                    >
-                      {PLACEMENT_DETAIL_VISIT_YEARS.map((y) => (
-                        <option key={y} value={y}>
-                          {y}
-                        </option>
-                      ))}
-                    </select>
+                      options={SPC_EDIT_YEAR_OPTIONS}
+                      labelId="spc-edit-year-label"
+                    />
                   </div>
                   <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                    <label htmlFor="spc-edit-branch" className="block text-sm font-medium text-theme-primary">
+                    <label
+                      htmlFor="spc-edit-branch"
+                      id="spc-edit-branch-label"
+                      className="block text-sm font-medium text-theme-primary"
+                    >
                       Branch <span className="text-theme-accent">*</span>
                     </label>
-                    <select
+                    <SpcThemeSelect
                       id="spc-edit-branch"
                       name="branchCode"
                       required
                       value={editForm.branchCode}
                       onChange={onEditChange}
-                      className={INPUT_CLASS}
-                    >
-                      <option value="">Select branch</option>
-                      {PPO_BRANCH_CODES.map((b) => (
-                        <option key={b} value={b}>
-                          {formatPpoBranchLabel(b)}
-                        </option>
-                      ))}
-                    </select>
+                      options={SPC_EDIT_BRANCH_OPTIONS}
+                      labelId="spc-edit-branch-label"
+                    />
                   </div>
                   <div className="flex min-h-0 w-full flex-col gap-2 self-start sm:col-span-2">
-                    <label htmlFor="spc-edit-offer" className="block text-sm font-medium text-theme-primary">
+                    <label
+                      htmlFor="spc-edit-offer"
+                      id="spc-edit-offer-label"
+                      className="block text-sm font-medium text-theme-primary"
+                    >
                       Type of offer <span className="text-theme-accent">*</span>
                     </label>
-                    <select
+                    <SpcThemeSelect
                       id="spc-edit-offer"
                       name="typeOfOffer"
                       required
                       value={editForm.typeOfOffer}
                       onChange={onEditChange}
-                      className={INPUT_CLASS}
-                    >
-                      <option value="">Select type of offer</option>
-                      <option value="Internship(PPO)">Internship(PPO)</option>
-                      <option value="FTE">FTE</option>
-                      <option value="Internship+FTE">Internship+FTE</option>
-                      <option value="Internship + FTE (PBC)">Internship + FTE (PBC)</option>
-                      <option value="Only internship(6 months)">Only internship(6 months)</option>
-                    </select>
+                      options={SPC_EDIT_TYPE_OF_OFFER_OPTIONS}
+                      labelId="spc-edit-offer-label"
+                    />
                   </div>
                 </div>
               </section>
@@ -1206,20 +1227,21 @@ export default function SPCDashboard() {
                   <h4 className="text-sm font-semibold text-theme-primary">PPO conversion</h4>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="flex min-h-0 w-full flex-col gap-2 self-start">
-                      <label htmlFor="spc-edit-conv" className="block text-sm font-medium text-theme-primary">
+                      <label
+                        htmlFor="spc-edit-conv"
+                        id="spc-edit-conv-label"
+                        className="block text-sm font-medium text-theme-primary"
+                      >
                         PPO conversion type
                       </label>
-                      <select
+                      <SpcThemeSelect
                         id="spc-edit-conv"
                         name="ppoConversionType"
                         value={editForm.ppoConversionType}
                         onChange={onEditChange}
-                        className={INPUT_CLASS}
-                      >
-                        <option value="">None</option>
-                        <option value="FTE">FTE</option>
-                        <option value="Internship+FTE">Internship+FTE</option>
-                      </select>
+                        options={SPC_EDIT_PPO_CONV_OPTIONS}
+                        labelId="spc-edit-conv-label"
+                      />
                     </div>
                     {showEditSixMonthStipend ? (
                       <SpcFormField

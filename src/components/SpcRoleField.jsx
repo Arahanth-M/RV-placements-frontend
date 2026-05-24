@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { spcAPI } from "../utils/api";
 
-const INPUT_CLASS =
-  "spc-field-control h-11 min-h-[2.75rem] max-h-[2.75rem] w-full shrink-0 rounded-xl border border-theme-input bg-theme-input px-4 text-sm text-theme-primary outline-none focus:border-theme-accent transition-colors placeholder:text-theme-muted box-border";
-
+import { INPUT_CLASS } from "./SpcFormField.jsx";
 /**
  * Single role field: pick from visit roles (datalist) or type a custom name — no separate "Other" step.
  */

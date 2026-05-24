@@ -3,9 +3,11 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
+import { MESSAGES } from "../../utils/constants";
 import { FaChevronDown, FaMoon, FaPlay, FaSpinner, FaSun } from "react-icons/fa";
 import rvLogo from "../../assets/logo2.webp";
 import InterviewCodeWorkspace from "./InterviewCodeWorkspace";
+import InterviewLimitModal from "../InterviewLimitModal";
 import {
   getCodingRunnerContractHints,
   getCppGraderContractHints,
@@ -188,9 +190,8 @@ const previewValueLane = (label, value) => {
   return { label, kind, serialized };
 };
 
-/** Visible cases + run budget; after a run, merges per-case results into each visible row. */
+/** Visible cases; after a run, merges per-case results into each visible row. */
 function InterviewPreviewExecutionCard({
-  previewRunsRemaining,
   visibleTestCases,
   execution = null,
   hints = null,
@@ -218,12 +219,7 @@ function InterviewPreviewExecutionCard({
 
   return (
     <div className={`rounded-xl border border-theme bg-theme-input p-4 space-y-3 ${className}`.trim()}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Preview execution</p>
-        <p className="text-xs text-theme-secondary">
-          Preview Runs Left: {Math.max(0, Number(previewRunsRemaining) || 0)}
-        </p>
-      </div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-theme-muted">Preview execution</p>
 
       {loading ? (
         <p className="text-xs text-theme-secondary flex items-center gap-2">
@@ -382,6 +378,60 @@ function isCodeExecutionSummaryPayload(summary) {
     typeof summary === "object" &&
     Number.isFinite(Number(summary.totalCount)) &&
     Number(summary.totalCount) >= 0
+  );
+}
+
+/** Hidden testcase rows from post-submit `lastCodeExecutionSummary` (pass/fail only). */
+function normalizeHiddenTestResultsFromSummary(summary) {
+  if (!summary || typeof summary !== "object") return [];
+  const rows = Array.isArray(summary.hiddenTestResults) ? summary.hiddenTestResults : [];
+  const normalized = rows
+    .filter((row) => row && typeof row === "object")
+    .map((row, idx) => ({
+      caseNumber: Number(row.caseNumber) > 0 ? Number(row.caseNumber) : idx + 1,
+      passed: Boolean(row.passed),
+    }));
+  if (normalized.length > 0) return normalized;
+
+  const total = Math.max(0, Number(summary.hiddenTotalCount) || 0);
+  const passed = Math.max(0, Number(summary.hiddenPassedCount) || 0);
+  if (total <= 0) return [];
+  if (passed === total) {
+    return Array.from({ length: total }, (_, i) => ({ caseNumber: i + 1, passed: true }));
+  }
+  if (passed === 0) {
+    return Array.from({ length: total }, (_, i) => ({ caseNumber: i + 1, passed: false }));
+  }
+  return Array.from({ length: total }, (_, i) => ({
+    caseNumber: i + 1,
+    passed: i < passed,
+  }));
+}
+
+function HiddenTestCaseResultsList({ hiddenTestResults, className = "" }) {
+  if (!Array.isArray(hiddenTestResults) || hiddenTestResults.length === 0) return null;
+  return (
+    <div className={`space-y-2 ${className}`.trim()}>
+      <p className="text-xs font-semibold text-theme-primary">Hidden testcases</p>
+      <div className="space-y-2">
+        {hiddenTestResults.map((row) => {
+          const passed = Boolean(row.passed);
+          return (
+            <div
+              key={`hidden-test-result-${row.caseNumber}`}
+              className={`rounded-lg border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2 transition-colors ${
+                passed ? "ui-test-result-pass" : "ui-test-result-fail"
+              }`}
+            >
+              <p className="text-theme-primary font-semibold">Hidden case {row.caseNumber}</p>
+              <span className={passed ? "status-pill-success" : "status-pill-danger"}>
+                {passed ? "Passed" : "Failed"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -830,14 +880,15 @@ function AIInterviewTab({
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
   const [slotMenuOpen, setSlotMenuOpen] = useState(false);
+  const [interviewLimitReached, setInterviewLimitReached] = useState(false);
+  const [interviewLimitOpen, setInterviewLimitOpen] = useState(false);
+  const [interviewLimitMessage, setInterviewLimitMessage] = useState("");
   const slotPickerRef = useRef(null);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [tips, setTips] = useState([]);
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
-  const [previewRunCount, setPreviewRunCount] = useState(0);
-  const [previewRunsRemaining, setPreviewRunsRemaining] = useState(3);
   const [visibleTestCases, setVisibleTestCases] = useState([]);
   const [previewExecutionResult, setPreviewExecutionResult] = useState(null);
   const [previewExecutionLoading, setPreviewExecutionLoading] = useState(false);
@@ -1179,6 +1230,37 @@ function AIInterviewTab({
   useEffect(() => {
     fetchVisitSlots();
   }, [fetchVisitSlots]);
+
+  useEffect(() => {
+    if (!user?.userId || user?.betaAccess === false) {
+      setInterviewLimitReached(false);
+      setInterviewLimitMessage("");
+      return;
+    }
+    if (status === "in_progress") return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await interviewAPI.getInterviewEligibility();
+        if (cancelled) return;
+        const blocked = data?.canStart === false && data?.reason === "INTERVIEW_LIMIT_REACHED";
+        setInterviewLimitReached(blocked);
+        setInterviewLimitMessage(
+          blocked ? data?.message || MESSAGES.INTERVIEW_LIMIT_REACHED : ""
+        );
+      } catch {
+        if (!cancelled) {
+          setInterviewLimitReached(false);
+          setInterviewLimitMessage("");
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.userId, user?.betaAccess, status]);
 
   useEffect(() => {
     setSelectedSlotKey("");
@@ -1610,8 +1692,6 @@ function AIInterviewTab({
     setIsProcessing(false);
     setTips([]);
     setCurrentTipIndex(0);
-    setPreviewRunCount(0);
-    setPreviewRunsRemaining(3);
     setVisibleTestCases([]);
     setPreviewSqlContext(null);
     setPreviewExecutionResult(null);
@@ -1637,7 +1717,17 @@ function AIInterviewTab({
     el.style.height = `${nextHeight}px`;
   }, [answerExplanation, status, isCodingRoundUI]);
 
+  const openInterviewLimitModal = useCallback((message) => {
+    setInterviewLimitMessage(message || MESSAGES.INTERVIEW_LIMIT_REACHED);
+    setInterviewLimitOpen(true);
+  }, []);
+
   const handleStartInterview = async () => {
+    if (interviewLimitReached) {
+      openInterviewLimitModal(interviewLimitMessage);
+      return;
+    }
+
     if (!canStart) {
       setError(
         !placementSelectionReady
@@ -1702,10 +1792,6 @@ function AIInterviewTab({
         );
       }
       setCurrentQuestionNumberWithinRound(Number(data.currentQuestionIndex ?? 0) + 1);
-      setPreviewRunCount(Number(data.previewRunCount) || 0);
-      setPreviewRunsRemaining(
-        typeof data.previewRunsRemaining === "number" ? data.previewRunsRemaining : 3
-      );
       if (Object.prototype.hasOwnProperty.call(data || {}, "visibleTestCases")) {
         setVisibleTestCases(Array.isArray(data.visibleTestCases) ? data.visibleTestCases : []);
       }
@@ -1762,6 +1848,14 @@ function AIInterviewTab({
       // Resume intentionally disabled.
     } catch (err) {
       console.error("Failed to start AI interview:", err);
+      const code = err?.response?.data?.code;
+      if (code === "INTERVIEW_LIMIT_REACHED") {
+        const msg = err?.response?.data?.error || MESSAGES.INTERVIEW_LIMIT_REACHED;
+        setInterviewLimitReached(true);
+        setInterviewLimitMessage(msg);
+        openInterviewLimitModal(msg);
+        return;
+      }
       setError(err?.response?.data?.error || "Failed to start interview.");
     } finally {
       loadingRef.current = false;
@@ -1797,10 +1891,6 @@ function AIInterviewTab({
     if (typeof st.currentQuestionNumberWithinRound === "number") {
       setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
     }
-    setPreviewRunCount(Number(st.previewRunCount) || 0);
-    setPreviewRunsRemaining(
-      typeof st.previewRunsRemaining === "number" ? st.previewRunsRemaining : 3
-    );
     if (Object.prototype.hasOwnProperty.call(st || {}, "visibleTestCases")) {
       setVisibleTestCases(Array.isArray(st.visibleTestCases) ? st.visibleTestCases : []);
     }
@@ -1981,7 +2071,6 @@ function AIInterviewTab({
 
   const handleRunPreview = useCallback(async () => {
     if (!sessionId || loading || previewExecutionLoading || isProcessing) return;
-    if ((Number(previewRunsRemaining) || 0) <= 0) return;
     const now = Date.now();
     if (previewLastRunAtMs && now - previewLastRunAtMs < 2000) {
       setPreviewRunInlineHint("");
@@ -2056,10 +2145,6 @@ function AIInterviewTab({
         language: codingLanguage,
       });
       setPreviewExecutionResult(data?.execution || null);
-      setPreviewRunsRemaining(
-        typeof data?.remainingRuns === "number" ? data.remainingRuns : previewRunsRemaining
-      );
-      setPreviewRunCount((prev) => Math.min(3, prev + 1));
       setPreviewLastRunAtMs(Date.now());
     } catch (err) {
       const message =
@@ -2074,7 +2159,6 @@ function AIInterviewTab({
     loading,
     previewExecutionLoading,
     isProcessing,
-    previewRunsRemaining,
     previewLastRunAtMs,
     isCodingRoundUI,
     codingLanguage,
@@ -2826,6 +2910,12 @@ function AIInterviewTab({
           ) : null}
         </section>
       )}
+      <InterviewLimitModal
+        open={interviewLimitOpen}
+        onClose={() => setInterviewLimitOpen(false)}
+        message={interviewLimitMessage}
+      />
+
       {quitConfirmOpen && (
         <div
           className="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm"
@@ -2963,6 +3053,14 @@ function AIInterviewTab({
                       </span>
                     </li>
                   </ul>
+                  {Number(pendingQuestionFeedback.codeExecutionSummary.hiddenTotalCount) > 0 ? (
+                    <HiddenTestCaseResultsList
+                      hiddenTestResults={normalizeHiddenTestResultsFromSummary(
+                        pendingQuestionFeedback.codeExecutionSummary
+                      )}
+                      className="mt-3 pt-3 border-t border-theme"
+                    />
+                  ) : null}
                   {String(pendingQuestionFeedback.codeExecutionSummary.status || "").trim() ? (
                     <p className="text-[11px] text-theme-muted mt-3 leading-snug">
                       Runner status: {pendingQuestionFeedback.codeExecutionSummary.status}
@@ -3941,17 +4039,9 @@ function AIInterviewTab({
                     <button
                       type="button"
                       onClick={handleRunPreview}
-                      disabled={
-                        previewExecutionLoading ||
-                        loading ||
-                        isProcessing ||
-                        (Number(previewRunsRemaining) || 0) <= 0
-                      }
+                      disabled={previewExecutionLoading || loading || isProcessing}
                       className={`inline-flex min-w-0 max-w-full shrink-0 items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-3 py-2 text-xs font-semibold sm:px-5 sm:py-2.5 sm:text-sm transition-[background-color,box-shadow,opacity] ${
-                        previewExecutionLoading ||
-                        loading ||
-                        isProcessing ||
-                        (Number(previewRunsRemaining) || 0) <= 0
+                        previewExecutionLoading || loading || isProcessing
                           ? "bg-theme-card text-theme-muted cursor-not-allowed"
                           : "bg-theme-input border border-theme-accent text-theme-accent hover:bg-theme-accent/10"
                       }`}
@@ -4021,7 +4111,6 @@ function AIInterviewTab({
                   </div>
                 </div>
                 <InterviewPreviewExecutionCard
-                  previewRunsRemaining={previewRunsRemaining}
                   visibleTestCases={visibleTestCases}
                   execution={previewExecutionResult}
                   hints={previewFixHints}
