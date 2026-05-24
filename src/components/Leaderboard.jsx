@@ -104,13 +104,10 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
         background: 'var(--bg-card)',
         backdropFilter: 'blur(8px)',
         boxShadow: `0 8px 24px rgba(15,23,42,0.08)`,
-        transition: 'transform 0.25s',
         outline: isCurrentUser ? '2px solid #6366F1' : 'none',
         outlineOffset: '2px',
         minWidth: 0,
       }}
-      onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-3px)'}
-      onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
       aria-label={`Rank ${rank}: ${entry.username}, ${entry.points} points`}
     >
       {isCurrentUser && (

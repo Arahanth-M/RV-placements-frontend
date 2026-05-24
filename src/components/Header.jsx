@@ -457,7 +457,7 @@ const Header = () => {
                   return next;
                 })
               }
-              className="shrink-0 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors active:scale-[0.98] touch-manipulation"
+              className="shrink-0 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors touch-manipulation"
               aria-expanded={mobileNavOpen}
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
             >

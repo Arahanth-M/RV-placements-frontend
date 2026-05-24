@@ -544,7 +544,6 @@ body {
 }
 
 [data-theme="dark"] .company-card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(129, 140, 248, 0.28);
   border-color: var(--accent) !important;
 }
@@ -733,7 +732,6 @@ body {
 }
 
 [data-theme="light"] .company-card:hover {
-  transform: translateY(-4px);
   box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
 }
 
@@ -1669,7 +1667,6 @@ html, body, #root {
   .events-page-theme [class*="rounded"][class*="shadow"]
 ) {
   transition:
-    transform 240ms ease,
     box-shadow 240ms ease,
     border-color 240ms ease,
     background-color 240ms ease;
@@ -1683,7 +1680,6 @@ html, body, #root {
   .admin-dashboard-theme [class*="rounded"][class*="shadow"],
   .events-page-theme [class*="rounded"][class*="shadow"]
 ):hover {
-  transform: translateY(-3px);
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.16);
 }
 

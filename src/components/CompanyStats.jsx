@@ -1366,10 +1366,10 @@ function CompanyStats() {
                     setSelectedYear(year);
                   }}
                   disabled={isDisabled}
-                  className={`company-card group flex min-h-0 w-full min-w-0 flex-col rounded-2xl border-2 bg-theme-card p-6 text-left shadow-lg transition-[transform,box-shadow,border-color] duration-300 sm:p-7 motion-reduce:transition-none ${
+                  className={`company-card group flex min-h-0 w-full min-w-0 flex-col rounded-2xl border-2 bg-theme-card p-6 text-left shadow-lg transition-[box-shadow,border-color] duration-300 sm:p-7 motion-reduce:transition-none ${
                     isDisabled
                       ? "cursor-not-allowed border-theme opacity-50"
-                      : "border-theme hover:-translate-y-1 hover:border-theme-accent hover:shadow-2xl motion-reduce:hover:translate-y-0"
+                      : "border-theme hover:border-theme-accent hover:shadow-2xl"
                   }`}
                 >
                   <div className="flex min-w-0 flex-1 flex-col">
@@ -1404,7 +1404,7 @@ function CompanyStats() {
                     {!isDisabled && (
                       <div className="mt-5 flex items-center justify-center gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
                         <span>Open</span>
-                        <FaChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                        <FaChevronRight className="h-3 w-3" aria-hidden />
                       </div>
                     )}
                     {isDisabled && (
@@ -1550,7 +1550,7 @@ function CompanyStats() {
                     key={c.id}
                     type="button"
                     onClick={() => navigate(companystatsClusterCategoryUrl(c.id))}
-                    className="company-card group flex min-h-0 w-full min-w-0 flex-col rounded-2xl border-2 border-theme bg-theme-card p-6 text-left shadow-lg transition-[transform,box-shadow,border-color] duration-300 sm:p-7 motion-reduce:transition-none hover:-translate-y-1 hover:border-theme-accent hover:shadow-2xl motion-reduce:hover:translate-y-0"
+                    className="company-card group flex min-h-0 w-full min-w-0 flex-col rounded-2xl border-2 border-theme bg-theme-card p-6 text-left shadow-lg transition-[box-shadow,border-color] duration-300 sm:p-7 motion-reduce:transition-none hover:border-theme-accent hover:shadow-2xl"
                   >
                     <div className="flex min-w-0 flex-1 flex-col">
                       <div className="mb-4 flex justify-center">
@@ -1568,7 +1568,7 @@ function CompanyStats() {
                       <div className="mt-5 flex items-center justify-start gap-1 text-xs font-semibold uppercase tracking-wide text-theme-accent opacity-90 group-hover:opacity-100 sm:text-sm">
                         <span>Open</span>
                         <FaChevronRight
-                          className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                          className="h-3 w-3"
                           aria-hidden
                         />
                       </div>
@@ -1799,7 +1799,7 @@ function CompanyStats() {
               key={tile.tier}
               type="button"
               onClick={() => openPlacementTierList(tile.tier)}
-              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-all duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl hover:scale-[1.02] text-left"
+              className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-[box-shadow,border-color] duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
                 <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">

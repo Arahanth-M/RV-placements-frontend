@@ -157,7 +157,7 @@ const PlacementPopupWrapper = () => {
   return (
     <div className="fixed top-6 right-6 z-50 animate-slide-in-right max-w-md w-[92vw] sm:w-auto">
       <div
-        className="relative rounded-2xl p-5 sm:p-6 border border-theme overflow-hidden backdrop-blur-xl transition-all duration-300 hover:scale-[1.01]"
+        className="relative rounded-2xl p-5 sm:p-6 border border-theme overflow-hidden backdrop-blur-xl"
         style={{
           boxShadow: 'var(--shadow-soft)',
           background:
@@ -211,7 +211,7 @@ const PlacementPopupWrapper = () => {
                     {companyNames.map((name, idx) => (
                       <span
                         key={`${name}-${idx}`}
-                        className="px-3 py-1 text-xs font-semibold rounded-full border transition-all duration-200 hover:scale-105 hover:-translate-y-0.5"
+                        className="px-3 py-1 text-xs font-semibold rounded-full border"
                         style={{
                           background:
                             'color-mix(in srgb, var(--accent) 22%, transparent)',

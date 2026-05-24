@@ -110,7 +110,7 @@ function DevSocialLinks({ social }) {
           rel="noopener noreferrer"
           title={linkedin}
           aria-label={`Open LinkedIn: ${linkedin}`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#0A66C2] text-white shadow-sm ring-1 ring-black/10 transition hover:scale-105 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A66C2] dark:ring-white/10"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#0A66C2] text-white shadow-sm ring-1 ring-black/10 transition-colors hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A66C2] dark:ring-white/10"
           role="listitem"
         >
           <FaLinkedin className="h-4 w-4" aria-hidden />
@@ -121,7 +121,7 @@ function DevSocialLinks({ social }) {
           href={emailHref}
           title={email}
           aria-label={`Email ${email}`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-theme-accent text-white shadow-sm ring-1 ring-black/10 transition hover:scale-105 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-theme-accent dark:ring-white/10"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-theme-accent text-white shadow-sm ring-1 ring-black/10 transition-colors hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-theme-accent dark:ring-white/10"
           role="listitem"
         >
           <FaEnvelope className="h-4 w-4" aria-hidden />

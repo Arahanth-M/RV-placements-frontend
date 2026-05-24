@@ -137,7 +137,7 @@ describe('CompanyCard Component', () => {
     expect(card).toHaveClass('cursor-pointer')
   })
 
-  it('has hover effects', () => {
+  it('has subtle hover styling without transform', () => {
     render(
       <TestWrapper>
         <CompanyCard company={mockCompany} />
@@ -147,9 +147,8 @@ describe('CompanyCard Component', () => {
     const card = screen.getByTestId('company-card')
     
     expect(card).toHaveClass('hover:shadow-2xl')
-    expect(card).toHaveClass('hover:scale-[1.02]')
-    expect(card).toHaveClass('hover:border-indigo-400')
-    expect(card).toHaveClass('transition-all')
+    expect(card).not.toHaveClass('hover:scale-[1.02]')
+    expect(card).not.toHaveClass('hover:-translate-y-1')
     expect(card).toHaveClass('duration-300')
   })
 

@@ -226,7 +226,7 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
             {/* Footer CTA */}
             <div className={`flex items-center gap-1.5 text-sm font-medium sm:text-base ${ctaColor}`}>
               <span>{cta}</span>
-              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                 <path fillRule="evenodd" d="M4 8a.75.75 0 0 1 .75-.75h5.69L8.22 5.03a.75.75 0 0 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 0 1-1.06-1.06l2.22-2.22H4.75A.75.75 0 0 1 4 8z" clipRule="evenodd" />
               </svg>
             </div>

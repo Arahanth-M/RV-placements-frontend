@@ -157,9 +157,8 @@ const Resources = () => {
         .res-card {
           border-radius: 16px; overflow: hidden;
           display: flex; flex-direction: column;
-          transition: transform 0.25s, box-shadow 0.25s;
+          transition: box-shadow 0.25s;
         }
-        .res-card:hover { transform: translateY(-3px); }
 
         /* ── Resource row ── */
         .res-row {

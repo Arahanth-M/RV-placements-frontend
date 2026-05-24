@@ -308,7 +308,7 @@ function CompanyCard({
 
   return (
     <div
-      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 border-theme-accent transition-all duration-300 hover:shadow-2xl relative z-0 hover:z-10"
+      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 border-theme-accent transition-[box-shadow,border-color] duration-300 hover:shadow-2xl"
       data-testid="company-card"
     >
       {/* Top Section: Header + Logo */}
@@ -415,7 +415,7 @@ function CompanyCard({
           onClick={handleViewDetailsClick}
           onMouseEnter={prefetchDetails}
           onTouchStart={prefetchDetails}
-          className="full-details-btn w-full px-4 py-2.5 rounded-xl font-bold text-sm bg-theme-accent hover:brightness-110 text-white transition-all shadow-md active:scale-[0.98]"
+          className="full-details-btn w-full px-4 py-2.5 rounded-xl font-bold text-sm bg-theme-accent hover:brightness-110 text-white transition-colors shadow-md"
         >
           View Full Details
         </button>
@@ -472,7 +472,7 @@ function CompanyCard({
                 ? "border-theme bg-theme-card-hover text-theme-secondary cursor-not-allowed opacity-90"
                 : isUpdating || isCheckingStatus
                 ? "border-theme bg-theme-card-hover text-theme-muted cursor-not-allowed"
-                : "border-theme bg-theme-input text-theme-primary hover:-translate-y-[1px] hover:shadow-md hover:bg-theme-nav"
+                : "border-theme bg-theme-input text-theme-primary hover:shadow-md hover:bg-theme-nav"
             }`}
             title={hasUpvoted ? "Already upvoted" : "Mark as helpful"}
             aria-label={`Helpful votes: ${helpfulCount}`}
