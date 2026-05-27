@@ -14,6 +14,7 @@ import {
 } from "./resume/defaultDraft";
 import StandardClassic from "./resume/templates/StandardClassic";
 import IIITVLatexStyle from "./resume/templates/IIITVLatexStyle";
+import AnalyzePanel from "./resume/AnalyzePanel";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -214,6 +215,11 @@ export default function ResumeBuilderPage() {
   const [saveState, setSaveState] = useState("idle");
   const [statusText, setStatusText] = useState("");
   const [errors, setErrors] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState(null);
+  const [previousAnalysis, setPreviousAnalysis] = useState(null);
+  const [scoreHistory, setScoreHistory] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const previewRef = useRef(null);
@@ -224,7 +230,15 @@ export default function ResumeBuilderPage() {
   const savedSnapshotRef = useRef("");
   const versionRef = useRef(0);
   const saveInFlightRef = useRef(false);
+  const analyzeInFlightRef = useRef(false);
   const autoSaveTimerRef = useRef(null);
+
+  // ATS analysis tip "Fix this" navigation targets
+  const personalCardRef = useRef(null);
+  const skillsCardRef = useRef(null);
+  const educationCardRef = useRef(null);
+  const projectsCardRef = useRef(null);
+  const experienceCardRef = useRef(null);
 
   useEffect(() => {
     const beforeUnloadHandler = (event) => {
@@ -247,6 +261,20 @@ export default function ResumeBuilderPage() {
     document.addEventListener("click", onDocumentClick);
     return () => document.removeEventListener("click", onDocumentClick);
   }, []);
+
+  useEffect(() => {
+    // Load last ATS analysis for simple "progress over time" deltas.
+    try {
+      const key = `resume_ats_history:${ownerEmail || "anon"}`;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.analysis) setPreviousAnalysis(parsed.analysis);
+      if (Array.isArray(parsed?.history)) setScoreHistory(parsed.history);
+    } catch {
+      // ignore localStorage failures
+    }
+  }, [ownerEmail]);
 
   const applyLoadedDraft = useCallback((responseData) => {
     const nextDraft = normalizeResumePayload(responseData);
@@ -449,10 +477,10 @@ export default function ResumeBuilderPage() {
     experience: "List your latest experience first.",
   };
 
-  const renderArraySection = (title, sectionKey, createItem) => {
+  const renderArraySection = (title, sectionKey, createItem, containerRef) => {
     const orderHint = SECTION_ORDER_HINTS[sectionKey];
     return (
-    <div className="bg-theme-card border border-theme rounded-lg p-4">
+    <div ref={containerRef} className="bg-theme-card border border-theme rounded-lg p-4">
       <div className={`flex items-center justify-between ${orderHint ? "mb-1" : "mb-3"}`}>
         <h3 className="font-semibold text-theme-primary">{title}</h3>
         <button
@@ -598,6 +626,112 @@ export default function ResumeBuilderPage() {
     await persistDraft({ manual: true });
   };
 
+  const scrollToSection = useCallback((section) => {
+    const map = {
+      personal: personalCardRef,
+      skills: skillsCardRef,
+      education: educationCardRef,
+      projects: projectsCardRef,
+      experience: experienceCardRef,
+    };
+    const ref = map?.[section];
+    if (ref?.current) {
+      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
+  const handleTipAction = useCallback(
+    (tip) => {
+      if (tip?.section) scrollToSection(tip.section);
+    },
+    [scrollToSection]
+  );
+
+  const runResumeAnalysis = useCallback(async () => {
+    if (isHydratingRef.current || analyzeInFlightRef.current) return null;
+
+    analyzeInFlightRef.current = true;
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    // Load previous score just-in-time for accurate deltas.
+    let previousParsed = null;
+    try {
+      const key = `resume_ats_history:${ownerEmail || "anon"}`;
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        previousParsed = parsed;
+        setPreviousAnalysis(parsed?.analysis ?? null);
+        if (Array.isArray(parsed?.history)) setScoreHistory(parsed.history);
+      }
+    } catch {
+      // ignore localStorage
+    }
+
+    const nextPayload = buildDraftPayload(draft, skillsInput);
+
+    try {
+      const res = await resumeAPI.analyze({ payload: nextPayload });
+      const nextAnalysis = res?.data?.analysis ?? res?.data ?? null;
+      setAnalysis(nextAnalysis);
+      setStatusText("ATS analysis complete");
+      try {
+        const key = `resume_ats_history:${ownerEmail || "anon"}`;
+        const prevHistory = Array.isArray(previousParsed?.history) ? previousParsed.history : [];
+        const analyzedAt = new Date().toISOString();
+        const nextHistory = [
+          ...prevHistory,
+          {
+            overallScore: nextAnalysis?.overallScore,
+            breakdown: nextAnalysis?.breakdown,
+            analyzedAt,
+          },
+        ]
+          .filter((h) => h?.overallScore != null)
+          .slice(-5);
+        window.localStorage.setItem(
+          key,
+          JSON.stringify({
+            analysis: nextAnalysis,
+            analyzedAt,
+            history: nextHistory,
+          })
+        );
+        setScoreHistory(nextHistory);
+      } catch {
+        // ignore localStorage failures
+      }
+      return nextAnalysis;
+    } catch (error) {
+      setAnalysis(null);
+      const status = error?.response?.status;
+      if (status === 429) {
+        setAnalysisError(
+          error?.response?.data?.error ||
+            "Too many analysis requests. Please try again later."
+        );
+        setStatusText("Rate limited for ATS analysis");
+        return null;
+      }
+
+      const apiErrors = error?.response?.data?.errors;
+      if (Array.isArray(apiErrors) && apiErrors.length > 0) {
+        setAnalysisError(apiErrors.join(" "));
+      } else {
+        const apiMessage =
+          error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          error?.message;
+        setAnalysisError(apiMessage || "Resume analysis failed. Please try again.");
+      }
+      setStatusText("ATS analysis failed");
+      return null;
+    } finally {
+      analyzeInFlightRef.current = false;
+      setIsAnalyzing(false);
+    }
+  }, [draft, skillsInput, ownerEmail]);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-theme-primary">Loading resume builder...</div>;
   }
@@ -637,13 +771,27 @@ export default function ResumeBuilderPage() {
               type="button"
               className="resume-accent-btn inline-flex items-center gap-2 px-3 py-2 rounded-md bg-theme-accent disabled:opacity-60"
               onClick={handleExportDocx}
-              disabled={isExporting || isSaving}
+              disabled={isExporting || isSaving || isAnalyzing}
             >
               <FaFileDownload className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
               {isExporting ? "Exporting..." : "Export Word"}
             </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-theme-primary disabled:opacity-60"
+              onClick={runResumeAnalysis}
+              disabled={isSaving || isExporting || isAnalyzing}
+            >
+              {isAnalyzing ? "Analyzing..." : "Run ATS Analysis"}
+            </button>
           </div>
         </div>
+
+        {analysisError && !isAnalyzing ? (
+          <div className="mb-4 rounded-xl border border-rose-300/60 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
+            {analysisError}
+          </div>
+        ) : null}
 
         {errors.length > 0 ? (
           <div className="mb-4 rounded-md border border-red-300 bg-red-50 text-red-700 px-3 py-2 text-sm">
@@ -651,6 +799,16 @@ export default function ResumeBuilderPage() {
               <p key={`error-${idx}`}>{error}</p>
             ))}
           </div>
+        ) : null}
+
+        {analysis ? (
+          <AnalyzePanel
+            analysis={analysis}
+            isAnalyzing={isAnalyzing}
+            onTipAction={handleTipAction}
+            previousAnalysis={previousAnalysis}
+            scoreHistory={scoreHistory}
+          />
         ) : null}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -704,7 +862,7 @@ export default function ResumeBuilderPage() {
               </div>
             </div>
 
-            <div className="bg-theme-card border border-theme rounded-lg p-4">
+            <div ref={personalCardRef} className="bg-theme-card border border-theme rounded-lg p-4">
               <h2 className="font-semibold text-theme-primary mb-3">Personal</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {Object.keys(draft.personal).map((field) => (
@@ -734,7 +892,7 @@ export default function ResumeBuilderPage() {
               </div>
             </div>
 
-            <div className="bg-theme-card border border-theme rounded-lg p-4">
+            <div ref={skillsCardRef} className="bg-theme-card border border-theme rounded-lg p-4">
               <h2 className="font-semibold text-theme-primary mb-3">Skills (comma separated)</h2>
               <input
                 className="resume-field w-full rounded-md border border-theme bg-theme-app px-3 text-sm text-theme-primary"
@@ -755,16 +913,16 @@ export default function ResumeBuilderPage() {
               />
             </div>
 
-            {renderArraySection("Education", "education", createEducationItem)}
-            {renderArraySection("Projects", "projects", createProjectItem)}
-            {renderArraySection("Experience", "experience", createExperienceItem)}
+            {renderArraySection("Education", "education", createEducationItem, educationCardRef)}
+            {renderArraySection("Projects", "projects", createProjectItem, projectsCardRef)}
+            {renderArraySection("Experience", "experience", createExperienceItem, experienceCardRef)}
             {renderArraySection("Certifications", "certifications", createCertificationItem)}
             {renderArraySection("Achievements", "achievements", createAchievementItem)}
           </div>
 
           <div className="min-w-0">
             <div className="sticky top-20 min-w-0">
-              <h2 className="font-semibold text-theme-primary mb-2">Live Preview</h2>
+              
               <div ref={previewRef} className="min-w-0 border border-theme rounded-lg overflow-x-hidden overflow-y-auto max-h-[calc(100vh-6rem)]">
                 {previewNode}
               </div>

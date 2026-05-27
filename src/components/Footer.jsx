@@ -11,10 +11,13 @@ function Footer() {
 
           {/* Brand */}
           <div>
-            <h2 className="text-2xl font-serif text-theme-primary tracking-tight mb-4">
+            <h2 className="text-2xl font-serif text-theme-primary tracking-tight">
               lastminute<span className="italic text-theme-accent">placementprep</span>
             </h2>
-            <p className="text-base text-theme-secondary leading-relaxed max-w-xs">
+            <p className="mt-1 text-sm font-medium text-theme-secondary/80">
+              A product of Devomation AI
+            </p>
+            <p className="mt-4 text-base text-theme-secondary leading-relaxed max-w-xs">
               Your ultimate placement preparation platform with company insights,
               interview experiences, and premium resources.
             </p>
@@ -64,10 +67,18 @@ function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="flex items-center justify-between flex-wrap gap-3 pt-7">
+        {/* Bottom bar — product + legal entity (industry-standard attribution) */}
+        <div className="flex flex-col gap-3 pt-7 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-theme-secondary/70">
+            <span className="font-medium text-theme-secondary">Last Minute Placement Prep</span>
+            <span className="text-theme-secondary/50" aria-hidden>
+              {" "}
+              ·{" "}
+            </span>
+            <span className="text-theme-secondary/60">A product of Devomation AI</span>
+          </p>
           <p className="text-sm text-theme-secondary/60">
-            © {new Date().getFullYear()} lastminuteplacementprep.in — All rights reserved.
+            © {new Date().getFullYear()} Devomation AI. All rights reserved.
           </p>
         </div>
 

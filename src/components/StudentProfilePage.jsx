@@ -77,8 +77,41 @@ const StudentProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-theme-app">
-        <h2 className="text-2xl font-bold text-theme-primary mb-4">Loading profile...</h2>
+      <div className={`min-h-screen overflow-y-auto ${pageShellOuterClass}`} aria-busy="true" aria-label="Loading profile">
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton onClick={() => navigate(-1)} />
+          </PageBackNavRow>
+
+          <div className="mb-6 sm:mb-8">
+            <div className="bg-theme-card border border-theme px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm animate-pulse">
+              <div className="w-12 h-12 rounded-full bg-theme-app border border-theme stats-shimmer" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="h-7 w-56 stats-shimmer rounded-md" />
+                <div className="mt-2 h-4 w-40 stats-shimmer rounded-md opacity-80" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 shadow-sm animate-pulse"
+              >
+                <div className="h-6 w-48 stats-shimmer rounded-md mb-4" />
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((__, j) => (
+                    <div key={j} className="flex items-center gap-6">
+                      <div className="h-4 w-32 stats-shimmer rounded-md" />
+                      <div className="h-4 flex-1 stats-shimmer rounded-md opacity-80" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

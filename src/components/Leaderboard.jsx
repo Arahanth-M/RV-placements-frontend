@@ -101,6 +101,9 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
         padding: '1.25rem',
         borderRadius: '16px',
         border: `1.5px solid ${meta.border}`,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         background: 'var(--bg-card)',
         backdropFilter: 'blur(8px)',
         boxShadow: `0 8px 24px rgba(15,23,42,0.08)`,
@@ -134,7 +137,19 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
         <Avatar src={entry.picture} alt={entry.username} size={64} border={meta.border} />
       </div>
 
-      <p style={{ marginTop: '12px', fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', textAlign: 'center', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <p style={{
+        marginTop: '12px',
+        fontWeight: 600,
+        fontSize: '14px',
+        color: 'var(--text-primary)',
+        textAlign: 'center',
+        width: '100%',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        padding: '0 4px',
+      }}>
         {entry.username}
       </p>
 
@@ -284,7 +299,7 @@ const Leaderboard = () => {
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
-        <div style={{ maxWidth: 896, margin: "0 auto" }}>
+        <div style={{ maxWidth: 896, margin: "0 auto", width: "100%", minWidth: 0 }}>
 
         <PageHeroHeader subtitle="Top contributors who add questions and interview experiences to the platform.">
           Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
@@ -508,18 +523,18 @@ const Leaderboard = () => {
 
                 {/* ── Podium top 2 ── */}
                 {top2.length > 0 && (
-                  <div style={{ padding: '20px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: top2.length === 1 ? '280px' : '1fr 1fr',
-                      gap: 16,
-                      maxWidth: top2.length === 1 ? 280 : 'none',
-                      margin: '0 auto',
-                    }}>
+                  <div className="border-b border-theme px-3 pt-5 pb-3 sm:px-5 sm:pb-5">
+                    <div
+                      className={
+                        top2.length === 1
+                          ? "mx-auto grid w-full max-w-[280px] min-w-0 grid-cols-1 gap-4 overflow-hidden"
+                          : "grid w-full min-w-0 grid-cols-1 gap-4 overflow-hidden sm:grid-cols-2"
+                      }
+                    >
                       {top2.map((entry) => (
                         <div
                           key={entry.userId}
-                          className="lb-entry"
+                          className="lb-entry min-w-0 w-full max-w-full"
                           style={{ animationDelay: `${(entry.rank - 1) * 80}ms` }}
                           ref={user && entry.userId === user.userId ? myRowRef : null}
                         >

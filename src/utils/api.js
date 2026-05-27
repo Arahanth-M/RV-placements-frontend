@@ -2,9 +2,13 @@ import axios from 'axios';
 import { BASE_URL, INTERVIEW_API_BASE_URL } from './constants';
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from '../constants/placementYears.js';
 
-const debugApiRouting =
-  typeof process !== 'undefined' &&
-  String(process.env.REACT_APP_DEBUG_API_ROUTING || '').trim() === '1';
+const debugApiRouting = (() => {
+  const env =
+    typeof globalThis !== "undefined" && globalThis.process && globalThis.process.env
+      ? globalThis.process.env
+      : null;
+  return String(env?.REACT_APP_DEBUG_API_ROUTING || "").trim() === "1";
+})();
 
 function attachApiRoutingDebug(instance, clientLabel) {
   if (!debugApiRouting) return;
@@ -428,6 +432,7 @@ export const resumeAPI = {
   saveDraft: ({ payload, version }) => API.put("/api/resume/draft", { payload, version }),
   exportDocx: (payload) =>
     API.post("/api/resume/export/docx", { payload }, { responseType: "blob" }),
+  analyze: ({ payload }) => API.post("/api/resume/analyze", { payload }),
 };
 
 export const placementAPI = {

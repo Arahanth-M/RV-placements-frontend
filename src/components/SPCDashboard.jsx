@@ -958,7 +958,7 @@ export default function SPCDashboard() {
                           setModMeta((m) => ({ ...m, page: 1 }));
                           setSearchParams({ view: "student-contributions" });
                         }}
-                        className="h-10 shrink-0 rounded-xl border border-theme-accent/40 bg-theme-accent/10 px-4 text-sm font-semibold text-theme-accent transition-colors hover:bg-theme-accent/20"
+                        className="hidden h-10 shrink-0 items-center rounded-xl border border-theme-accent/40 bg-theme-accent/10 px-4 text-sm font-semibold text-theme-accent transition-colors hover:bg-theme-accent/20 sm:inline-flex"
                       >
                         Student contributions
                       </button>
@@ -984,7 +984,7 @@ export default function SPCDashboard() {
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Year</th>
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Branch</th>
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Offer</th>
-                              <th className="min-w-[8rem] px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Actions</th>
+                              <th className="min-w-[11.5rem] px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="bg-theme-card text-theme-primary">
@@ -1002,16 +1002,14 @@ export default function SPCDashboard() {
                                   {row.branchCode || "—"}
                                 </td>
                                 <td className="max-w-[10rem] px-3 py-2 align-middle">{row.typeOfOffer || "—"}</td>
-                                <td className="px-3 py-2 align-middle">
-                                  <div className="flex items-center h-full">
-                                    <button
-                                      type="button"
-                                      onClick={() => openRecordModal(row)}
-                                      className="h-8 rounded-xl bg-theme-accent px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                      View details / Edit
-                                    </button>
-                                  </div>
+                                <td className="min-w-[11.5rem] px-3 py-2 align-middle">
+                                  <button
+                                    type="button"
+                                    onClick={() => openRecordModal(row)}
+                                    className="inline-flex w-full min-w-0 items-center justify-center whitespace-nowrap rounded-xl bg-theme-accent px-3 py-2 text-xs font-semibold leading-snug text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4 sm:text-sm"
+                                  >
+                                    View details / Edit
+                                  </button>
                                 </td>
                               </tr>
                             ))}

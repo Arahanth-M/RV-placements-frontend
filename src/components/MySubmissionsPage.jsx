@@ -476,8 +476,6 @@ function CardMeta({ submission }) {
   if (submission.status === "approved") {
     const rb = submission.reviewedBy;
     const name = String(rb?.name || "").trim();
-    const roleSuffix =
-      rb?.role === "spc" ? " (SPC)" : rb?.role === "admin" ? " (Admin)" : "";
     const label = name ? `${name}` : "Admin ";
     return (
       <div className="flex items-center gap-2 text-xs text-theme-secondary mt-1">
@@ -692,10 +690,38 @@ const MySubmissionsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-theme-app">
-        <h2 className="text-2xl font-bold text-theme-primary">
-          Loading your submissions…
-        </h2>
+      <div className={`min-h-screen overflow-y-auto ${pageShellOuterClass}`} aria-busy="true" aria-label="Loading submissions">
+        <div className={pageShellInnerClass}>
+          <PageBackNavRow>
+            <PageBackButton onClick={() => navigate(-1)} />
+          </PageBackNavRow>
+
+          <div className="mb-6 sm:mb-5">
+            <div className="bg-theme-card border border-theme px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm animate-pulse">
+              <div className="w-12 h-12 rounded-full bg-theme-app border border-theme stats-shimmer" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="h-7 w-44 stats-shimmer rounded-md" />
+                <div className="mt-2 h-4 w-64 stats-shimmer rounded-md opacity-80" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <div key={idx} className="bg-theme-card border border-theme rounded-xl p-4 shadow-sm animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full stats-shimmer border border-theme" />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="h-4 w-2/3 stats-shimmer rounded-md" />
+                    <div className="h-3 w-1/2 stats-shimmer rounded-md opacity-80" />
+                  </div>
+                  <div className="w-20 h-7 stats-shimmer rounded-full" />
+                </div>
+                <div className="mt-4 h-3 w-11/12 stats-shimmer rounded opacity-70" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
