@@ -286,13 +286,16 @@ const Leaderboard = () => {
 
         <div style={{ maxWidth: 896, margin: "0 auto" }}>
 
+        <div data-tour="leaderboard-hero">
         <PageHeroHeader subtitle="Top contributors who add questions and interview experiences to the platform.">
           Contributor <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Leaderboard</em>
         </PageHeroHeader>
+        </div>
 
         {!isRestricted && (
           <div
             className="lb-yesterday-card"
+            data-tour="leaderboard-yesterday"
             style={{
               ...panelStyle,
               padding: '14px 16px',
@@ -354,7 +357,7 @@ const Leaderboard = () => {
         )}
 
         {/* ── Points legend ── */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
+        <div data-tour="leaderboard-points" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24, justifyContent: 'center' }}>
           {[
             { dot: '#818CF8', label: 'Add a question', pts: '+5 pts', ptsColor: '#818CF8' },
             { dot: '#A78BFA', label: 'Add an experience', pts: '+10 pts', ptsColor: '#A78BFA' },
@@ -373,7 +376,7 @@ const Leaderboard = () => {
 
         {/* ── Search ── */}
         {!isRestricted && (
-          <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div data-tour="leaderboard-search" style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
               <FaSearch style={{
                 position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)',
@@ -504,7 +507,7 @@ const Leaderboard = () => {
                 }
               </div>
             ) : (
-              <div style={panelStyle}>
+              <div style={panelStyle} data-tour="leaderboard-rankings">
 
                 {/* ── Podium top 2 ── */}
                 {top2.length > 0 && (

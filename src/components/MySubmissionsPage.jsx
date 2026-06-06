@@ -736,7 +736,7 @@ const MySubmissionsPage = () => {
         </PageBackNavRow>
 
         {/* Profile header */}
-        <div className="mb-6 sm:mb-5">
+        <div className="mb-6 sm:mb-5" data-tour="my-submissions">
           <div className="bg-theme-card border border-theme px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm">
             {user?.picture ? (
               <img

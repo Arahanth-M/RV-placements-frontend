@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { FaTimes } from 'react-icons/fa';
+import { FaTimes, FaRoute } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
+import { useProductTour } from '../context/ProductTourContext';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
 const LOGIN_PROFILE_STATUS_KEY = 'loginProfileStatus';
@@ -52,6 +53,7 @@ function formatPartOfCompanySentence(names) {
 
 const PlacementPopupWrapper = () => {
   const { user, studentData } = useAuth();
+  const { startTour, isRunning, canStartTour } = useProductTour();
   const location = useLocation();
 
   const [showPopup, setShowPopup] = useState(false);
@@ -148,6 +150,10 @@ const PlacementPopupWrapper = () => {
   }
 
   const handleDismiss = () => setShowPopup(false);
+  const handleStartTour = () => {
+    handleDismiss();
+    startTour();
+  };
   const displayName =
     studentData?.student?.name?.trim() || user?.username || 'Student';
   const isPlacementPopup = popupVariant === 'placement';
@@ -229,11 +235,40 @@ const PlacementPopupWrapper = () => {
                 ) : null}
               </>
             ) : null}
+
+            {canStartTour && (
+              <div className={isPlacementPopup ? "mt-4 pt-4 border-t border-theme" : "mt-4"}>
+                {!isPlacementPopup && (
+                  <p className="text-sm text-theme-secondary leading-relaxed mb-3">
+                    Explore Student Corner, company stats, resources, and more with a quick walkthrough.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={isRunning}
+                    onClick={handleStartTour}
+                    className="inline-flex items-center gap-2 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    <FaRoute className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    {isRunning ? "Starting tour…" : "Start video tour"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDismiss}
+                    className="rounded-xl border border-theme bg-theme-card px-4 py-2 text-sm font-semibold text-theme-secondary hover:bg-theme-nav transition-colors"
+                  >
+                    Maybe later
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <button
             onClick={handleDismiss}
             className="text-theme-muted hover:text-theme-primary transition p-1 rounded-md hover:bg-theme-nav"
+            aria-label="Dismiss"
           >
             <FaTimes className="w-4 h-4" />
           </button>

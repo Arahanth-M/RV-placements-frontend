@@ -234,7 +234,7 @@ function Home() {
           <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
 
             {/* Left */}
-            <div className="flex-1 text-center lg:text-left">
+            <div className="flex-1 text-center lg:text-left" data-tour="home-hero">
              
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-theme-primary mb-5 leading-tight">
                Welcome to RVCE{" "}

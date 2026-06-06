@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import InterviewAnalytics from "./InterviewAnalytics";
+import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import {
   InterviewQuestionAnswerBlock,
   CompanyInterviewReadinessCard,
@@ -196,6 +197,23 @@ function AIInterviews() {
     fetchSessions(1, { isInitial: true });
   }, [fetchSessions]);
 
+  useEffect(() => {
+    const onTourPrepare = (event) => {
+      const stepId = event.detail?.stepId;
+      if (stepId === "ai-interviews-analytics") {
+        setActiveTab("analytics");
+      }
+      if (
+        stepId === "ai-interviews-sessions" ||
+        stepId === "ai-interviews-hero"
+      ) {
+        setActiveTab("sessions");
+      }
+    };
+    window.addEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+    return () => window.removeEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+  }, []);
+
   const handlePageChange = (nextPage) => {
     const clamped = Math.max(1, Math.min(totalPages, nextPage));
     if (clamped === page || pageLoading || loading) return;
@@ -218,6 +236,7 @@ function AIInterviews() {
         </PageBackNavRow>
 
         <div className="mx-auto max-w-6xl">
+      <div data-tour="ai-interviews-hero">
       <PageHeroHeader
         subtitle="Track your progress, review feedback, and analyze your performance in AI-driven interviews."
         subtitleClassName="text-theme-secondary"
@@ -225,9 +244,13 @@ function AIInterviews() {
       >
         Mock <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Interviews</em>
       </PageHeroHeader>
+      </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6 p-1 bg-theme-card border border-theme rounded-xl w-fit">
+      <div
+        className="flex gap-2 mb-6 p-1 bg-theme-card border border-theme rounded-xl w-fit"
+        data-tour="ai-interviews-tabs"
+      >
         <button
           onClick={() => setActiveTab("sessions")}
           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
@@ -250,6 +273,14 @@ function AIInterviews() {
         </button>
       </div>
 
+      <div
+        className="mb-6 rounded-xl border border-dashed border-theme-accent/35 bg-theme-hero/60 px-4 py-3 text-sm text-theme-secondary"
+        data-tour="ai-interviews-start"
+      >
+        <span className="font-semibold text-theme-primary">Start a mock interview: </span>
+        Company Stats → open a company → <span className="text-theme-accent font-medium">AI Interview</span> tab → Start Interview.
+      </div>
+
       {/* Error/Loading Content */}
       <div className="mb-6">
         {loading && (
@@ -268,7 +299,11 @@ function AIInterviews() {
       {/* Tab Content */}
       {!loading && !error && (
         <div className="space-y-6">
-          <div className={activeTab === "analytics" ? "" : "hidden"} aria-hidden={activeTab !== "analytics"}>
+          <div
+            className={activeTab === "analytics" ? "" : "hidden"}
+            aria-hidden={activeTab !== "analytics"}
+            data-tour="ai-interviews-analytics"
+          >
             <InterviewAnalytics />
           </div>
 

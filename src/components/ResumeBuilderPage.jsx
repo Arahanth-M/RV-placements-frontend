@@ -610,11 +610,16 @@ export default function ResumeBuilderPage() {
           <PageBackButton onClick={() => navigate(-1)} label="Back" />
         </PageBackNavRow>
 
+        <div data-tour="resume-hero">
         <PageHeroHeader subtitle="Your draft saves automatically while you are logged in. Export Word when you are ready.">
           Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
         </PageHeroHeader>
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6">
+        <div
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6"
+          data-tour="resume-toolbar"
+        >
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 text-sm">
             <span
               className={`text-theme-secondary ${
@@ -654,8 +659,11 @@ export default function ResumeBuilderPage() {
         ) : null}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="space-y-4">
-            <div className="bg-theme-card border border-theme rounded-lg p-4 shadow-sm">
+          <div className="space-y-4" data-tour="resume-editor">
+            <div
+              className="bg-theme-card border border-theme rounded-lg p-4 shadow-sm"
+              data-tour="resume-template"
+            >
               <h2 className="font-semibold text-theme-primary mb-3">Template</h2>
               <div className="relative shrink-0 inline-block w-full" ref={templateMenuRef}>
                 <button
@@ -762,7 +770,7 @@ export default function ResumeBuilderPage() {
             {renderArraySection("Achievements", "achievements", createAchievementItem)}
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0" data-tour="resume-preview">
             <div className="sticky top-20 min-w-0">
               <h2 className="font-semibold text-theme-primary mb-2">Live Preview</h2>
               <div ref={previewRef} className="min-w-0 border border-theme rounded-lg overflow-x-hidden overflow-y-auto max-h-[calc(100vh-6rem)]">

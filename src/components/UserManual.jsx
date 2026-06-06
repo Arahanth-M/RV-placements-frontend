@@ -1,6 +1,7 @@
 import React from "react";
-import { FaBookOpen } from "react-icons/fa";
+import { FaBookOpen, FaRoute } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { useProductTour } from "../context/ProductTourContext";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -10,6 +11,7 @@ import {
 
 function UserManual() {
   const navigate = useNavigate();
+  const { startTour, isRunning, canStartTour } = useProductTour();
 
   return (
     <div className={`content-cards-page-theme min-h-screen ${pageShellOuterClass}`}>
@@ -19,7 +21,10 @@ function UserManual() {
         </PageBackNavRow>
 
         <div className="mx-auto w-full max-w-3xl">
-        <article className="rounded-2xl border border-theme bg-theme-card p-6 shadow-lg sm:p-8 sm:p-10">
+        <article
+          className="rounded-2xl border border-theme bg-theme-card p-6 shadow-lg sm:p-8 sm:p-10"
+          data-tour="user-manual-intro"
+        >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-theme-accent/40 bg-theme-hero px-3 py-1.5">
             <FaBookOpen className="text-theme-accent" />
             <span className="text-xs font-semibold uppercase tracking-wide text-theme-accent">
@@ -33,6 +38,18 @@ function UserManual() {
             in, exploring companies, reading interview content, contributing
             your own experience, and using AI mock interviews.
           </p>
+
+          {canStartTour && (
+            <button
+              type="button"
+              disabled={isRunning}
+              onClick={() => startTour()}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl border border-theme-accent/40 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              <FaRoute className="h-4 w-4 shrink-0" aria-hidden />
+              {isRunning ? "Tour in progress…" : "Take the interactive tour"}
+            </button>
+          )}
 
           <hr className="my-8 border-theme" />
 

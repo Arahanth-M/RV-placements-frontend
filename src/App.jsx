@@ -5,6 +5,7 @@ import appStore from "./utils/appStore";
 import { AuthProvider } from "./utils/AuthContext";
 import { ThemeProvider } from "./utils/ThemeContext";
 import { InterviewLockProvider, useInterviewLock } from "./utils/InterviewLockContext";
+import { ProductTourProvider } from "./context/ProductTourContext";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import Home from "./components/Home";
@@ -188,7 +189,9 @@ function App() {
         <AuthProvider>
           <ThemeProvider>
             <InterviewLockProvider>
-              <AppShell />
+              <ProductTourProvider>
+                <AppShell />
+              </ProductTourProvider>
             </InterviewLockProvider>
           </ThemeProvider>
         </AuthProvider>

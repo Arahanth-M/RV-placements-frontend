@@ -373,14 +373,14 @@ function CompanyCard({
           />
         ) : (
           <>
-            <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0">
+            <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0" data-tour="company-card-business-model">
               <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
               <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed break-words">
                 {company.business_model || "Innovative solutions and high-quality services."}
               </span>
             </div>
 
-            <div className="mt-1 flex flex-col gap-2 min-h-[4rem]">
+            <div className="mt-1 flex flex-col gap-2 min-h-[4rem]" data-tour="company-card-focus-areas">
               {company.focusTags && company.focusTags.length > 0 ? (
                 <>
                   <span className="font-semibold text-theme-secondary text-[10px] uppercase tracking-wider">
@@ -467,6 +467,7 @@ function CompanyCard({
           <button
             onClick={handleThumbsUp}
             disabled={isUpdating || hasUpvoted || isCheckingStatus}
+            data-tour="company-card-helpful"
             className={`helpful-btn ${hasUpvoted ? "helpful-btn--active" : ""} group relative inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all ${
               hasUpvoted
                 ? "border-theme bg-theme-card-hover text-theme-secondary cursor-not-allowed opacity-90"

@@ -55,6 +55,8 @@ import {
   PLACEMENT_DETAIL_VISIT_YEARS,
   isPlacementDetailVisitYear,
 } from "../constants/placementYears.js";
+import { companyVisitSortTimestamp } from "../utils/visitDateSort.js";
+import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
 /** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -267,66 +269,20 @@ function CompanyStats() {
     navigate(`${baseUrl}&cluster=${encodeURIComponent(nextCluster)}`);
   }, [navigate, user?.userId, clusterParam]);
 
-  const toTimestamp = (value) => {
-    if (value === null || value === undefined) return null;
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-
-    const raw = String(value).trim();
-    if (!raw) return null;
-
-    // Numeric epoch values (seconds or milliseconds).
-    if (/^\d+$/.test(raw)) {
-      const n = Number(raw);
-      if (Number.isFinite(n)) return raw.length <= 10 ? n * 1000 : n;
-    }
-
-    // Native parse first for ISO-like formats.
-    let ts = Date.parse(raw);
-    if (!Number.isNaN(ts)) return ts;
-
-    // Remove ordinal suffixes (e.g. 25th -> 25) for "25th August 2026".
-    const noOrdinal = raw.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
-    ts = Date.parse(noOrdinal);
-    if (!Number.isNaN(ts)) return ts;
-
-    // dd/mm/yyyy or dd-mm-yyyy or dd.mm.yyyy
-    const dmy = noOrdinal.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/);
-    if (dmy) {
-      const day = Number(dmy[1]);
-      const month = Number(dmy[2]) - 1;
-      let year = Number(dmy[3]);
-      if (year < 100) year += 2000;
-      const date = new Date(year, month, day);
-      if (
-        date.getFullYear() === year &&
-        date.getMonth() === month &&
-        date.getDate() === day
-      ) {
-        return date.getTime();
-      }
-    }
-
-    return null;
-  };
+  const visitSortYear =
+    isPlacementDetailVisitYear(selectedYear) ? selectedYear : DEFAULT_PLACEMENT_DETAIL_YEAR;
 
   const orderedCompanies = useMemo(() => {
+    const sortOptions = { defaultYear: visitSortYear };
     return [...companies].sort((a, b) => {
-      const aMessageTs = toTimestamp(a?.messageDate ?? a?.messagedate ?? a?.message_date);
-      const bMessageTs = toTimestamp(b?.messageDate ?? b?.messagedate ?? b?.message_date);
+      const aVisitTs = companyVisitSortTimestamp(a, sortOptions);
+      const bVisitTs = companyVisitSortTimestamp(b, sortOptions);
 
-      if (aMessageTs !== null && bMessageTs !== null && aMessageTs !== bMessageTs) {
-        return aMessageTs - bMessageTs;
+      if (aVisitTs !== null && bVisitTs !== null && aVisitTs !== bVisitTs) {
+        return aVisitTs - bVisitTs;
       }
-      if (aMessageTs !== null && bMessageTs === null) return -1;
-      if (aMessageTs === null && bMessageTs !== null) return 1;
-
-      // Do not use updatedAt/createdAt — they change when opening a company (views) and
-      // re-fetching would reshuffle the grid. date_of_visit is stable for ordering.
-      const aVisit = toTimestamp(a?.date_of_visit);
-      const bVisit = toTimestamp(b?.date_of_visit);
-      if (aVisit != null && bVisit != null && aVisit !== bVisit) return aVisit - bVisit;
-      if (aVisit != null && bVisit == null) return -1;
-      if (aVisit == null && bVisit != null) return 1;
+      if (aVisitTs !== null && bVisitTs === null) return -1;
+      if (aVisitTs === null && bVisitTs !== null) return 1;
 
       const byName = (a?.name || "").localeCompare(b?.name || "");
       if (byName !== 0) return byName;
@@ -336,7 +292,7 @@ function CompanyStats() {
         String(b?.placementCompanyVisitId || "")
       );
     });
-  }, [companies]);
+  }, [companies, visitSortYear]);
 
   const clusterScopedCompanies = useMemo(() => {
     if (isPlacementHubCluster(effectiveClusterParam)) {
@@ -394,6 +350,73 @@ function CompanyStats() {
     if (userScopedValue !== null) return userScopedValue;
     return sessionStorage.getItem(key);
   };
+
+  useEffect(() => {
+    const persistPlacementCardsYear = (year) => {
+      const yearStr = String(year);
+      if (user?.userId) {
+        sessionStorage.setItem(getStorageKey("companystats_selectedYear"), yearStr);
+      }
+      sessionStorage.setItem("companystats_selectedYear", yearStr);
+      localStorage.setItem("companystats_selectedYear", yearStr);
+    };
+
+    const onTourPrepare = (event) => {
+      const stepId = event.detail?.stepId;
+      if (stepId === "company-stats-years") {
+        setSelectedYear(null);
+        setPlacementTier(null);
+        if (user?.userId) {
+          sessionStorage.setItem(getStorageKey("companystats_selectedYear"), "");
+        }
+        sessionStorage.setItem("companystats_selectedYear", "");
+        localStorage.removeItem("companystats_selectedYear");
+        navigate(PATH_COMPANY_STATS, { replace: true });
+        return;
+      }
+      if (stepId === "company-stats-2025" || stepId.startsWith("company-stats-2025-")) {
+        setPlacementTier(null);
+        setSelectedYear(2025);
+        if (user?.userId) {
+          sessionStorage.setItem(getStorageKey("companystats_selectedYear"), "2025");
+        }
+        sessionStorage.setItem("companystats_selectedYear", "2025");
+        localStorage.setItem("companystats_selectedYear", "2025");
+        navigate(PATH_COMPANY_STATS, { replace: true });
+        return;
+      }
+      if (stepId === "company-stats-2026-cluster") {
+        setPlacementTier(null);
+        setSelectedYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
+        persistPlacementCardsYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
+        navigate(PATH_COMPANY_CATEGORY, { replace: true });
+        return;
+      }
+      if (stepId === "company-stats-categories") {
+        setPlacementTier(null);
+        setSelectedYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
+        persistPlacementCardsYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
+        navigate(companystatsClusterCategoryUrl(PLACEMENT_CLUSTER_CS), { replace: true });
+        return;
+      }
+      if (stepId === "company-stats-cards") {
+        setSelectedYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
+        persistPlacementCardsYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
+        setPlacementTier(PLACEMENT_TIER_DREAM);
+        if (user?.userId) {
+          sessionStorage.setItem(getStorageKey("companystats_placement_tier"), PLACEMENT_TIER_DREAM);
+        }
+        sessionStorage.setItem("companystats_placement_tier", PLACEMENT_TIER_DREAM);
+        navigate(
+          `${companystatsTierListUrl(PLACEMENT_TIER_DREAM)}&cluster=${encodeURIComponent(PLACEMENT_CLUSTER_CS)}`,
+          { replace: true }
+        );
+      }
+    };
+
+    window.addEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+    return () => window.removeEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+  }, [navigate, user?.userId]);
 
   // Clear old sessionStorage items when user changes
   useEffect(() => {
@@ -934,7 +957,14 @@ function CompanyStats() {
     return false;
   };
 
+  const isFtePlacementType = (typeRaw) => {
+    const norm = normalizeType(typeRaw);
+    if (norm === "fte") return true;
+    return norm.includes("internship") && norm.includes("fte");
+  };
+
   const isInternshipOnlyCompany = (company) => {
+    if (isFtePlacementType(company?.type)) return false;
     if (!Array.isArray(company?.roles) || company.roles.length === 0) return false;
     if (hasNonEmptyCtcStringInCompany(company)) return false;
     if (!company.roles.every((role) => isCtcObjectEmpty(role?.ctc))) return false;
@@ -983,12 +1013,16 @@ function CompanyStats() {
     qualifiesSummerInternshipTile(company)
   );
   const offCampusCompanies = filteredCompanies.filter(isOffCampusCompany);
-  const internshipOnlyCompanies = filteredCompanies.filter(
-    (company) =>
-      isInternshipOnlyCompany(company) &&
-      !isPpoCompany(company) &&
-      !isOffCampusCompany(company)
-  );
+  /** Trust per-year flags when hub year is set; otherwise fall back to merged visit shape. */
+  const qualifiesInternshipOnlyTile = (company) => {
+    if (isOffCampusCompany(company) || isPpoCompany(company)) return false;
+    if (isPlacementDetailVisitYear(selectedYear)) {
+      if (company.placementInternshipOnlyForListingYear === true) return true;
+      if (company.placementInternshipOnlyForListingYear === false) return false;
+    }
+    return isInternshipOnlyCompany(company);
+  };
+  const internshipOnlyCompanies = filteredCompanies.filter(qualifiesInternshipOnlyTile);
   const dreamCompanies = filteredCompanies.filter(
     (company) => dreamTierListBase(company) && company.category !== "open dream"
   );
@@ -1000,12 +1034,8 @@ function CompanyStats() {
     qualifiesSummerInternshipTile(company)
   );
   const allOffCampusCompanies = clusterScopedCompanies.filter(isOffCampusCompany);
-  const allInternshipOnlyCompanies = clusterScopedCompanies.filter(
-    (company) =>
-      isInternshipOnlyCompany(company) &&
-      !isPpoCompany(company) &&
-      !isOffCampusCompany(company)
-  );
+  const allInternshipOnlyCompanies =
+    clusterScopedCompanies.filter(qualifiesInternshipOnlyTile);
   const allDreamCompanies = clusterScopedCompanies.filter(
     (company) => dreamTierListBase(company) && company.category !== "open dream"
   );
@@ -1331,7 +1361,10 @@ function CompanyStats() {
             <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
               Pick a batch to open placement stats or the company hub.
             </p>
-          <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6">
+          <div
+            className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6"
+            data-tour="company-stats-years"
+          >
             {[2024, 2025, DEFAULT_PLACEMENT_DETAIL_YEAR].map((year) => {
               const requiresAuth = year === 2024 || year === 2025;
               const isDisabled = requiresAuth && !user;
@@ -1427,7 +1460,7 @@ function CompanyStats() {
   // Year stats table view (2024 or 2025)
   if (selectedYear === 2024 || selectedYear === 2025) {
     return (
-      <div className={`min-h-screen ${pageShellOuterClass}`}>
+      <div className={`min-h-screen ${pageShellOuterClass}`} data-tour="company-stats-year-2025">
         <div className={pageShellInnerClass}>
           {loadingYearStats ? (
             <YearStatsTableShimmer yearLabel={String(selectedYear)} />
@@ -1542,7 +1575,10 @@ function CompanyStats() {
             <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
               Pick your branch cluster for the selected year company hub.
             </p>
-            <div className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
+            <div
+              className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6"
+              data-tour="company-stats-hub"
+            >
               {clusters.map((c) => {
                 const Icon = c.icon;
                 return (
@@ -1793,7 +1829,10 @@ function CompanyStats() {
               </p>
             </div>
           ) : (
-          <div className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch">
+          <div
+            className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch"
+            data-tour="company-stats-categories"
+          >
             {categoryTiles.map((tile) => (
             <button
               key={tile.tier}
@@ -1876,13 +1915,17 @@ function CompanyStats() {
               setSearch(e.target.value);
               resetListPages();
             }}
+            data-tour="company-stats-2026-search"
             className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
           />
         </div>
       </div>
 
       <section className="mb-6 sm:mb-10 w-full max-w-full min-w-0">
-        <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr">
+        <div
+          className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr"
+          data-tour="company-stats-company-grid"
+        >
           {!companiesFetchDone ? (
             <CompanyCardGridShimmer count={companiesPerPage} />
           ) : tierListSlice.length > 0 ? (
@@ -1902,6 +1945,32 @@ function CompanyStats() {
                     : isPlacementDetailVisitYear(c.placementSummerDetailYear)
                       ? c.placementSummerDetailYear
                       : undefined;
+              } else if (placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY) {
+                const listingYear = isPlacementDetailVisitYear(selectedYear)
+                  ? selectedYear
+                  : null;
+                const internVisitType =
+                  typeof c.placementInternshipOnlyDisplayType === "string"
+                    ? c.placementInternshipOnlyDisplayType.trim()
+                    : "";
+                const mergedType =
+                  typeof c.type === "string" && c.type.trim()
+                    ? c.type.trim()
+                    : "";
+                typeDisplayLabel =
+                  internVisitType || mergedType || "Only internship(6 months)";
+                detailDefaultYear =
+                  listingYear !== null
+                    ? listingYear
+                    : isPlacementDetailVisitYear(c.placementInternshipOnlyDetailYear)
+                      ? c.placementInternshipOnlyDetailYear
+                      : undefined;
+              } else if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
+                const mergedType =
+                  typeof c.type === "string" && c.type.trim()
+                    ? c.type.trim()
+                    : "";
+                typeDisplayLabel = mergedType || "Off-campus";
               } else if (
                 placementTier === PLACEMENT_TIER_DREAM ||
                 placementTier === PLACEMENT_TIER_OPEN_DREAM
@@ -1963,7 +2032,11 @@ function CompanyStats() {
                   : placementTier === PLACEMENT_TIER_DREAM ||
                       placementTier === PLACEMENT_TIER_OPEN_DREAM
                     ? placementTier
-                    : undefined;
+                    : placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY
+                      ? PLACEMENT_TIER_INTERNSHIP_ONLY
+                      : placementTier === PLACEMENT_TIER_OFF_CAMPUS
+                        ? PLACEMENT_TIER_OFF_CAMPUS
+                        : undefined;
 
               return (
                 <CompanyCard
@@ -2017,6 +2090,7 @@ function CompanyStats() {
         <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
           <button
             onClick={() => setShowFilter((prev) => !prev)}
+            data-tour="company-stats-2026-filter"
             className="fab filter-fab bg-theme-accent p-3 sm:p-4 rounded-full shadow-lg transition duration-200"
             aria-label="Filter"
           >

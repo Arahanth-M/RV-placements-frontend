@@ -198,7 +198,7 @@ function CodingTab({ company }) {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-theme-primary">
+      <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-theme-primary" data-tour="company-tab-coding-panel">
         <div className="bg-theme-card border border-theme rounded-xl p-6 sm:p-8 text-center">
           <h2 className="text-lg sm:text-xl font-semibold mb-2 text-theme-accent">
             Previous Coding Questions
@@ -210,7 +210,7 @@ function CodingTab({ company }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-theme-primary">
+    <div className="max-w-4xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-theme-primary" data-tour="company-tab-coding-panel">
       <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold mb-1 text-theme-accent">
           Previous Coding Questions

@@ -187,6 +187,7 @@ const Resources = () => {
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
+        <div data-tour="resources-hero">
         <PageHeroHeader
           subtitle="Curated collection of resources to help you ace technical interviews and excel in your career"
           subtitleClassName="text-slate-400"
@@ -194,9 +195,14 @@ const Resources = () => {
         >
           Study <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Resources</em>
         </PageHeroHeader>
+        </div>
 
         {/* ── Controls ── */}
-        <div className="res-controls" style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        <div
+          className="res-controls"
+          data-tour="resources-controls"
+          style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap' }}
+        >
 
           {/* Search with suggestions */}
           <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
@@ -332,7 +338,7 @@ const Resources = () => {
         )}
 
         {/* ── Grid ── */}
-        <div className="res-grid">
+        <div className="res-grid" data-tour="resources-grid">
           {filtered.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem 2rem' }}>
               <span style={{ fontSize: '44px', display: 'block', marginBottom: '1.25rem' }}>🔍</span>
