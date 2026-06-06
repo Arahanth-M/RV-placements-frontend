@@ -3279,6 +3279,7 @@ function AIInterviewTab({
         <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
         <button
           onClick={showStartPrompt ? handleStartInterview : resetInterviewState}
+          data-tour="company-ai-interview-start"
           disabled={
             loading ||
             (!showStartPrompt && status === "in_progress") ||
@@ -3306,6 +3307,7 @@ function AIInterviewTab({
       )}
 
       {user?.userId && user?.betaAccess !== false && showStartPrompt && (
+        <div data-tour="company-ai-interview-setup" className="space-y-4">
         <div
           ref={slotPickerRef}
           className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
@@ -3391,9 +3393,7 @@ function AIInterviewTab({
             </div>
           )}
         </div>
-      )}
 
-      {user?.userId && user?.betaAccess !== false && showStartPrompt && (
         <div className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -3514,6 +3514,7 @@ function AIInterviewTab({
               <p className="text-xs font-medium text-theme-accent">{customPlanValidationError}</p>
             )}
           </div>
+        </div>
         </div>
       )}
 

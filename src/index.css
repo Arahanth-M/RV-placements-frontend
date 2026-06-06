@@ -1752,4 +1752,110 @@ html, body, #root {
     transform: none;
   }
 }
+
+/* ========== Interactive product tour (Driver.js) ========== */
+.placement-tour-popover.driver-popover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  max-width: min(360px, calc(100vw - 2rem));
+}
+
+.placement-tour-popover .driver-popover-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.placement-tour-popover .driver-popover-description {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.placement-tour-popover .driver-popover-progress-text {
+  display: none !important;
+}
+
+.placement-tour-popover .driver-popover-prev-btn,
+.placement-tour-popover .driver-popover-next-btn {
+  background: var(--accent);
+  color: #fff !important;
+  border: none;
+  border-radius: var(--radius-sm);
+  text-shadow: none !important;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+}
+
+.placement-tour-popover .driver-popover-prev-btn {
+  background: var(--bg-hero);
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border);
+}
+
+.placement-tour-popover .driver-popover-next-btn:hover,
+.placement-tour-popover .driver-popover-next-btn:focus {
+  background: var(--accent-hover) !important;
+  color: #fff !important;
+}
+
+.placement-tour-popover .driver-popover-prev-btn:hover,
+.placement-tour-popover .driver-popover-prev-btn:focus {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border);
+}
+
+.placement-tour-popover .driver-popover-close-btn {
+  color: var(--text-muted);
+}
+
+.placement-tour-popover .driver-popover-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.placement-tour-popover .driver-popover-arrow-side-left.driver-popover-arrow,
+.placement-tour-popover .driver-popover-arrow-side-right.driver-popover-arrow,
+.placement-tour-popover .driver-popover-arrow-side-top.driver-popover-arrow,
+.placement-tour-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-color: var(--bg-card);
+}
+
+/* Spotlight ring so tour targets stand out without a heavy dark overlay */
+#driver-highlighted-element-stage {
+  outline: 3px solid var(--accent) !important;
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 0 28px 10px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 0 56px 18px color-mix(in srgb, var(--accent) 14%, transparent) !important;
+}
+
+[data-theme="dark"] #driver-highlighted-element-stage {
+  outline-color: #a5b4fc !important;
+  box-shadow:
+    0 0 0 4px rgba(165, 180, 252, 0.35),
+    0 0 24px 8px rgba(129, 140, 248, 0.28),
+    0 0 48px 16px rgba(99, 102, 241, 0.15) !important;
+}
+
+.driver-active-element {
+  z-index: 10001 !important;
+}
+
+[data-theme="dark"] .placement-tour-popover.driver-popover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  box-shadow:
+    var(--shadow-soft),
+    0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.placement-tour-popover.driver-popover {
+  box-shadow:
+    var(--shadow-soft),
+    0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
   

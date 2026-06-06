@@ -25,6 +25,9 @@ import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
 import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo2.webp";
+import { useProductTour } from "../context/ProductTourContext";
+import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
+import { FaRoute } from "react-icons/fa";
 
 const primaryLinks = [
   { label: "Home", path: "/" },
@@ -111,10 +114,26 @@ const Header = () => {
   const mobileAccountMenuRef = useRef(null);
   const desktopAccountMenuRef = useRef(null);
   const headerShellRef = useRef(null);
+  const { startTour, isRunning, canStartTour } = useProductTour();
 
   useEffect(() => {
     setAvatarFailed(false);
   }, [user?.userId, user?.picture, user?.email]);
+
+  useEffect(() => {
+    const onPrepare = (event) => {
+      if (event.detail?.stepId !== "student-corner") return;
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+      if (isMobile) {
+        setMobileNavOpen(true);
+        setMobileStudentCornerOpen(true);
+      } else {
+        setStudentMenuOpen(true);
+      }
+    };
+    window.addEventListener(TOUR_PREPARE_EVENT, onPrepare);
+    return () => window.removeEventListener(TOUR_PREPARE_EVENT, onPrepare);
+  }, []);
 
   const isPathActive = (path) => {
     if (path === "/companystats") {
@@ -420,7 +439,19 @@ const Header = () => {
             <FaComments className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">Feedback</span>
           </Link>
-          
+          {user && canStartTour && (
+            <button
+              type="button"
+              disabled={isRunning}
+              onClick={() => startTour()}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-theme bg-theme-card px-2.5 text-[11px] font-semibold text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50 sm:h-10 sm:px-3.5 sm:text-xs"
+              title="Start video tour"
+              aria-label="Start video tour"
+            >
+              <FaRoute className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">{isRunning ? "Tour…" : "Video tour"}</span>
+            </button>
+          )}
         </div>
 
         <div
@@ -431,12 +462,16 @@ const Header = () => {
           {/* Mobile: compact actions + menu */}
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:hidden">
             {user && (
-              <div className="flex shrink-0 items-center [&_button]:p-2 [&_svg]:h-[1.05rem] [&_svg]:w-[1.05rem]">
+              <div
+                className="flex shrink-0 items-center [&_button]:p-2 [&_svg]:h-[1.05rem] [&_svg]:w-[1.05rem]"
+                data-tour="header-notifications"
+              >
                 <NotificationBell />
               </div>
             )}
             <button
               type="button"
+              data-tour="header-theme"
               onClick={toggleTheme}
               className="shrink-0 rounded-full border border-theme bg-theme-card p-2 text-theme-primary hover:bg-theme-card-hover transition-colors"
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -492,7 +527,7 @@ const Header = () => {
               </Link>
             ))}
 
-            <div className="relative shrink-0" ref={studentMenuRef}>
+            <div className="relative shrink-0" ref={studentMenuRef} data-tour="student-corner">
               <button
                 type="button"
                 onClick={() => setStudentMenuOpen((prev) => !prev)}
@@ -633,6 +668,7 @@ const Header = () => {
 
             <button
               type="button"
+              data-tour="header-theme"
               onClick={toggleTheme}
               className={`shrink-0 rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors ${
                 condensedHeader ? "p-2 md:p-2.5" : "p-2.5 lg:p-3"
@@ -648,7 +684,7 @@ const Header = () => {
             </button>
 
             {user && (
-              <div className="shrink-0 flex items-center">
+              <div className="shrink-0 flex items-center" data-tour="header-notifications">
                 <NotificationBell />
               </div>
             )}
@@ -688,6 +724,7 @@ const Header = () => {
 
           <button
             type="button"
+            data-tour="student-corner"
             onClick={() => setMobileStudentCornerOpen((prev) => !prev)}
             aria-expanded={mobileStudentCornerOpen}
             className={`flex w-full items-center justify-between gap-3 border-b border-theme px-4 py-3.5 text-left text-base font-semibold transition-colors ${

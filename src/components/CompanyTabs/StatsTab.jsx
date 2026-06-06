@@ -461,7 +461,7 @@ function StatsTab({
       );
     }
     return (
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-theme-primary" data-tour="company-tab-stats-branch">
         {placementGotInSection}
       </div>
     );
@@ -470,7 +470,7 @@ function StatsTab({
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
       {!hidePlacementGotInByYear ? placementGotInSection : null}
-      <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm">
+      <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm" data-tour="company-tab-stats-branch">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-xl font-semibold text-theme-accent">Branch-wise stats</h2>
           {isAdmin && (
@@ -496,7 +496,7 @@ function StatsTab({
             <p className="text-xs text-theme-muted uppercase tracking-wide">Got in</p>
             <p className="text-lg font-semibold text-theme-primary tabular-nums">{summary.gotIn}</p>
           </div>
-          <div className="rounded-lg border border-theme bg-theme-nav p-3">
+          <div className="rounded-lg border border-theme bg-theme-nav p-3" data-tour="company-tab-stats-converted">
             <p className="text-xs text-theme-muted uppercase tracking-wide">Converted</p>
             <p className="text-lg font-semibold text-theme-primary tabular-nums">
               {shouldMaskSummary ? "N/A" : summary.converted}

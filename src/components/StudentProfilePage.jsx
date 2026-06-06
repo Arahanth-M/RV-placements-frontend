@@ -177,7 +177,7 @@ const StudentProfilePage = () => {
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(-1)} />
         </PageBackNavRow>
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-6 sm:mb-8" data-tour="student-profile">
           <div className="bg-theme-card border border-theme px-6 py-4 rounded-xl flex items-center gap-4 shadow-sm">
             {user?.picture ? (
               <img

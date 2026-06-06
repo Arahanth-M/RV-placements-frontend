@@ -30,6 +30,7 @@ import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
 import InternshipTab from "./CompanyTabs/InternshipTab";
 import StatsTab from "./CompanyTabs/StatsTab";
+import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
@@ -154,6 +155,17 @@ function resolveCompanyHeadlineSubtitle(company, placementListContext) {
     return raw || apiHeadline || "";
   }
 
+  if (placementListContext === PLACEMENT_TIER_INTERNSHIP_ONLY) {
+    if (company?.placementInternshipOnlyVisitMissingForYear === true) {
+      return PLACEMENT_CATEGORY_NO_VISIT_COPY;
+    }
+    return raw || apiHeadline || "";
+  }
+
+  if (placementListContext === PLACEMENT_TIER_OFF_CAMPUS) {
+    return raw || apiHeadline || "";
+  }
+
   if (
     company?.placementDreamTierVisitMissingForYear === true &&
     (placementListContext === PLACEMENT_TIER_DREAM ||
@@ -187,6 +199,7 @@ function DreamTierVisitEmptyPanel() {
     <div
       className="rounded-xl border border-theme bg-theme-card px-6 py-14 text-center"
       role="status"
+      data-tour="company-tab-visit-placeholder"
     >
       <p className="text-theme-secondary">No visit yet</p>
     </div>
@@ -343,6 +356,64 @@ function CompanyDetails() {
     navigate(`/companies/${id}`, { replace: true, state: {} });
   }, [company, id, openTabFromNav, navigate, isCsClusterForInterview]);
 
+  useEffect(() => {
+    const COMPANY_TAB_STEP_TO_TAB = {
+      "company-tab-about": "about",
+      "company-tab-general": "general",
+      "company-tab-general-eligibility": "general",
+      "company-tab-general-visit-date": "general",
+      "company-tab-general-roles-ctc": "general",
+      "company-tab-stats": "stats",
+      "company-tab-oa": "oa",
+      "company-tab-coding": "coding",
+      "company-tab-interview": "interview",
+      "company-add-interview-question": "interview",
+      "company-tab-internship": "internship",
+      "company-tab-mustdo": "mustdo",
+    };
+
+    const onTourPrepare = (event) => {
+      const stepId = event.detail?.stepId;
+      if (!stepId) return;
+
+      if (stepId === "company-tab-stats-summer") {
+        setActiveTab("stats");
+        setOpenDropdownTab(null);
+        return;
+      }
+
+      if (stepId === "company-add-interview-question") {
+        setActiveTab("interview");
+        setOpenDropdownTab(null);
+        return;
+      }
+
+      if (stepId === "company-ai-interview-explore") {
+        setActiveTab("about");
+        setOpenDropdownTab(null);
+        return;
+      }
+
+      if (
+        stepId === "company-ai-interview-setup" ||
+        stepId === "company-ai-interview-start"
+      ) {
+        setActiveTab("aiinterview");
+        setOpenDropdownTab(null);
+        return;
+      }
+
+      const tabId = COMPANY_TAB_STEP_TO_TAB[stepId];
+      if (tabId) {
+        setActiveTab(tabId);
+        setOpenDropdownTab(null);
+      }
+    };
+
+    window.addEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+    return () => window.removeEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+  }, []);
+
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
     if (user?.betaAccess === false) return;
@@ -478,6 +549,10 @@ function CompanyDetails() {
     company.placementSummerInternshipVisitMissingForYear === true &&
     tierCtxEffective === PLACEMENT_TIER_SUMMER_INTERNSHIP;
 
+  const hideInternshipOnlyVisitDetails =
+    company.placementInternshipOnlyVisitMissingForYear === true &&
+    tierCtxEffective === PLACEMENT_TIER_INTERNSHIP_ONLY;
+
   // Cluster-scoped detail route (e.g. /category?cluster=ec): when selected year has no
   // visit for this cluster, show the same empty "No visit yet" panel and hide visit tabs/forms.
   const hideClusterVisitDetailsForYear =
@@ -488,6 +563,7 @@ function CompanyDetails() {
   const hideTierContextVisitDetails =
     hideDreamTierVisitDetails ||
     hideSummerInternshipVisitDetails ||
+    hideInternshipOnlyVisitDetails ||
     hideClusterVisitDetailsForYear;
 
   const dreamTierVisitPresentForYear = (y) => {
@@ -711,7 +787,7 @@ function CompanyDetails() {
             </div>
           </div>
         ) : (
-        <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6">
+        <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6" data-tour="company-details-header">
           <div className="flex items-center gap-4 sm:gap-5 md:gap-6">
             <div
               className="h-16 w-16 shrink-0 rounded-xl border-2 border-theme bg-theme-card shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28 flex items-center justify-center overflow-hidden"
@@ -746,6 +822,7 @@ function CompanyDetails() {
             className="flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl md:gap-1.5 md:p-1.5"
             role="tablist"
             aria-label="Company sections"
+            data-tour="company-details-tabs"
           >
             {allCompanyNavTabs.map(({ id, label }) => {
               const isYearTab = YEAR_TABS.includes(id);
@@ -760,6 +837,7 @@ function CompanyDetails() {
                     aria-selected={isActive}
                     aria-haspopup={isYearTab ? "listbox" : undefined}
                     aria-expanded={isYearTab ? isOpen : undefined}
+                    data-tour={`company-tab-${id}`}
                     onClick={() =>
                       isYearTab ? handleYearTabClick(id) : handleTabChange(id)
                     }
@@ -785,6 +863,7 @@ function CompanyDetails() {
                       className="absolute top-full mt-1.5 left-0 z-30 bg-theme-card border border-theme rounded-xl overflow-hidden min-w-[132px] sm:min-w-[150px] shadow-lg"
                       role="listbox"
                       aria-label={`Select placement year for ${label}`}
+                      data-tour="company-tab-year-menu"
                     >
                       {placementYearLoading && (
                         <div className="px-4 py-2 text-xs text-theme-secondary animate-pulse">
@@ -966,6 +1045,7 @@ function CompanyDetails() {
           }}
         >
           <AiInterviewExploreButton
+            data-tour="company-ai-interview-explore"
             className="pointer-events-auto shadow-lg"
             onClick={() => handleTabChange("aiinterview")}
           />

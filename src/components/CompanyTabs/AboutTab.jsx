@@ -137,7 +137,7 @@ function AboutTab({ company = {} }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="max-w-7xl mx-auto px-4 py-6" data-tour="company-tab-about-panel">
       <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-6 shadow-sm">
         <h2 className="text-xl sm:text-2xl font-bold text-theme-accent mb-4">
           About {company.name || "the Company"}

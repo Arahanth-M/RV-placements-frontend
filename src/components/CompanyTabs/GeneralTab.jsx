@@ -118,9 +118,9 @@ function GeneralTab({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200" data-tour="company-tab-general-panel">
       {/* Placement-year info (business model lives in company header — company-wide) */}
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6" data-tour="company-tab-general-eligibility">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-indigo-400">
@@ -276,7 +276,7 @@ function GeneralTab({
       </div>
 
       {showVisitDateSection && (
-        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6" data-tour="company-tab-general-visit-date">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between mb-4">
             <div>
               <h2 className="text-xl font-semibold text-indigo-400">
@@ -484,7 +484,7 @@ function GeneralTab({
       )}
 
       {/* ROLES */}
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6" data-tour="company-tab-general-roles-ctc">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-indigo-400">
             Roles Offered

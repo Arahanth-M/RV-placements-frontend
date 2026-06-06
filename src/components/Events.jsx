@@ -188,9 +188,11 @@ const Events = () => {
           <PageBackButton onClick={handleBack} label="Back" />
         </PageBackNavRow>
 
+        <div data-tour="events-hero">
         <PageHeroHeader subtitle='Stay updated with placements, hackathons, and other important events. After you register, use "Mark registered" to keep track of events you have signed up for.'>
           Events
         </PageHeroHeader>
+        </div>
 
         {/* ── Loading ── */}
         {loading && (
@@ -213,37 +215,30 @@ const Events = () => {
 
         {/* ── Content ── */}
         {!loading && !error && (
-          <>
-            {sortedEvents.length === 0 ? (
-              <div className="bg-theme-card border border-theme rounded-xl shadow-lg p-12 text-center">
-                <FaCalendarAlt className="mx-auto text-theme-muted text-6xl mb-4" aria-hidden />
-                <p className="text-theme-primary text-lg font-medium">No events found.</p>
-                <p className="text-theme-secondary mt-2">Check back later for new events!</p>
-              </div>
-            ) : (
-              <div className="max-w-5xl mx-auto w-full min-w-0 space-y-4">
+          <div className="max-w-5xl mx-auto w-full min-w-0 space-y-4" data-tour="events-loaded">
+            {/* ── Stat cards ── */}
+            <div className="grid grid-cols-3 gap-3" data-tour="events-stats">
+              {[
+                { label: 'Total events', value: sortedEvents.length, color: 'text-theme-accent' },
+                { label: 'Upcoming', value: upcomingCount, color: 'text-theme-primary' },
+                {
+                  label: "You've registered",
+                  value: canUsePortalRegistration ? registeredCount : '—',
+                  color: 'text-theme-primary',
+                },
+              ].map(({ label, value, color }) => (
+                <div
+                  key={label}
+                  className="bg-theme-card border border-theme rounded-xl px-4 py-3"
+                >
+                  <p className="text-xs text-theme-secondary mb-1">{label}</p>
+                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                </div>
+              ))}
+            </div>
 
-                {/* ── Stat cards ── */}
-                {canUsePortalRegistration && (
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: 'Total events',     value: sortedEvents.length,  color: 'text-theme-accent' },
-                      { label: 'Upcoming',          value: upcomingCount,         color: 'text-theme-primary' },
-                      { label: "You've registered", value: registeredCount,       color: 'text-theme-primary' },
-                    ].map(({ label, value, color }) => (
-                      <div
-                        key={label}
-                        className="bg-theme-card border border-theme rounded-xl px-4 py-3"
-                      >
-                        <p className="text-xs text-theme-secondary mb-1">{label}</p>
-                        <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* ── Search + filter row ── */}
-                <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            {/* ── Search + filter row ── */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center" data-tour="events-filters">
                   {/* Search */}
                   <div className="relative flex-1">
                     <FaSearch
@@ -300,8 +295,14 @@ const Events = () => {
                 </div>
 
                 {/* ── Table / cards ── */}
-                <div className="bg-theme-card border border-theme rounded-xl shadow-sm overflow-hidden w-full min-w-0">
-                  {filteredEvents.length === 0 ? (
+                <div className="bg-theme-card border border-theme rounded-xl shadow-sm overflow-hidden w-full min-w-0" data-tour="events-list">
+                  {sortedEvents.length === 0 ? (
+                    <div className="px-4 sm:px-6 py-10 sm:py-12 text-center">
+                      <FaCalendarAlt className="mx-auto text-theme-muted text-5xl mb-3" aria-hidden />
+                      <p className="text-theme-primary text-lg font-medium">No events found.</p>
+                      <p className="text-theme-secondary mt-2 text-sm">Check back later for new events!</p>
+                    </div>
+                  ) : filteredEvents.length === 0 ? (
                     <div className="px-4 sm:px-6 py-10 sm:py-12 text-center text-theme-secondary text-sm">
                       No events match your search or filter.
                     </div>
@@ -474,9 +475,7 @@ const Events = () => {
                     </>
                   )}
                 </div>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@ import { FaSearch, FaFilter } from "react-icons/fa";
 import { PageBackButton, PageBackNavRow } from "./PageBackNav.jsx";
 import Analytics from "./Analytics";
 import { DEFAULT_OPEN_DREAM_MIN_LPA } from "../constants/placementTiers.js";
+import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
 const PAGE_SIZE = 100;
 
@@ -13,6 +14,16 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
   const [branchFilter, setBranchFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const onTourPrepare = (event) => {
+      if (event.detail?.stepId === "company-stats-2025-analytics") {
+        setActiveTab("Analytics");
+      }
+    };
+    window.addEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+    return () => window.removeEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
+  }, []);
 
   const toLpa = (value) => {
     if (value === null || value === undefined) return null;
@@ -35,41 +46,42 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
       ? Number(openDreamMinLpa)
       : DEFAULT_OPEN_DREAM_MIN_LPA;
 
+  const resolveRowCtcLpa = useCallback((row) => {
+    if (!row || typeof row !== "object") return null;
+    const readFieldGroup = (fields) => {
+      for (const field of fields) {
+        if (row[field] !== undefined && row[field] !== null && row[field] !== "") {
+          const lpa = toLpa(row[field]);
+          if (lpa !== null && lpa > 0) return lpa;
+        }
+      }
+      return null;
+    };
+    const ctcFieldCandidates = [
+      "ctc",
+      "CTC",
+      "package",
+      "Package",
+      "salary",
+      "Salary",
+      "ctc_lpa",
+      "CTC_LPA",
+      "annual_ctc",
+      "Annual_CTC",
+      "lpa",
+      "LPA",
+    ];
+    const baseFieldCandidates = ["base", "Base"];
+    return readFieldGroup(ctcFieldCandidates) ?? readFieldGroup(baseFieldCandidates);
+  }, []);
+
   const resolveRowCategory = useCallback(
     (row) => {
-      const entries = Object.entries(row || {});
-
-      // Priority 1: Explicit category/tier-like fields
-      const explicitCategory = entries.find(([key]) =>
-        /(category|tier|type)/i.test(key)
-      );
-      const explicitValue = explicitCategory
-        ? String(explicitCategory[1] || "").toLowerCase().trim()
-        : "";
-      if (explicitValue.includes("open-dream") || explicitValue.includes("open dream"))
-        return "open_dream";
-      if (explicitValue.includes("dream")) return "dream";
-
-      // Priority 2: Any textual marker in the row
-      const rowText = entries
-        .map(([, value]) => String(value ?? "").toLowerCase())
-        .join(" | ");
-      if (rowText.includes("open-dream") || rowText.includes("open dream")) return "open_dream";
-      if (/\bdream\b/.test(rowText)) return "dream";
-
-      // Priority 3: Infer by package threshold (cluster-configured LPA => Open dream)
-      const packageValues = entries
-        .filter(([key]) => /(ctc|package|salary|lpa)/i.test(key))
-        .map(([, value]) => toLpa(value))
-        .filter((v) => v !== null && v > 0);
-      if (packageValues.length > 0) {
-        const bestLpa = Math.max(...packageValues);
-        return bestLpa >= thresholdLpa ? "open_dream" : "dream";
-      }
-
-      return "other";
+      const ctcLpa = resolveRowCtcLpa(row);
+      if (ctcLpa === null) return "other";
+      return ctcLpa >= thresholdLpa ? "open_dream" : "dream";
     },
-    [thresholdLpa]
+    [thresholdLpa, resolveRowCtcLpa]
   );
 
   // Filter data based on search term
@@ -233,7 +245,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-theme-card border border-theme rounded-lg p-1 flex gap-1">
+      <div className="bg-theme-card border border-theme rounded-lg p-1 flex gap-1" data-tour="year-stats-analytics-tab">
         {["Table", "Analytics"].map((tab) => (
           <button
             key={tab}
@@ -252,7 +264,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
       <div className="bg-theme-card backdrop-blur border border-theme rounded-xl shadow-lg overflow-hidden">
         {activeTab === "Table" && (
           <>
-            <div className="p-4 sm:p-6 border-b border-theme">
+            <div className="p-4 sm:p-6 border-b border-theme" data-tour="year-stats-toolbar">
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                 <div className="relative w-full sm:flex-1 sm:max-w-md">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -263,6 +275,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
                     placeholder="Search by company name"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    data-tour="year-stats-search"
                     className="block w-full pl-10 pr-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary placeholder-theme-muted focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
                   />
                 </div>
@@ -270,6 +283,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
                   <select
                     value={branchFilter}
                     onChange={(e) => setBranchFilter(e.target.value)}
+                    data-tour="year-stats-branch"
                     className="w-full sm:w-52 sm:ml-auto px-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
                   >
                     <option value="all">All Branches</option>
@@ -419,7 +433,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
         )}
 
         {activeTab === "Analytics" && (
-          <div className="p-4 sm:p-6">
+          <div className="p-4 sm:p-6" data-tour="year-stats-analytics">
             <h2 className="text-xl font-semibold text-[var(--primary)] mb-6">{year} Analytics</h2>
             <Analytics year={year} embedded={true} />
           </div>
@@ -430,6 +444,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
           <button
             type="button"
             onClick={() => setShowFilter((prev) => !prev)}
+            data-tour="year-stats-filter"
             className="bg-[var(--primary)] text-white p-3 sm:p-4 rounded-full shadow-lg transition duration-200 hover:opacity-90"
             aria-label="Filter categories"
           >
