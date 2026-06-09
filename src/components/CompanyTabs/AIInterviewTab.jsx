@@ -381,16 +381,29 @@ function isCodeExecutionSummaryPayload(summary) {
   );
 }
 
-/** Hidden testcase rows from post-submit `lastCodeExecutionSummary` (pass/fail only). */
+function normalizePostSubmitTestCaseRow(row, idx) {
+  const passed = Boolean(row.passed);
+  const base = {
+    caseNumber: Number(row.caseNumber) > 0 ? Number(row.caseNumber) : idx + 1,
+    passed,
+  };
+  if (passed) return base;
+  return {
+    ...base,
+    input: row.input ?? null,
+    expectedOutput: row.expectedOutput ?? null,
+    actualOutput: row.actualOutput ?? null,
+    error: typeof row.error === "string" ? row.error : "",
+  };
+}
+
+/** Hidden testcase rows from post-submit `lastCodeExecutionSummary`. */
 function normalizeHiddenTestResultsFromSummary(summary) {
   if (!summary || typeof summary !== "object") return [];
   const rows = Array.isArray(summary.hiddenTestResults) ? summary.hiddenTestResults : [];
   const normalized = rows
     .filter((row) => row && typeof row === "object")
-    .map((row, idx) => ({
-      caseNumber: Number(row.caseNumber) > 0 ? Number(row.caseNumber) : idx + 1,
-      passed: Boolean(row.passed),
-    }));
+    .map((row, idx) => normalizePostSubmitTestCaseRow(row, idx));
   if (normalized.length > 0) return normalized;
 
   const total = Math.max(0, Number(summary.hiddenTotalCount) || 0);
@@ -408,30 +421,107 @@ function normalizeHiddenTestResultsFromSummary(summary) {
   }));
 }
 
-function HiddenTestCaseResultsList({ hiddenTestResults, className = "" }) {
-  if (!Array.isArray(hiddenTestResults) || hiddenTestResults.length === 0) return null;
+function normalizeFailedVisibleTestsFromSummary(summary) {
+  if (!summary || typeof summary !== "object") return [];
+  const rows = Array.isArray(summary.failedTests) ? summary.failedTests : [];
+  return rows
+    .filter((row) => row && typeof row === "object")
+    .map((row, idx) => normalizePostSubmitTestCaseRow({ ...row, passed: false }, idx));
+}
+
+function formatPostSubmitTestValue(value) {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function PostSubmitFailedTestCaseDetails({ row }) {
+  const expLane = previewValueLane("Expected", row.expectedOutput);
+  const actLane = previewValueLane("Actual", row.actualOutput);
+  return (
+    <div className="mt-2 space-y-1.5 border-t border-theme/60 pt-2">
+      <p className="text-theme-secondary whitespace-pre-wrap break-words">
+        Input: {formatPostSubmitTestValue(row.input)}
+      </p>
+      <p className="text-theme-secondary whitespace-pre-wrap break-words">
+        {expLane.label}: {expLane.serialized}
+      </p>
+      <p className="text-theme-secondary whitespace-pre-wrap break-words">
+        {actLane.label} ({actLane.kind}): {actLane.serialized}
+      </p>
+      {row.error ? (
+        <p className="text-[11px] text-status-danger whitespace-pre-wrap break-words">
+          Error: {row.error}
+        </p>
+      ) : null}
+      {!row.error ? (
+        <p className="text-[10px] text-theme-muted leading-snug">
+          Output did not match expected (strict JSON / equality). Check types, nesting, and list order.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PostSubmitTestCaseResultsList({
+  title,
+  caseLabelPrefix,
+  testResults,
+  className = "",
+}) {
+  if (!Array.isArray(testResults) || testResults.length === 0) return null;
   return (
     <div className={`space-y-2 ${className}`.trim()}>
-      <p className="text-xs font-semibold text-theme-primary">Hidden testcases</p>
+      <p className="text-xs font-semibold text-theme-primary">{title}</p>
       <div className="space-y-2">
-        {hiddenTestResults.map((row) => {
+        {testResults.map((row) => {
           const passed = Boolean(row.passed);
           return (
             <div
-              key={`hidden-test-result-${row.caseNumber}`}
-              className={`rounded-lg border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2 transition-colors ${
+              key={`${caseLabelPrefix}-${row.caseNumber}`}
+              className={`rounded-lg border p-2.5 text-xs transition-colors ${
                 passed ? "ui-test-result-pass" : "ui-test-result-fail"
               }`}
             >
-              <p className="text-theme-primary font-semibold">Hidden case {row.caseNumber}</p>
-              <span className={passed ? "status-pill-success" : "status-pill-danger"}>
-                {passed ? "Passed" : "Failed"}
-              </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-theme-primary font-semibold">
+                  {caseLabelPrefix} {row.caseNumber}
+                </p>
+                <span className={passed ? "status-pill-success" : "status-pill-danger"}>
+                  {passed ? "Passed" : "Failed"}
+                </span>
+              </div>
+              {!passed ? <PostSubmitFailedTestCaseDetails row={row} /> : null}
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function HiddenTestCaseResultsList({ hiddenTestResults, className = "" }) {
+  return (
+    <PostSubmitTestCaseResultsList
+      title="Hidden testcases"
+      caseLabelPrefix="Hidden case"
+      testResults={hiddenTestResults}
+      className={className}
+    />
+  );
+}
+
+function FailedVisibleTestCaseResultsList({ failedTests, className = "" }) {
+  return (
+    <PostSubmitTestCaseResultsList
+      title="Failed visible testcases"
+      caseLabelPrefix="Case"
+      testResults={failedTests}
+      className={className}
+    />
   );
 }
 
@@ -3061,6 +3151,17 @@ function AIInterviewTab({
                       className="mt-3 pt-3 border-t border-theme"
                     />
                   ) : null}
+                  {(() => {
+                    const failedVisible = normalizeFailedVisibleTestsFromSummary(
+                      pendingQuestionFeedback.codeExecutionSummary
+                    );
+                    return failedVisible.length > 0 ? (
+                      <FailedVisibleTestCaseResultsList
+                        failedTests={failedVisible}
+                        className="mt-3 pt-3 border-t border-theme"
+                      />
+                    ) : null;
+                  })()}
                   {String(pendingQuestionFeedback.codeExecutionSummary.status || "").trim() ? (
                     <p className="text-[11px] text-theme-muted mt-3 leading-snug">
                       Runner status: {pendingQuestionFeedback.codeExecutionSummary.status}

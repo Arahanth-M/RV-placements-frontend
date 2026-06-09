@@ -4,7 +4,11 @@ import CompanyCard from "../components/CompanyCard";
 import CompanyLogo from "../components/CompanyLogo";
 import AnimatedLogoGrid from "../components/AnimatedLogoGrid";
 import YearStatsTable from "../components/YearStatsTable";
-import { CompanyCardGridShimmer, YearStatsTableShimmer } from "../components/StatsLoadingShimmer";
+import {
+  CategoryTilesGridShimmer,
+  CompanyCardGridShimmer,
+  YearStatsTableShimmer,
+} from "../components/StatsLoadingShimmer";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -1783,7 +1787,12 @@ function CompanyStats() {
       },
     ].filter((tile) => tile.count > 0);
 
+    const isCategoryTilesLoading = categoryTiles.length === 0 && !companiesFetchDone;
+
     const categorySubtitle = (() => {
+      if (isCategoryTilesLoading) {
+        return "Loading categories…";
+      }
       const labels = categoryTiles.map((tile) => tile.shortLabel);
       if (labels.length === 0) {
         return "No companies are listed in any category for this cluster yet.";
@@ -1818,7 +1827,9 @@ function CompanyStats() {
               </p>
             </div>
           </div>
-          {categoryTiles.length === 0 ? (
+          {isCategoryTilesLoading ? (
+            <CategoryTilesGridShimmer />
+          ) : categoryTiles.length === 0 ? (
             <div
               className="company-card mx-auto max-w-xl rounded-2xl border-2 border-dashed border-theme bg-theme-card/40 px-6 py-12 text-center"
               role="status"

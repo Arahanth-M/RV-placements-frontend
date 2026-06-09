@@ -45,6 +45,50 @@ export function CompanyCardGridShimmer({
   );
 }
 
+const DEFAULT_CATEGORY_TILE_SHIMMER_COUNT = 5;
+
+/**
+ * Skeleton grid for CompanyStats cluster category tiles (Dream, Open dream, etc.).
+ * @param {{ count?: number, className?: string }} [props]
+ */
+export function CategoryTilesGridShimmer({
+  count = DEFAULT_CATEGORY_TILE_SHIMMER_COUNT,
+  className = "",
+}) {
+  return (
+    <div
+      className={`mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch ${className}`.trim()}
+      aria-busy="true"
+      aria-label="Loading categories"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 border-2 bg-theme-card border-theme pointer-events-none"
+        >
+          <div className="flex h-full min-h-0 min-w-0 flex-col">
+            <div className="h-6 sm:h-7 md:h-8 w-3/4 max-w-[14rem] stats-shimmer rounded-lg mb-2 sm:mb-3 flex-shrink-0" />
+            <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-[200px]">
+                {Array.from({ length: 6 }).map((__, j) => (
+                  <div
+                    key={j}
+                    className="aspect-square rounded-lg stats-shimmer border border-theme opacity-90"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-auto pt-1 border-t border-theme">
+              <div className="h-4 w-24 stats-shimmer rounded" />
+              <div className="h-4 w-4 stats-shimmer rounded opacity-70" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Theme-aware shimmer blocks for year stats table + analytics loading states */
 export function YearStatsTableShimmer({ yearLabel = "" }) {
   return (

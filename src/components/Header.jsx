@@ -301,9 +301,11 @@ const Header = () => {
             type="button"
             onClick={() => setAccountMenuOpen((prev) => !prev)}
             className={`inline-flex items-center rounded-full border-2 text-left text-sm font-semibold text-theme-primary transition-[background-color,border-color] duration-200 ${
-              condensedHeader
-                ? "min-h-[2.5rem] gap-1.5 py-2 pl-1.5 pr-2.5 md:min-h-[2.75rem] md:pl-2 md:pr-3"
-                : "min-h-[2.5rem] gap-2 py-1 pl-1.5 pr-2.5 sm:min-h-[2.75rem] sm:gap-3 sm:py-1.5 sm:pl-2 sm:pr-4"
+              isMobile
+                ? "min-h-9 gap-1 py-1 pl-1 pr-1.5"
+                : condensedHeader
+                  ? "min-h-[2.5rem] gap-1.5 py-2 pl-1.5 pr-2.5 md:min-h-[2.75rem] md:pl-2 md:pr-3"
+                  : "min-h-[2.5rem] gap-2 py-1 pl-1.5 pr-2.5 sm:min-h-[2.75rem] sm:gap-3 sm:py-1.5 sm:pl-2 sm:pr-4"
             } ${
               accountMenuOpen
                 ? "border-theme-accent bg-theme-accent/12"
@@ -317,14 +319,14 @@ const Header = () => {
                 alt=""
                 referrerPolicy="no-referrer"
                 className={`shrink-0 rounded-full border-2 border-theme object-cover ${
-                  condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
+                  isMobile ? "h-8 w-8" : condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
                 }`}
                 onError={() => setAvatarFailed(true)}
               />
             ) : (
               <div
                 className={`flex shrink-0 items-center justify-center rounded-full border-2 border-theme bg-theme-hero ${
-                  condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
+                  isMobile ? "h-8 w-8" : condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
                 }`}
               >
                 <span
@@ -349,7 +351,11 @@ const Header = () => {
             >
               {headerDisplayName}
             </span>
-            <FaChevronDown className={`h-3 w-3 shrink-0 text-theme-secondary transition ${accountMenuOpen ? "rotate-180" : ""}`} />
+            <FaChevronDown
+              className={`h-3 w-3 shrink-0 text-theme-secondary transition ${accountMenuOpen ? "rotate-180" : ""} ${
+                isMobile ? "hidden min-[400px]:inline" : ""
+              }`}
+            />
           </button>
         )}
 
@@ -415,20 +421,23 @@ const Header = () => {
   const mobileNavLinkClass =
     "flex w-full items-center gap-3 px-4 py-3.5 text-base font-semibold text-theme-primary border-b border-theme hover:bg-theme-hero transition-colors";
 
+  const videoTourIconButtonClass =
+    "shrink-0 inline-flex items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50";
+
   return (
     <div ref={headerShellRef} className="sticky top-0 z-50 mb-2">
       <header className="flex w-full items-stretch overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
-        <div className="flex shrink-0 items-center gap-2 pl-3 pr-2 py-2 sm:gap-2.5 sm:pl-5 sm:pr-2 sm:py-2.5">
+        <div className="flex shrink-0 items-center gap-1 pl-2 pr-1 py-1.5 sm:gap-2.5 sm:pl-5 sm:pr-2 sm:py-2.5">
           <Link
             to="/"
-            className="flex h-11 w-[3.85rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-theme bg-white px-2.5 py-1.5 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-14 sm:w-[5rem] sm:rounded-full sm:px-2.5 sm:py-1.5"
+            className="flex h-10 w-[3.35rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-theme bg-white px-2 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-14 sm:w-[5rem] sm:rounded-full sm:px-2.5 sm:py-1.5"
             title="RVCE Placement — Home"
           >
             <img src={logo} alt="" className="h-full w-full max-h-full object-contain object-center" />
           </Link>
           <Link
             to="/feedback"
-            className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition-colors sm:h-10 sm:px-3.5 sm:text-xs ${
+            className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors sm:h-10 sm:w-auto sm:gap-1.5 sm:px-3.5 sm:text-xs ${
               isPathActive("/feedback")
                 ? "border-theme-accent bg-theme-accent text-white"
                 : "border-theme bg-theme-card text-theme-primary hover:bg-theme-hero"
@@ -444,12 +453,12 @@ const Header = () => {
               type="button"
               disabled={isRunning}
               onClick={() => startTour()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-theme bg-theme-card px-2.5 text-[11px] font-semibold text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50 sm:h-10 sm:px-3.5 sm:text-xs"
+              className={`${videoTourIconButtonClass} hidden h-9 gap-1.5 px-3.5 text-xs font-semibold md:inline-flex sm:h-10`}
               title="Start video tour"
               aria-label="Start video tour"
             >
               <FaRoute className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">{isRunning ? "Tour…" : "Video tour"}</span>
+              <span>{isRunning ? "Tour…" : "Video tour"}</span>
             </button>
           )}
         </div>
@@ -460,7 +469,19 @@ const Header = () => {
           }`}
         >
           {/* Mobile: compact actions + menu */}
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:hidden">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-0.5 sm:gap-1 md:hidden">
+            {user && canStartTour && (
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={() => startTour()}
+                className={`${videoTourIconButtonClass} h-9 w-9 p-0`}
+                title={isRunning ? "Tour in progress" : "Start video tour"}
+                aria-label={isRunning ? "Tour in progress" : "Start video tour"}
+              >
+                <FaRoute className="h-[1.05rem] w-[1.05rem]" />
+              </button>
+            )}
             {user && (
               <div
                 className="flex shrink-0 items-center [&_button]:p-2 [&_svg]:h-[1.05rem] [&_svg]:w-[1.05rem]"
@@ -473,7 +494,7 @@ const Header = () => {
               type="button"
               data-tour="header-theme"
               onClick={toggleTheme}
-              className="shrink-0 rounded-full border border-theme bg-theme-card p-2 text-theme-primary hover:bg-theme-card-hover transition-colors"
+              className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors"
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
@@ -492,11 +513,11 @@ const Header = () => {
                   return next;
                 })
               }
-              className="shrink-0 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors touch-manipulation"
+              className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors touch-manipulation sm:h-11 sm:w-11"
               aria-expanded={mobileNavOpen}
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
             >
-              {mobileNavOpen ? <FaTimes className="h-[1.2rem] w-[1.2rem]" /> : <FaBars className="h-[1.2rem] w-[1.2rem]" />}
+              {mobileNavOpen ? <FaTimes className="h-[1.15rem] w-[1.15rem]" /> : <FaBars className="h-[1.15rem] w-[1.15rem]" />}
             </button>
           </div>
 
