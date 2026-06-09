@@ -3,10 +3,11 @@ import {
   PLACEMENT_CLUSTER_CS,
 } from "../constants/placementTiers.js";
 
-const TOUR_EXAMPLE_COMPANY = "PhonePe";
-const TOUR_MICROSOFT_EXAMPLE = "Microsoft";
+const TOUR_EXAMPLE_COMPANY = "Wells Fargo";
+const TOUR_PPO_EXAMPLE_COMPANY = "Deutsche Bank";
+const TOUR_CODING_EXAMPLE_COMPANY = "Microsoft";
 
-/** @typedef {'navigateToPhonePeCompany' | 'navigateToMicrosoftInternshipPpo' | 'prepareCompanyTourStep' | 'openAnalyticsTab' | 'openAiInterviewSessions' | 'resetCompanyStatsYear' | 'openCompanyStatsYear2025' | 'openCompanyStatsYear2026' | 'openCompanyStatsClusterCs' | 'openCompanyStatsDreamList' | 'none'} TourPrepareAction */
+/** @typedef {'navigateToPhonePeCompany' | 'navigateToPhonePeCompanyStats' | 'navigateToMicrosoftInternshipPpo' | 'navigateToMicrosoftCodingCompany' | 'prepareCompanyTourStep' | 'openAnalyticsTab' | 'openAiInterviewSessions' | 'resetCompanyStatsYear' | 'openCompanyStatsYear2025' | 'openCompanyStatsYear2026' | 'openCompanyStatsClusterCs' | 'openCompanyStatsDreamList' | 'none'} TourPrepareAction */
 
 /**
  * @typedef {Object} ProductTourStep
@@ -170,9 +171,33 @@ const STUDENT_TOUR_STEPS_BASE = [
     selector: '[data-tour="company-stats-2026-filter"]',
     fallbackSelector: '[data-tour="company-stats-2026-search"]',
     prepare: "openCompanyStatsDreamList",
-    title: "Filter by offer type",
+    title: "Offer-type filter",
     description:
-      "Use the floating filter to narrow by All, FTE, or Internship + FTE — only companies matching that visit type stay in the grid.",
+      "Tap this floating filter button on the 2026+ dream list to narrow companies by visit type.",
+    side: "left",
+    align: "end",
+  },
+  {
+    id: "company-stats-2026-filter-fte",
+    route: "/companystats?tier=dream",
+    selector: '[data-tour="company-stats-2026-filter-fte"]',
+    fallbackSelector: '[data-tour="company-stats-2026-filter-menu"]',
+    prepare: "openCompanyStatsDreamList",
+    title: "FTE filter",
+    description:
+      "FTE shows companies that came for direct full-time hiring only — no intern+PPO track in that year's visit.",
+    side: "left",
+    align: "end",
+  },
+  {
+    id: "company-stats-2026-filter-internship-fte",
+    route: "/companystats?tier=dream",
+    selector: '[data-tour="company-stats-2026-filter-internship-fte"]',
+    fallbackSelector: '[data-tour="company-stats-2026-filter-menu"]',
+    prepare: "openCompanyStatsDreamList",
+    title: "Internship + FTE filter",
+    description:
+      "Internship + FTE lists companies with an intern drive that can convert to full-time — useful when prepping for PPO-style processes on the dream grid.",
     side: "left",
     align: "end",
   },
@@ -225,14 +250,50 @@ const STUDENT_TOUR_STEPS_BASE = [
     align: "start",
   },
   {
-    id: "company-tab-stats-summer",
+    id: "company-tab-stats-wells-fargo",
+    route: "/companystats?tier=dream",
+    selector: '[data-tour="company-tab-stats-placement-got-in"]',
+    fallbackSelector: '[data-tour="company-tab-stats"]',
+    prepare: "navigateToPhonePeCompanyStats",
+    title: `Stats — ${TOUR_EXAMPLE_COMPANY} (Got in)`,
+    description:
+      `${TOUR_EXAMPLE_COMPANY} shows branch-wise Got in — how many students from each branch (CSE, ISE, etc.) received an offer for the selected year. Totals at the top roll up every branch row.`,
+    side: "top",
+    align: "center",
+  },
+  {
+    id: "company-tab-stats-got-in",
     route: "/companystats?tier=summer_internship",
-    selector: '[data-tour="company-tab-stats-converted"]',
+    selector: '[data-tour="company-tab-stats-got-in"]',
     fallbackSelector: '[data-tour="company-tab-stats-branch"]',
     prepare: "navigateToMicrosoftInternshipPpo",
-    title: "Summer internship stats (PPO)",
+    title: `Stats — ${TOUR_PPO_EXAMPLE_COMPANY} Got in`,
     description:
-      `${TOUR_MICROSOFT_EXAMPLE} 2026 internship (PPO): Stats shows branch-wise Got in, Converted (interns who received FTE), and acceptance rate per branch (CSE, ISE, etc.) — each branch is tracked separately.`,
+      `${TOUR_PPO_EXAMPLE_COMPANY} 2026 internship (PPO): the Got in summary counts interns selected per branch. Scroll the branch table below to see CSE, ISE, and other rows separately.`,
+    side: "top",
+    align: "start",
+  },
+  {
+    id: "company-tab-stats-converted",
+    route: "/companystats?tier=summer_internship",
+    selector: '[data-tour="company-tab-stats-converted"]',
+    fallbackSelector: '[data-tour="company-tab-stats-got-in"]',
+    prepare: "prepareCompanyTourStep",
+    title: `Stats — ${TOUR_PPO_EXAMPLE_COMPANY} Converted`,
+    description:
+      "Converted counts interns who received a full-time offer (PPO) after the internship — tracked branch-wise, not just as one campus total.",
+    side: "top",
+    align: "start",
+  },
+  {
+    id: "company-tab-stats-branch-wise",
+    route: "/companystats?tier=summer_internship",
+    selector: '[data-tour="company-tab-stats-branch-table"]',
+    fallbackSelector: '[data-tour="company-tab-stats-branch"]',
+    prepare: "prepareCompanyTourStep",
+    title: "Branch-wise breakdown",
+    description:
+      "Each row is one branch: Got in, Converted, and acceptance % side by side. Compare how conversion differed across branches for the same drive.",
     side: "top",
     align: "center",
   },
@@ -285,18 +346,6 @@ const STUDENT_TOUR_STEPS_BASE = [
     align: "start",
   },
   {
-    id: "company-tab-coding",
-    route: "/companystats?tier=summer_internship",
-    selector: '[data-tour="company-tab-coding-panel"]',
-    fallbackSelector: '[data-tour="company-tab-coding"]',
-    prepare: "prepareCompanyTourStep",
-    title: "Coding tab",
-    description:
-      "Past coding questions with problem statements, difficulty, topics, solutions, and intuition notes. Expand each accordion to read full details and copy solution code when available.",
-    side: "top",
-    align: "start",
-  },
-  {
     id: "company-tab-interview",
     route: "/companystats?tier=summer_internship",
     selector: '[data-tour="company-tab-interview"]',
@@ -346,6 +395,18 @@ const STUDENT_TOUR_STEPS_BASE = [
     align: "start",
   },
   {
+    id: "company-tab-coding",
+    route: "/companystats?tier=summer_internship",
+    selector: '[data-tour="company-tab-coding-panel"]',
+    fallbackSelector: '[data-tour="company-tab-coding"]',
+    prepare: "navigateToMicrosoftCodingCompany",
+    title: "Coding questions",
+    description:
+      `${TOUR_CODING_EXAMPLE_COMPANY}: past coding questions with problem statements, difficulty, topics, solutions, and intuition notes. Expand each accordion to read full details and copy solution code when available.`,
+    side: "top",
+    align: "start",
+  },
+  {
     id: "company-ai-interview-explore",
     route: "/companystats?tier=summer_internship",
     selector: '[data-tour="company-ai-interview-explore"]',
@@ -354,7 +415,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     title: "Explore AI interview",
     requiresAuth: true,
     description:
-      `Tap this floating button on any CS company page (like ${TOUR_MICROSOFT_EXAMPLE}) to jump straight into the AI Interview tab without hunting through the tab bar.`,
+      `Tap this floating button on any CS company page (like ${TOUR_PPO_EXAMPLE_COMPANY}) to jump straight into the AI Interview tab without hunting through the tab bar.`,
     side: "left",
     align: "end",
   },
@@ -380,9 +441,9 @@ const STUDENT_TOUR_STEPS_BASE = [
     title: "Start Interview",
     requiresAuth: true,
     description:
-      "When your plan is ready, click Start Interview here. The AI asks real questions from student submissions for this company, gives feedback after each answer, and shows a round summary when you finish.",
-    side: "left",
-    align: "end",
+      "When your plan is ready, click this Start Interview button (top right of the AI tab). The AI asks real questions from student submissions, gives feedback after each answer, and shows a round summary when you finish.",
+    side: "bottom",
+    align: "center",
   },
   {
     id: "ai-interviews-hero",
@@ -443,6 +504,19 @@ const STUDENT_TOUR_STEPS_BASE = [
       "Save anytime or Export Word when ready — validation runs before download.",
     side: "bottom",
     align: "end",
+  },
+  {
+    id: "resume-ats-score",
+    route: "/resume-builder",
+    selector: '[data-tour="resume-ats-score"]',
+    fallbackSelector: '[data-tour="resume-ats-run"]',
+    title: "ATS Score",
+    requiresAuth: true,
+    requiresResumeBuilder: true,
+    description:
+      "Tap Run ATS Analysis to generate your Overall ATS Score. The circular score rates completeness, structure, impact, and professionalism — plus a breakdown and improvement checklist.",
+    side: "bottom",
+    align: "center",
   },
   {
     id: "resume-editor",
@@ -604,6 +678,31 @@ const STUDENT_TOUR_STEPS_BASE = [
     requiresAuth: true,
     description:
       "Your student profile shows personal details, branch info, and placement data linked to your account.",
+    side: "bottom",
+    align: "start",
+  },
+  {
+    id: "company-request-more-details",
+    route: "/companystats?tier=dream",
+    selector: '[data-tour="company-detail-request-more"]',
+    fallbackSelector: '[data-tour="company-details-header"]',
+    prepare: "navigateToPhonePeCompany",
+    title: "Request more details",
+    requiresAuth: true,
+    description:
+      `On a company page like ${TOUR_EXAMPLE_COMPANY}, use Request more details when eligibility, roles, visit date, or other info is missing — admins get a one-time alert to update the page.`,
+    side: "bottom",
+    align: "start",
+  },
+  {
+    id: "profile-discrepancy",
+    route: "/profile",
+    selector: '[data-tour="student-profile-discrepancy"]',
+    fallbackSelector: '[data-tour="student-profile"]',
+    title: "Discrepancies found",
+    requiresAuth: true,
+    description:
+      "Wrong company, offer type, or stipend on your placement profile? Tap Discrepancies found to notify admins — you can only send this request once.",
     side: "bottom",
     align: "start",
   },

@@ -403,7 +403,16 @@ function CompanyStats() {
         navigate(companystatsClusterCategoryUrl(PLACEMENT_CLUSTER_CS), { replace: true });
         return;
       }
-      if (stepId === "company-stats-cards") {
+      if (
+        stepId === "company-stats-cards" ||
+        stepId === "company-stats-2026-search" ||
+        stepId === "company-stats-2026-filter" ||
+        stepId === "company-stats-2026-filter-fte" ||
+        stepId === "company-stats-2026-filter-internship-fte" ||
+        stepId === "company-card-business-model" ||
+        stepId === "company-card-focus-areas" ||
+        stepId === "company-card-helpful"
+      ) {
         setSelectedYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
         persistPlacementCardsYear(DEFAULT_PLACEMENT_DETAIL_YEAR);
         setPlacementTier(PLACEMENT_TIER_DREAM);
@@ -415,6 +424,15 @@ function CompanyStats() {
           `${companystatsTierListUrl(PLACEMENT_TIER_DREAM)}&cluster=${encodeURIComponent(PLACEMENT_CLUSTER_CS)}`,
           { replace: true }
         );
+      }
+      if (
+        stepId === "company-stats-2026-filter-fte" ||
+        stepId === "company-stats-2026-filter-internship-fte"
+      ) {
+        setShowFilter(true);
+      }
+      if (stepId === "company-stats-2026-filter") {
+        setShowFilter(false);
       }
     };
 
@@ -2109,7 +2127,10 @@ function CompanyStats() {
           </button>
 
           {showFilter && (
-            <div className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0">
+            <div
+              className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0"
+              data-tour="company-stats-2026-filter-menu"
+            >
               <button
                 onClick={() => {
                   setActiveCategory("all");
@@ -2123,6 +2144,7 @@ function CompanyStats() {
                 All
               </button>
               <button
+                data-tour="company-stats-2026-filter-fte"
                 onClick={() => {
                   setActiveCategory("fte");
                   setShowFilter(false);
@@ -2135,6 +2157,7 @@ function CompanyStats() {
                 FTE
               </button>
               <button
+                data-tour="company-stats-2026-filter-internship-fte"
                 onClick={() => {
                   setActiveCategory("internship + fte");
                   setShowFilter(false);

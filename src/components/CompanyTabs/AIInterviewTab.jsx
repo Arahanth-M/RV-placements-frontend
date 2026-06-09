@@ -3378,26 +3378,27 @@ function AIInterviewTab({
       {!isInterviewActive && (
       <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
-        <button
-          onClick={showStartPrompt ? handleStartInterview : resetInterviewState}
-          data-tour="company-ai-interview-start"
-          disabled={
-            loading ||
-            (!showStartPrompt && status === "in_progress") ||
-            interviewCompleted ||
-            (showStartPrompt && !canStart)
-          }
-          className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium ${
-            loading ||
-            (!showStartPrompt && status === "in_progress") ||
-            interviewCompleted ||
-            (showStartPrompt && !canStart)
-              ? "bg-slate-700 text-slate-400 cursor-not-allowed shadow-none"
-              : "bg-indigo-600 hover:bg-indigo-700 text-white"
-          }`}
-        >
-          {showStartPrompt ? "Start Interview" : "Reset"}
-        </button>
+        <div data-tour="company-ai-interview-start" className="shrink-0 rounded-xl p-1">
+          <button
+            onClick={showStartPrompt ? handleStartInterview : resetInterviewState}
+            disabled={
+              loading ||
+              (!showStartPrompt && status === "in_progress") ||
+              interviewCompleted ||
+              (showStartPrompt && !canStart)
+            }
+            className={`flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-sm sm:text-base font-semibold min-w-[11rem] ${
+              loading ||
+              (!showStartPrompt && status === "in_progress") ||
+              interviewCompleted ||
+              (showStartPrompt && !canStart)
+                ? "bg-slate-700 text-slate-400 cursor-not-allowed shadow-none"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white ring-2 ring-indigo-400/40"
+            }`}
+          >
+            {showStartPrompt ? "Start Interview" : "Reset"}
+          </button>
+        </div>
       </div>
       )}
 

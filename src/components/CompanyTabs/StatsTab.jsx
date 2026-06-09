@@ -273,7 +273,7 @@ function StatsTab({
 
   const placementGotInSection = useMemo(
     () => (
-    <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm">
+    <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm" data-tour="company-tab-stats-placement-got-in">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
         <div>
           <h2 className="text-xl font-semibold text-theme-accent">
@@ -492,7 +492,7 @@ function StatsTab({
         </div>
 
         <div className="grid sm:grid-cols-3 gap-3 mb-4">
-          <div className="rounded-lg border border-theme bg-theme-nav p-3">
+          <div className="rounded-lg border border-theme bg-theme-nav p-3" data-tour="company-tab-stats-got-in">
             <p className="text-xs text-theme-muted uppercase tracking-wide">Got in</p>
             <p className="text-lg font-semibold text-theme-primary tabular-nums">{summary.gotIn}</p>
           </div>
@@ -524,7 +524,7 @@ function StatsTab({
           </p>
         )}
 
-        <div className="overflow-x-auto rounded-lg border border-theme">
+        <div className="overflow-x-auto rounded-lg border border-theme" data-tour="company-tab-stats-branch-table">
           <table className="min-w-full text-sm divide-y divide-[var(--border)]">
             <thead className="bg-theme-hero">
               <tr>

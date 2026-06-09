@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { FaCheck, FaPaperPlane } from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useInterviewLock } from "../utils/InterviewLockContext";
@@ -228,6 +229,10 @@ function CompanyDetails() {
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
   const [placementYear, setPlacementYear] = useState(DEFAULT_PLACEMENT_DETAIL_YEAR);
   const [placementYearLoading, setPlacementYearLoading] = useState(false);
+  const [hasRequestedDetail, setHasRequestedDetail] = useState(false);
+  const [detailRequestLoading, setDetailRequestLoading] = useState(false);
+  const [detailRequestSubmitting, setDetailRequestSubmitting] = useState(false);
+  const [detailRequestFeedback, setDetailRequestFeedback] = useState("");
   const [openDropdownTab, setOpenDropdownTab] = useState(null);
   const detailFetchIdRef = useRef(null);
   /** Increments per fetch so older responses cannot overwrite newer ones (race when year switches quickly). */
@@ -349,6 +354,56 @@ function CompanyDetails() {
   const openTabFromNav = location.state?.openTab;
 
   useEffect(() => {
+    if (!id || !user?.email || isAdmin) {
+      setHasRequestedDetail(false);
+      setDetailRequestLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setDetailRequestLoading(true);
+    companyAPI
+      .getDetailRequestStatus(id)
+      .then((res) => {
+        if (cancelled) return;
+        setHasRequestedDetail(res.data?.hasRequested === true);
+      })
+      .catch(() => {
+        if (!cancelled) setHasRequestedDetail(false);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailRequestLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user?.email, isAdmin]);
+
+  const handleRequestMoreDetails = async () => {
+    if (!id || !user || isAdmin || hasRequestedDetail || detailRequestSubmitting) return;
+
+    setDetailRequestSubmitting(true);
+    setDetailRequestFeedback("");
+    try {
+      await companyAPI.submitDetailRequest(id, { placementYear });
+      setHasRequestedDetail(true);
+      setDetailRequestFeedback("Thanks — admins have been notified.");
+    } catch (err) {
+      if (err.response?.status === 400 && err.response?.data?.hasRequested) {
+        setHasRequestedDetail(true);
+        setDetailRequestFeedback("You already requested more details for this company.");
+        return;
+      }
+      setDetailRequestFeedback(
+        err.response?.data?.error || "Could not send request. Please try again."
+      );
+    } finally {
+      setDetailRequestSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
     if (!company || !id) return;
     if (!isCsClusterForInterview) return;
     if (openTabFromNav !== "aiinterview") return;
@@ -364,6 +419,10 @@ function CompanyDetails() {
       "company-tab-general-visit-date": "general",
       "company-tab-general-roles-ctc": "general",
       "company-tab-stats": "stats",
+      "company-tab-stats-wells-fargo": "stats",
+      "company-tab-stats-got-in": "stats",
+      "company-tab-stats-converted": "stats",
+      "company-tab-stats-branch-wise": "stats",
       "company-tab-oa": "oa",
       "company-tab-coding": "coding",
       "company-tab-interview": "interview",
@@ -377,6 +436,17 @@ function CompanyDetails() {
       if (!stepId) return;
 
       if (stepId === "company-tab-stats-summer") {
+        setActiveTab("stats");
+        setOpenDropdownTab(null);
+        return;
+      }
+
+      if (
+        stepId === "company-tab-stats-wells-fargo" ||
+        stepId === "company-tab-stats-got-in" ||
+        stepId === "company-tab-stats-converted" ||
+        stepId === "company-tab-stats-branch-wise"
+      ) {
         setActiveTab("stats");
         setOpenDropdownTab(null);
         return;
@@ -810,6 +880,57 @@ function CompanyDetails() {
                   readPlacementListContext(location, id)
                 ) || "Placement Drive"}
               </p>
+              {user && !isAdmin && (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                  <button
+                    type="button"
+                    data-tour="company-detail-request-more"
+                    onClick={handleRequestMoreDetails}
+                    disabled={
+                      detailRequestLoading ||
+                      detailRequestSubmitting ||
+                      hasRequestedDetail
+                    }
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                      hasRequestedDetail
+                        ? "border-theme bg-theme-input text-theme-muted cursor-default"
+                        : "border-theme-accent bg-theme-accent/10 text-theme-accent hover:bg-theme-accent/20 disabled:opacity-60"
+                    }`}
+                    aria-label={
+                      hasRequestedDetail
+                        ? "Details already requested"
+                        : "Request more company details from admins"
+                    }
+                  >
+                    {hasRequestedDetail ? (
+                      <>
+                        <FaCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        Request sent
+                      </>
+                    ) : detailRequestSubmitting ? (
+                      "Sending request…"
+                    ) : (
+                      <>
+                        <FaPaperPlane className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        Request more details
+                      </>
+                    )}
+                  </button>
+                  {detailRequestFeedback ? (
+                    <p className="text-sm text-theme-secondary" role="status">
+                      {detailRequestFeedback}
+                    </p>
+                  ) : hasRequestedDetail ? (
+                    <p className="text-sm text-theme-muted">
+                      Admins have been notified. You can only request once per company.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-theme-muted">
+                      Missing eligibility, roles, or visit info? Let admins know.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

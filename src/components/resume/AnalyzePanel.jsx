@@ -145,6 +145,7 @@ function AnalyzePanel({ analysis, isAnalyzing, onTipAction, previousAnalysis, sc
     <section
       className={`mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm ${isAnalyzing ? "opacity-70 pointer-events-none" : ""}`}
       aria-busy={isAnalyzing}
+      data-tour="resume-ats-score"
     >
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-theme-primary">ATS Analysis</h2>
@@ -152,7 +153,7 @@ function AnalyzePanel({ analysis, isAnalyzing, onTipAction, previousAnalysis, sc
       </div>
 
       <div className="space-y-5">
-        <div className="rounded-2xl border border-theme bg-theme-app/40 p-4 overflow-hidden">
+        <div className="rounded-2xl border border-theme bg-theme-app/40 p-4 overflow-hidden" data-tour="resume-ats-score-ring">
           <div className="flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-center">
             <div>
               <p className="text-xs uppercase tracking-wider text-theme-secondary">Overall ATS Score</p>

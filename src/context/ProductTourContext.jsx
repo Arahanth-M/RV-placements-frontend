@@ -18,9 +18,12 @@ import { RESUME_BUILDER_ENABLED } from "../utils/constants";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../constants/placementYears.js";
 import { dispatchTourPrepare } from "../utils/productTourEvents";
 
-const TOUR_EXAMPLE_COMPANY_NAME = "phonepe";
-const TOUR_MICROSOFT_COMPANY_NAME = "microsoft";
-const TOUR_MICROSOFT_INTERNSHIP_YEAR = 2026;
+const TOUR_EXAMPLE_COMPANY_NAME = "wells fargo";
+const TOUR_PPO_COMPANY_NAME = "deutsche";
+/** Fixed Microsoft company page for coding tour (summer internship PPO, CS 2026). */
+const TOUR_MICROSOFT_COMPANY_ID = "69edb0e91dafb58cccd88dc4";
+const TOUR_MICROSOFT_COMPANY_PATH = `/companies/${TOUR_MICROSOFT_COMPANY_ID}?year=2026&placementContext=summer_internship&placementCluster=cs`;
+const TOUR_PPO_INTERNSHIP_YEAR = 2026;
 
 const COMPANY_TOUR_PREPARES = new Set([
   "navigateToPhonePeCompany",
@@ -52,20 +55,20 @@ function qualifiesSummerInternshipCompany(company) {
 async function resolveMicrosoftInternshipPpoPath() {
   try {
     const res = await companyAPI.getAllCompanies({
-      year: TOUR_MICROSOFT_INTERNSHIP_YEAR,
+      year: TOUR_PPO_INTERNSHIP_YEAR,
       cluster: "cs",
     });
     const list = Array.isArray(res.data) ? res.data : [];
-    const isMicrosoft = (c) =>
+    const isPpoExample = (c) =>
       String(c?.name || "")
         .toLowerCase()
-        .includes(TOUR_MICROSOFT_COMPANY_NAME);
-    const microsoft =
-      list.find((c) => isMicrosoft(c) && qualifiesSummerInternshipCompany(c)) ||
-      list.find(isMicrosoft);
-    if (!microsoft) return null;
-    const cid = microsoft._id || microsoft.id;
-    return `/companies/${cid}?year=${TOUR_MICROSOFT_INTERNSHIP_YEAR}&placementContext=summer_internship&placementCluster=cs`;
+        .includes(TOUR_PPO_COMPANY_NAME);
+    const ppoCompany =
+      list.find((c) => isPpoExample(c) && qualifiesSummerInternshipCompany(c)) ||
+      list.find(isPpoExample);
+    if (!ppoCompany) return null;
+    const cid = ppoCompany._id || ppoCompany.id;
+    return `/companies/${cid}?year=${TOUR_PPO_INTERNSHIP_YEAR}&placementContext=summer_internship&placementCluster=cs`;
   } catch {
     return null;
   }
@@ -78,12 +81,12 @@ async function resolvePhonePeCompanyPath(preferredYear = DEFAULT_PLACEMENT_DETAI
       cluster: "cs",
     });
     const list = Array.isArray(res.data) ? res.data : [];
-    const phonePe = list.find((c) =>
+    const dreamExample = list.find((c) =>
       String(c?.name || "")
         .toLowerCase()
         .includes(TOUR_EXAMPLE_COMPANY_NAME)
     );
-    const target = phonePe || list.find((c) => c?._id || c?.id);
+    const target = dreamExample || list.find((c) => c?._id || c?.id);
     if (!target) return null;
     const cid = target._id || target.id;
     return `/companies/${cid}?year=${preferredYear}&placementContext=dream&placementCluster=cs`;
@@ -97,7 +100,7 @@ function isOnMicrosoftInternshipPage() {
   if (!window.location.search.includes("placementContext=summer_internship")) return false;
   const heading = document.querySelector("h1");
   return (
-    heading?.textContent?.toLowerCase().includes(TOUR_MICROSOFT_COMPANY_NAME) ?? false
+    heading?.textContent?.toLowerCase().includes(TOUR_PPO_COMPANY_NAME) ?? false
   );
 }
 
@@ -108,6 +111,24 @@ async function ensureMicrosoftInternshipOpenForTour() {
     return null;
   }
   return resolveMicrosoftInternshipPpoPath();
+}
+
+async function resolveMicrosoftCodingCompanyPath() {
+  return TOUR_MICROSOFT_COMPANY_PATH;
+}
+
+function isOnMicrosoftCodingPage() {
+  if (!isOnCompanyDetailsPage()) return false;
+  return window.location.pathname.includes(TOUR_MICROSOFT_COMPANY_ID);
+}
+
+/** @returns {Promise<string | null>} */
+async function ensureMicrosoftCodingOpenForTour() {
+  if (isOnMicrosoftCodingPage()) {
+    await waitForCompanyDetailsReady();
+    return null;
+  }
+  return resolveMicrosoftCodingCompanyPath();
 }
 
 function findPhonePeCardInGrid() {
@@ -136,7 +157,7 @@ function waitForPhonePeCardInGrid(timeoutMs = 10000) {
         return;
       }
       if (Date.now() - started >= timeoutMs) {
-        reject(new Error("Tour PhonePe company card not found"));
+        reject(new Error("Tour Wells Fargo company card not found"));
         return;
       }
       requestAnimationFrame(tick);
@@ -245,6 +266,33 @@ function waitForElement(selector, timeoutMs = 8000) {
   });
 }
 
+function resetTourViewport() {
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+async function focusTourTarget(step, targetElement) {
+  resetTourViewport();
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+  if (targetElement instanceof HTMLElement) {
+    targetElement.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "instant",
+    });
+  }
+  const settleMs =
+    step.id === "company-ai-interview-start"
+      ? 320
+      : step.id?.startsWith("company-")
+        ? 240
+        : 160;
+  await new Promise((r) => setTimeout(r, settleMs));
+}
+
 function clearCompanyStatsYearPersistence(userId) {
   try {
     sessionStorage.setItem("companystats_selectedYear", "");
@@ -270,13 +318,14 @@ function runDriverStep(step, index, total, targetElement) {
     const isFirst = index === 0;
     const isDarkTheme =
       document.documentElement.getAttribute("data-theme") === "dark";
+    const highlightStartInterview = step.id === "company-ai-interview-start";
     const driverObj = driver({
       showProgress: false,
       allowClose: true,
       overlayOpacity: isDarkTheme ? 0.58 : 0.5,
-      stagePadding: 14,
-      stageRadius: 14,
-      smoothScroll: true,
+      stagePadding: highlightStartInterview ? 22 : 14,
+      stageRadius: highlightStartInterview ? 16 : 14,
+      smoothScroll: false,
       nextBtnText: isLast ? "Done" : "Next",
       prevBtnText: "Back",
       doneBtnText: "Done",
@@ -374,8 +423,34 @@ export function ProductTourProvider({ children }) {
             navigate(path);
             await waitForCompanyDetailsReady();
           }
+          resetTourViewport();
           dispatchTourPrepare(step.id);
           await new Promise((r) => setTimeout(r, 650));
+        } else if (step.prepare === "navigateToMicrosoftCodingCompany") {
+          const path = await ensureMicrosoftCodingOpenForTour();
+          if (typeof path === "string" && path.startsWith("/")) {
+            navigate(path);
+            await waitForCompanyDetailsReady();
+          }
+          resetTourViewport();
+          resetTourViewport();
+          dispatchTourPrepare(step.id);
+          await new Promise((r) => setTimeout(r, 700));
+        } else if (step.prepare === "navigateToPhonePeCompanyStats") {
+          const path = await resolvePhonePeCompanyPath(DEFAULT_PLACEMENT_DETAIL_YEAR);
+          if (path) {
+            navigate(path);
+            await waitForCompanyDetailsReady();
+          } else {
+            const opened = await ensurePhonePeCompanyOpenForTour();
+            if (typeof opened === "string" && opened.startsWith("/")) {
+              navigate(opened);
+              await waitForCompanyDetailsReady();
+            }
+          }
+          resetTourViewport();
+          dispatchTourPrepare(step.id);
+          await new Promise((r) => setTimeout(r, 700));
         } else if (COMPANY_TOUR_PREPARES.has(step.prepare)) {
           let opened = null;
           if (step.prepare === "navigateToPhonePeCompany") {
@@ -400,9 +475,17 @@ export function ProductTourProvider({ children }) {
             navigate(step.route);
             await new Promise((r) => setTimeout(r, 250));
           }
+          resetTourViewport();
           dispatchTourPrepare(step.id);
           await new Promise((r) =>
-            setTimeout(r, step.prepare === "navigateToPhonePeCompany" ? 650 : 480)
+            setTimeout(
+              r,
+              step.prepare === "navigateToPhonePeCompany"
+                ? 650
+                : step.id === "company-ai-interview-start"
+                  ? 800
+                  : 480
+            )
           );
         } else if (step.prepare === "openAnalyticsTab") {
           navigate(step.route);
@@ -426,6 +509,7 @@ export function ProductTourProvider({ children }) {
           }
           // CompanyStats tour listener only runs when that route is mounted.
           navigate("/companystats");
+          resetTourViewport();
           await new Promise((r) => setTimeout(r, 180));
           dispatchTourPrepare(step.id);
           const waitMs =
@@ -436,7 +520,10 @@ export function ProductTourProvider({ children }) {
               : step.prepare === "openCompanyStatsClusterCs"
                 ? 500
                 : step.prepare === "openCompanyStatsDreamList"
-                  ? 650
+                  ? step.id === "company-stats-2026-filter-fte" ||
+                    step.id === "company-stats-2026-filter-internship-fte"
+                    ? 850
+                    : 650
                   : step.prepare === "openCompanyStatsYear2026"
                     ? 400
                     : 280;
@@ -449,6 +536,7 @@ export function ProductTourProvider({ children }) {
           const needsNavigate = !isAlreadyOnRoute(step.route);
           if (needsNavigate) {
             navigate(step.route);
+            resetTourViewport();
           }
           if (step.id?.startsWith("events-")) {
             if (needsNavigate) {
@@ -480,6 +568,12 @@ export function ProductTourProvider({ children }) {
           index += 1;
           continue;
         }
+
+        if (step.id === "company-ai-interview-start") {
+          await new Promise((r) => setTimeout(r, 280));
+        }
+
+        await focusTourTarget(step, targetElement);
 
         const action = await runDriverStep(step, index, steps.length, targetElement);
 

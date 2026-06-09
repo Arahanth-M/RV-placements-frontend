@@ -255,6 +255,13 @@ export const companyAPI = {
 
   getHelpfulStatus: (id) => API.get(`/api/companies/${id}/helpful/status`),
 
+  getDetailRequestStatus: (id) => API.get(`/api/companies/${id}/detail-request/status`),
+
+  submitDetailRequest: (id, options = {}) =>
+    API.post(`/api/companies/${id}/detail-request`, {
+      placementYear: options.placementYear,
+    }),
+
   getHelpfulStatusBatch: (companyIds) =>
     API.post('/api/companies/helpful/status/batch', { companyIds }),
 };
@@ -419,6 +426,8 @@ export const studentAPI = {
   getStudentByUSN: (usn) => API.get(`/api/students/student-data/${usn}`),
   getStudentByName: (username) => API.get(`/api/students/student-data-by-name/${encodeURIComponent(username)}`),
   getProfile: () => API.get("/api/students/profile"),
+  getProfileDiscrepancyStatus: () => API.get("/api/students/profile/discrepancy/status"),
+  submitProfileDiscrepancy: () => API.post("/api/students/profile/discrepancy"),
 };
 
 export const submissionAPI = {

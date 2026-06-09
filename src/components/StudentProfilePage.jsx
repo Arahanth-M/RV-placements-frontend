@@ -7,6 +7,8 @@ import {
   FaGraduationCap,
   FaBuilding,
   FaClipboardList,
+  FaCheck,
+  FaPaperPlane,
 } from "react-icons/fa";
 import {
   PageBackButton,
@@ -30,11 +32,15 @@ import { formatInternshipStipendDisplay } from "../utils/compensationDisplay.js"
 
 const StudentProfilePage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hasReportedDiscrepancy, setHasReportedDiscrepancy] = useState(false);
+  const [discrepancyStatusLoading, setDiscrepancyStatusLoading] = useState(false);
+  const [discrepancySubmitting, setDiscrepancySubmitting] = useState(false);
+  const [discrepancyFeedback, setDiscrepancyFeedback] = useState("");
 
   useEffect(() => {
     studentAPI
@@ -75,6 +81,56 @@ const StudentProfilePage = () => {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (!user?.email || isAdmin || error || !profileData) {
+      setHasReportedDiscrepancy(false);
+      setDiscrepancyStatusLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setDiscrepancyStatusLoading(true);
+    studentAPI
+      .getProfileDiscrepancyStatus()
+      .then((res) => {
+        if (cancelled) return;
+        setHasReportedDiscrepancy(res.data?.hasReported === true);
+      })
+      .catch(() => {
+        if (!cancelled) setHasReportedDiscrepancy(false);
+      })
+      .finally(() => {
+        if (!cancelled) setDiscrepancyStatusLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email, isAdmin, error, profileData]);
+
+  const handleReportDiscrepancies = async () => {
+    if (!user || isAdmin || hasReportedDiscrepancy || discrepancySubmitting) return;
+
+    setDiscrepancySubmitting(true);
+    setDiscrepancyFeedback("");
+    try {
+      await studentAPI.submitProfileDiscrepancy();
+      setHasReportedDiscrepancy(true);
+      setDiscrepancyFeedback("Thanks — admins have been notified.");
+    } catch (err) {
+      if (err.response?.status === 400 && err.response?.data?.hasReported) {
+        setHasReportedDiscrepancy(true);
+        setDiscrepancyFeedback("You already reported discrepancies for this profile.");
+        return;
+      }
+      setDiscrepancyFeedback(
+        err.response?.data?.error || "Could not send report. Please try again."
+      );
+    } finally {
+      setDiscrepancySubmitting(false);
+    }
+  };
 
   if (loading) {
     return <StudentProfilePageShimmer onBack={() => navigate(-1)} />;
@@ -194,10 +250,61 @@ const StudentProfilePage = () => {
             <div className={`bg-theme-accent rounded-full p-3 ${user?.picture ? "hidden" : ""}`}>
               <FaUser className="w-6 h-6 text-white" />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0 flex-1">
               <h1 className="text-2xl sm:text-3xl font-bold text-theme-primary">Student Profile</h1>
               {user?.username && (
                 <span className="text-theme-secondary text-sm">{user.username}</span>
+              )}
+              {user && !isAdmin && (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                  <button
+                    type="button"
+                    data-tour="student-profile-discrepancy"
+                    onClick={handleReportDiscrepancies}
+                    disabled={
+                      discrepancyStatusLoading ||
+                      discrepancySubmitting ||
+                      hasReportedDiscrepancy
+                    }
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                      hasReportedDiscrepancy
+                        ? "border-theme bg-theme-input text-theme-muted cursor-default"
+                        : "border-theme-accent bg-theme-accent/10 text-theme-accent hover:bg-theme-accent/20 disabled:opacity-60"
+                    }`}
+                    aria-label={
+                      hasReportedDiscrepancy
+                        ? "Discrepancies already reported"
+                        : "Report discrepancies in your placement profile to admins"
+                    }
+                  >
+                    {hasReportedDiscrepancy ? (
+                      <>
+                        <FaCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        Request sent
+                      </>
+                    ) : discrepancySubmitting ? (
+                      "Sending request…"
+                    ) : (
+                      <>
+                        <FaPaperPlane className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        Discrepancies found
+                      </>
+                    )}
+                  </button>
+                  {discrepancyFeedback ? (
+                    <p className="text-sm text-theme-secondary" role="status">
+                      {discrepancyFeedback}
+                    </p>
+                  ) : hasReportedDiscrepancy ? (
+                    <p className="text-sm text-theme-muted">
+                      Admins have been notified. You can only request once.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-theme-muted">
+                      Wrong company, offer, or stipend? Let admins know.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>

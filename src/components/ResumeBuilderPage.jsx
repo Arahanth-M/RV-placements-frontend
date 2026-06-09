@@ -783,6 +783,7 @@ export default function ResumeBuilderPage() {
             </button>
             <button
               type="button"
+              data-tour="resume-ats-run"
               className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-theme-primary disabled:opacity-60"
               onClick={runResumeAnalysis}
               disabled={isSaving || isExporting || isAnalyzing}
@@ -814,7 +815,19 @@ export default function ResumeBuilderPage() {
             previousAnalysis={previousAnalysis}
             scoreHistory={scoreHistory}
           />
-        ) : null}
+        ) : (
+          <section
+            data-tour="resume-ats-score"
+            className="mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
+          >
+            <h2 className="text-lg font-semibold text-theme-primary">ATS Analysis</h2>
+            <p className="mt-1 text-sm text-theme-secondary">
+              Your Overall ATS Score rates how recruiter-friendly your resume is — completeness,
+              structure, impact, and professionalism. Tap Run ATS Analysis above to generate your
+              score, circular gauge, and improvement checklist.
+            </p>
+          </section>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="space-y-4" data-tour="resume-editor">

@@ -1,4 +1,4 @@
-export const PRODUCT_TOUR_VERSION = 4;
+export const PRODUCT_TOUR_VERSION = 10;
 
 const COMPLETED_KEY = `placementProductTourCompleted_v${PRODUCT_TOUR_VERSION}`;
 const PROMPT_DISMISSED_KEY = `placementProductTourPromptDismissed_v${PRODUCT_TOUR_VERSION}`;

@@ -1846,6 +1846,13 @@ html, body, #root {
   z-index: 10001 !important;
 }
 
+#driver-highlighted-element-stage [data-tour="company-ai-interview-start"] button:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 8px 24px color-mix(in srgb, var(--accent) 35%, transparent) !important;
+}
+
 [data-theme="dark"] .placement-tour-popover.driver-popover {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
   box-shadow:
