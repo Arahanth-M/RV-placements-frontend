@@ -421,8 +421,8 @@ const Header = () => {
   const mobileNavLinkClass =
     "flex w-full items-center gap-3 px-4 py-3.5 text-base font-semibold text-theme-primary border-b border-theme hover:bg-theme-hero transition-colors";
 
-  const videoTourIconButtonClass =
-    "shrink-0 inline-flex items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50";
+  const videoTourButtonBaseClass =
+    "shrink-0 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50";
 
   return (
     <div ref={headerShellRef} className="sticky top-0 z-50 mb-2">
@@ -453,7 +453,7 @@ const Header = () => {
               type="button"
               disabled={isRunning}
               onClick={() => startTour()}
-              className={`${videoTourIconButtonClass} hidden h-9 gap-1.5 px-3.5 text-xs font-semibold md:inline-flex sm:h-10`}
+              className={`${videoTourButtonBaseClass} hidden h-9 gap-1.5 px-3.5 text-xs font-semibold md:inline-flex sm:h-10`}
               title="Start video tour"
               aria-label="Start video tour"
             >
@@ -475,7 +475,7 @@ const Header = () => {
                 type="button"
                 disabled={isRunning}
                 onClick={() => startTour()}
-                className={`${videoTourIconButtonClass} h-9 w-9 p-0`}
+                className={`${videoTourButtonBaseClass} inline-flex h-9 w-9 p-0 md:hidden`}
                 title={isRunning ? "Tour in progress" : "Start video tour"}
                 aria-label={isRunning ? "Tour in progress" : "Start video tour"}
               >
