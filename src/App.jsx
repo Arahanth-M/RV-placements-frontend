@@ -33,6 +33,7 @@ import ResumeBuilderPage from "./components/ResumeBuilderPage";
 import SPCDashboard from "./components/SPCDashboard";
 import SPCPlacementForm from "./components/SPCPlacementForm";
 import SPCConversionForm from "./components/SPCConversionForm";
+import GeneralStatsPage from "./components/GeneralStats/GeneralStatsPage";
 import { RESUME_BUILDER_ENABLED } from "./utils/constants";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
@@ -61,6 +62,7 @@ function AppShell() {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/companystats" element={<CompanyStats />} />
           <Route path="/category" element={<CompanyStats />} />
+          <Route path="/general-stats" element={<GeneralStatsPage />} />
           <Route
             path="/leaderboard"
             element={

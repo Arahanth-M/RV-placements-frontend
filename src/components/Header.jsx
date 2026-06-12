@@ -31,6 +31,7 @@ import { FaRoute } from "react-icons/fa";
 
 const primaryLinks = [
   { label: "Home", path: "/" },
+  { label: "General Stats", path: "/general-stats" },
   { label: "Events", path: "/events" },
   { label: "Contact", path: "/contact" },
 ];

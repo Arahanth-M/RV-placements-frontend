@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { BASE_URL } from "../utils/constants";
+import { resolveLogoDomainFromName } from "../utils/companyLogoDomains";
 
 function getCompanyInitials(name) {
   if (!name || !name.trim()) return "XX";
@@ -52,6 +53,8 @@ function isSocialProfileDomain(domain) {
 
 /** Derive a best-effort domain from company name (e.g. "Google" -> "google.com"). */
 function domainFromName(name) {
+  const override = resolveLogoDomainFromName(name);
+  if (override) return override;
   if (!name || typeof name !== "string") return "";
   const slug = name.trim().toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
   return slug ? `${slug}.com` : "";

@@ -52,12 +52,14 @@ export function PageHeroHeader({ children, subtitle, subtitleClassName = "", sub
       <h1 className="text-theme-primary" style={PAGE_HERO_TITLE_STYLE}>
         {children}
       </h1>
-      <p
-        className={subtitleClassName}
-        style={{ ...PAGE_HERO_SUBTITLE_STYLE, maxWidth: subtitleMaxWidth }}
-      >
-        {subtitle}
-      </p>
+      {subtitle ? (
+        <p
+          className={subtitleClassName}
+          style={{ ...PAGE_HERO_SUBTITLE_STYLE, maxWidth: subtitleMaxWidth }}
+        >
+          {subtitle}
+        </p>
+      ) : null}
     </div>
   );
 }

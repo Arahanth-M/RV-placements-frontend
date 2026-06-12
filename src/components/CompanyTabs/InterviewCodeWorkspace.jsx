@@ -50,6 +50,35 @@ const editorLightChrome = EditorView.theme(
   { dark: false }
 );
 
+const editorEmbeddedChrome = EditorView.theme(
+  {
+    "&": {
+      backgroundColor: "transparent",
+      color: "var(--text-primary)",
+      height: "100%",
+    },
+    ".cm-scroller": {
+      fontFamily:
+        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+      overflow: "auto",
+    },
+    ".cm-content": { caretColor: "var(--accent)" },
+    ".cm-gutters": {
+      backgroundColor: "color-mix(in srgb, var(--input-bg) 85%, #000 15%)",
+      color: "var(--text-muted)",
+      border: "none",
+      borderRight: "1px solid var(--input-border)",
+    },
+    ".cm-activeLineGutter": { backgroundColor: "transparent" },
+    "&.cm-focused .cm-cursor": { borderLeftColor: "var(--accent)" },
+    "&.cm-focused .cm-selectionBackground, &::selection .cm-selectionBackground, .cm-selectionBackground": {
+      background: "rgba(99, 102, 241, 0.22) !important",
+    },
+    ".cm-activeLine": { backgroundColor: "rgba(99, 102, 241, 0.06)" },
+  },
+  { dark: false }
+);
+
 /**
  * IDE-style editor for mock interview coding answers (syntax-highlighted; theme follows app light/dark).
  */
@@ -61,6 +90,7 @@ export default function InterviewCodeWorkspace({
   placeholder = "// Write your solution here…",
   minHeightPx = 280,
   onSubmitShortcut,
+  embedded = false,
 }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -89,11 +119,11 @@ export default function InterviewCodeWorkspace({
       bracketMatching(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       keymap.of([indentWithTab, ...defaultKeymap]),
-      isDark ? oneDark : editorLightChrome,
+      isDark ? oneDark : embedded ? editorEmbeddedChrome : editorLightChrome,
     ];
     if (submitMap) base.push(submitMap);
     return base;
-  }, [language, isDark, onSubmitShortcut]);
+  }, [language, isDark, onSubmitShortcut, embedded]);
 
   const onChangeDoc = useCallback(
     (doc) => {
@@ -101,6 +131,25 @@ export default function InterviewCodeWorkspace({
     },
     [onChange]
   );
+
+  if (embedded) {
+    return (
+      <div className="icp-codemirror-embedded h-full min-h-[220px] flex flex-col">
+        <CodeMirror
+          value={value}
+          height={`${Math.max(220, minHeightPx)}px`}
+          theme={isDark ? "dark" : "light"}
+          extensions={extensions}
+          onChange={onChangeDoc}
+          editable={!disabled}
+          placeholder={placeholder}
+          basicSetup={false}
+          className="text-[13px] leading-[1.55] flex-1 min-h-[220px] [&_.cm-editor]:min-h-[220px] [&_.cm-scroller]:min-h-[220px]"
+          aria-label="Coding interview solution"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="ai-code-workspace rounded-xl overflow-hidden border border-theme-input shadow-inner">

@@ -428,7 +428,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     title: "Configure your mock interview",
     requiresAuth: true,
     description:
-      "Choose a placement slot, pick 1–4 rounds (DSA, System Design, SQL, CS Fundamentals, HR), and set difficulty for each. Drag rounds to reorder — at least one HR round is required.",
+      "Pick 1–4 rounds (DSA, System Design, SQL, CS Fundamentals, HR), and set difficulty for each. Drag rounds to reorder — at least one HR round is required.",
     side: "top",
     align: "center",
   },
