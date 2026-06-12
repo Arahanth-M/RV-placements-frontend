@@ -530,25 +530,49 @@ const AdminDashboard = () => {
       return;
     }
 
+    const sid = String(submissionId);
+    const pendingSnapshot = submissions.find((s) => String(s._id) === sid) || null;
+    const pendingPage = subPendingMeta.page;
+    const approvedPage = subApprovedMeta.page;
+
+    setSubmissions((prev) => prev.filter((s) => String(s._id) !== sid));
+    setSubPendingMeta((prev) => ({
+      ...prev,
+      total: Math.max(0, (prev.total || 0) - 1),
+    }));
+
     try {
       setApprovingIds(prev => new Set(prev).add(submissionId));
-      
-      await adminAPI.approveSubmission(submissionId, withEnhanced ? { mergeContent } : {});
 
-      const statsResponse = await adminAPI.getStats();
-      setStats(statsResponse.data);
-      await loadPendingSubmissionsList(subPendingMeta.page);
-      await loadApprovedSubmissionsList(subApprovedMeta.page);
+      await adminAPI.approveSubmission(submissionId, withEnhanced ? { mergeContent } : {});
 
       alert('Submission approved successfully!');
       setSubmissionEnhancedContent(null);
       setSubmissionAnswerGenerated(false);
       setSubmissionEnhanceError('');
-      if (selectedSubmission && String(selectedSubmission._id) === String(submissionId)) {
+      if (selectedSubmission && String(selectedSubmission._id) === sid) {
         setShowSubmissionModal(false);
         setSelectedSubmission(null);
       }
+
+      void Promise.all([
+        adminAPI.getStats().then((statsResponse) => setStats(statsResponse.data)),
+        loadPendingSubmissionsList(pendingPage),
+        loadApprovedSubmissionsList(approvedPage),
+      ]).catch((refreshErr) => {
+        console.error('Error refreshing after submission approval:', refreshErr);
+      });
     } catch (err) {
+      if (pendingSnapshot) {
+        setSubmissions((prev) => {
+          if (prev.some((s) => String(s._id) === sid)) return prev;
+          return [pendingSnapshot, ...prev];
+        });
+        setSubPendingMeta((prev) => ({
+          ...prev,
+          total: (prev.total || 0) + 1,
+        }));
+      }
       console.error('Error approving submission:', err);
       console.error('Error response:', err.response?.data);
       
@@ -842,6 +866,7 @@ const AdminDashboard = () => {
       return;
     }
 
+    let bulkSnapshot = [];
     try {
       setApprovingAll(true);
       let bulkList = submissions;
@@ -852,45 +877,81 @@ const AdminDashboard = () => {
         bulkList = bulkRes.data.items || [];
       }
 
-      let successCount = 0;
-      let failCount = 0;
-      const errors = [];
+      bulkSnapshot = bulkList;
+      const bulkIdSet = new Set(bulkSnapshot.map((s) => String(s._id)));
+      const pendingPage = subPendingMeta.page;
+      const approvedPage = subApprovedMeta.page;
 
-      for (const submission of bulkList) {
-        try {
-          setApprovingIds(prev => new Set(prev).add(submission._id));
-          await adminAPI.approveSubmission(submission._id);
+      setSubmissions((prev) => prev.filter((s) => !bulkIdSet.has(String(s._id))));
+      setSubPendingMeta((prev) => ({
+        ...prev,
+        total: Math.max(0, (prev.total || 0) - bulkSnapshot.length),
+      }));
 
-          successCount++;
-        } catch (err) {
-          console.error(`Error approving submission ${submission._id}:`, err);
-          failCount++;
-          const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unknown error';
-          errors.push(`Submission ${submission.companyId?.name || submission._id}: ${errorMsg}`);
-        } finally {
-          setApprovingIds(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(submission._id);
-            return newSet;
+      const { data } = await adminAPI.approveSubmissionsBatch([...bulkIdSet]);
+      const successCount = Number(data?.successCount) || 0;
+      const failCount = Number(data?.failCount) || 0;
+      const resultRows = Array.isArray(data?.results) ? data.results : [];
+
+      if (failCount > 0) {
+        const failedIds = new Set(
+          resultRows.filter((row) => row && row.ok === false).map((row) => String(row.submissionId))
+        );
+        const restoreRows = bulkSnapshot.filter((s) => failedIds.has(String(s._id)));
+        if (restoreRows.length > 0) {
+          setSubmissions((prev) => {
+            const existing = new Set(prev.map((s) => String(s._id)));
+            const toAdd = restoreRows.filter((s) => !existing.has(String(s._id)));
+            return toAdd.length ? [...toAdd, ...prev] : prev;
           });
+          setSubPendingMeta((prev) => ({
+            ...prev,
+            total: (prev.total || 0) + restoreRows.length,
+          }));
         }
       }
 
-      const statsResponse = await adminAPI.getStats();
-      setStats(statsResponse.data);
-      await loadPendingSubmissionsList(subPendingMeta.page);
-      await loadApprovedSubmissionsList(subApprovedMeta.page);
+      void Promise.all([
+        adminAPI.getStats().then((statsResponse) => setStats(statsResponse.data)),
+        loadPendingSubmissionsList(pendingPage),
+        loadApprovedSubmissionsList(approvedPage),
+      ]).catch((refreshErr) => {
+        console.error('Error refreshing after batch approval:', refreshErr);
+      });
 
       if (failCount === 0) {
         alert(`Successfully approved all ${successCount} submission(s)!`);
       } else {
+        const errors = resultRows
+          .filter((row) => row && row.ok === false)
+          .map((row) => {
+            const match = bulkSnapshot.find((s) => String(s._id) === String(row.submissionId));
+            const label = match?.companyId?.name || row.submissionId;
+            return `Submission ${label}: ${row.error || 'Unknown error'}`;
+          });
         const errorSummary = errors.slice(0, 5).join('\n');
         const moreErrors = errors.length > 5 ? `\n... and ${errors.length - 5} more error(s)` : '';
         alert(`Approved ${successCount} submission(s), but ${failCount} failed:\n\n${errorSummary}${moreErrors}`);
       }
     } catch (err) {
       console.error('Error in bulk approval:', err);
-      alert('An error occurred during bulk approval. Please try again.');
+      if (bulkSnapshot.length > 0) {
+        setSubmissions((prev) => {
+          const toAdd = bulkSnapshot.filter((s) => !prev.some((row) => String(row._id) === String(s._id)));
+          return toAdd.length ? [...toAdd, ...prev] : prev;
+        });
+        setSubPendingMeta((prev) => ({
+          ...prev,
+          total: (prev.total || 0) + bulkSnapshot.length,
+        }));
+      }
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.details ||
+          err?.response?.data?.message ||
+          'An error occurred during bulk approval. Please try again.'
+      );
+      void loadPendingSubmissionsList(subPendingMeta.page);
     } finally {
       setApprovingAll(false);
     }

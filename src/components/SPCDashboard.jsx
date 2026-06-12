@@ -692,16 +692,40 @@ export default function SPCDashboard() {
       : "Approve this submission? This updates the company database.";
     if (!window.confirm(confirmMsg)) return;
     const sid = String(id);
+    const listSnapshot = modList.find((row) => String(row._id) === sid) || null;
+    const listPage = modMeta.page;
+
+    setModList((prev) => prev.filter((row) => String(row._id) !== sid));
+    setModMeta((prev) => ({
+      ...prev,
+      total: Math.max(0, (prev.total || 0) - 1),
+    }));
+    setPendingCount((n) => Math.max(0, n - 1));
+
     setModApproving((prev) => new Set(prev).add(sid));
     try {
       await adminAPI.approveSubmission(id, withEnhanced ? { mergeContent } : {});
-      await loadModList(modMeta.page);
+
       setModSelected((prev) => (prev && String(prev._id) === sid ? null : prev));
       setModEnhancedContent(null);
       setModAnswerGenerated(false);
       setModEnhanceError("");
-      setPendingCount((n) => Math.max(0, n - 1));
+
+      void loadModList(listPage).catch((refreshErr) => {
+        console.error("Error refreshing SPC mod list after approval:", refreshErr);
+      });
     } catch (e) {
+      if (listSnapshot) {
+        setModList((prev) => {
+          if (prev.some((row) => String(row._id) === sid)) return prev;
+          return [listSnapshot, ...prev];
+        });
+        setModMeta((prev) => ({
+          ...prev,
+          total: (prev.total || 0) + 1,
+        }));
+        setPendingCount((n) => n + 1);
+      }
       const msg =
         e?.response?.data?.details ||
         e?.response?.data?.error ||

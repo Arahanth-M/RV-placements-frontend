@@ -321,6 +321,8 @@ export const adminAPI = {
   addAnswerToSubmission: (id) => API.post(`/api/admin/submissions/${id}/add-answer`),
   approveSubmission: (id, body) =>
     API.post(`/api/admin/submissions/${id}/approve`, body != null ? body : {}),
+  approveSubmissionsBatch: (ids) =>
+    API.post('/api/admin/submissions/approve-batch', { ids: Array.isArray(ids) ? ids : [] }),
   rejectSubmission: (id) => API.delete(`/api/admin/submissions/${id}/reject`),
   deleteApprovedSubmission: (id) => API.delete(`/api/admin/submissions/${id}/delete`),
   getCompanies: (config) => API.get('/api/admin/companies', config),
