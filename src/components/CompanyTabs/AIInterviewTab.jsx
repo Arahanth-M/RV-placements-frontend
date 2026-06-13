@@ -103,6 +103,204 @@ const toDisplayRelevance = (value) => {
   return ["relevant", "irrelevant"].includes(safe) ? safe : null;
 };
 
+/** Parse MCQ feedback from API trace or legacy feedback string. */
+function buildMcqFeedbackFromStatus(st) {
+  const api = st?.lastMcqFeedback;
+  if (api && typeof api === "object") {
+    return {
+      selectedOptionId: String(api.selectedOptionId || "").trim().toUpperCase() || null,
+      correctOptionId: String(api.correctOptionId || "").trim().toUpperCase() || null,
+      selectedOptionText: String(api.selectedOptionText || "").trim(),
+      correctOptionText: String(api.correctOptionText || "").trim(),
+      reason: String(api.reason || "").trim(),
+      explanation: String(api.explanation || "").trim(),
+      verdict: String(api.verdict || st?.lastCorrectness || "").trim().toLowerCase() || null,
+    };
+  }
+
+  const feedback = String(st?.lastFeedback || "").trim();
+  if (!feedback) return null;
+  const isMcqLike =
+    /Correct \([A-F]\)/i.test(feedback) ||
+    /You selected [A-F]/i.test(feedback) ||
+    /correct answer is [A-F]/i.test(feedback);
+  if (!isMcqLike) return null;
+
+  const selectedOptionId =
+    String(st?.lastAnswer || "")
+      .trim()
+      .toUpperCase() ||
+    feedback.match(/You selected ([A-F])/i)?.[1]?.toUpperCase() ||
+    null;
+  const correctOptionId =
+    feedback.match(/correct answer is ([A-F])/i)?.[1]?.toUpperCase() ||
+    feedback.match(/Correct \(([A-F])\)/i)?.[1]?.toUpperCase() ||
+    null;
+
+  let reason = "";
+  let explanation = "";
+  if (/^Incorrect\./i.test(feedback)) {
+    const tail = feedback.split(/correct answer is [A-F](?: \([^)]*\))?\.\s*/i)[1];
+    reason = String(tail || "").trim();
+  } else if (/^Correct \(/i.test(feedback)) {
+    explanation = feedback.replace(/^Correct \([A-F]\)\.\s*/i, "").trim();
+  }
+
+  return {
+    selectedOptionId,
+    correctOptionId,
+    selectedOptionText: "",
+    correctOptionText: "",
+    reason,
+    explanation,
+    verdict: String(st?.lastCorrectness || "").trim().toLowerCase() || null,
+  };
+}
+
+function McqOptionGrid({ options, selectedOptionId, onSelect, disabled, namePrefix }) {
+  const safeOptions = (Array.isArray(options) ? options : [])
+    .map((opt) => ({
+      id: String(opt?.id || "").trim().toUpperCase(),
+      text: String(opt?.text || "").trim(),
+    }))
+    .filter((opt) => opt.id && opt.text);
+
+  if (safeOptions.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {safeOptions.map((opt) => {
+        const checked = selectedOptionId === opt.id;
+        const inputId = `${namePrefix}-${opt.id}`;
+        return (
+          <label
+            key={opt.id}
+            htmlFor={inputId}
+            className={[
+              "relative flex min-h-[5.5rem] cursor-pointer flex-col rounded-xl border-2 p-4 pt-12 transition-all duration-150",
+              checked
+                ? "border-theme-accent bg-theme-accent/12 shadow-[0_0_0_1px_var(--accent)]"
+                : "border-theme bg-theme-input hover:border-theme-accent/55 hover:bg-theme-card/40",
+              disabled ? "pointer-events-none opacity-60" : "",
+            ].join(" ")}
+          >
+            <input
+              id={inputId}
+              type="radio"
+              name={namePrefix}
+              value={opt.id}
+              checked={checked}
+              onChange={() => onSelect(opt.id)}
+              disabled={disabled}
+              className="sr-only"
+            />
+            <span
+              className={[
+                "absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg border-2 text-sm font-bold tabular-nums",
+                checked
+                  ? "border-theme-accent bg-theme-accent text-white"
+                  : "border-theme bg-theme-card text-theme-primary",
+              ].join(" ")}
+              aria-hidden
+            >
+              {opt.id}
+            </span>
+            <span className="text-sm leading-snug text-theme-primary">{opt.text}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function McqAnswerFeedbackPanel({ mcqFeedback, correctness, fallbackFeedback = "" }) {
+  if (!mcqFeedback) return null;
+
+  const verdict = String(mcqFeedback.verdict || correctness || "").toLowerCase();
+  const isCorrect = verdict === "correct";
+  const isIncorrect = verdict === "incorrect";
+  const selectedId = String(mcqFeedback.selectedOptionId || "").trim().toUpperCase();
+  const correctId = String(mcqFeedback.correctOptionId || "").trim().toUpperCase();
+  const reason = String(mcqFeedback.reason || "").trim();
+  const explanation = String(mcqFeedback.explanation || "").trim();
+  const selectedText = String(mcqFeedback.selectedOptionText || "").trim();
+  const correctText = String(mcqFeedback.correctOptionText || "").trim();
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={[
+          "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide",
+          isCorrect
+            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+            : isIncorrect
+              ? "border-amber-500/45 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+              : "border-theme bg-theme-input text-theme-secondary",
+        ].join(" ")}
+      >
+        {isCorrect ? "Correct answer" : isIncorrect ? "Incorrect answer" : "MCQ result"}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border-2 border-theme bg-theme-input p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-muted mb-2">
+            Your choice
+          </p>
+          {selectedId ? (
+            <>
+              <p className="text-lg font-bold text-theme-primary tabular-nums">Option {selectedId}</p>
+              {selectedText ? (
+                <p className="mt-1 text-sm text-theme-secondary leading-snug">{selectedText}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-theme-muted">No option selected</p>
+          )}
+        </div>
+        <div className="rounded-xl border-2 border-theme-accent/40 bg-theme-accent/5 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-muted mb-2">
+            Correct answer
+          </p>
+          {correctId ? (
+            <>
+              <p className="text-lg font-bold text-theme-accent tabular-nums">Option {correctId}</p>
+              {correctText ? (
+                <p className="mt-1 text-sm text-theme-secondary leading-snug">{correctText}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-theme-muted">—</p>
+          )}
+        </div>
+      </div>
+
+      {isIncorrect && reason ? (
+        <div className="rounded-xl border-2 border-amber-500/35 bg-amber-500/8 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200 mb-2">
+            Why this was wrong
+          </p>
+          <p className="text-sm sm:text-base text-theme-primary leading-relaxed">{reason}</p>
+        </div>
+      ) : null}
+
+      {explanation && (isCorrect || !reason || explanation !== reason) ? (
+        <div className="rounded-xl border border-theme bg-theme-input/80 px-4 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-muted mb-2">
+            {isCorrect ? "Explanation" : "Learn more"}
+          </p>
+          <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{explanation}</p>
+        </div>
+      ) : null}
+
+      {!reason && !explanation && String(fallbackFeedback || "").trim() ? (
+        <p className="text-sm text-theme-secondary leading-relaxed whitespace-pre-wrap">
+          {fallbackFeedback}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** DSA / code-execution round summary stats from backend `roundFeedback.dsaRoundStats`. */
 const normalizeDsaRoundStatsFromFeedback = (raw) => {
   if (!raw || typeof raw !== "object") return null;
@@ -1517,6 +1715,56 @@ function AIInterviewTab({
     setInterviewLimitOpen(true);
   }, []);
 
+  /** Sync coding / MCQ / topic metadata for the active question from interview-status. */
+  const applyQuestionMetaFromStatus = useCallback((st) => {
+    if (!st || typeof st !== "object") return;
+
+    if (Object.prototype.hasOwnProperty.call(st, "visibleTestCases")) {
+      setVisibleTestCases(Array.isArray(st.visibleTestCases) ? st.visibleTestCases : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "supportedCodingLanguages")) {
+      setSupportedCodingLanguages(filterInterviewUiCodingLanguages(st.supportedCodingLanguages));
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "codingFunctionSignature")) {
+      setCodingFunctionSignature(String(st.codingFunctionSignature || "").trim());
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "codingStarterCode")) {
+      setCodingStarterCode(String(st.codingStarterCode ?? ""));
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "codingQuestionId")) {
+      setCodingQuestionId(String(st.codingQuestionId || "").trim());
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "questionTopics")) {
+      setQuestionTopics(Array.isArray(st.questionTopics) ? st.questionTopics : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "questionSubtopics")) {
+      setQuestionSubtopics(Array.isArray(st.questionSubtopics) ? st.questionSubtopics : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "questionCompanyTags")) {
+      setQuestionCompanyTags(Array.isArray(st.questionCompanyTags) ? st.questionCompanyTags : []);
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "questionComplexity")) {
+      setQuestionComplexity(normalizeQuestionComplexityPayload(st.questionComplexity));
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "questionUrl")) {
+      setQuestionUrl(String(st.questionUrl || "").trim());
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "expectedAnswerMode")) {
+      const mode = String(st.expectedAnswerMode || "conceptual");
+      setExpectedAnswerMode(mode);
+      if (mode.toLowerCase() !== "mcq") {
+        setMcqPayload(null);
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(st, "mcq")) {
+      const nextMcq =
+        st.mcq && typeof st.mcq === "object" && Array.isArray(st.mcq.options)
+          ? st.mcq
+          : null;
+      setMcqPayload(nextMcq);
+    }
+  }, []);
+
   const handleStartInterview = async () => {
     if (interviewLimitReached) {
       openInterviewLimitModal(interviewLimitMessage);
@@ -1543,6 +1791,9 @@ function AIInterviewTab({
     setRoundTransitionMessage("");
     setRoundFeedbackView(null);
     setPendingQuestionFeedback(null);
+    setExpectedAnswerMode("conceptual");
+    setMcqPayload(null);
+    setSelectedMcqOptionId("");
 
     try {
       const { data } = await interviewAPI.startInterview({
@@ -1586,49 +1837,10 @@ function AIInterviewTab({
         setVisibleTestCases(Array.isArray(data.visibleTestCases) ? data.visibleTestCases : []);
       }
       setPreviewExecutionResult(null);
-      // Hydrate testcase/sql preview metadata immediately for first displayed question.
       if (data.sessionId) {
         try {
           const { data: freshStatus } = await interviewAPI.getInterviewStatus(data.sessionId);
-          setVisibleTestCases(
-            Array.isArray(freshStatus?.visibleTestCases) ? freshStatus.visibleTestCases : []
-          );
-          if (
-            Array.isArray(freshStatus?.supportedCodingLanguages) &&
-            freshStatus.supportedCodingLanguages.length > 0
-          ) {
-            setSupportedCodingLanguages(
-              filterInterviewUiCodingLanguages(freshStatus.supportedCodingLanguages)
-            );
-          }
-          if (typeof freshStatus?.codingFunctionSignature === "string") {
-            setCodingFunctionSignature(freshStatus.codingFunctionSignature.trim());
-          }
-          if (typeof freshStatus?.codingStarterCode === "string") {
-            setCodingStarterCode(freshStatus.codingStarterCode);
-          }
-          if (typeof freshStatus?.codingQuestionId === "string") {
-            setCodingQuestionId(String(freshStatus.codingQuestionId || "").trim());
-          }
-          if (Array.isArray(freshStatus?.questionTopics)) {
-            setQuestionTopics(freshStatus.questionTopics);
-          } else {
-            setQuestionTopics([]);
-          }
-          if (Array.isArray(freshStatus?.questionSubtopics)) {
-            setQuestionSubtopics(freshStatus.questionSubtopics);
-          } else {
-            setQuestionSubtopics([]);
-          }
-          if (Array.isArray(freshStatus?.questionCompanyTags)) {
-            setQuestionCompanyTags(freshStatus.questionCompanyTags);
-          } else {
-            setQuestionCompanyTags([]);
-          }
-          setQuestionComplexity(normalizeQuestionComplexityPayload(freshStatus?.questionComplexity));
-          if (Object.prototype.hasOwnProperty.call(freshStatus || {}, "questionUrl")) {
-            setQuestionUrl(String(freshStatus.questionUrl || "").trim());
-          }
+          applyQuestionMetaFromStatus(freshStatus);
           setCodingLanguage("python");
         } catch (statusErr) {
           console.warn("[AIInterviewTab] immediate status hydrate failed", {
@@ -1683,45 +1895,7 @@ function AIInterviewTab({
     if (typeof st.currentQuestionNumberWithinRound === "number") {
       setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
     }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "visibleTestCases")) {
-      setVisibleTestCases(Array.isArray(st.visibleTestCases) ? st.visibleTestCases : []);
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "supportedCodingLanguages")) {
-      setSupportedCodingLanguages(
-        filterInterviewUiCodingLanguages(st.supportedCodingLanguages)
-      );
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "codingFunctionSignature")) {
-      setCodingFunctionSignature(String(st.codingFunctionSignature || "").trim());
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "codingStarterCode")) {
-      setCodingStarterCode(String(st.codingStarterCode ?? ""));
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "codingQuestionId")) {
-      setCodingQuestionId(String(st.codingQuestionId || "").trim());
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "questionTopics")) {
-      setQuestionTopics(Array.isArray(st.questionTopics) ? st.questionTopics : []);
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "questionSubtopics")) {
-      setQuestionSubtopics(Array.isArray(st.questionSubtopics) ? st.questionSubtopics : []);
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "questionCompanyTags")) {
-      setQuestionCompanyTags(Array.isArray(st.questionCompanyTags) ? st.questionCompanyTags : []);
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "questionComplexity")) {
-      setQuestionComplexity(normalizeQuestionComplexityPayload(st.questionComplexity));
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "expectedAnswerMode")) {
-      setExpectedAnswerMode(String(st.expectedAnswerMode || "conceptual"));
-    }
-    if (Object.prototype.hasOwnProperty.call(st || {}, "mcq")) {
-      const nextMcq =
-        st.mcq && typeof st.mcq === "object" && Array.isArray(st.mcq.options)
-          ? st.mcq
-          : null;
-      setMcqPayload(nextMcq);
-    }
+    applyQuestionMetaFromStatus(st);
 
     if (st.roundCompleted) {
       roundCompletedAtRef.current = Date.now();
@@ -1775,6 +1949,7 @@ function AIInterviewTab({
             score: typeof st.lastScore === "number" ? st.lastScore : null,
             correctness: toDisplayCorrectness(st.lastCorrectness),
             relevance: toDisplayRelevance(st.lastRelevance),
+            mcqFeedback: buildMcqFeedbackFromStatus(st),
             codeExecutionSummary: isCodeExecutionSummaryPayload(codeExecSummaryRound)
               ? codeExecSummaryRound
               : null,
@@ -1822,6 +1997,7 @@ function AIInterviewTab({
           score: typeof st.lastScore === "number" ? st.lastScore : null,
           correctness: toDisplayCorrectness(st.lastCorrectness),
           relevance: toDisplayRelevance(st.lastRelevance),
+          mcqFeedback: buildMcqFeedbackFromStatus(st),
           codeExecutionSummary: isCodeExecutionSummaryPayload(codeExecSummaryNext)
             ? codeExecSummaryNext
             : null,
@@ -1850,7 +2026,7 @@ function AIInterviewTab({
     }
 
     // Resume intentionally disabled.
-  }, []);
+  }, [applyQuestionMetaFromStatus]);
 
   const codingLanguageOptions = useMemo(() => {
     return INTERVIEW_UI_CODING_LANGUAGES.filter((id) => supportedCodingLanguages.includes(id)).map(
@@ -2275,6 +2451,7 @@ function AIInterviewTab({
                 score: typeof data.score === "number" ? data.score : null,
                 correctness: toDisplayCorrectness(data.correctness),
                 relevance: toDisplayRelevance(data.relevance),
+                mcqFeedback: buildMcqFeedbackFromStatus(data),
                 codeExecutionSummary: isCodeExecutionSummaryPayload(codeExecSummaryData)
                   ? codeExecSummaryData
                   : null,
@@ -2313,6 +2490,7 @@ function AIInterviewTab({
                 score: typeof data.score === "number" ? data.score : null,
                 correctness: toDisplayCorrectness(data.correctness),
                 relevance: toDisplayRelevance(data.relevance),
+                mcqFeedback: buildMcqFeedbackFromStatus(data),
                 codeExecutionSummary: isCodeExecutionSummaryPayload(sum) ? sum : null,
                 nextQuestion: nextQ,
                 nextQuestionUrl: String(data.questionUrl || "").trim(),
@@ -2375,6 +2553,7 @@ function AIInterviewTab({
     setScore(null);
     setAnswerExplanation("");
     setAnswerCode("");
+    setSelectedMcqOptionId("");
     const sid = activeSessionIdRef.current;
     if (sid && user?.betaAccess !== false) {
       interviewAPI
@@ -2389,17 +2568,11 @@ function AIInterviewTab({
           if (typeof st.currentQuestionNumberWithinRound === "number") {
             setCurrentQuestionNumberWithinRound(st.currentQuestionNumberWithinRound);
           }
-          if (Object.prototype.hasOwnProperty.call(st || {}, "questionUrl")) {
-            setQuestionUrl(String(st.questionUrl || "").trim());
-          }
-          setQuestionTopics(Array.isArray(st?.questionTopics) ? st.questionTopics : []);
-          setQuestionSubtopics(Array.isArray(st?.questionSubtopics) ? st.questionSubtopics : []);
-          setQuestionCompanyTags(Array.isArray(st?.questionCompanyTags) ? st.questionCompanyTags : []);
-          setQuestionComplexity(normalizeQuestionComplexityPayload(st?.questionComplexity));
+          applyQuestionMetaFromStatus(st);
         })
         .catch(() => {});
     }
-  }, [user?.betaAccess]);
+  }, [user?.betaAccess, applyQuestionMetaFromStatus]);
 
   const handleReattemptQuestion = useCallback(async () => {
     const sid = activeSessionIdRef.current || sessionId;
@@ -2802,22 +2975,22 @@ function AIInterviewTab({
                     </span>
                   </div>
                 )}
-                {pendingQuestionFeedback.correctness && (
+                {pendingQuestionFeedback.correctness && !pendingQuestionFeedback.mcqFeedback ? (
                   <div className="inline-flex items-center gap-2 rounded-xl bg-theme-input border border-theme px-4 py-3">
                     <span className="text-sm text-theme-secondary">Correctness</span>
                     <span className="text-sm font-semibold capitalize text-theme-primary">
                       {pendingQuestionFeedback.correctness}
                     </span>
                   </div>
-                )}
-                {pendingQuestionFeedback.relevance && (
+                ) : null}
+                {pendingQuestionFeedback.relevance && !pendingQuestionFeedback.mcqFeedback ? (
                   <div className="inline-flex items-center gap-2 rounded-xl bg-theme-input border border-theme px-4 py-3">
                     <span className="text-sm text-theme-secondary">Relevance</span>
                     <span className="text-sm font-semibold capitalize text-theme-primary">
                       {pendingQuestionFeedback.relevance}
                     </span>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
               {pendingQuestionFeedback.codeExecutionSummary ? (
@@ -2886,13 +3059,21 @@ function AIInterviewTab({
                 <p className="text-sm font-semibold text-theme-primary mb-2">
                   {pendingQuestionFeedback.codeExecutionSummary ? "Additional details" : "Feedback"}
                 </p>
-                <p className="text-theme-secondary text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
-                  {String(pendingQuestionFeedback.feedback || "").trim()
-                    ? pendingQuestionFeedback.feedback
-                    : pendingQuestionFeedback.codeExecutionSummary
-                      ? "No execution errors. Scoring is based on the test counts above."
-                      : "No detailed feedback for this response."}
-                </p>
+                {pendingQuestionFeedback.mcqFeedback ? (
+                  <McqAnswerFeedbackPanel
+                    mcqFeedback={pendingQuestionFeedback.mcqFeedback}
+                    correctness={pendingQuestionFeedback.correctness}
+                    fallbackFeedback={pendingQuestionFeedback.feedback}
+                  />
+                ) : (
+                  <p className="text-theme-secondary text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+                    {String(pendingQuestionFeedback.feedback || "").trim()
+                      ? pendingQuestionFeedback.feedback
+                      : pendingQuestionFeedback.codeExecutionSummary
+                        ? "No execution errors. Scoring is based on the test counts above."
+                        : "No detailed feedback for this response."}
+                  </p>
+                )}
               </div>
             {pendingQuestionFeedback.canReattempt ? (
               <p className="text-[11px] text-theme-muted leading-snug">
@@ -3482,43 +3663,18 @@ function AIInterviewTab({
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-theme-primary tracking-tight">Select one option</p>
                 <p className="text-[11px] text-theme-muted leading-snug">
-                  Choose the best answer, then submit.
+                  Tap a card to choose your answer, then submit.
                 </p>
               </div>
-              <fieldset className="space-y-2.5" disabled={loading}>
+              <fieldset disabled={loading}>
                 <legend className="sr-only">Multiple choice options</legend>
-                {(Array.isArray(mcqPayload?.options) ? mcqPayload.options : []).map((opt) => {
-                  const optionId = String(opt?.id || "").trim().toUpperCase();
-                  const optionText = String(opt?.text || "").trim();
-                  if (!optionId || !optionText) return null;
-                  const inputId = `mcq-option-${sessionId}-${currentQuestionNumberWithinRound}-${optionId}`;
-                  const checked = selectedMcqOptionId === optionId;
-                  return (
-                    <label
-                      key={optionId}
-                      htmlFor={inputId}
-                      className={`flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors ${
-                        checked
-                          ? "border-theme-accent bg-theme-accent/10"
-                          : "border-theme bg-theme-input hover:border-theme-accent/60"
-                      }`}
-                    >
-                      <input
-                        id={inputId}
-                        type="radio"
-                        name={`mcq-${sessionId}-${currentQuestionNumberWithinRound}`}
-                        value={optionId}
-                        checked={checked}
-                        onChange={() => setSelectedMcqOptionId(optionId)}
-                        className="mt-1 shrink-0 accent-[var(--accent)]"
-                      />
-                      <span className="text-sm leading-relaxed text-theme-primary">
-                        <span className="font-semibold mr-2">{optionId}.</span>
-                        {optionText}
-                      </span>
-                    </label>
-                  );
-                })}
+                <McqOptionGrid
+                  options={mcqPayload?.options}
+                  selectedOptionId={selectedMcqOptionId}
+                  onSelect={setSelectedMcqOptionId}
+                  disabled={loading}
+                  namePrefix={`mcq-${sessionId}-${currentQuestionNumberWithinRound}`}
+                />
               </fieldset>
             </div>
           ) : null}
