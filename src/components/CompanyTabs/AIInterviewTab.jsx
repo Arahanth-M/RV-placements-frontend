@@ -800,6 +800,9 @@ function AIInterviewTab({
   const [questionSubtopics, setQuestionSubtopics] = useState([]);
   const [questionCompanyTags, setQuestionCompanyTags] = useState([]);
   const [questionComplexity, setQuestionComplexity] = useState(null);
+  const [expectedAnswerMode, setExpectedAnswerMode] = useState("conceptual");
+  const [mcqPayload, setMcqPayload] = useState(null);
+  const [selectedMcqOptionId, setSelectedMcqOptionId] = useState("");
   /** After each answer: full-screen feedback until user taps "Next question". */
   const [pendingQuestionFeedback, setPendingQuestionFeedback] = useState(null);
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
@@ -889,6 +892,11 @@ function AIInterviewTab({
     );
   }, [user?.userId, company?._id, loading, customPlanValidationError]);
 
+  const isMcqQuestionUI = useMemo(() => {
+    if (String(expectedAnswerMode || "").toLowerCase() === "mcq") return true;
+    return Array.isArray(mcqPayload?.options) && mcqPayload.options.length >= 2;
+  }, [expectedAnswerMode, mcqPayload]);
+
   const isCodingRoundUI = useMemo(() => {
     const hint =
       Array.isArray(roundsDetails) && roundsDetails[currentRoundIndex]
@@ -901,9 +909,10 @@ function AIInterviewTab({
   }, [currentRoundType, roundsDetails, currentRoundIndex]);
 
   const answerCharCount = useMemo(() => {
+    if (isMcqQuestionUI) return selectedMcqOptionId ? 1 : 0;
     if (isCodingRoundUI) return answerCode.trim().length;
     return answerExplanation.trim().length + answerCode.trim().length;
-  }, [isCodingRoundUI, answerCode, answerExplanation]);
+  }, [isMcqQuestionUI, selectedMcqOptionId, isCodingRoundUI, answerCode, answerExplanation]);
 
   const interviewCodeWorkspacePlaceholder = useMemo(() => {
     if (!isCodingRoundUI) return undefined;
@@ -926,15 +935,14 @@ function AIInterviewTab({
     [previewExecutionResult]
   );
 
-  const submissionAnswerDraft = useMemo(
-    () =>
-      buildInterviewSubmissionAnswer(
-        answerExplanation,
-        answerCode,
-        isCodingRoundUI
-      ),
-    [answerExplanation, answerCode, isCodingRoundUI]
-  );
+  const submissionAnswerDraft = useMemo(() => {
+    if (isMcqQuestionUI) return String(selectedMcqOptionId || "").trim();
+    return buildInterviewSubmissionAnswer(
+      answerExplanation,
+      answerCode,
+      isCodingRoundUI
+    );
+  }, [isMcqQuestionUI, selectedMcqOptionId, answerExplanation, answerCode, isCodingRoundUI]);
 
   const canSubmitAnswer = useMemo(() => {
     return (
@@ -965,6 +973,10 @@ function AIInterviewTab({
   useEffect(() => {
     if (!isCodingRoundUI) setAnswerCode("");
   }, [isCodingRoundUI]);
+
+  useEffect(() => {
+    setSelectedMcqOptionId("");
+  }, [question, sessionId, currentQuestionNumberWithinRound, isMcqQuestionUI]);
 
   useEffect(() => {
     setPreviewExecutionResult(null);
@@ -1479,13 +1491,16 @@ function AIInterviewTab({
     setPreviewLastRunAtMs(0);
     setPreviewRunInlineHint("");
     setPendingQuestionFeedback(null);
+    setExpectedAnswerMode("conceptual");
+    setMcqPayload(null);
+    setSelectedMcqOptionId("");
     setRoundsQuestionSummary([]);
     setQuestionsPlannedThisRound(3);
     setCurrentQuestionNumberWithinRound(1);
   };
 
   useEffect(() => {
-    if (isCodingRoundUI) return;
+    if (isCodingRoundUI || isMcqQuestionUI) return;
     if (!answerTextAreaRef.current) return;
     if (status !== "in_progress") return;
 
@@ -1495,7 +1510,7 @@ function AIInterviewTab({
     const minHeightPx = 120;
     const nextHeight = Math.max(minHeightPx, el.scrollHeight);
     el.style.height = `${nextHeight}px`;
-  }, [answerExplanation, status, isCodingRoundUI]);
+  }, [answerExplanation, status, isCodingRoundUI, isMcqQuestionUI]);
 
   const openInterviewLimitModal = useCallback((message) => {
     setInterviewLimitMessage(message || MESSAGES.INTERVIEW_LIMIT_REACHED);
@@ -1697,6 +1712,16 @@ function AIInterviewTab({
     if (Object.prototype.hasOwnProperty.call(st || {}, "questionComplexity")) {
       setQuestionComplexity(normalizeQuestionComplexityPayload(st.questionComplexity));
     }
+    if (Object.prototype.hasOwnProperty.call(st || {}, "expectedAnswerMode")) {
+      setExpectedAnswerMode(String(st.expectedAnswerMode || "conceptual"));
+    }
+    if (Object.prototype.hasOwnProperty.call(st || {}, "mcq")) {
+      const nextMcq =
+        st.mcq && typeof st.mcq === "object" && Array.isArray(st.mcq.options)
+          ? st.mcq
+          : null;
+      setMcqPayload(nextMcq);
+    }
 
     if (st.roundCompleted) {
       roundCompletedAtRef.current = Date.now();
@@ -1706,6 +1731,9 @@ function AIInterviewTab({
       setQuestionSubtopics([]);
       setQuestionCompanyTags([]);
       setQuestionComplexity(null);
+      setExpectedAnswerMode("conceptual");
+      setMcqPayload(null);
+      setSelectedMcqOptionId("");
       questionRef.current = "";
 
       /** Entire interview finished: never show per-answer feedback on top of the final summary. */
@@ -3406,7 +3434,7 @@ function AIInterviewTab({
         !pendingQuestionFeedback &&
         !isProcessing && (
         <div className="ai-interview-answer-shell space-y-5">
-          {!isCodingRoundUI ? (
+          {!isCodingRoundUI && !isMcqQuestionUI ? (
             <>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1 space-y-1">
@@ -3447,6 +3475,52 @@ function AIInterviewTab({
                 </div>
               </div>
             </>
+          ) : null}
+
+          {!isCodingRoundUI && isMcqQuestionUI ? (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-theme-primary tracking-tight">Select one option</p>
+                <p className="text-[11px] text-theme-muted leading-snug">
+                  Choose the best answer, then submit.
+                </p>
+              </div>
+              <fieldset className="space-y-2.5" disabled={loading}>
+                <legend className="sr-only">Multiple choice options</legend>
+                {(Array.isArray(mcqPayload?.options) ? mcqPayload.options : []).map((opt) => {
+                  const optionId = String(opt?.id || "").trim().toUpperCase();
+                  const optionText = String(opt?.text || "").trim();
+                  if (!optionId || !optionText) return null;
+                  const inputId = `mcq-option-${sessionId}-${currentQuestionNumberWithinRound}-${optionId}`;
+                  const checked = selectedMcqOptionId === optionId;
+                  return (
+                    <label
+                      key={optionId}
+                      htmlFor={inputId}
+                      className={`flex items-start gap-3 rounded-xl border-2 px-4 py-3 cursor-pointer transition-colors ${
+                        checked
+                          ? "border-theme-accent bg-theme-accent/10"
+                          : "border-theme bg-theme-input hover:border-theme-accent/60"
+                      }`}
+                    >
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name={`mcq-${sessionId}-${currentQuestionNumberWithinRound}`}
+                        value={optionId}
+                        checked={checked}
+                        onChange={() => setSelectedMcqOptionId(optionId)}
+                        className="mt-1 shrink-0 accent-[var(--accent)]"
+                      />
+                      <span className="text-sm leading-relaxed text-theme-primary">
+                        <span className="font-semibold mr-2">{optionId}.</span>
+                        {optionText}
+                      </span>
+                    </label>
+                  );
+                })}
+              </fieldset>
+            </div>
           ) : null}
 
           {isCodingRoundUI ? (

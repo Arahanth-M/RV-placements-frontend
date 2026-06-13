@@ -868,6 +868,11 @@ function CompanyStats() {
     return Number.isFinite(n) && n >= 0 ? n : DEFAULT_OPEN_DREAM_MIN_LPA;
   }, [openDreamMinLpaByYear, effectiveClusterParam, selectedYear]);
 
+  const openDreamThresholdLpaLabel = useMemo(() => {
+    const n = yearStatsOpenDreamMinLpa;
+    return Number.isFinite(n) ? String(n) : String(DEFAULT_OPEN_DREAM_MIN_LPA);
+  }, [yearStatsOpenDreamMinLpa]);
+
   // Fetch year stats when 2024 or 2025 is selected
   useEffect(() => {
     if (selectedYear === 2024 || selectedYear === 2025) {
@@ -1766,6 +1771,7 @@ function CompanyStats() {
       {
         tier: PLACEMENT_TIER_DREAM,
         title: "Dream companies",
+        cutoffLabel: `< ${openDreamThresholdLpaLabel} LPA`,
         shortLabel: "Dream",
         count: dreamCount,
         logos: dreamLogoPreview,
@@ -1774,6 +1780,7 @@ function CompanyStats() {
       {
         tier: PLACEMENT_TIER_OPEN_DREAM,
         title: "Open dream companies",
+        cutoffLabel: `≥ ${openDreamThresholdLpaLabel} LPA`,
         shortLabel: "Open dream",
         count: openDreamCount,
         logos: openDreamLogoPreview,
@@ -1870,9 +1877,16 @@ function CompanyStats() {
               className="company-card flex h-full min-h-0 w-full min-w-0 flex-col rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 transition-[box-shadow,border-color] duration-300 border-2 bg-theme-card border-theme hover:border-theme-accent hover:shadow-2xl text-left"
             >
               <div className="flex h-full min-h-0 min-w-0 flex-col">
-                <h3 className="text-base leading-snug sm:text-xl md:text-2xl font-bold text-theme-primary mb-2 sm:mb-3 flex-shrink-0">
-                  {tile.title}
-                </h3>
+                <div className="mb-2 flex-shrink-0 sm:mb-3">
+                  <h3 className="text-base font-bold leading-snug text-theme-primary sm:text-xl md:text-2xl">
+                    {tile.title}
+                  </h3>
+                  {tile.cutoffLabel ? (
+                    <p className="mt-0.5 text-[11px] leading-snug text-theme-muted sm:mt-1 sm:text-xs">
+                      {tile.cutoffLabel}
+                    </p>
+                  ) : null}
+                </div>
                 <div className="flex flex-1 items-center justify-center mb-3 min-h-[156px] sm:mb-4 sm:min-h-[120px] md:min-h-[140px]">
                   <AnimatedLogoGrid companies={tile.logos} {...tile.logoGrid} />
                 </div>
