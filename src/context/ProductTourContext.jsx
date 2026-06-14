@@ -237,6 +237,128 @@ async function waitForEventsTourReady(timeoutMs = 6000) {
   await waitForElement('[data-tour="events-loaded"]', timeoutMs).catch(() => {});
 }
 
+function resetTourViewport(targetElement) {
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+
+  const scrollRoots = document.querySelectorAll("main, [data-tour-scroll-root]");
+  scrollRoots.forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+    }
+  });
+
+  if (targetElement instanceof HTMLElement) {
+    let node = targetElement.parentElement;
+    while (node) {
+      const style = getComputedStyle(node);
+      const canScrollY =
+        (style.overflowY === "auto" ||
+          style.overflowY === "scroll" ||
+          style.overflowY === "overlay") &&
+        node.scrollHeight > node.clientHeight;
+      if (canScrollY) {
+        node.scrollTop = 0;
+      }
+      node = node.parentElement;
+    }
+  }
+}
+
+function cleanupDriverArtifacts() {
+  document.querySelectorAll(".driver-overlay, .driver-popover").forEach((node) => {
+    node.remove();
+  });
+  document.body.classList.remove("driver-active", "driver-fade", "driver-simple");
+  document.querySelectorAll(".driver-active-element").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.classList.remove("driver-active-element", "driver-no-interaction");
+      node.removeAttribute("aria-haspopup");
+      node.removeAttribute("aria-expanded");
+      node.removeAttribute("aria-controls");
+    }
+  });
+}
+
+function queryTourTarget(step) {
+  const primary = queryVisibleElement(step.selector);
+  if (primary) return primary;
+  if (step.fallbackSelector) {
+    return queryVisibleElement(step.fallbackSelector);
+  }
+  return null;
+}
+
+async function waitForLayoutSettle(extraMs = 180) {
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+  await new Promise((r) => setTimeout(r, extraMs));
+}
+
+async function waitForStableTargetRect(element, timeoutMs = 1200) {
+  if (!(element instanceof HTMLElement)) return element;
+
+  let lastTop = Number.NaN;
+  let lastLeft = Number.NaN;
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    const rect = element.getBoundingClientRect();
+    if (
+      Number.isFinite(lastTop) &&
+      Math.abs(rect.top - lastTop) < 1 &&
+      Math.abs(rect.left - lastLeft) < 1 &&
+      rect.width > 0 &&
+      rect.height > 0
+    ) {
+      return element;
+    }
+    lastTop = rect.top;
+    lastLeft = rect.left;
+    await waitForLayoutSettle(60);
+  }
+
+  return element;
+}
+
+async function focusTourTarget(step, targetElement) {
+  resetTourViewport(targetElement);
+  await waitForLayoutSettle(80);
+
+  let focused = targetElement;
+  if (focused instanceof HTMLElement) {
+    focused.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "instant",
+    });
+  }
+
+  await waitForLayoutSettle(
+    step.id === "company-ai-interview-start"
+      ? 320
+      : step.id?.startsWith("company-")
+        ? 260
+        : 200
+  );
+
+  const refreshed = queryTourTarget(step);
+  if (refreshed instanceof HTMLElement) {
+    focused = refreshed;
+    focused.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "instant",
+    });
+    await waitForStableTargetRect(focused, 900);
+  }
+
+  return focused;
+}
+
 async function resolveTourTarget(step) {
   const primaryTimeout = step.fallbackSelector ? 2000 : 8000;
   try {
@@ -245,6 +367,17 @@ async function resolveTourTarget(step) {
     if (!step.fallbackSelector) throw new Error(`Tour target not found: ${step.selector}`);
     return waitForElement(step.fallbackSelector, 2000);
   }
+}
+
+async function prepareTourTarget(step) {
+  cleanupDriverArtifacts();
+  let targetElement = null;
+  try {
+    targetElement = await resolveTourTarget(step);
+  } catch {
+    return null;
+  }
+  return focusTourTarget(step, targetElement);
 }
 
 function waitForElement(selector, timeoutMs = 8000) {
@@ -266,33 +399,6 @@ function waitForElement(selector, timeoutMs = 8000) {
   });
 }
 
-function resetTourViewport() {
-  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-}
-
-async function focusTourTarget(step, targetElement) {
-  resetTourViewport();
-  await new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  });
-  if (targetElement instanceof HTMLElement) {
-    targetElement.scrollIntoView({
-      block: "center",
-      inline: "nearest",
-      behavior: "instant",
-    });
-  }
-  const settleMs =
-    step.id === "company-ai-interview-start"
-      ? 320
-      : step.id?.startsWith("company-")
-        ? 240
-        : 160;
-  await new Promise((r) => setTimeout(r, settleMs));
-}
-
 function clearCompanyStatsYearPersistence(userId) {
   try {
     sessionStorage.setItem("companystats_selectedYear", "");
@@ -308,9 +414,16 @@ function clearCompanyStatsYearPersistence(userId) {
 function runDriverStep(step, index, total, targetElement) {
   return new Promise((resolve) => {
     let resolved = false;
+    let driverObj = null;
     const finish = (action) => {
       if (resolved) return;
       resolved = true;
+      try {
+        driverObj?.destroy();
+      } catch {
+        /* ignore */
+      }
+      cleanupDriverArtifacts();
       resolve(action);
     };
 
@@ -319,9 +432,24 @@ function runDriverStep(step, index, total, targetElement) {
     const isDarkTheme =
       document.documentElement.getAttribute("data-theme") === "dark";
     const highlightStartInterview = step.id === "company-ai-interview-start";
-    const driverObj = driver({
+
+    const resolveHighlightElement = () => {
+      const fresh = queryTourTarget(step);
+      if (fresh instanceof HTMLElement) {
+        fresh.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+          behavior: "instant",
+        });
+        return fresh;
+      }
+      return targetElement;
+    };
+
+    driverObj = driver({
       showProgress: false,
       allowClose: true,
+      animate: false,
       overlayOpacity: isDarkTheme ? 0.58 : 0.5,
       stagePadding: highlightStartInterview ? 22 : 14,
       stageRadius: highlightStartInterview ? 16 : 14,
@@ -330,6 +458,24 @@ function runDriverStep(step, index, total, targetElement) {
       prevBtnText: "Back",
       doneBtnText: "Done",
       popoverClass: "placement-tour-popover",
+      onHighlightStarted: () => {
+        requestAnimationFrame(() => {
+          try {
+            driverObj?.refresh();
+          } catch {
+            /* ignore */
+          }
+        });
+      },
+      onHighlighted: () => {
+        requestAnimationFrame(() => {
+          try {
+            driverObj?.refresh();
+          } catch {
+            /* ignore */
+          }
+        });
+      },
       onPopoverRender: (popover) => {
         if (popover.progress) {
           popover.progress.style.display = "none";
@@ -346,7 +492,7 @@ function runDriverStep(step, index, total, targetElement) {
       },
       steps: [
         {
-          element: targetElement,
+          element: resolveHighlightElement,
           popover: {
             title: step.title,
             description: step.description,
@@ -358,15 +504,12 @@ function runDriverStep(step, index, total, targetElement) {
       ],
       onNextClick: () => {
         finish(isLast ? "done" : "next");
-        driverObj.destroy();
       },
       onPrevClick: () => {
         finish("prev");
-        driverObj.destroy();
       },
       onCloseClick: () => {
         finish("close");
-        driverObj.destroy();
       },
     });
 
@@ -374,7 +517,6 @@ function runDriverStep(step, index, total, targetElement) {
       driverObj.drive();
     } catch {
       finish("close");
-      driverObj.destroy();
     }
   });
 }
@@ -432,7 +574,6 @@ export function ProductTourProvider({ children }) {
             navigate(path);
             await waitForCompanyDetailsReady();
           }
-          resetTourViewport();
           resetTourViewport();
           dispatchTourPrepare(step.id);
           await new Promise((r) => setTimeout(r, 700));
@@ -552,28 +693,31 @@ export function ProductTourProvider({ children }) {
               setTimeout(
                 r,
                 needsNavigate
-                  ? step.route.includes("companystats")
-                    ? 280
-                    : 120
-                  : 40
+                  ? step.route.includes("companystats") ||
+                    step.route.includes("/companies/")
+                    ? 420
+                    : step.route.includes("/profile") ||
+                        step.route.includes("/my-submissions") ||
+                        step.route.includes("/resume-builder")
+                      ? 380
+                      : 220
+                  : 80
               )
             );
           }
         }
 
-        let targetElement = null;
-        try {
-          targetElement = await resolveTourTarget(step);
-        } catch {
+        cleanupDriverArtifacts();
+        let targetElement = await prepareTourTarget(step);
+        if (!targetElement) {
           index += 1;
           continue;
         }
 
         if (step.id === "company-ai-interview-start") {
           await new Promise((r) => setTimeout(r, 280));
+          targetElement = (await prepareTourTarget(step)) || targetElement;
         }
-
-        await focusTourTarget(step, targetElement);
 
         const action = await runDriverStep(step, index, steps.length, targetElement);
 

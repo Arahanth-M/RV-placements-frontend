@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
@@ -17,6 +17,43 @@ import {
 import CompanyLogo from "./CompanyLogo";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
+
+/** Shrinks focus-area pill text when it would overflow the card width. */
+function FocusAreaTag({ tag }) {
+  const ref = useRef(null);
+  const [sizeLevel, setSizeLevel] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const row = el.parentElement;
+    if (!row) return;
+
+    const resolveSize = () => {
+      let level = 0;
+      for (; level <= 2; level += 1) {
+        el.classList.remove("tag--s0", "tag--s1", "tag--s2");
+        el.classList.add(`tag--s${level}`);
+        if (el.scrollWidth <= el.clientWidth + 1) break;
+      }
+      setSizeLevel(Math.min(level, 2));
+    };
+
+    resolveSize();
+    const observer = new ResizeObserver(resolveSize);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [tag]);
+
+  return (
+    <span
+      ref={ref}
+      className={`tag tag--s${sizeLevel} inline-flex max-w-full items-center rounded-md font-bold bg-theme-accent bg-opacity-10 border border-theme-accent text-theme-accent uppercase tracking-tight whitespace-normal break-words`}
+    >
+      {tag}
+    </span>
+  );
+}
 
 function CompanyCard({
   company,
@@ -386,14 +423,9 @@ function CompanyCard({
                   <span className="font-semibold text-theme-secondary text-[10px] uppercase tracking-wider">
                     Top focus areas
                   </span>
-                  <div className="flex flex-wrap gap-1.5 line-clamp-2 overflow-hidden">
+                  <div className="flex flex-wrap gap-1.5 min-w-0 w-full">
                     {company.focusTags.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag}
-                        className="tag inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-theme-accent bg-opacity-10 border border-theme-accent text-theme-accent uppercase tracking-tight whitespace-nowrap"
-                      >
-                        {tag}
-                      </span>
+                      <FocusAreaTag key={tag} tag={tag} />
                     ))}
                   </div>
                 </>

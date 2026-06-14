@@ -395,6 +395,19 @@ const STUDENT_TOUR_STEPS_BASE = [
     align: "start",
   },
   {
+    id: "company-request-more-details",
+    route: "/companystats?tier=dream",
+    selector: '[data-tour="company-detail-request-more"]',
+    fallbackSelector: '[data-tour="company-details-header"]',
+    prepare: "navigateToPhonePeCompany",
+    title: "Request more details",
+    requiresAuth: true,
+    description:
+      `On a company page like ${TOUR_EXAMPLE_COMPANY}, use Request more details when eligibility, roles, visit date, or other info is missing — admins get a one-time alert to update the page.`,
+    side: "bottom",
+    align: "start",
+  },
+  {
     id: "company-tab-coding",
     route: "/companystats?tier=summer_internship",
     selector: '[data-tour="company-tab-coding-panel"]',
@@ -678,19 +691,6 @@ const STUDENT_TOUR_STEPS_BASE = [
     requiresAuth: true,
     description:
       "Your student profile shows personal details, branch info, and placement data linked to your account.",
-    side: "bottom",
-    align: "start",
-  },
-  {
-    id: "company-request-more-details",
-    route: "/companystats?tier=dream",
-    selector: '[data-tour="company-detail-request-more"]',
-    fallbackSelector: '[data-tour="company-details-header"]',
-    prepare: "navigateToPhonePeCompany",
-    title: "Request more details",
-    requiresAuth: true,
-    description:
-      `On a company page like ${TOUR_EXAMPLE_COMPANY}, use Request more details when eligibility, roles, visit date, or other info is missing — admins get a one-time alert to update the page.`,
     side: "bottom",
     align: "start",
   },

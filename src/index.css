@@ -573,13 +573,36 @@ select.spc-field-control {
 
 /* Focus area tags - dark mode */
 [data-theme="dark"] .company-card .tag {
-  padding: 6px 12px;
   border-radius: 999px;
-  font-size: 12px;
   font-weight: 500;
   background: rgba(129, 140, 248, 0.12);
   color: var(--accent-secondary);
   border: 1px solid rgba(129, 140, 248, 0.35);
+}
+
+.company-card .tag {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.company-card .tag--s0 {
+  font-size: 9px;
+  padding: 4px 8px;
+}
+
+.company-card .tag--s1 {
+  font-size: 8px;
+  padding: 3px 6px;
+  line-height: 1.2;
+}
+
+.company-card .tag--s2 {
+  font-size: 7px;
+  padding: 2px 5px;
+  line-height: 1.15;
 }
 
 /* Company logo container - dark mode */
@@ -789,12 +812,10 @@ select.spc-field-control {
 
 /* Tags - light mode */
 [data-theme="light"] .company-card .tag {
-  display: inline-block;
-  padding: 4px 10px;
+  display: inline-flex;
   margin-right: var(--space-1);
   margin-top: var(--space-1);
   border-radius: var(--radius-sm);
-  font-size: 12px;
   border: 1px solid var(--primary);
   color: var(--primary);
   background: var(--primary-soft);
@@ -968,6 +989,10 @@ select.spc-field-control {
 /* Scroll target when opening AI Interview from the floating explore button */
 .company-tab-content {
   scroll-margin-top: 5.5rem;
+}
+
+.interview-question-row {
+  scroll-margin-top: 6rem;
 }
 
 /* Prism / react-syntax-highlighter: keep long lines scrollable inside company tabs */

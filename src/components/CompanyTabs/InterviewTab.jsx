@@ -85,7 +85,7 @@
 
 // export default InterviewTab;
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
@@ -120,6 +120,7 @@ function InterviewTab({
   const [editIPContent, setEditIPContent] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const questionRowRefs = useRef({});
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -343,6 +344,32 @@ function InterviewTab({
       ...prev,
       [questionIdx]: !prev[questionIdx],
     }));
+  };
+
+  const scrollQuestionRowIntoView = (row) => {
+    if (!row) return;
+    const offset = 88;
+    const targetTop = row.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  };
+
+  const handleQuestionToggle = (index) => {
+    const isClosing = openIndexQ === index;
+    const previousOpen = openIndexQ;
+
+    if (!isClosing && previousOpen !== null && previousOpen !== index) {
+      setOpenSolutionIndex((prev) => ({ ...prev, [previousOpen]: false }));
+    }
+
+    setOpenIndexQ(isClosing ? null : index);
+
+    if (!isClosing) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollQuestionRowIntoView(questionRowRefs.current[index]);
+        });
+      });
+    }
   };
 
   const handleCopySolution = async (solutionText, index) => {
@@ -596,13 +623,17 @@ function InterviewTab({
             {interviewQuestions.map((q, index) => (
               <div
                 key={index}
-                className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
+                ref={(el) => {
+                  questionRowRefs.current[index] = el;
+                }}
+                data-interview-question
+                className="interview-question-row border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button
-                    onClick={() =>
-                      setOpenIndexQ(openIndexQ === index ? null : index)
-                    }
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleQuestionToggle(index)}
                     className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
                     <span className="truncate min-w-0">Question {index + 1}</span>

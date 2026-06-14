@@ -59,7 +59,7 @@ import {
   PLACEMENT_DETAIL_VISIT_YEARS,
   isPlacementDetailVisitYear,
 } from "../constants/placementYears.js";
-import { companyVisitSortTimestamp } from "../utils/visitDateSort.js";
+import { sortCompaniesByVisitDate } from "../utils/visitDateSort.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
 /** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
@@ -272,27 +272,31 @@ function CompanyStats() {
   const visitSortYear =
     isPlacementDetailVisitYear(selectedYear) ? selectedYear : DEFAULT_PLACEMENT_DETAIL_YEAR;
 
+  const visitSortHub = useMemo(() => {
+    if (placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
+      return PLACEMENT_TIER_SUMMER_INTERNSHIP;
+    }
+    if (placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY) {
+      return PLACEMENT_TIER_INTERNSHIP_ONLY;
+    }
+    if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
+      return PLACEMENT_TIER_OFF_CAMPUS;
+    }
+    if (placementTier === PLACEMENT_TIER_OPEN_DREAM) {
+      return PLACEMENT_TIER_OPEN_DREAM;
+    }
+    return PLACEMENT_TIER_DREAM;
+  }, [placementTier]);
+
   const orderedCompanies = useMemo(() => {
-    const sortOptions = { defaultYear: visitSortYear };
-    return [...companies].sort((a, b) => {
-      const aVisitTs = companyVisitSortTimestamp(a, sortOptions);
-      const bVisitTs = companyVisitSortTimestamp(b, sortOptions);
-
-      if (aVisitTs !== null && bVisitTs !== null && aVisitTs !== bVisitTs) {
-        return aVisitTs - bVisitTs;
-      }
-      if (aVisitTs !== null && bVisitTs === null) return -1;
-      if (aVisitTs === null && bVisitTs !== null) return 1;
-
-      const byName = (a?.name || "").localeCompare(b?.name || "");
-      if (byName !== 0) return byName;
-      const byCompanyId = String(a?._id || "").localeCompare(String(b?._id || ""));
-      if (byCompanyId !== 0) return byCompanyId;
-      return String(a?.placementCompanyVisitId || "").localeCompare(
-        String(b?.placementCompanyVisitId || "")
-      );
+    return sortCompaniesByVisitDate(companies, {
+      defaultYear: visitSortYear,
+      hub: visitSortHub,
     });
-  }, [companies, visitSortYear]);
+  }, [companies, visitSortYear, visitSortHub]);
+
+  const sortPoolForTier = (pool, hub) =>
+    sortCompaniesByVisitDate(pool, { defaultYear: visitSortYear, hub });
 
   const clusterScopedCompanies = useMemo(() => {
     if (isPlacementHubCluster(effectiveClusterParam)) {
@@ -1009,22 +1013,25 @@ function CompanyStats() {
    * even when the hub’s primary row is a different year’s PPO.
    */
   const dreamTierListBase = (company) => {
-    if (!isStrictClusterTiering) {
-      if (company.placementHasDreamTierVisit === true) return !isOffCampusCompany(company);
+    if (isOffCampusCompany(company) || isPpoCompany(company) || isInternshipOnlyCompany(company)) {
+      return false;
+    }
+    if (!isStrictClusterTiering && company.placementHasDreamTierVisit === true) {
+      return true;
+    }
     // Do not hide the card for non-visit listing years (e.g. 2026 with first visit in 2027).
     // Card subtitle/empty-state handles the "no visit yet" messaging.
-    }
-    return (
-      !isOffCampusCompany(company) &&
-      !isPpoCompany(company) &&
-      !isInternshipOnlyCompany(company)
-    );
+    return true;
   };
 
-  const summerInternshipCompanies = filteredCompanies.filter((company) =>
-    qualifiesSummerInternshipTile(company)
+  const summerInternshipCompanies = sortPoolForTier(
+    filteredCompanies.filter((company) => qualifiesSummerInternshipTile(company)),
+    PLACEMENT_TIER_SUMMER_INTERNSHIP
   );
-  const offCampusCompanies = filteredCompanies.filter(isOffCampusCompany);
+  const offCampusCompanies = sortPoolForTier(
+    filteredCompanies.filter(isOffCampusCompany),
+    PLACEMENT_TIER_OFF_CAMPUS
+  );
   /** Trust per-year flags when hub year is set; otherwise fall back to merged visit shape. */
   const qualifiesInternshipOnlyTile = (company) => {
     if (isOffCampusCompany(company) || isPpoCompany(company)) return false;
@@ -1034,25 +1041,46 @@ function CompanyStats() {
     }
     return isInternshipOnlyCompany(company);
   };
-  const internshipOnlyCompanies = filteredCompanies.filter(qualifiesInternshipOnlyTile);
-  const dreamCompanies = filteredCompanies.filter(
-    (company) => dreamTierListBase(company) && company.category !== "open dream"
+  const internshipOnlyCompanies = sortPoolForTier(
+    filteredCompanies.filter(qualifiesInternshipOnlyTile),
+    PLACEMENT_TIER_INTERNSHIP_ONLY
   );
-  const openDreamCompanies = filteredCompanies.filter(
-    (company) => dreamTierListBase(company) && company.category === "open dream"
+  const dreamCompanies = sortPoolForTier(
+    filteredCompanies.filter(
+      (company) => dreamTierListBase(company) && company.category !== "open dream"
+    ),
+    PLACEMENT_TIER_DREAM
+  );
+  const openDreamCompanies = sortPoolForTier(
+    filteredCompanies.filter(
+      (company) => dreamTierListBase(company) && company.category === "open dream"
+    ),
+    PLACEMENT_TIER_OPEN_DREAM
   );
   // Category cards must always represent full 2026 data, independent of list search/filter state.
-  const allSummerInternshipCompanies = clusterScopedCompanies.filter((company) =>
-    qualifiesSummerInternshipTile(company)
+  const allSummerInternshipCompanies = sortPoolForTier(
+    clusterScopedCompanies.filter((company) => qualifiesSummerInternshipTile(company)),
+    PLACEMENT_TIER_SUMMER_INTERNSHIP
   );
-  const allOffCampusCompanies = clusterScopedCompanies.filter(isOffCampusCompany);
-  const allInternshipOnlyCompanies =
-    clusterScopedCompanies.filter(qualifiesInternshipOnlyTile);
-  const allDreamCompanies = clusterScopedCompanies.filter(
-    (company) => dreamTierListBase(company) && company.category !== "open dream"
+  const allOffCampusCompanies = sortPoolForTier(
+    clusterScopedCompanies.filter(isOffCampusCompany),
+    PLACEMENT_TIER_OFF_CAMPUS
   );
-  const allOpenDreamCompanies = clusterScopedCompanies.filter(
-    (company) => dreamTierListBase(company) && company.category === "open dream"
+  const allInternshipOnlyCompanies = sortPoolForTier(
+    clusterScopedCompanies.filter(qualifiesInternshipOnlyTile),
+    PLACEMENT_TIER_INTERNSHIP_ONLY
+  );
+  const allDreamCompanies = sortPoolForTier(
+    clusterScopedCompanies.filter(
+      (company) => dreamTierListBase(company) && company.category !== "open dream"
+    ),
+    PLACEMENT_TIER_DREAM
+  );
+  const allOpenDreamCompanies = sortPoolForTier(
+    clusterScopedCompanies.filter(
+      (company) => dreamTierListBase(company) && company.category === "open dream"
+    ),
+    PLACEMENT_TIER_OPEN_DREAM
   );
 
   const dreamSlice = dreamCompanies.slice(

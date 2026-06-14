@@ -722,7 +722,7 @@ const MySubmissionsPage = () => {
   );
 
   return (
-    <div className={`min-h-screen overflow-y-auto ${pageShellOuterClass}`}>
+    <div className={`min-h-screen overflow-y-auto ${pageShellOuterClass}`} data-tour-scroll-root>
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(-1)} />

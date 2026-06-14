@@ -10,12 +10,6 @@ import {
 } from "../PlacementCompensationNote.jsx";
 import { formatInternshipStipendDisplay } from "../../utils/compensationDisplay.js";
 
-/** Whole-field placeholders — hide from students; admins still see them so they can replace with a real date. */
-function isPlaceholderVisitDateOnly(raw) {
-  const s = raw == null ? "" : String(raw).trim();
-  return /^tba$/i.test(s) || /^tbd$/i.test(s);
-}
-
 function GeneralTab({
   company = {},
   isAdmin = false,
@@ -73,16 +67,8 @@ function GeneralTab({
   const isPpoCompany = ((company?.type || "").toLowerCase().includes("ppo"));
   const visitDateRaw =
     company.date_of_visit == null ? "" : String(company.date_of_visit).trim();
-  /** Shown to students / non-admins only when not a bare TBA/TBD. */
-  const visitDatePublicText =
-    visitDateRaw.length > 0 && !isPlaceholderVisitDateOnly(visitDateRaw)
-      ? visitDateRaw
-      : null;
-  /** Admin read-only line: any stored value including TBA/TBD. */
-  const visitDateAdminReadOnlyText = visitDateRaw.length > 0 ? visitDateRaw : null;
   const canAdminEditVisitDate = isAdmin;
-  const showVisitDateSection =
-    visitDatePublicText != null || canAdminEditVisitDate;
+  const showVisitDateSection = visitDateRaw.length > 0 || canAdminEditVisitDate;
 
   useEffect(() => {
     if (!isEditingPpoConversion) {
@@ -305,21 +291,15 @@ function GeneralTab({
 
           {!isEditingVisitDate ? (
             <div className="bg-slate-800/60 rounded-lg p-4">
-              {canAdminEditVisitDate ? (
-                visitDateAdminReadOnlyText ? (
-                  <p className="text-base font-medium text-slate-200 whitespace-pre-wrap">
-                    {visitDateAdminReadOnlyText}
-                  </p>
-                ) : (
-                  <p className="text-slate-500 text-sm italic">
-                    Not set — use Add date to record the on-campus visit date for this batch.
-                  </p>
-                )
-              ) : visitDatePublicText ? (
+              {visitDateRaw ? (
                 <p className="text-base font-medium text-slate-200 whitespace-pre-wrap">
-                  {visitDatePublicText}
+                  {visitDateRaw}
                 </p>
-              ) : null}
+              ) : (
+                <p className="text-slate-500 text-sm italic">
+                  Not set — use Add date to record the on-campus visit date for this batch.
+                </p>
+              )}
             </div>
           ) : (
             <form
