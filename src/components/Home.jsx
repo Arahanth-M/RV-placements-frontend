@@ -250,6 +250,12 @@ function Home() {
                 >
                   Explore Companies →
                 </Link>
+                <Link
+                  to="/general-stats"
+                  className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
+                >
+                  General Stats →
+                </Link>
               </div>
             </div>
 {/*slideshow*/}

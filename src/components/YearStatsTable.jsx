@@ -4,6 +4,7 @@ import { PageBackButton, PageBackNavRow } from "./PageBackNav.jsx";
 import Analytics from "./Analytics";
 import { DEFAULT_OPEN_DREAM_MIN_LPA } from "../constants/placementTiers.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
+import { resolveYearStatsRowCategory } from "../utils/yearStatsCategory.js";
 
 const PAGE_SIZE = 100;
 
@@ -25,63 +26,14 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
     return () => window.removeEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
   }, []);
 
-  const toLpa = (value) => {
-    if (value === null || value === undefined) return null;
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value > 1000 ? value / 100000 : value;
-    }
-    if (typeof value === "string") {
-      const cleaned = value.toLowerCase().replace(/[,₹\s]/g, "");
-      const match = cleaned.match(/(\d+(\.\d+)?)/);
-      if (!match) return null;
-      const numeric = Number(match[1]);
-      if (!Number.isFinite(numeric)) return null;
-      return numeric > 1000 ? numeric / 100000 : numeric;
-    }
-    return null;
-  };
-
   const thresholdLpa =
     Number.isFinite(Number(openDreamMinLpa)) && Number(openDreamMinLpa) >= 0
       ? Number(openDreamMinLpa)
       : DEFAULT_OPEN_DREAM_MIN_LPA;
 
-  const resolveRowCtcLpa = useCallback((row) => {
-    if (!row || typeof row !== "object") return null;
-    const readFieldGroup = (fields) => {
-      for (const field of fields) {
-        if (row[field] !== undefined && row[field] !== null && row[field] !== "") {
-          const lpa = toLpa(row[field]);
-          if (lpa !== null && lpa > 0) return lpa;
-        }
-      }
-      return null;
-    };
-    const ctcFieldCandidates = [
-      "ctc",
-      "CTC",
-      "package",
-      "Package",
-      "salary",
-      "Salary",
-      "ctc_lpa",
-      "CTC_LPA",
-      "annual_ctc",
-      "Annual_CTC",
-      "lpa",
-      "LPA",
-    ];
-    const baseFieldCandidates = ["base", "Base"];
-    return readFieldGroup(ctcFieldCandidates) ?? readFieldGroup(baseFieldCandidates);
-  }, []);
-
   const resolveRowCategory = useCallback(
-    (row) => {
-      const ctcLpa = resolveRowCtcLpa(row);
-      if (ctcLpa === null) return "other";
-      return ctcLpa >= thresholdLpa ? "open_dream" : "dream";
-    },
-    [thresholdLpa, resolveRowCtcLpa]
+    (row) => resolveYearStatsRowCategory(row, thresholdLpa),
+    [thresholdLpa]
   );
 
   // Filter data based on search term
@@ -497,5 +449,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
 export default React.memo(
   YearStatsTable,
   (prevProps, nextProps) =>
-    prevProps.year === nextProps.year && prevProps.data === nextProps.data
+    prevProps.year === nextProps.year &&
+    prevProps.data === nextProps.data &&
+    prevProps.openDreamMinLpa === nextProps.openDreamMinLpa
 );

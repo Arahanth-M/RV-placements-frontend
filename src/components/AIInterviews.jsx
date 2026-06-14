@@ -278,7 +278,7 @@ function AIInterviews() {
         data-tour="ai-interviews-start"
       >
         <span className="font-semibold text-theme-primary">Start a mock interview: </span>
-        Company Stats → open a company → <span className="text-theme-accent font-medium">AI Interview</span> tab → Start Interview.
+        Company Stats → open a company → click on "Explore AI interview" button which is located at bottom right → Customize your interview → Start Interview.
       </div>
 
       {/* Error/Loading Content */}

@@ -965,6 +965,11 @@ select.spc-field-control {
   background: rgba(15, 23, 42, 0.35) !important;
 }
 
+/* Scroll target when opening AI Interview from the floating explore button */
+.company-tab-content {
+  scroll-margin-top: 5.5rem;
+}
+
 /* Prism / react-syntax-highlighter: keep long lines scrollable inside company tabs */
 .company-tab-content .solution-syntax-root > div {
   overflow-x: auto !important;

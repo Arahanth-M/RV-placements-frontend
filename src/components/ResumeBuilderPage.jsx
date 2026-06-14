@@ -822,8 +822,8 @@ export default function ResumeBuilderPage() {
           >
             <h2 className="text-lg font-semibold text-theme-primary">ATS Analysis</h2>
             <p className="mt-1 text-sm text-theme-secondary">
-              Your Overall ATS Score rates how recruiter-friendly your resume is — completeness,
-              structure, impact, and professionalism. Tap Run ATS Analysis above to generate your
+              Your Overall ATS Score rates how recruiter-friendly your resume is which includes completeness,
+              structure, impact, and professionalism. Tap "Run ATS Analysis" above to generate your
               score, circular gauge, and improvement checklist.
             </p>
           </section>

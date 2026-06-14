@@ -63,7 +63,7 @@ function UserManual() {
             </p>
           </section>
 
-          <hr className="my-8 border-theme" />
+          {/* <hr className="my-8 border-theme" /> */}
 
           {/* <section className="space-y-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
             <h2 className="text-base font-bold text-theme-primary sm:text-lg">
@@ -132,12 +132,12 @@ function UserManual() {
               <li>Log in to your account.</li>
               <li>Open the company you interviewed with.</li>
               <li>Use <strong className="text-theme-primary">Add Experience / Questions</strong> (or the equivalent action on that tab).</li>
-              <li>
+              {/* <li>
                 Fill in the form: <strong className="text-theme-primary">role</strong> (e.g. SDE,
                 Intern), <strong className="text-theme-primary">rounds</strong> (OA, Technical, HR,
                 etc.), <strong className="text-theme-primary">questions asked</strong>, and optional{" "}
                 <strong className="text-theme-primary">tips</strong>.
-              </li>
+              </li> */}
               <li>Submit. Your contribution may be reviewed before it appears for everyone.</li>
             </ol>
           </section>
@@ -158,10 +158,10 @@ function UserManual() {
               <strong className="text-theme-primary">relevant, realistic, and company-specific</strong>{" "}
               rather than generic trivia.
             </p>
-            <p className="text-theme-secondary">
+            {/* <p className="text-theme-secondary">
               Open <strong className="text-theme-primary">AI Interviews</strong> from Student Corner,
               pick your context, and follow the on-screen flow to start or resume a session.
-            </p>
+            </p> */}
           </section>
         </article>
         </div>

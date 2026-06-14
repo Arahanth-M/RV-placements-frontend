@@ -392,6 +392,7 @@ export const adminAPI = {
   getPlacementHubSettings: () => API.get('/api/admin/placement-hub-settings'),
   updatePlacementHubSettings: (body) =>
     API.put('/api/admin/placement-hub-settings', body),
+  getStudentRequests: () => API.get('/api/admin/student-requests'),
 };
 
 export const getPlacementHubSettings = () =>

@@ -76,7 +76,7 @@ export function isPlacementTierParam(value) {
 
 /** Tier/year hub cards, detail subtitle, empty panel — no qualifying visit for that category. */
 export const PLACEMENT_CATEGORY_NO_VISIT_COPY =
-  "No visit yet for this category. Check in different category";
+  "No visit yet for this category in this year. Check in different years.";
 
 /** Compact label next to a year in the placement-year dropdown when that year has no visit. */
 export const PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY = "no visit";

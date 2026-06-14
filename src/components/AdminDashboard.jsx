@@ -3,11 +3,12 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import PlacementHubSettingsTab from './PlacementHubSettingsTab';
+import StudentRequestsTab from './StudentRequestsTab';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from '../constants/placementYears.js';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel, FaInbox } from 'react-icons/fa';
 
 function submissionSupportsEnhancement(type) {
   return String(type || '').trim() !== 'mustDoTopics';
@@ -62,7 +63,7 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'assign-spc', 'add-next-batch', 'placement-settings'
+  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'student-requests', 'assign-spc', 'add-next-batch', 'placement-settings'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
@@ -1240,6 +1241,18 @@ const AdminDashboard = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveMainTab('student-requests')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'student-requests'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaInbox />
+                Student requests
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveMainTab('add-next-batch')}
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
                   activeMainTab === 'add-next-batch'
@@ -1470,6 +1483,10 @@ const AdminDashboard = () => {
 
             {activeMainTab === 'student-placement-stats' && (
               <StudentPlacementStatsTab />
+            )}
+
+            {activeMainTab === 'student-requests' && (
+              <StudentRequestsTab />
             )}
 
             {activeMainTab === 'assign-spc' && (

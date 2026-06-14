@@ -139,18 +139,22 @@ function isCompanyMarkedOffCampus(company) {
   return company?.offCampus === true;
 }
 
-function isOffCampusTypeFte(company) {
-  return normalizeType(company?.type) === "fte";
-}
-
-function isOffCampusTypeInternshipAndFte(company) {
+function isInternshipFtePbcType(company) {
   const type = normalizeType(company?.type);
-  return type === "internship+fte" || type === "internship(pbc)+fte";
+  return type.includes("internship") && type.includes("fte") && type.includes("pbc");
 }
 
-function isOffCampusTypeOnlyInternship(company) {
-  return normalizeType(company?.type) === "onlyinternship";
+function isInternshipFteNonPbcType(company) {
+  const type = normalizeType(company?.type);
+  return type.includes("internship") && type.includes("fte") && !type.includes("pbc");
 }
+
+const PLACEMENT_TYPE_FILTER_CATEGORIES = Object.freeze([
+  "all",
+  "fte",
+  "internship + fte",
+  "internship + fte (pbc)",
+]);
 
 function normalizeTierCategory(tier, rawCategory) {
   const category =
@@ -158,16 +162,8 @@ function normalizeTierCategory(tier, rawCategory) {
       ? "all"
       : String(rawCategory || "all");
 
-  if (tier === PLACEMENT_TIER_OFF_CAMPUS) {
-    return ["all", "fte", "internship + fte", "only internship"].includes(category)
-      ? category
-      : "all";
-  }
-
   if (tier === PLACEMENT_TIER_DREAM || tier === PLACEMENT_TIER_OPEN_DREAM) {
-    return ["all", "fte", "internship + fte", "others"].includes(category)
-      ? category
-      : "all";
+    return PLACEMENT_TYPE_FILTER_CATEGORIES.includes(category) ? category : "all";
   }
 
   return "all";
@@ -908,31 +904,20 @@ function CompanyStats() {
   const filteredCompanies = clusterScopedCompanies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
     .filter((c) => {
-      if (activeCategory === "all") return true;
+      const showPlacementTypeFilter =
+        placementTier === PLACEMENT_TIER_DREAM ||
+        placementTier === PLACEMENT_TIER_OPEN_DREAM;
+      if (!showPlacementTypeFilter || activeCategory === "all") return true;
 
       const typeLower = normalizeType(c.type);
 
-      if (placementTier === PLACEMENT_TIER_OFF_CAMPUS) {
-        if (activeCategory === "fte") return isOffCampusTypeFte(c);
-        if (activeCategory === "internship + fte") return isOffCampusTypeInternshipAndFte(c);
-        if (activeCategory === "only internship") return isOffCampusTypeOnlyInternship(c);
-        return true;
+      if (activeCategory === "internship + fte") {
+        return isInternshipFteNonPbcType(c);
+      }
+      if (activeCategory === "internship + fte (pbc)") {
+        return isInternshipFtePbcType(c);
       }
 
-      if (activeCategory === "ppo") {
-        return typeLower.includes("ppo");
-      }
-      if (activeCategory === "internship + fte") {
-        return typeLower.includes("internship") && typeLower.includes("fte");
-      }
-      if (activeCategory === "others") {
-        const isFte = typeLower === "fte";
-        const isOnlyInternship = typeLower === "only internship(6 months)";
-        const isPpo = typeLower.includes("ppo");
-        const isInternshipFte = typeLower.includes("internship") && typeLower.includes("fte");
-        return !isFte && !isOnlyInternship && !isPpo && !isInternshipFte;
-      }
-      
       return typeLower === activeCategory.toLowerCase();
     });
 
@@ -1511,23 +1496,19 @@ function CompanyStats() {
   const clusterHubBullets = {
     [PLACEMENT_CLUSTER_EC]: [
       "Electronics & Communication cluster hub.",
-      "Company cards and resources scoped to EC.",
-      "Aligned with the same card layout as year selection.",
+      "Branches include: ECE ,EEE ,EIE ,ETE",
     ],
     [PLACEMENT_CLUSTER_ME]: [
-      "Mechanical cluster hub (ME, ASE, IEM).",
-      "Company cards and resources scoped to ME.",
-      "PPO / branch stats: ASE, IEM, ME.",
+      "Mechanical cluster hub.",
+      "Branches include: Aerospace, IEM, Mechanical",
     ],
     [PLACEMENT_CLUSTER_CS]: [
-      "Computer Science & Engineering cluster.",
-      "Dream, open dream, internships, and off-campus lists.",
-      "PPO / branch stats: CD, CY, ISE, CSE, AIML.",
+      "Computer Science & Engineering cluster hub.",
+      "Branches include: CD, CY, ISE, CSE, AIML.",
     ],
     [PLACEMENT_CLUSTER_CHEM]: [
-      "Chemical sciences cluster hub (CH, Civil, BT).",
-      "Company cards and resources scoped to this cluster.",
-      "PPO / branch stats: BT, CH, Civil.",
+      "Chemical sciences cluster hub.",
+      "Branches include: Biotechnology, Chemical, Civil.",
     ],
   };
 
@@ -2129,7 +2110,8 @@ function CompanyStats() {
         )}
       </section>
 
-      {placementTier !== PLACEMENT_TIER_INTERNSHIP_ONLY && (
+      {(placementTier === PLACEMENT_TIER_DREAM ||
+        placementTier === PLACEMENT_TIER_OPEN_DREAM) && (
         <div className="fixed bottom-28 sm:bottom-44 right-4 sm:right-8 lg:right-20 z-50 flex flex-col gap-3 sm:gap-4 items-end max-w-[calc(100vw-1.5rem)]">
           <button
             onClick={() => setShowFilter((prev) => !prev)}
@@ -2142,7 +2124,7 @@ function CompanyStats() {
 
           {showFilter && (
             <div
-              className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-40 sm:w-48 flex flex-col right-0"
+              className="absolute bottom-full mb-2 bg-theme-card border border-theme rounded-lg shadow-lg py-2 w-44 sm:w-56 flex flex-col right-0"
               data-tour="company-stats-2026-filter-menu"
             >
               <button
@@ -2183,33 +2165,20 @@ function CompanyStats() {
               >
                 Internship + FTE
               </button>
-              {placementTier === PLACEMENT_TIER_OFF_CAMPUS ? (
-                <button
-                  onClick={() => {
-                    setActiveCategory("only internship");
-                    setShowFilter(false);
-                    resetListPages();
-                  }}
-                  className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    activeCategory === "only internship" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                  }`}
-                >
-                  Only Internship
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setActiveCategory("others");
-                    setShowFilter(false);
-                    resetListPages();
-                  }}
-                  className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
-                    activeCategory === "others" ? "font-semibold nav-active-theme text-theme-primary" : ""
-                  }`}
-                >
-                  Others
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  setActiveCategory("internship + fte (pbc)");
+                  setShowFilter(false);
+                  resetListPages();
+                }}
+                className={`px-4 py-2 text-left hover:bg-theme-nav text-theme-secondary ${
+                  activeCategory === "internship + fte (pbc)"
+                    ? "font-semibold nav-active-theme text-theme-primary"
+                    : ""
+                }`}
+              >
+                Internship + FTE (PBC)
+              </button>
             </div>
           )}
         </div>

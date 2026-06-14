@@ -239,6 +239,8 @@ function CompanyDetails() {
   const companyDetailFetchGenRef = useRef(0);
   const interviewExitHandlerRef = useRef(null);
   const dropdownRef = useRef(null);
+  const tabContentRef = useRef(null);
+  const previousActiveTabRef = useRef(activeTab);
   const EXIT_WARNING_MESSAGE =
     "Progress will be lost and interview cannot be attended again. Are you sure you want to exit?";
 
@@ -274,6 +276,24 @@ function CompanyDetails() {
       setGlobalInterviewLocked(false);
     };
   }, [isInterviewLocked, setGlobalInterviewLocked]);
+
+  useEffect(() => {
+    const previousTab = previousActiveTabRef.current;
+    previousActiveTabRef.current = activeTab;
+
+    if (activeTab !== "aiinterview" || previousTab === "aiinterview" || interviewFocusMode) {
+      return;
+    }
+
+    const scrollToInterviewTab = () => {
+      tabContentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    const frameId = requestAnimationFrame(() => {
+      requestAnimationFrame(scrollToInterviewTab);
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [activeTab, interviewFocusMode]);
 
   useEffect(() => {
     if (!id) return;
@@ -388,7 +408,7 @@ function CompanyDetails() {
     try {
       await companyAPI.submitDetailRequest(id, { placementYear });
       setHasRequestedDetail(true);
-      setDetailRequestFeedback("Thanks — admins have been notified.");
+      setDetailRequestFeedback("Request sent. We will notify you when more details are available.");
     } catch (err) {
       if (err.response?.status === 400 && err.response?.data?.hasRequested) {
         setHasRequestedDetail(true);
@@ -922,11 +942,11 @@ function CompanyDetails() {
                     </p>
                   ) : hasRequestedDetail ? (
                     <p className="text-sm text-theme-muted">
-                      Admins have been notified. You can only request once per company.
+                      You can only request once per company. We will notify you when more details are available!
                     </p>
                   ) : (
                     <p className="text-sm text-theme-muted">
-                      Missing eligibility, roles, or visit info? Let admins know.
+                      Want to know more about this company or need more questions asked? Request additional details and we'll get back to you as soon as we can!
                     </p>
                   )}
                 </div>
@@ -1048,7 +1068,7 @@ function CompanyDetails() {
           </div>
         </div>
         )}
-        <div className="company-tab-content">
+        <div ref={tabContentRef} className="company-tab-content">
           {activeTab === "about" && <AboutTab company={company} />}
           {activeTab === "general" &&
             (hideTierContextVisitDetails ? (

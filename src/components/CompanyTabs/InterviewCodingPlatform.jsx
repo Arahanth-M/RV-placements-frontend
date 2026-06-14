@@ -8,6 +8,7 @@ import {
 } from "../../utils/cppInterviewStub";
 import { getJavaGraderContractHints } from "../../utils/javaInterviewStub";
 import InterviewCodeWorkspace from "./InterviewCodeWorkspace";
+import ThemedSelect from "../ThemedSelect.jsx";
 import "./InterviewCodingPlatform.css";
 
 function formatTestValue(value) {
@@ -623,24 +624,15 @@ export default function InterviewCodingPlatform({
           <div className="icp-toolbar">
             <div className="icp-lang-wrap">
               {languageOptions.length > 1 ? (
-                <>
-                  <select
-                    className="icp-lang-select"
-                    value={language}
-                    onChange={(e) => onLanguageChange?.(e.target.value)}
-                    disabled={disabled}
-                    aria-label="Coding language"
-                  >
-                    {languageOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="icp-lang-chevron" aria-hidden>
-                    ▾▾
-                  </span>
-                </>
+                <ThemedSelect
+                  ariaLabel="Coding language"
+                  value={language}
+                  options={languageOptions}
+                  onChange={(next) => onLanguageChange?.(next)}
+                  disabled={disabled}
+                  triggerClassName="rounded-lg py-2 text-[0.82rem] font-semibold"
+                  menuClassName="z-50"
+                />
               ) : (
                 <div className="icp-lang-select flex items-center">
                   {languageOptions[0]?.label || language}

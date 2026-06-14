@@ -117,7 +117,7 @@ const StudentProfilePage = () => {
     try {
       await studentAPI.submitProfileDiscrepancy();
       setHasReportedDiscrepancy(true);
-      setDiscrepancyFeedback("Thanks — admins have been notified.");
+      setDiscrepancyFeedback("Thanks. Admins have been notified.");
     } catch (err) {
       if (err.response?.status === 400 && err.response?.data?.hasReported) {
         setHasReportedDiscrepancy(true);
@@ -301,7 +301,7 @@ const StudentProfilePage = () => {
                     </p>
                   ) : (
                     <p className="text-sm text-theme-muted">
-                      Wrong company, offer, or stipend? Let admins know.
+                      Wrong company, offer, or stipend or any other details? Click the button to let us know.
                     </p>
                   )}
                 </div>
