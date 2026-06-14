@@ -3,7 +3,7 @@ import rvLogo from "../assets/logo2.webp";
 import { MESSAGES } from "../utils/constants";
 
 /**
- * Shown when a user has reached the one-interview-per-user cap.
+ * Shown when a user has reached the weekly interview cap.
  * Styled to match AI interview feedback modals in AIInterviewTab.
  */
 export default function InterviewLimitModal({ open, onClose, message }) {
@@ -50,7 +50,7 @@ export default function InterviewLimitModal({ open, onClose, message }) {
               Interview limit
             </p>
             <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary leading-tight">
-              One interview per user
+              One interview per week
             </h3>
           </div>
         </div>

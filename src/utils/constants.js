@@ -109,7 +109,7 @@ export const MESSAGES = {
     "Your contribution is highly valued. Thousands of RVCEians will benefit from your response.",
   SUBMISSION_ERROR: "Something went wrong. Try again.",
   INTERVIEW_LIMIT_REACHED:
-    "Due to tokens limit, we have restricted to only one interview per user, soon it will be removed and can take endless interviews",
+    "You can take one AI mock interview every 7 days. Please try again later.",
   VALIDATION_ERRORS: {
     COMPANY_NAME: "Invalid company name. Use 2–50 letters/numbers only.",
     POSITIVE_COUNT: "Count must be a positive integer.",

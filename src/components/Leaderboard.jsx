@@ -97,6 +97,24 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
     <div
       style={{
         position: 'relative',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        paddingTop: isCurrentUser ? 14 : 0,
+      }}
+    >
+      {isCurrentUser && (
+        <span style={{
+          position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+          background: '#4F46E5', color: '#fff', padding: '2px 10px', borderRadius: '999px',
+          whiteSpace: 'nowrap',
+          zIndex: 1,
+        }}>You</span>
+      )}
+    <div
+      style={{
+        position: 'relative',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         padding: '1.25rem',
         borderRadius: '16px',
@@ -113,14 +131,6 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
       }}
       aria-label={`Rank ${rank}: ${entry.username}, ${entry.points} points`}
     >
-      {isCurrentUser && (
-        <span style={{
-          position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-          fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-          background: '#4F46E5', color: '#fff', padding: '2px 10px', borderRadius: '999px',
-          whiteSpace: 'nowrap',
-        }}>You</span>
-      )}
 
       {/* Rank badge */}
       <span style={{
@@ -174,6 +184,7 @@ const PodiumCard = ({ entry, rank, isCurrentUser }) => {
             : null}
         </p>
       )}
+    </div>
     </div>
   );
 };
@@ -530,8 +541,8 @@ const Leaderboard = () => {
                     <div
                       className={
                         top2.length === 1
-                          ? "mx-auto grid w-full max-w-[280px] min-w-0 grid-cols-1 gap-4 overflow-hidden"
-                          : "grid w-full min-w-0 grid-cols-1 gap-4 overflow-hidden sm:grid-cols-2"
+                          ? "mx-auto grid w-full max-w-[280px] min-w-0 grid-cols-1 gap-4"
+                          : "grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2"
                       }
                     >
                       {top2.map((entry) => (
