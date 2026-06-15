@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FaBell, FaTimes, FaTrash, FaSync } from "react-icons/fa";
+import { FaBell, FaTimes, FaSync } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { notificationAPI } from "../utils/api";
 import { BASE_URL } from "../utils/constants";
@@ -199,20 +199,6 @@ function NotificationBell() {
     }
   };
 
-  // Clear all notifications
-  const handleClearAll = async (e) => {
-    e.stopPropagation();
-    if (window.confirm("Are you sure you want to clear all notifications?")) {
-      try {
-        await notificationAPI.clearAllNotifications();
-        setNotifications([]);
-        setUnreadCount(0);
-      } catch (err) {
-        console.error("Error clearing notifications:", err);
-      }
-    }
-  };
-
   // Don't show if user is not logged in
   if (!user) {
     return null;
@@ -245,16 +231,6 @@ function NotificationBell() {
               >
                 <FaSync className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
-              {notifications.length > 0 && (
-                <button
-                  onClick={handleClearAll}
-                  className="text-[11px] sm:text-xs text-theme-secondary hover:text-red-500 transition-colors flex items-center gap-1 font-medium"
-                  title="Clear all notifications"
-                >
-                  <FaTrash className="w-3 h-3" />
-                  Clear all
-                </button>
-              )}
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsSeen}

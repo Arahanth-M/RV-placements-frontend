@@ -341,9 +341,7 @@ const Header = () => {
             <span
               className={`hidden min-w-0 truncate text-sm font-semibold text-theme-primary ${
                 isMobile
-                  ? condensedHeader
-                    ? "max-w-[9rem] sm:inline sm:max-w-[11rem]"
-                    : "max-w-[10rem] sm:inline sm:max-w-[13rem]"
+                  ? ""
                   : condensedHeader
                     ? "md:inline max-w-[7rem] lg:max-w-[10rem] xl:max-w-[13rem]"
                     : "md:inline max-w-[10rem] md:max-w-[13rem]"
@@ -353,7 +351,7 @@ const Header = () => {
             </span>
             <FaChevronDown
               className={`h-3 w-3 shrink-0 text-theme-secondary transition ${accountMenuOpen ? "rotate-180" : ""} ${
-                isMobile ? "hidden min-[400px]:inline" : ""
+                isMobile ? "hidden" : ""
               }`}
             />
           </button>
@@ -469,7 +467,7 @@ const Header = () => {
           }`}
         >
           {/* Mobile: compact actions + menu */}
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-0.5 sm:gap-1 md:hidden">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:hidden">
             {user && canStartTour && (
               <button
                 type="button"
@@ -500,7 +498,7 @@ const Header = () => {
             >
               {theme === "dark" ? <FaSun className="h-[1.05rem] w-[1.05rem]" /> : <FaMoon className="h-[1.05rem] w-[1.05rem]" />}
             </button>
-            <div className="shrink-0">{renderAccountMenu(true)}</div>
+            <div className="relative z-0 shrink-0">{renderAccountMenu(true)}</div>
             <button
               type="button"
               onClick={() =>
@@ -513,7 +511,7 @@ const Header = () => {
                   return next;
                 })
               }
-              className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors touch-manipulation sm:h-11 sm:w-11"
+              className="relative z-20 ml-0.5 shrink-0 inline-flex h-11 w-11 min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors touch-manipulation"
               aria-expanded={mobileNavOpen}
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
             >
