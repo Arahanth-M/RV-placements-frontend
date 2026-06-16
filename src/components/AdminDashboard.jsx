@@ -4,6 +4,7 @@ import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import StudentRequestsTab from './StudentRequestsTab';
+import AdminGeneralStatsUpload from './AdminGeneralStatsUpload';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
@@ -63,7 +64,7 @@ const AdminDashboard = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'student-requests', 'assign-spc', 'add-next-batch', 'placement-settings'
+  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'general-stats-upload', 'student-requests', 'assign-spc', 'add-next-batch', 'placement-settings'
   const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
@@ -1241,6 +1242,18 @@ const AdminDashboard = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveMainTab('general-stats-upload')}
+                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
+                  activeMainTab === 'general-stats-upload'
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                }`}
+              >
+                <FaChartLine />
+                General stats
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveMainTab('student-requests')}
                 className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
                   activeMainTab === 'student-requests'
@@ -2064,6 +2077,8 @@ const AdminDashboard = () => {
                 onToast={(message) => setAdminToast({ type: 'success', message })}
               />
             )}
+
+            {activeMainTab === 'general-stats-upload' && <AdminGeneralStatsUpload />}
 
             {activeMainTab === 'submissions' && (
             <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">

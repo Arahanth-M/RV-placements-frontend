@@ -389,6 +389,13 @@ export const adminAPI = {
     formData.append('file', file);
     return API.post('/api/admin/students/batch-import', formData);
   },
+  getPlacementGeneralStatsMeta: () => API.get('/api/admin/placement-general-stats/meta'),
+  importPlacementGeneralStats: (year, file) => {
+    const formData = new FormData();
+    formData.append('year', String(year));
+    formData.append('file', file);
+    return API.post('/api/admin/placement-general-stats/import', formData);
+  },
   getPlacementHubSettings: () => API.get('/api/admin/placement-hub-settings'),
   updatePlacementHubSettings: (body) =>
     API.put('/api/admin/placement-hub-settings', body),
@@ -413,6 +420,21 @@ export const eventAPI = {
 export const yearStatsAPI = {
   async getYearStats(year) {
     return API.get(`/api/year-stats/${year}`);
+  },
+};
+
+export const placementGeneralStatsAPI = {
+  getYearsMeta: () => API.get("/api/placement-stats/years"),
+  getByYear: (year) => API.get(`/api/placement-stats/${year}`),
+};
+
+export const adminPlacementGeneralStatsAPI = {
+  getMeta: () => API.get("/api/admin/placement-general-stats/meta"),
+  importFromExcel: (year, file) => {
+    const formData = new FormData();
+    formData.append("year", String(year));
+    formData.append("file", file);
+    return API.post("/api/admin/placement-general-stats/import", formData);
   },
 };
 

@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { useTheme } from "../../utils/ThemeContext";
-import { deptAvgCtcColor, PLACEMENT_STATS_2026 } from "../../data/placementStats2026";
+import { deptAvgCtcColor } from "../../utils/generalStatsChartColors";
 
 function KpiCard({ label, value, sub, valueClassName = "" }) {
   return (
@@ -26,11 +26,25 @@ function KpiCard({ label, value, sub, valueClassName = "" }) {
   );
 }
 
-function ChartCard({ title, children, footer }) {
+function ChartAxisLegend({ xLabel, yLabel }) {
+  return (
+    <div className="mt-2.5 flex flex-col gap-1 border-t border-theme/60 pt-2.5 text-[11px] text-theme-secondary sm:flex-row sm:flex-wrap sm:gap-x-5">
+      <p>
+        <span className="font-medium text-theme-primary/85">X-axis:</span> {xLabel}
+      </p>
+      <p>
+        <span className="font-medium text-theme-primary/85">Y-axis:</span> {yLabel}
+      </p>
+    </div>
+  );
+}
+
+function ChartCard({ title, children, footer, xAxisLabel, yAxisLabel }) {
   return (
     <div className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-[18px]">
       <h3 className="mb-3.5 text-[13px] font-medium text-theme-primary">{title}</h3>
       {children}
+      {xAxisLabel && yAxisLabel ? <ChartAxisLegend xLabel={xAxisLabel} yLabel={yAxisLabel} /> : null}
       {footer}
     </div>
   );
@@ -58,10 +72,10 @@ function MonthOfferTooltip({ active, payload }) {
   );
 }
 
-function CtcTooltip({ active, payload }) {
+function CtcTooltip({ active, payload, totalOffers }) {
   if (!active || !payload?.length) return null;
   const { range, offers } = payload[0]?.payload || {};
-  const pct = Math.round((offers / PLACEMENT_STATS_2026.totalOffers) * 100);
+  const pct = totalOffers > 0 ? Math.round((offers / totalOffers) * 100) : 0;
   return (
     <div className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-xs shadow-lg">
       <p className="font-medium text-theme-primary">{range}</p>
@@ -83,7 +97,7 @@ function DeptAvgCtcTooltip({ active, payload, label }) {
   );
 }
 
-export default function PlacementStatsDashboard() {
+export default function PlacementStatsDashboard({ stats }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -108,7 +122,8 @@ export default function PlacementStatsDashboard() {
     topCompanies,
     monthlyTimeline,
     departmentAvgCtc,
-  } = PLACEMENT_STATS_2026;
+    totalOffers,
+  } = stats;
 
   const monthlyData = monthlyTimeline.map((row) => ({
     ...row,
@@ -171,6 +186,8 @@ export default function PlacementStatsDashboard() {
               <span className="font-normal text-theme-secondary">(weighted by offers)</span>
             </>
           }
+          xAxisLabel="Average CTC (₹ lakhs per annum, offer-weighted)"
+          yAxisLabel="Department"
         >
           <div
             className="w-full"
@@ -214,7 +231,11 @@ export default function PlacementStatsDashboard() {
       </div>
 
       <div className="mb-3.5 grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-        <ChartCard title="Offers by department">
+        <ChartCard
+          title="Offers by department"
+          xAxisLabel="Department"
+          yAxisLabel="Number of placement offers"
+        >
           <div className="h-[260px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byDepartment} margin={{ top: 4, right: 8, left: -12, bottom: 48 }}>
@@ -275,7 +296,7 @@ export default function PlacementStatsDashboard() {
                     <Cell key={entry.range} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip content={<CtcTooltip />} />
+                <Tooltip content={(props) => <CtcTooltip {...props} totalOffers={totalOffers} />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -283,7 +304,16 @@ export default function PlacementStatsDashboard() {
       </div>
 
       <div className="mb-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-[1.4fr_1fr]">
-        <ChartCard title="Top 12 recruiting companies (by offers)">
+        <ChartCard
+          title={
+            <>
+              Top 12 recruiting companies{" "}
+              <span className="font-normal text-theme-secondary">(PPO + campus offers)</span>
+            </>
+          }
+          xAxisLabel="Total placement offers (PPO and campus combined)"
+          yAxisLabel="Company name"
+        >
           <div className="h-[360px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -320,7 +350,11 @@ export default function PlacementStatsDashboard() {
           </div>
         </ChartCard>
 
-        <ChartCard title="Monthly offer timeline">
+        <ChartCard
+          title="Monthly offer timeline"
+          xAxisLabel="Recruitment month or period"
+          yAxisLabel="Number of placement offers"
+        >
           <div className="h-[360px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} margin={{ top: 4, right: 8, left: -12, bottom: 36 }}>
