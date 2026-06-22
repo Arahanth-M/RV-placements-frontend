@@ -28,48 +28,37 @@ function scoreBadgeClass(value) {
 // ─── Reusable DataTable primitive ───────────────────────────────────────────
 
 function cellAlignClass(align) {
-  if (align === "center") return "text-center tabular-nums";
   if (align === "right") return "text-right tabular-nums";
   return "text-left";
 }
 
 /**
- * columns: Array<{ key: string; label: string; align?: "left" | "right" | "center"; colorFn?: (val) => string; width?: string; isRowHeader?: boolean }>
+ * columns: Array<{ key: string; label: string; align?: "left" | "right"; width?: string; colorFn?: (val) => string; isRowHeader?: boolean; wrap?: boolean; cellClass?: string }>
  * rows:    Array<Record<string, any>>
- * compactCentered: tight padding + shrink-to-fit table, centered in its container
  */
-function DataTable({ columns, rows, compactCentered = false }) {
+function DataTable({ columns, rows }) {
   if (!rows.length) return null;
 
-  const cellPad = compactCentered
-    ? "px-6 py-2.5 sm:px-8 sm:py-3"
-    : "px-2 py-1.5 sm:px-3 sm:py-2";
-
+  const cellPad = "px-2 py-1.5 sm:px-3 sm:py-2";
   const headerBorder = "border-b border-theme/60";
   const bodyRowBorder = "border-b border-theme/50";
+  const hasColWidths = columns.some((col) => col.width);
 
   return (
-    <div
-      className={[
-        "min-w-0 overflow-x-auto rounded-lg border border-theme/60",
-        compactCentered ? "mx-auto w-fit max-w-full" : "w-full",
-      ].join(" ")}
-    >
+    <div className="w-full min-w-0 overflow-x-auto rounded-lg border border-theme/60">
       <table
         className={[
-          "border-collapse",
-          compactCentered ? "text-sm sm:text-base w-auto" : "text-xs sm:text-sm w-full min-w-[12rem]",
+          "w-full border-collapse text-xs sm:text-sm",
+          hasColWidths ? "table-fixed" : "",
         ].join(" ")}
-        style={{ tableLayout: compactCentered ? "auto" : "fixed" }}
       >
-        <colgroup>
-          {columns.map((col) => (
-            <col
-              key={col.key}
-              style={col.width ? { width: col.width } : undefined}
-            />
-          ))}
-        </colgroup>
+        {hasColWidths ? (
+          <colgroup>
+            {columns.map((col) => (
+              <col key={col.key} style={col.width ? { width: col.width } : undefined} />
+            ))}
+          </colgroup>
+        ) : null}
         <thead>
           <tr className="bg-theme-hero/40">
             {columns.map((col) => (
@@ -79,8 +68,10 @@ function DataTable({ columns, rows, compactCentered = false }) {
                 className={[
                   cellPad,
                   headerBorder,
-                  "font-semibold text-theme-primary whitespace-nowrap",
+                  "font-semibold text-theme-primary",
+                  col.align === "right" ? "whitespace-nowrap" : "whitespace-normal",
                   cellAlignClass(col.align),
+                  col.cellClass || "",
                 ].join(" ")}
               >
                 {col.label}
@@ -100,21 +91,21 @@ function DataTable({ columns, rows, compactCentered = false }) {
                 const raw = row[`${col.key}__raw`];
                 const display = row[col.key] ?? "—";
                 const colorClass = col.colorFn ? col.colorFn(raw) : "text-theme-primary";
+                const displayText = typeof display === "string" ? display : String(display);
                 return (
                   <td
                     key={col.key}
                     scope={col.isRowHeader ? "row" : undefined}
-                    title={typeof display === "string" && display.length > 18 ? display : undefined}
+                    title={displayText}
                     className={[
                       cellPad,
                       cellAlignClass(col.align),
-                      compactCentered || !isLastRow ? bodyRowBorder : "",
-                      col.isRowHeader
-                        ? compactCentered
-                          ? "max-w-[14rem] sm:max-w-[22rem] truncate"
-                          : "truncate"
+                      !isLastRow ? bodyRowBorder : "",
+                      col.wrap || col.isRowHeader
+                        ? "whitespace-normal break-words"
                         : "whitespace-nowrap",
                       colorClass,
+                      col.cellClass || "",
                     ].join(" ")}
                   >
                     {display}
@@ -132,16 +123,11 @@ function DataTable({ columns, rows, compactCentered = false }) {
 
 // ─── Section wrapper ─────────────────────────────────────────────────────────
 
-function TableSection({ label, children, className = "", centered = false }) {
+function TableSection({ label, children, className = "" }) {
   return (
     <div className={["flex w-full min-w-0 flex-col", className].filter(Boolean).join(" ")}>
       {label ? (
-        <p
-          className={[
-            "mb-2 text-xs font-semibold uppercase tracking-wide text-theme-secondary",
-            centered ? "text-center" : "",
-          ].join(" ")}
-        >
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-theme-secondary">
           {label}
         </p>
       ) : null}
@@ -219,24 +205,11 @@ function PerformanceOverviewTable({
     );
   }
 
-  const historyColumns = [
-    { key: "index", label: "#", align: "center", width: "4.5rem" },
-    { key: "company", label: "Company", isRowHeader: true, align: "center", width: "18rem" },
-    { key: "score", label: "Score", align: "center", width: "7rem", colorFn: (v) => scoreBadgeClass(v) },
-  ];
-
-  const historyRows = progressData.map((r, index) => ({
-    index: index + 1,
-    company: r.company || "—",
-    score: scoreLabel(r.score),
-    score__raw: Number(r.score),
-  }));
-
   const companyColumns = [
     { key: "companyName", label: "Company", isRowHeader: true },
-    { key: "attempts", label: "Attempts", align: "right", width: "4.5rem" },
-    { key: "avgScore", label: "Avg", align: "right", width: "4.5rem", colorFn: (v) => scoreBadgeClass(v) },
-    { key: "bestScore", label: "Best", align: "right", width: "4.5rem", colorFn: (v) => scoreBadgeClass(v) },
+    { key: "attempts", label: "Attempts", align: "right" },
+    { key: "avgScore", label: "Avg", align: "right", colorFn: (v) => scoreBadgeClass(v) },
+    { key: "bestScore", label: "Best", align: "right", colorFn: (v) => scoreBadgeClass(v) },
   ];
 
   const companyRows = companyBreakdown.map((row) => ({
@@ -250,8 +223,8 @@ function PerformanceOverviewTable({
 
   const bandColumns = [
     { key: "label", label: "Score range", isRowHeader: true },
-    { key: "count", label: "Interviews", align: "right", width: "4.5rem" },
-    { key: "pct", label: "Share", align: "right", width: "4.5rem" },
+    { key: "count", label: "Interviews", align: "right" },
+    { key: "pct", label: "Share", align: "right" },
   ];
 
   const bandRows = scoreBands.map((row) => ({
@@ -262,7 +235,7 @@ function PerformanceOverviewTable({
 
   const roundDetailColumns = [
     { key: "type", label: "Round type", isRowHeader: true },
-    { key: "avgScore", label: "Avg score", align: "right", width: "5rem", colorFn: (v) => scoreBadgeClass(v) },
+    { key: "avgScore", label: "Avg score", align: "right", colorFn: (v) => scoreBadgeClass(v) },
   ];
 
   const roundDetailRows = (roundTypeDetail.length > 0 ? roundTypeDetail : sortedSkills.map((r) => ({
@@ -275,19 +248,34 @@ function PerformanceOverviewTable({
   }));
 
   const readinessColumns = [
-    { key: "companyName", label: "Company", isRowHeader: true },
-    { key: "overallScore", label: "Score", align: "right", width: "4.5rem", colorFn: (v) => scoreBadgeClass(v) },
-    { key: "readinessScore", label: "Readiness", align: "right", width: "4.5rem" },
-    { key: "readinessLabel", label: "Status", width: "6rem" },
+    { key: "companyName", label: "Company", isRowHeader: true, width: "30%" },
+    {
+      key: "overallScore",
+      label: "Score",
+      align: "left",
+      width: "5.25rem",
+      colorFn: (v) => scoreBadgeClass(v),
+      cellClass: "pr-1 sm:pr-2",
+    },
+    {
+      key: "readiness",
+      label: "Readiness",
+      wrap: true,
+      cellClass: "pl-4 sm:pl-6",
+    },
   ];
 
-  const readinessTableRows = readinessRows.map((row) => ({
-    companyName: row.companyName,
-    overallScore: scoreLabel(row.overallScore),
-    overallScore__raw: row.overallScore,
-    readinessScore: row.readinessScore != null ? `${row.readinessScore}%` : "—",
-    readinessLabel: row.readinessLabel || "—",
-  }));
+  const readinessTableRows = readinessRows.map((row) => {
+    const readinessParts = [];
+    if (row.readinessScore != null) readinessParts.push(`${row.readinessScore}%`);
+    if (row.readinessLabel) readinessParts.push(row.readinessLabel);
+    return {
+      companyName: row.companyName,
+      overallScore: scoreLabel(row.overallScore),
+      overallScore__raw: row.overallScore,
+      readiness: readinessParts.length > 0 ? readinessParts.join(" · ") : "—",
+    };
+  });
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -297,7 +285,6 @@ function PerformanceOverviewTable({
       key: "value",
       label: "Value",
       align: "right",
-      width: "5rem",
       colorFn: (raw) => scoreBadgeClass(raw),
     },
   ];
@@ -337,26 +324,20 @@ function PerformanceOverviewTable({
           </TableSection>
         ) : null}
 
-        {companyRows.length > 0 ? (
-          <TableSection label="Performance by company">
-            <DataTable columns={companyColumns} rows={companyRows} />
-          </TableSection>
-        ) : null}
+        {companyRows.length > 0 || readinessTableRows.length > 0 ? (
+          <div className="sm:col-span-2 xl:col-span-3 grid gap-5 sm:grid-cols-2">
+            {companyRows.length > 0 ? (
+              <TableSection label="Performance by company">
+                <DataTable columns={companyColumns} rows={companyRows} />
+              </TableSection>
+            ) : null}
 
-        {readinessTableRows.length > 0 ? (
-          <TableSection label="Company readiness">
-            <DataTable columns={readinessColumns} rows={readinessTableRows} />
-          </TableSection>
-        ) : null}
-
-        {historyRows.length > 0 ? (
-          <TableSection
-            label="Mock interview history"
-            className="sm:col-span-2 xl:col-span-3 items-center"
-            centered
-          >
-            <DataTable columns={historyColumns} rows={historyRows} compactCentered />
-          </TableSection>
+            {readinessTableRows.length > 0 ? (
+              <TableSection label="Company readiness">
+                <DataTable columns={readinessColumns} rows={readinessTableRows} />
+              </TableSection>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </section>
