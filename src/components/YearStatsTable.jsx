@@ -44,7 +44,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
     data.forEach((row) => {
       Object.keys(row || {}).forEach((key) => keys.add(key));
     });
-    return Array.from(keys).find((key) => /branch/i.test(key)) || null;
+    return Array.from(keys).find((key) => /branch|program/i.test(key)) || null;
   }, [data]);
 
   const branchOptions = useMemo(() => {
@@ -238,7 +238,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
                     data-tour="year-stats-branch"
                     className="w-full sm:w-52 sm:ml-auto px-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
                   >
-                    <option value="all">All Branches</option>
+                    <option value="all">All Programmes</option>
                     {branchOptions.map((branch) => (
                       <option key={branch} value={branch}>
                         {branch}

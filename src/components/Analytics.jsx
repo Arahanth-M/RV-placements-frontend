@@ -91,9 +91,11 @@ function Analytics({ year = null, embedded = false }) {
   const calculateBranchStats = (data, branchName) => {
     const branchData = data.filter((item) => {
       const branchField = findField(item, [
+        "program",
         "branch",
         "department",
         "dept",
+        "Program",
         "Branch",
         "Department",
       ]);
@@ -175,11 +177,15 @@ function Analytics({ year = null, embedded = false }) {
 
     // Try to find branch field
     const branchField = findField(data[0], [
+      "program",
       "branch",
       "department",
       "dept",
+      "Program",
       "Branch",
       "Department",
+      "programName",
+      "ProgramName",
       "branchName",
       "BranchName",
     ]);
@@ -234,7 +240,7 @@ function Analytics({ year = null, embedded = false }) {
           )}
           {branches2024.length === 0 ? (
             <div className="bg-theme-card backdrop-blur border border-theme rounded-lg shadow-md p-6 text-center">
-              <p className="text-theme-muted">No branch data available for 2024</p>
+              <p className="text-theme-muted">No program data available for 2024</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -283,7 +289,7 @@ function Analytics({ year = null, embedded = false }) {
           )}
           {branches2025.length === 0 ? (
             <div className="bg-theme-card backdrop-blur border border-theme rounded-lg shadow-md p-6 text-center">
-              <p className="text-theme-muted">No branch data available for 2025</p>
+              <p className="text-theme-muted">No program data available for 2025</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

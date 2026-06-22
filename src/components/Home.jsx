@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { companyAPI } from "../utils/api";
+import { normalizeCompanyNameKey } from "../utils/companyLogoDomains";
 import { useAuth } from "../utils/AuthContext";
 import aeroplane from "../assets/home5.webp";
 import building from "../assets/rv_image.webp";
@@ -110,6 +111,20 @@ function SectionIntro({ kicker, title, titleAccent, subtitle, id }) {
   );
 }
 
+function dedupeCompaniesForMarquee(companies) {
+  const seen = new Set();
+  const unique = [];
+  for (const company of companies) {
+    const id = company?._id != null ? String(company._id) : "";
+    const nameKey = normalizeCompanyNameKey(company?.name || "");
+    const key = id || nameKey;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(company);
+  }
+  return unique;
+}
+
 function Home() {
   const { user } = useAuth();
   const images = useMemo(() => [aeroplane, entrance, building], []);
@@ -144,7 +159,7 @@ function Home() {
     const fetchCompanies = async () => {
       try {
         const res = await companyAPI.getAllCompanies();
-        setCompanyLogos((res.data || []).slice(0, 6));
+        setCompanyLogos(dedupeCompaniesForMarquee(res.data || []).slice(0, 6));
       } catch (err) {
         console.error("Error fetching companies for marquee:", err);
       }

@@ -11,6 +11,8 @@ const StudentProfile = ({ studentData, onClose }) => {
   const formatKey = (key) => {
     // Skip MongoDB internal fields
     if (key === '_id' || key === '__v') return null;
+
+    if (normFieldKey(key) === 'branch') return 'Program';
     
     const spaced = String(key || '')
       .replace(/_/g, ' ')
@@ -64,7 +66,7 @@ const StudentProfile = ({ studentData, onClose }) => {
 
   // Group fields into sections for better organization
   const personalInfoFields = ['USN', 'Name', 'Email', 'Phone', 'DOB', 'Gender'];
-  const academicFields = ['Branch', 'Semester', 'CGPA', 'Year', 'Section'];
+  const academicFields = ['Program', 'Semester', 'CGPA', 'Year', 'Section'];
 
   const normFieldKey = (key) =>
     String(key || "")
@@ -145,6 +147,7 @@ const StudentProfile = ({ studentData, onClose }) => {
 
   const matchesAcademicField = (key) => {
     const lowerKey = key.toLowerCase();
+    if (normFieldKey(key) === 'branch') return true;
     return academicFields.some((f) => lowerKey.includes(f.toLowerCase()));
   };
 

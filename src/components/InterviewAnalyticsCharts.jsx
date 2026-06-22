@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -11,13 +11,384 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-function InterviewAnalyticsCharts({ skillData, progressData, CustomTooltip }) {
-  const axisTick = { fill: "var(--chart-axis-tick)", fontSize: 10 };
-  const axisLine = { stroke: "var(--chart-axis-line)" };
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function scoreLabel(value) {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${value}/10`;
+}
+
+function scoreBadgeClass(value) {
+  if (value == null || !Number.isFinite(value)) return "text-theme-secondary";
+  if (value >= 7) return "text-emerald-500";
+  if (value >= 5) return "text-amber-500";
+  return "text-red-500";
+}
+
+// ─── Reusable DataTable primitive ───────────────────────────────────────────
+
+function cellAlignClass(align) {
+  if (align === "center") return "text-center tabular-nums";
+  if (align === "right") return "text-right tabular-nums";
+  return "text-left";
+}
+
+/**
+ * columns: Array<{ key: string; label: string; align?: "left" | "right" | "center"; colorFn?: (val) => string; width?: string; isRowHeader?: boolean }>
+ * rows:    Array<Record<string, any>>
+ * compactCentered: tight padding + shrink-to-fit table, centered in its container
+ */
+function DataTable({ columns, rows, compactCentered = false }) {
+  if (!rows.length) return null;
+
+  const cellPad = compactCentered
+    ? "px-6 py-2.5 sm:px-8 sm:py-3"
+    : "px-2 py-1.5 sm:px-3 sm:py-2";
+
+  const headerBorder = "border-b border-theme/60";
+  const bodyRowBorder = "border-b border-theme/50";
+
+  return (
+    <div
+      className={[
+        "min-w-0 overflow-x-auto rounded-lg border border-theme/60",
+        compactCentered ? "mx-auto w-fit max-w-full" : "w-full",
+      ].join(" ")}
+    >
+      <table
+        className={[
+          "border-collapse",
+          compactCentered ? "text-sm sm:text-base w-auto" : "text-xs sm:text-sm w-full min-w-[12rem]",
+        ].join(" ")}
+        style={{ tableLayout: compactCentered ? "auto" : "fixed" }}
+      >
+        <colgroup>
+          {columns.map((col) => (
+            <col
+              key={col.key}
+              style={col.width ? { width: col.width } : undefined}
+            />
+          ))}
+        </colgroup>
+        <thead>
+          <tr className="bg-theme-hero/40">
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                scope="col"
+                className={[
+                  cellPad,
+                  headerBorder,
+                  "font-semibold text-theme-primary whitespace-nowrap",
+                  cellAlignClass(col.align),
+                ].join(" ")}
+              >
+                {col.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const isLastRow = i === rows.length - 1;
+            return (
+            <tr
+              key={i}
+              className="hover:bg-theme-hero/20 transition-colors"
+            >
+              {columns.map((col) => {
+                const raw = row[`${col.key}__raw`];
+                const display = row[col.key] ?? "—";
+                const colorClass = col.colorFn ? col.colorFn(raw) : "text-theme-primary";
+                return (
+                  <td
+                    key={col.key}
+                    scope={col.isRowHeader ? "row" : undefined}
+                    title={typeof display === "string" && display.length > 18 ? display : undefined}
+                    className={[
+                      cellPad,
+                      cellAlignClass(col.align),
+                      compactCentered || !isLastRow ? bodyRowBorder : "",
+                      col.isRowHeader
+                        ? compactCentered
+                          ? "max-w-[14rem] sm:max-w-[22rem] truncate"
+                          : "truncate"
+                        : "whitespace-nowrap",
+                      colorClass,
+                    ].join(" ")}
+                  >
+                    {display}
+                  </td>
+                );
+              })}
+            </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Section wrapper ─────────────────────────────────────────────────────────
+
+function TableSection({ label, children, className = "", centered = false }) {
+  return (
+    <div className={["flex w-full min-w-0 flex-col", className].filter(Boolean).join(" ")}>
+      {label ? (
+        <p
+          className={[
+            "mb-2 text-xs font-semibold uppercase tracking-wide text-theme-secondary",
+            centered ? "text-center" : "",
+          ].join(" ")}
+        >
+          {label}
+        </p>
+      ) : null}
+      {children}
+    </div>
+  );
+}
+
+// ─── PerformanceOverviewTable ────────────────────────────────────────────────
+
+const SCORE_BANDS = [
+  { key: "strong", label: "Strong (7–10)", min: 7, max: 10 },
+  { key: "good", label: "Good (5–7)", min: 5, max: 7 },
+  { key: "below", label: "Below avg (3–5)", min: 3, max: 5 },
+  { key: "needs", label: "Needs work (0–3)", min: 0, max: 3 },
+];
+
+function PerformanceOverviewTable({
+  skillData,
+  progressData,
+  companyBreakdown = [],
+  roundTypeDetail = [],
+  readinessRows = [],
+}) {
+  // Derive scores once; overview and sortedSkills both depend on them.
+  const scores = useMemo(
+    () => progressData.map((d) => Number(d.score)).filter(Number.isFinite),
+    [progressData]
+  );
+
+  const overview = useMemo(() => {
+    if (!scores.length) return null;
+    const sum = scores.reduce((t, v) => t + v, 0);
+    return {
+      total: scores.length,
+      average: Math.round((sum / scores.length) * 10) / 10,
+      best: Math.max(...scores),
+      latest: scores[scores.length - 1],
+    };
+  }, [scores]);
+
+  const sortedSkills = useMemo(
+    () => [...skillData].sort((a, b) => b.score - a.score || a.skill.localeCompare(b.skill)),
+    [skillData]
+  );
+
+  const scoreBands = useMemo(() => {
+    if (!scores.length) return [];
+    return SCORE_BANDS.map((band) => {
+      const count = scores.filter((score) => {
+        if (band.key === "strong") return score >= band.min && score <= band.max;
+        if (band.key === "needs") return score >= band.min && score < band.max;
+        return score >= band.min && score < band.max;
+      }).length;
+      const pct = Math.round((count / scores.length) * 100);
+      return { label: band.label, count, pct };
+    }).filter((row) => row.count > 0);
+  }, [scores]);
+
+  const hasContent =
+    overview ||
+    sortedSkills.length > 0 ||
+    progressData.length > 0 ||
+    companyBreakdown.length > 0 ||
+    roundTypeDetail.length > 0 ||
+    readinessRows.length > 0;
+
+  if (!hasContent) {
+    return (
+      <section className="bg-theme-card border border-theme rounded-xl p-6 text-center">
+        <p className="text-sm text-theme-secondary">
+          Complete a mock interview to see your performance overview here.
+        </p>
+      </section>
+    );
+  }
+
+  const historyColumns = [
+    { key: "index", label: "#", align: "center", width: "4.5rem" },
+    { key: "company", label: "Company", isRowHeader: true, align: "center", width: "18rem" },
+    { key: "score", label: "Score", align: "center", width: "7rem", colorFn: (v) => scoreBadgeClass(v) },
+  ];
+
+  const historyRows = progressData.map((r, index) => ({
+    index: index + 1,
+    company: r.company || "—",
+    score: scoreLabel(r.score),
+    score__raw: Number(r.score),
+  }));
+
+  const companyColumns = [
+    { key: "companyName", label: "Company", isRowHeader: true },
+    { key: "attempts", label: "Attempts", align: "right", width: "4.5rem" },
+    { key: "avgScore", label: "Avg", align: "right", width: "4.5rem", colorFn: (v) => scoreBadgeClass(v) },
+    { key: "bestScore", label: "Best", align: "right", width: "4.5rem", colorFn: (v) => scoreBadgeClass(v) },
+  ];
+
+  const companyRows = companyBreakdown.map((row) => ({
+    companyName: row.companyName,
+    attempts: row.attempts,
+    avgScore: scoreLabel(row.avgScore),
+    avgScore__raw: row.avgScore,
+    bestScore: scoreLabel(row.bestScore),
+    bestScore__raw: row.bestScore,
+  }));
+
+  const bandColumns = [
+    { key: "label", label: "Score range", isRowHeader: true },
+    { key: "count", label: "Interviews", align: "right", width: "4.5rem" },
+    { key: "pct", label: "Share", align: "right", width: "4.5rem" },
+  ];
+
+  const bandRows = scoreBands.map((row) => ({
+    label: row.label,
+    count: row.count,
+    pct: `${row.pct}%`,
+  }));
+
+  const roundDetailColumns = [
+    { key: "type", label: "Round type", isRowHeader: true },
+    { key: "avgScore", label: "Avg score", align: "right", width: "5rem", colorFn: (v) => scoreBadgeClass(v) },
+  ];
+
+  const roundDetailRows = (roundTypeDetail.length > 0 ? roundTypeDetail : sortedSkills.map((r) => ({
+    type: r.skill,
+    avgScore: r.score,
+  }))).map((row) => ({
+    type: row.type || row.skill,
+    avgScore: scoreLabel(row.avgScore ?? row.score),
+    avgScore__raw: row.avgScore ?? row.score,
+  }));
+
+  const readinessColumns = [
+    { key: "companyName", label: "Company", isRowHeader: true },
+    { key: "overallScore", label: "Score", align: "right", width: "4.5rem", colorFn: (v) => scoreBadgeClass(v) },
+    { key: "readinessScore", label: "Readiness", align: "right", width: "4.5rem" },
+    { key: "readinessLabel", label: "Status", width: "6rem" },
+  ];
+
+  const readinessTableRows = readinessRows.map((row) => ({
+    companyName: row.companyName,
+    overallScore: scoreLabel(row.overallScore),
+    overallScore__raw: row.overallScore,
+    readinessScore: row.readinessScore != null ? `${row.readinessScore}%` : "—",
+    readinessLabel: row.readinessLabel || "—",
+  }));
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  const summaryColumns = [
+    { key: "metric", label: "Metric", isRowHeader: true },
+    {
+      key: "value",
+      label: "Value",
+      align: "right",
+      width: "5rem",
+      colorFn: (raw) => scoreBadgeClass(raw),
+    },
+  ];
+
+  const summaryRows = overview
+    ? [
+        { metric: "Total mock interviews", value: overview.total },
+        { metric: "Average score", value: scoreLabel(overview.average), value__raw: overview.average },
+        { metric: "Best score",    value: scoreLabel(overview.best),    value__raw: overview.best    },
+        { metric: "Latest score",  value: scoreLabel(overview.latest),  value__raw: overview.latest  },
+      ]
+    : [];
+
+  return (
+    <section className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 space-y-5">
+      <h2 className="text-lg font-semibold text-theme-primary flex items-center gap-2">
+        <div className="w-1.5 h-5 bg-theme-accent rounded-full" />
+        Performance Overview
+      </h2>
+
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {overview ? (
+          <TableSection label="Summary">
+            <DataTable columns={summaryColumns} rows={summaryRows} />
+          </TableSection>
+        ) : null}
+
+        {scoreBands.length > 0 ? (
+          <TableSection label="Score distribution">
+            <DataTable columns={bandColumns} rows={bandRows} />
+          </TableSection>
+        ) : null}
+
+        {roundDetailRows.length > 0 ? (
+          <TableSection label="Round type detail">
+            <DataTable columns={roundDetailColumns} rows={roundDetailRows} />
+          </TableSection>
+        ) : null}
+
+        {companyRows.length > 0 ? (
+          <TableSection label="Performance by company">
+            <DataTable columns={companyColumns} rows={companyRows} />
+          </TableSection>
+        ) : null}
+
+        {readinessTableRows.length > 0 ? (
+          <TableSection label="Company readiness">
+            <DataTable columns={readinessColumns} rows={readinessTableRows} />
+          </TableSection>
+        ) : null}
+
+        {historyRows.length > 0 ? (
+          <TableSection
+            label="Mock interview history"
+            className="sm:col-span-2 xl:col-span-3 items-center"
+            centered
+          >
+            <DataTable columns={historyColumns} rows={historyRows} compactCentered />
+          </TableSection>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+// ─── InterviewAnalyticsCharts ────────────────────────────────────────────────
+
+function InterviewAnalyticsCharts({
+  skillData,
+  progressData,
+  companyBreakdown = [],
+  roundTypeDetail = [],
+  readinessRows = [],
+  CustomTooltip,
+}) {
+  const axisTick    = { fill: "var(--chart-axis-tick)", fontSize: 10 };
+  const axisLine    = { stroke: "var(--chart-axis-line)" };
   const axisTickLine = { stroke: "var(--chart-axis-line)" };
 
   return (
     <div className="space-y-6">
+      <PerformanceOverviewTable
+        skillData={skillData}
+        progressData={progressData}
+        companyBreakdown={companyBreakdown}
+        roundTypeDetail={roundTypeDetail}
+        readinessRows={readinessRows}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-2">
+      {/* Skill Breakdown bar chart */}
       <section className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 overflow-hidden">
         <h2 className="text-lg font-semibold text-theme-primary mb-4 flex items-center gap-2">
           <div className="w-1.5 h-5 bg-theme-accent rounded-full" />
@@ -46,12 +417,19 @@ function InterviewAnalyticsCharts({ skillData, progressData, CustomTooltip }) {
                 cursor={{ fill: "var(--chart-cursor)", radius: [6, 6, 0, 0] }}
                 animationDuration={150}
               />
-              <Bar dataKey="score" fill="var(--chart-bar)" radius={[6, 6, 0, 0]} maxBarSize={40} isAnimationActive={false} />
+              <Bar
+                dataKey="score"
+                fill="var(--chart-bar)"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={40}
+                isAnimationActive={false}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </section>
 
+      {/* Progress Over Time line chart */}
       <section className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6 overflow-hidden">
         <h2 className="text-lg font-semibold text-theme-primary mb-4 flex items-center gap-2">
           <div className="w-1.5 h-5 bg-theme-accent rounded-full" />
@@ -86,8 +464,18 @@ function InterviewAnalyticsCharts({ skillData, progressData, CustomTooltip }) {
                 dataKey="score"
                 stroke="var(--chart-line)"
                 strokeWidth={3}
-                dot={{ fill: "var(--chart-line-dot)", strokeWidth: 2, r: 5, stroke: "var(--bg-card)" }}
-                activeDot={{ fill: "var(--accent-secondary)", r: 7, stroke: "var(--bg-card)", strokeWidth: 2 }}
+                dot={{
+                  fill: "var(--chart-line-dot)",
+                  strokeWidth: 2,
+                  r: 5,
+                  stroke: "var(--bg-card)",
+                }}
+                activeDot={{
+                  fill: "var(--accent-secondary)",
+                  r: 7,
+                  stroke: "var(--bg-card)",
+                  strokeWidth: 2,
+                }}
                 animationDuration={400}
                 isAnimationActive={progressData.length <= 12}
               />
@@ -95,6 +483,7 @@ function InterviewAnalyticsCharts({ skillData, progressData, CustomTooltip }) {
           </ResponsiveContainer>
         </div>
       </section>
+      </div>
     </div>
   );
 }

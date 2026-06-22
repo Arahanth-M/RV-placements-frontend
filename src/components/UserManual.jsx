@@ -67,12 +67,12 @@ function UserManual() {
 
           {/* <section className="space-y-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
             <h2 className="text-base font-bold text-theme-primary sm:text-lg">
-              Rollout scope (branches and batches)
+              Rollout scope (programs and batches)
             </h2>
             <p>
               Full student access during this phase is aimed at{" "}
               <strong className="text-theme-primary">Computer Science and Engineering (CSE)</strong>{" "}
-              students. <strong className="text-theme-primary">Other branches</strong> and{" "}
+              students. <strong className="text-theme-primary">Other programs</strong> and{" "}
               <strong className="text-theme-primary">additional batches</strong> will be supported{" "}
               <strong className="text-theme-primary">shortly</strong> as we extend the rollout—check
               announcements or this manual again for updates.

@@ -1,13 +1,15 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { interviewAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
-
-const InterviewAnalyticsCharts = lazy(() => import("./InterviewAnalyticsCharts"));
+import InterviewAnalyticsCharts from "./InterviewAnalyticsCharts";
 
 function InterviewAnalytics() {
   const { user } = useAuth();
   const [skillBreakdown, setSkillBreakdown] = useState({});
   const [progress, setProgress] = useState([]);
+  const [companyBreakdown, setCompanyBreakdown] = useState([]);
+  const [roundTypeDetail, setRoundTypeDetail] = useState([]);
+  const [readinessRows, setReadinessRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -26,7 +28,10 @@ function InterviewAnalytics() {
       .getUserAnalytics(user.userId)
       .then((res) => {
         setSkillBreakdown(res.data.skillBreakdown || {});
-        setProgress(res.data.progress || []);
+        setProgress(Array.isArray(res.data.progress) ? res.data.progress : []);
+        setCompanyBreakdown(Array.isArray(res.data.companyBreakdown) ? res.data.companyBreakdown : []);
+        setRoundTypeDetail(Array.isArray(res.data.roundTypeDetail) ? res.data.roundTypeDetail : []);
+        setReadinessRows(Array.isArray(res.data.readinessRows) ? res.data.readinessRows : []);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -73,6 +78,12 @@ function InterviewAnalytics() {
         name: `Mock Interview ${index + 1}`,
         score: p.score,
         company: p.companyName,
+        role: p.role || null,
+        totalRounds: p.totalRounds ?? null,
+        roundTypes: Array.isArray(p.roundTypes) ? p.roundTypes : [],
+        questionsAnswered: p.questionsAnswered ?? null,
+        readinessScore: p.readinessScore ?? null,
+        readinessLabel: p.readinessLabel || null,
       })),
     [progress]
   );
@@ -86,19 +97,14 @@ function InterviewAnalytics() {
   }
 
   return (
-    <Suspense
-      fallback={
-        <p className="text-sm text-theme-secondary py-2" aria-live="polite">
-          Loading charts…
-        </p>
-      }
-    >
-      <InterviewAnalyticsCharts
-        skillData={skillData}
-        progressData={progressData}
-        CustomTooltip={CustomTooltip}
-      />
-    </Suspense>
+    <InterviewAnalyticsCharts
+      skillData={skillData}
+      progressData={progressData}
+      companyBreakdown={companyBreakdown}
+      roundTypeDetail={roundTypeDetail}
+      readinessRows={readinessRows}
+      CustomTooltip={CustomTooltip}
+    />
   );
 }
 
