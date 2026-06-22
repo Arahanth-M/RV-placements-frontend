@@ -13,11 +13,15 @@ import {
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../../constants/placementTiers.js";
 
+import {
+  CHEM_BRANCH_CODES,
+  CS_BRANCH_CODES,
+  EC_BRANCH_CODES,
+  ME_BRANCH_CODES,
+  normalizePpoBranchCode,
+} from "../../constants/ppoBranchCodes.js";
+
 /** PPO / placement-got-in stats columns per hub (aligned with {@link PLACEMENT_CLUSTER_* }). */
-const CS_BRANCH_CODES = ["cd", "cy", "ise", "cse", "aiml"];
-const EC_BRANCH_CODES = ["ece", "ete", "eie", "eee"];
-const ME_BRANCH_CODES = ["ase", "iem", "me"];
-const CHEM_BRANCH_CODES = ["bt", "ch", "civil"];
 
 function gotInForBranchCode(rows, branchCode) {
   const bc = String(branchCode || "").toLowerCase();
@@ -29,7 +33,7 @@ function normalizeBranchRows(rows, allowedBranchCodes) {
   if (!Array.isArray(rows)) return [];
   return rows
     .map((row) => ({
-      branchCode: String(row?.branchCode || "").toLowerCase(),
+      branchCode: normalizePpoBranchCode(row?.branchCode),
       gotIn: Math.max(0, Number(row?.gotIn) || 0),
       converted: Math.max(0, Number(row?.converted) || 0),
       convertedNotApplicable: Boolean(row?.convertedNotApplicable),
@@ -277,7 +281,7 @@ function StatsTab({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
         <div>
           <h2 className="text-xl font-semibold text-theme-accent">
-            Placed in by branch ({adminGotInYear})
+            Placed in by program ({adminGotInYear})
           </h2>
           {isAdmin && placementHubHint ? (
             <p className="mt-1 text-xs text-theme-muted">
@@ -323,7 +327,7 @@ function StatsTab({
       </div>
       {!isAdmin && placementGotInBranchesWithCounts.length === 0 ? (
         <p className="text-sm text-theme-muted py-2 text-center">
-          No branch rows with a count yet for {adminGotInYear}. Visit total above still reflects the visit.
+          No program rows with a count yet for {adminGotInYear}. Visit total above still reflects the visit.
         </p>
       ) : (
         <div className="max-w-md w-full mx-auto rounded-lg border border-theme overflow-hidden">
@@ -331,7 +335,7 @@ function StatsTab({
             <thead className="bg-theme-hero">
               <tr>
                 <th className="px-2 py-2 w-[42%] text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
-                  Branch
+                  Program
                 </th>
                 <th className="px-2 py-2 text-right text-xs font-medium text-theme-muted uppercase tracking-wider tabular-nums">
                   Got in ({adminGotInYear})
@@ -373,8 +377,8 @@ function StatsTab({
       {isAdmin ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-theme pt-4">
           <p className="text-xs text-theme-muted max-w-xl">
-            Branch totals should match the story you publish; saving also sets{" "}
-            <span className="font-medium text-theme-secondary">Total got in</span> to the sum of these branches.
+            Program totals should match the story you publish; saving also sets{" "}
+            <span className="font-medium text-theme-secondary">Total got in</span> to the sum of these Programmes.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -389,7 +393,7 @@ function StatsTab({
               }}
               className="px-3 py-1.5 text-sm rounded-lg bg-theme-card border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
             >
-              {isEditingPlacementGotIn ? "Cancel" : "Edit branch got-in"}
+              {isEditingPlacementGotIn ? "Cancel" : "Edit program got-in"}
             </button>
             {isEditingPlacementGotIn ? (
               <button
@@ -414,14 +418,14 @@ function StatsTab({
                     setIsEditingPlacementGotIn(false);
                   } catch (err) {
                     console.error("Error saving placement got-in by branch:", err);
-                    alert(err.response?.data?.error || "Failed to save branch got-in counts");
+                    alert(err.response?.data?.error || "Failed to save program got-in counts");
                   } finally {
                     setSavingPlacementGotIn(false);
                   }
                 }}
                 className="px-4 py-1.5 rounded-lg bg-theme-accent hover:opacity-90 text-white text-sm font-semibold disabled:opacity-60 transition-opacity"
               >
-                {savingPlacementGotIn ? "Saving…" : "Save branch got-in"}
+                {savingPlacementGotIn ? "Saving…" : "Save program got-in"}
               </button>
             ) : null}
           </div>
@@ -472,7 +476,7 @@ function StatsTab({
       {!hidePlacementGotInByYear ? placementGotInSection : null}
       <div className="bg-theme-card border border-theme rounded-xl p-6 shadow-sm" data-tour="company-tab-stats-branch">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-xl font-semibold text-theme-accent">Branch-wise stats</h2>
+          <h2 className="text-xl font-semibold text-theme-accent">Program-wise stats</h2>
           {isAdmin && (
             <div className="flex items-center gap-2">
               <label className="text-sm text-theme-secondary" htmlFor="ppo-stats-filter">Filter</label>
@@ -482,7 +486,7 @@ function StatsTab({
                 onChange={(e) => setBranchFilter(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-theme-input bg-theme-input text-theme-primary text-sm focus:outline-none focus:ring-2 focus:ring-theme-accent"
               >
-                <option value="all">All branches</option>
+                <option value="all">All Programmes</option>
                 {branchCodes.map((code) => (
                   <option key={code} value={code}>{code.toUpperCase()}</option>
                 ))}
@@ -512,7 +516,7 @@ function StatsTab({
         {shouldMaskSummary && (
           <p className="text-xs text-theme-muted mb-4">
             {noApplicableBranches
-              ? "Conversion values are not tracked for any branch (all marked not applicable)."
+              ? "Conversion values are not tracked for any program (all marked not applicable)."
               : isConvertedDataUnavailable && !isAdmin
               ? `Conversion values for ${placementYear} are not available yet.`
               : "Conversion summary is unavailable."}
@@ -520,7 +524,7 @@ function StatsTab({
         )}
         {!shouldMaskSummary && hasAnyBranchNa && (
           <p className="text-xs text-theme-muted mb-4">
-            Branches marked not applicable are excluded from converted totals and acceptance rate.
+            Programmes marked not applicable are excluded from converted totals and acceptance rate.
           </p>
         )}
 
@@ -528,7 +532,7 @@ function StatsTab({
           <table className="min-w-full text-sm divide-y divide-[var(--border)]">
             <thead className="bg-theme-hero">
               <tr>
-                <th className="px-3 py-2.5 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">Branch</th>
+                <th className="px-3 py-2.5 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">Program</th>
                 <th className="px-3 py-2.5 text-right text-xs font-medium text-theme-muted uppercase tracking-wider">Got in</th>
                 <th className="px-3 py-2.5 text-right text-xs font-medium text-theme-muted uppercase tracking-wider">Converted</th>
                 <th className="px-3 py-2.5 text-right text-xs font-medium text-theme-muted uppercase tracking-wider">Acceptance %</th>
@@ -557,7 +561,7 @@ function StatsTab({
               ) : (
                 <tr>
                   <td className="px-3 py-4 text-theme-muted text-center" colSpan={4}>
-                    No branch stats available.
+                    No program stats available.
                   </td>
                 </tr>
               )}
@@ -580,7 +584,7 @@ function StatsTab({
               }}
               className="px-3 py-1.5 text-sm rounded-lg bg-theme-card border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
             >
-              {isEditingStats ? "Cancel" : "Edit branch stats"}
+              {isEditingStats ? "Cancel" : "Edit program stats"}
             </button>
           </div>
 
@@ -647,7 +651,7 @@ function StatsTab({
                   onChange={(e) => setConvertedNaInput(e.target.checked)}
                   className="h-4 w-4 rounded border border-theme-input bg-theme-input text-theme-accent focus:ring-theme-accent"
                 />
-                Mark selected branch conversion as not applicable
+                Mark selected program conversion as not applicable
               </label>
 
               <div className="space-y-2">
@@ -683,7 +687,7 @@ function StatsTab({
                     </button>
                   </div>
                 )) : (
-                  <p className="text-sm text-theme-muted">No draft branch stats yet.</p>
+                  <p className="text-sm text-theme-muted">No draft program stats yet.</p>
                 )}
               </div>
 
@@ -710,14 +714,14 @@ function StatsTab({
                     setIsEditingStats(false);
                   } catch (err) {
                     console.error("Error updating branch stats:", err);
-                    alert(err.response?.data?.error || "Failed to update branch stats");
+                    alert(err.response?.data?.error || "Failed to update program stats");
                   } finally {
                     setSavingStats(false);
                   }
                 }}
                 className="px-4 py-2 rounded-lg bg-theme-accent hover:opacity-90 text-white text-sm font-semibold disabled:opacity-60 transition-opacity"
               >
-                {savingStats ? "Saving..." : "Save branch stats"}
+                {savingStats ? "Saving..." : "Save program stats"}
               </button>
             </div>
           )}

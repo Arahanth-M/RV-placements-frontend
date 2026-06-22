@@ -74,7 +74,7 @@ export default function SpcRoleField({
           loading
             ? "Loading roles…"
             : !branchSelected && companyId
-              ? "Select branch first"
+              ? "Select program first"
               : hasSuggestions
                 ? "Pick from suggestions or type a role"
                 : companyId
@@ -108,7 +108,7 @@ export default function SpcRoleField({
         </p>
       ) : null}
       {companyId && !branchSelected ? (
-        <p className="text-xs text-theme-muted">Select a branch to load roles for that hub.</p>
+        <p className="text-xs text-theme-muted">Select a program to load roles for that hub.</p>
       ) : null}
     </div>
   );

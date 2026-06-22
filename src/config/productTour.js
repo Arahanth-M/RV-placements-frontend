@@ -67,7 +67,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "openCompanyStatsYear2025",
     title: "2025 placement statistics",
     description:
-      "The 2025 table lists company-wise placement outcomes such as packages, branches, and offer details in one sortable view.",
+      "The 2025 table lists company-wise placement outcomes such as packages, Programmes, and offer details in one sortable view.",
     side: "top",
     align: "center",
   },
@@ -89,9 +89,9 @@ const STUDENT_TOUR_STEPS_BASE = [
     selector: '[data-tour="year-stats-branch"]',
     fallbackSelector: '[data-tour="year-stats-toolbar"]',
     prepare: "openCompanyStatsYear2025",
-    title: "Filter by branch",
+    title: "Filter by program",
     description:
-      "Narrow the table to a specific branch using this dropdown.",
+      "Narrow the table to a specific program using this dropdown.",
     side: "bottom",
     align: "end",
   },
@@ -114,7 +114,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "openCompanyStatsYear2025",
     title: "2025 Analytics",
     description:
-      "Switch to the Analytics tab for charts and summaries — package distributions, branch-wise breakdowns, and placement trends across the 2025 cohort at a glance.",
+      "Switch to the Analytics tab for charts and summaries — package distributions, program-wise breakdowns, and placement trends across the 2025 cohort at a glance.",
     side: "top",
     align: "center",
   },
@@ -125,7 +125,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "openCompanyStatsYear2026",
     title: "Choose cluster 2026 onwards",
     description:
-      'Selecting “2026 Onwards” opens this hub. Pick your branch cluster (CS, EC, ME, or Chemical sciences) before browsing categories.',
+      'Selecting “2026 Onwards” opens this hub. Pick your program cluster (CS, EC, ME, or Chemical sciences) before browsing categories.',
     side: "top",
     align: "center",
   },
@@ -257,7 +257,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "navigateToPhonePeCompanyStats",
     title: `Stats — ${TOUR_EXAMPLE_COMPANY} (Got in)`,
     description:
-      `${TOUR_EXAMPLE_COMPANY} shows branch-wise Got in — how many students from each branch (CSE, ISE, etc.) received an offer for the selected year. Totals at the top roll up every branch row.`,
+      `${TOUR_EXAMPLE_COMPANY} shows program-wise Got in — how many students from each program (CSE, ISE, etc.) received an offer for the selected year. Totals at the top roll up every program row.`,
     side: "top",
     align: "center",
   },
@@ -269,7 +269,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "navigateToMicrosoftInternshipPpo",
     title: `Stats — ${TOUR_PPO_EXAMPLE_COMPANY} Got in`,
     description:
-      `${TOUR_PPO_EXAMPLE_COMPANY} 2026 internship (PPO): the Got in summary counts interns selected per branch. Scroll the branch table below to see CSE, ISE, and other rows separately.`,
+      `${TOUR_PPO_EXAMPLE_COMPANY} 2026 internship (PPO): the Got in summary counts interns selected per program. Scroll the program table below to see CSE, ISE, and other rows separately.`,
     side: "top",
     align: "start",
   },
@@ -281,7 +281,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "prepareCompanyTourStep",
     title: `Stats — ${TOUR_PPO_EXAMPLE_COMPANY} Converted`,
     description:
-      "Converted counts interns who received a full-time offer (PPO) after the internship — tracked branch-wise, not just as one campus total.",
+      "Converted counts interns who received a full-time offer (PPO) after the internship — tracked program-wise, not just as one campus total.",
     side: "top",
     align: "start",
   },
@@ -291,9 +291,9 @@ const STUDENT_TOUR_STEPS_BASE = [
     selector: '[data-tour="company-tab-stats-branch-table"]',
     fallbackSelector: '[data-tour="company-tab-stats-branch"]',
     prepare: "prepareCompanyTourStep",
-    title: "Branch-wise breakdown",
+    title: "Program-wise breakdown",
     description:
-      "Each row is one branch: Got in, Converted, and acceptance % side by side. Compare how conversion differed across branches for the same drive.",
+      "Each row is one program: Got in, Converted, and acceptance % side by side. Compare how conversion differed across Programmes for the same drive.",
     side: "top",
     align: "center",
   },
@@ -305,7 +305,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     prepare: "prepareCompanyTourStep",
     title: "Eligibility",
     description:
-      "CGPA cutoffs, allowed branches, degree types, and any extra criteria for the selected year's drive — check this before applying or prepping.",
+      "CGPA cutoffs, allowed Programmes, degree types, and any extra criteria for the selected year's drive — check this before applying or prepping.",
     side: "top",
     align: "start",
   },
@@ -690,7 +690,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     title: "View profile",
     requiresAuth: true,
     description:
-      "Your student profile shows personal details, branch info, and placement data linked to your account.",
+      "Your student profile shows personal details, program info, and placement data linked to your account.",
     side: "bottom",
     align: "start",
   },

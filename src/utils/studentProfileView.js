@@ -4,7 +4,7 @@
 import { formatInternshipStipendDisplay } from "./compensationDisplay.js";
 
 const PERSONAL_INFO_FIELDS = ["USN", "Name", "Email", "Phone", "DOB", "Gender"];
-const ACADEMIC_FIELDS = ["Branch", "Semester", "CGPA", "Year", "Section"];
+const ACADEMIC_FIELDS = ["Program", "Semester", "CGPA", "Year", "Section"];
 
 const HIDDEN_PROFILE_KEYS = new Set([
   "companyid",
@@ -37,6 +37,9 @@ export function normalizeProfileStorageKey(key) {
 }
 
 export function formatProfileLabel(key) {
+  const norm = normalizeProfileStorageKey(key);
+  if (norm === "branch") return "Program";
+
   const spaced = String(key || "")
     .replace(/_/g, " ")
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -275,6 +278,7 @@ function matchesPersonalField(key) {
 
 function matchesAcademicField(key) {
   const lowerKey = key.toLowerCase();
+  if (normalizeProfileStorageKey(key) === "branch") return true;
   return ACADEMIC_FIELDS.some((f) => lowerKey.includes(f.toLowerCase()));
 }
 

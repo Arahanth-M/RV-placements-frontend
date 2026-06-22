@@ -74,7 +74,7 @@ export function validateSpcPlacementSubmit(form, selectedCompany) {
   }
   if (!String(form.typeOfOffer || "").trim()) errors.push("Type of offer is required.");
   if (!form.placementYear) errors.push("Placement year is required.");
-  if (!String(form.branchCode || "").trim()) errors.push("Branch is required.");
+  if (!String(form.branchCode || "").trim()) errors.push("Program is required.");
   if (!String(form.role || "").trim()) errors.push("Role is required.");
 
   const comp = compensationVisibilityForTypeOfOffer(form.typeOfOffer);
@@ -108,7 +108,7 @@ export function validateSpcConversionSubmit(form, selectedCompany) {
     );
   }
   if (!form.placementYear) errors.push("Placement year is required.");
-  if (!String(form.branchCode || "").trim()) errors.push("Branch is required.");
+  if (!String(form.branchCode || "").trim()) errors.push("Program is required.");
   if (!String(form.conversionType || "").trim()) errors.push("Conversion type is required.");
   if (!String(form.role || "").trim()) errors.push("Role is required.");
   if (!String(form.ctc || "").trim()) errors.push(`CTC is required. ${SPC_COMPENSATION_TBD_HINT}`);
@@ -141,7 +141,7 @@ export function validateSpcEditPlacement(form, selectedCompany) {
   }
   if (!String(form.typeOfOffer || "").trim()) errors.push("Type of offer is required.");
   if (!form.placementYear) errors.push("Placement year is required.");
-  if (!String(form.branchCode || "").trim()) errors.push("Branch is required.");
+  if (!String(form.branchCode || "").trim()) errors.push("Program is required.");
   if (!String(form.role || "").trim()) errors.push("Role is required.");
 
   const comp = compensationVisibilityForTypeOfOffer(form.typeOfOffer);

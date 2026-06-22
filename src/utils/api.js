@@ -642,7 +642,7 @@ export const interviewAPI = {
     interviewDetailPromises.delete(String(sessionId));
   },
   async getUserAnalytics(userId) {
-    const key = encodeURIComponent(String(userId || ""));
+    const key = `${encodeURIComponent(String(userId || ""))}:v2`;
     const cached = getFreshCachedEntry(
       interviewAnalyticsCache,
       key,
@@ -669,8 +669,9 @@ export const interviewAPI = {
     return interviewAnalyticsPromises.get(key);
   },
   invalidateUserInterviewAnalyticsCache: (userId) => {
-    interviewAnalyticsCache.delete(encodeURIComponent(String(userId || "")));
-    interviewAnalyticsPromises.delete(encodeURIComponent(String(userId || "")));
+    const base = encodeURIComponent(String(userId || ""));
+    interviewAnalyticsCache.delete(`${base}:v2`);
+    interviewAnalyticsPromises.delete(`${base}:v2`);
   },
 };
 

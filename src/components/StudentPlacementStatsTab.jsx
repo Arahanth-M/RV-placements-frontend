@@ -3,12 +3,17 @@ import { adminAPI } from "../utils/api";
 import { FaChevronDown, FaFileExcel } from "react-icons/fa";
 import { formatInternshipStipendDisplay } from "../utils/compensationDisplay.js";
 
+import { formatPpoBranchLabel, formatPpoProgramName, normalizePpoBranchCode } from "../constants/ppoBranchCodes.js";
+
 const YEAR_OPTIONS_FALLBACK = [];
 
 function titleCaseBranch(code) {
-  const c = String(code || "").trim();
-  if (!c) return "Unknown";
-  return c.toUpperCase();
+  return formatPpoProgramName(code);
+}
+
+function branchChipLabel(code) {
+  const normalized = normalizePpoBranchCode(code);
+  return normalized ? normalized.toUpperCase() : "—";
 }
 
 export default function StudentPlacementStatsTab() {
@@ -140,7 +145,7 @@ export default function StudentPlacementStatsTab() {
               Student Placement Stats
             </h2>
             <p className="mt-1 text-sm text-theme-secondary">
-              Branch-wise placed students for the selected placement year.
+              Program-wise placed students for the selected placement year.
             </p>
           </div>
           <div className="min-w-[220px]">
@@ -221,7 +226,7 @@ export default function StudentPlacementStatsTab() {
           <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-                Branches
+                Programmes
               </p>
               <button
                 type="button"
@@ -245,13 +250,14 @@ export default function StudentPlacementStatsTab() {
                       setOpenBranchCode(code);
                       setExpandedRows(new Set());
                     }}
+                    title={formatPpoBranchLabel(code)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                       isActive
                         ? "border-indigo-500 bg-indigo-600 text-white"
                         : "border-theme bg-theme-hero text-theme-primary hover:bg-theme-nav"
                     }`}
                   >
-                    {titleCaseBranch(code)}{" "}
+                    {branchChipLabel(code)}{" "}
                     <span className={isActive ? "opacity-80" : "opacity-60"}>
                       {Number(branch.count) || 0}
                     </span>
@@ -301,7 +307,7 @@ export default function StudentPlacementStatsTab() {
                   <div className="divide-y divide-theme rounded-lg border border-theme overflow-hidden">
                     {students.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-theme-secondary">
-                        No students found for this branch.
+                        No students found for this program.
                       </p>
                     ) : (
                       students.map((student, idx) => {
