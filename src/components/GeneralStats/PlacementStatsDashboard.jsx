@@ -324,7 +324,7 @@ function BusinessModelMetaNotes({ meta }) {
 
   return (
     <div className="mt-2 space-y-1 text-xs text-theme-secondary">
-      <p>
+      {/* <p>
         <span className="font-medium text-theme-primary/85">Recruited</span> = unique companies
         from this year&apos;s placement Excel linked to that business model.{" "}
         <span className="font-medium text-theme-primary/85">Visited</span> = total companies
@@ -335,14 +335,14 @@ function BusinessModelMetaNotes({ meta }) {
           CTC range and department breakdown need a full Excel re-upload. Recruited counts may
           reflect top recruiters only until then.
         </p>
-      ) : null}
-      {meta.unmatchedCompanies > 0 ? (
+      ) : null} */}
+      {/* {meta.unmatchedCompanies > 0 ? (
         <p>
           {meta.unmatchedCompanies} recruiting companies could not be matched to a hub profile (
           {meta.unmatchedOffers} offers under Not specified). Check company name spelling in Excel
           vs hub.
         </p>
-      ) : null}
+      ) : null} */}
       {meta.unmatchedOffers > 0 && meta.unmatchedCompanies === 0 ? (
         <p>
           {meta.matchedOfferPct}% of offers matched a company profile ({meta.unmatchedOffers}{" "}
