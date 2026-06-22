@@ -236,7 +236,9 @@ export default function AdminGeneralStatsUpload() {
           <div className="rounded-xl border border-theme bg-theme-hero px-4 py-3 text-xs text-theme-secondary">
             <p className="font-medium text-theme-primary">Expected columns</p>
             <p className="mt-1">
-              Company Name, Month, Stipend, CTC, department columns (CSE, ECE, …), BE Total
+              Company Name, Month, Stipend, CTC, department columns (CSE, ECE, …), BE Total.
+              Include a batch strength row (labelled Strength / Students) with student counts under
+              each department column for placement % on the dashboard.
             </p>
           </div>
 
