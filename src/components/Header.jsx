@@ -20,6 +20,8 @@ import {
   FaTimes,
   FaBriefcase,
   FaClipboardList,
+  FaBuilding,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -41,6 +43,14 @@ const spcCornerLinks = [
   { label: "Update conversion details", path: "/spc/conversion-details", icon: FaClipboardList },
   {label: "view details added", path: "spc-dashboard?view=submissions", icon: FaFileAlt },
   { label: "Approve Students Submissions", path: "/spc-dashboard?view=student-contributions", icon: FaExclamationCircle },
+];
+
+const adminCornerLinks = [
+  { label: "Stats of the platform", path: "/admin/dashboard?tab=stats", icon: FaChartBar, tab: "stats" },
+  { label: "Upload an event/Announcement", path: "/admin/dashboard?tab=events", icon: FaCalendarAlt, tab: "events" },
+  { label: "Approve/Reject a company", path: "/admin/dashboard?tab=companies", icon: FaBuilding, tab: "companies" },
+  { label: "Student Placement Stats", path: "/admin/dashboard?tab=student-placement-stats", icon: FaGraduationCap, tab: "student-placement-stats" },
+  { label: "Miscellaneous Features", path: "/admin/dashboard?tab=miscellaneous", icon: FaBriefcase, tab: "miscellaneous" },
 ];
 
 const studentCornerLinksBase = [
@@ -103,6 +113,7 @@ const Header = () => {
   const [spcMenuOpen, setSpcMenuOpen] = useState(false);
   const [mobileSpcCornerOpen, setMobileSpcCornerOpen] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [mobileAdminCornerOpen, setMobileAdminCornerOpen] = useState(false);
   const [mobileAccountMenuOpen, setMobileAccountMenuOpen] = useState(false);
   const [desktopAccountMenuOpen, setDesktopAccountMenuOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
@@ -142,6 +153,13 @@ const Header = () => {
         location.pathname === "/category" ||
         location.pathname.startsWith("/companies")
       );
+    }
+    if (path.startsWith("/admin/dashboard")) {
+      const [pathname, query = ""] = path.split("?");
+      if (location.pathname !== pathname) return false;
+      const tab = new URLSearchParams(query).get("tab");
+      const currentTab = new URLSearchParams(location.search).get("tab");
+      return tab === currentTab;
     }
     return location.pathname === path;
   };
@@ -671,15 +689,21 @@ const Header = () => {
                 </button>
 
                 {adminMenuOpen && (
-                  <div className="absolute right-0 top-full z-[100] mt-1 w-52 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
-                    <Link
-                      to="/admin/dashboard"
-                      onClick={() => setAdminMenuOpen(false)}
-                      className={dropdownItemClass}
-                    >
-                      <FaTachometerAlt className="h-4 w-4 shrink-0" />
-                      Dashboard
-                    </Link>
+                  <div className="absolute right-0 top-full z-[100] mt-1 w-64 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
+                    {adminCornerLinks.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setAdminMenuOpen(false)}
+                          className={dropdownItemClass}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -834,15 +858,47 @@ const Header = () => {
 
           {isAdmin && (
             <>
-              <div className="px-4 pt-3 pb-1 text-xs font-bold uppercase tracking-wider text-theme-secondary">Admin</div>
-              <Link
-                to="/admin/dashboard"
-                onClick={() => setMobileNavOpen(false)}
-                className={`${mobileNavLinkClass} ${location.pathname.startsWith("/admin") ? "bg-theme-accent/15 text-theme-accent" : ""}`}
+              <button
+                type="button"
+                onClick={() => setMobileAdminCornerOpen((prev) => !prev)}
+                className={`flex w-full items-center justify-between px-4 py-3.5 text-[15px] font-semibold transition-colors ${
+                  location.pathname.startsWith("/admin")
+                    ? "text-theme-accent bg-theme-accent/10"
+                    : "text-theme-primary hover:bg-theme-hero"
+                }`}
               >
-                <FaTachometerAlt className="h-4 w-4 shrink-0 opacity-80" />
-                Dashboard
-              </Link>
+                <span className="flex items-center gap-2.5">
+                  <FaUserShield className="h-4 w-4 shrink-0 opacity-80" />
+                  Admin
+                </span>
+                <FaChevronDown
+                  className={`h-3 w-3 shrink-0 transition ${mobileAdminCornerOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {mobileAdminCornerOpen && (
+                <div className="border-b border-theme bg-theme-nav/30">
+                  {adminCornerLinks.map((item) => {
+                    const Icon = item.icon;
+                    const active = isPathActive(item.path);
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={() => {
+                          setMobileNavOpen(false);
+                          setMobileAdminCornerOpen(false);
+                        }}
+                        className={`flex w-full items-center gap-3 px-6 py-3 text-[15px] font-medium transition-colors ${
+                          active ? "text-theme-accent bg-theme-accent/10" : "text-theme-secondary hover:text-theme-primary hover:bg-theme-hero"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
         </nav>

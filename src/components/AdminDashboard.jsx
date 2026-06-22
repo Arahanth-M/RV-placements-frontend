@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
@@ -15,6 +16,14 @@ import {
 import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel, FaInbox } from 'react-icons/fa';
 
 const ADMIN_MISCELLANEOUS_TAB = 'miscellaneous';
+
+const ADMIN_HUB_TAB_KEYS = new Set([
+  'stats',
+  'events',
+  'companies',
+  'student-placement-stats',
+  ADMIN_MISCELLANEOUS_TAB,
+]);
 
 const ADMIN_MISC_TAB_KEYS = new Set([
   'assign-spc',
@@ -224,6 +233,7 @@ function AdminChartEmpty({ message }) {
 }
 
 const AdminDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalUsers: 0,
     dau: 0,
@@ -280,6 +290,43 @@ const AdminDashboard = () => {
   const [hubRefreshing, setHubRefreshing] = useState(false);
   const [statsRefreshing, setStatsRefreshing] = useState(false);
   const [companiesRefreshing, setCompaniesRefreshing] = useState(false);
+
+  const navigateAdminTab = useCallback(
+    (tabKey) => {
+      if (tabKey == null) {
+        setActiveMainTab(null);
+        setSearchParams({}, { replace: true });
+        return;
+      }
+      if (ADMIN_HUB_TAB_KEYS.has(tabKey)) {
+        setActiveMainTab(tabKey);
+        setSearchParams({ tab: tabKey }, { replace: true });
+        return;
+      }
+      if (ADMIN_MISC_TAB_KEYS.has(tabKey)) {
+        setActiveMainTab(tabKey);
+        if (searchParams.get('tab') !== ADMIN_MISCELLANEOUS_TAB) {
+          setSearchParams({ tab: ADMIN_MISCELLANEOUS_TAB }, { replace: true });
+        }
+      }
+    },
+    [searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (!tab) {
+      setActiveMainTab(null);
+      return;
+    }
+    if (!ADMIN_HUB_TAB_KEYS.has(tab)) return;
+    setActiveMainTab((prev) => {
+      if (tab === ADMIN_MISCELLANEOUS_TAB && ADMIN_MISC_TAB_KEYS.has(prev)) {
+        return prev;
+      }
+      return tab;
+    });
+  }, [searchParams]);
 
   const companyYearLabel = selectedCompanyYear === 'all' ? 'all years' : selectedCompanyYear;
   const resolveCompanyActionYear = (placementYear) => {
@@ -973,10 +1020,10 @@ const AdminDashboard = () => {
 
   const handleAdminBack = () => {
     if (ADMIN_MISC_TAB_KEYS.has(activeMainTab)) {
-      setActiveMainTab(ADMIN_MISCELLANEOUS_TAB);
+      navigateAdminTab(ADMIN_MISCELLANEOUS_TAB);
       return;
     }
-    setActiveMainTab(null);
+    navigateAdminTab(null);
     void refreshAdminStats().catch((err) => {
       console.error('Failed to refresh hub stats on back:', err);
     });
@@ -1058,7 +1105,7 @@ const AdminDashboard = () => {
                   accent={tab.accent}
                   ctaColor={tab.ctaColor}
                   badge={tab.badge}
-                  onClick={() => setActiveMainTab(tab.key)}
+                  onClick={() => navigateAdminTab(tab.key)}
                 />
               ))}
             </DashboardNavGrid>
@@ -1067,7 +1114,7 @@ const AdminDashboard = () => {
               <PageBackNavRow>
                 <PageBackButton
                   onClick={() => {
-                    setActiveMainTab(null);
+                    navigateAdminTab(null);
                     void refreshAdminStats().catch((err) => {
                       console.error('Failed to refresh hub stats on back:', err);
                     });
@@ -1093,7 +1140,7 @@ const AdminDashboard = () => {
                     accent={tab.accent}
                     ctaColor={tab.ctaColor}
                     badge={tab.badge}
-                    onClick={() => setActiveMainTab(tab.key)}
+                    onClick={() => navigateAdminTab(tab.key)}
                   />
                 ))}
               </DashboardNavGrid>
