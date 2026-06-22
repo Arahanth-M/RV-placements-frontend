@@ -9,6 +9,7 @@ import {
   pageShellInnerClass,
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+import DashboardNavCard, { DashboardNavGrid } from "./DashboardNavCard.jsx";
 import {
   FaDatabasePlus,
   FaArrowRight,
@@ -209,7 +210,7 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
         pendingLoading
           ? null
           : pendingCount > 0
-            ? { label: `${pendingCount} pending`, color: "bg-amber-500/10 text-amber-600 border border-amber-500/20" }
+            ? pendingCount
             : null,
     },
   ];
@@ -231,34 +232,20 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
       </div> */}
 
       {/* Action cards grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <DashboardNavGrid>
         {actions.map(({ key, title, desc, cta, accent, ctaColor, badge }) => (
-          <button
+          <DashboardNavCard
             key={key}
-            type="button"
+            title={title}
+            description={desc}
+            cta={cta}
+            accent={accent}
+            ctaColor={ctaColor}
+            badge={badge}
             onClick={() => onNavigate(key)}
-            className={`group flex flex-col gap-3.5 rounded-xl border border-theme bg-theme-card p-5 sm:p-6 text-left shadow-sm transition-colors hover:bg-theme-hero/40 border-l-[3px] ${accent}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="min-w-0 flex-1 text-lg font-semibold text-theme-primary sm:text-xl">{title}</p>
-              {badge ? (
-                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-sm font-medium ${badge.color}`}>
-                  {badge.label}
-                </span>
-              ) : null}
-            </div>
-            <p className="text-sm leading-6 text-theme-secondary sm:text-base sm:leading-7">{desc}</p>
-
-            {/* Footer CTA */}
-            <div className={`flex items-center gap-1.5 text-sm font-medium sm:text-base ${ctaColor}`}>
-              <span>{cta}</span>
-              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                <path fillRule="evenodd" d="M4 8a.75.75 0 0 1 .75-.75h5.69L8.22 5.03a.75.75 0 0 1 1.06-1.06l3.5 3.5a.75.75 0 0 1 0 1.06l-3.5 3.5a.75.75 0 0 1-1.06-1.06l2.22-2.22H4.75A.75.75 0 0 1 4 8z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </button>
+          />
         ))}
-      </div>
+      </DashboardNavGrid>
     </div>
   );
 }

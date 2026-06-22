@@ -26,6 +26,7 @@ import OATab from "./CompanyTabs/OATab";
 import CodingTab from "./CompanyTabs/CodingTab";
 import InterviewTab from "./CompanyTabs/InterviewTab";
 import MustDoTab from "./CompanyTabs/MustDoTab";
+import RecruitmentProcessTab from "./CompanyTabs/RecruitmentProcessTab";
 import OffCampusQuestionsTab from "./CompanyTabs/OffCampusQuestionsTab";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
@@ -45,7 +46,7 @@ import {
 } from "./PageBackNav.jsx";
 
 const PLACEMENT_YEAR_CHOICES = [...PLACEMENT_DETAIL_VISIT_YEARS];
-const YEAR_TABS = ["general", "stats", "oa", "interview", "internship"];
+const YEAR_TABS = ["general", "stats", "recruitment", "oa", "interview", "internship"];
 
 function readPreferredPlacementYearFromLocation(location) {
   try {
@@ -213,6 +214,8 @@ function CompanyDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin } = useAuth();
+  const canManageRecruitmentProcess =
+    isAdmin || (user && String(user.role || "").toLowerCase() === "spc");
   const profileAvailabilityKey =
     user && (user.userId || user._id)
       ? `studentProfileAvailability_${user.userId || user._id}`
@@ -443,6 +446,7 @@ function CompanyDetails() {
       "company-tab-stats-got-in": "stats",
       "company-tab-stats-converted": "stats",
       "company-tab-stats-branch-wise": "stats",
+      "company-tab-recruitment": "recruitment",
       "company-tab-oa": "oa",
       "company-tab-coding": "coding",
       "company-tab-interview": "interview",
@@ -694,6 +698,7 @@ function CompanyDetails() {
     { id: "about", label: "About" },
     { id: "general", label: "Roles & Info" },
     { id: "stats", label: "Stats" },
+    { id: "recruitment", label: "Recruitment Process" },
     { id: "oa", label: "OA Questions" },
     { id: "coding", label: "Coding" },
     { id: "interview", label: "Interview Experience" },
@@ -1094,6 +1099,20 @@ function CompanyDetails() {
                 onStatsUpdated={handleRefresh}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
+                placementCluster={placementClusterForApi}
+              />
+            ))}
+          {activeTab === "recruitment" &&
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <RecruitmentProcessTab
+                company={company}
+                canManage={canManageRecruitmentProcess}
+                onCompanyUpdate={handleRefresh}
+                placementYear={placementYear}
+                placementListContext={placementContextForApi}
+                placementCompanyVisitId={company?.placementCompanyVisitId}
                 placementCluster={placementClusterForApi}
               />
             ))}

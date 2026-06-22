@@ -364,6 +364,16 @@ export const adminAPI = {
     API.delete(`/api/admin/companies/${companyId}/must-do-topics/${index}`, {
       params: adminPlacementYearParams(opts),
     }),
+  updateRecruitmentProcess: (companyId, recruitmentProcess, opts = {}) =>
+    API.put(
+      `/api/admin/companies/${companyId}/recruitment-process`,
+      { recruitment_process: recruitmentProcess },
+      { params: adminPlacementYearParams(opts) }
+    ),
+  deleteRecruitmentProcess: (companyId, opts = {}) =>
+    API.delete(`/api/admin/companies/${companyId}/recruitment-process`, {
+      params: adminPlacementYearParams(opts),
+    }),
   updateCompanyStats: (companyId, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/stats`, data, { params: adminPlacementYearParams(opts) }),
   adjustCompanyTotalGotIn: (companyId, delta, opts = {}) =>
@@ -383,6 +393,10 @@ export const adminAPI = {
     API.get('/api/admin/students/placement-stats/export', {
       params: year == null ? undefined : { year },
       responseType: 'blob',
+    }),
+  companySuggest: (q, limit) =>
+    API.get('/api/admin/companies/suggest', {
+      params: { q, ...(limit != null ? { limit } : {}) },
     }),
   importStudentsBatch: (file) => {
     const formData = new FormData();

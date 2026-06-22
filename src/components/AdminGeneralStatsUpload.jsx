@@ -114,7 +114,7 @@ export default function AdminGeneralStatsUpload() {
             <FaChartLine className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-theme-accent">Update general stats</h2>
+            <h2 className="text-xl font-semibold text-theme-accent">Update the placement General stats</h2>
             <p className="mt-1 text-sm text-theme-secondary">
               Upload the placement statistics Excel for a year. This updates the public General Stats
               page only — no other database collections are modified.
