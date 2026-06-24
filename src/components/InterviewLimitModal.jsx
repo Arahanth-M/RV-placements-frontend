@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import rvLogo from "../assets/logo2.webp";
 import { MESSAGES } from "../utils/constants";
 
@@ -6,7 +6,16 @@ import { MESSAGES } from "../utils/constants";
  * Shown when a user has reached the weekly interview cap.
  * Styled to match AI interview feedback modals in AIInterviewTab.
  */
-export default function InterviewLimitModal({ open, onClose, message }) {
+export default function InterviewLimitModal({
+  open,
+  onClose,
+  message,
+  limitRequestStatus = "none",
+  onRequestAccess,
+  requesting = false,
+}) {
+  const [requestFeedback, setRequestFeedback] = useState("");
+
   useEffect(() => {
     if (!open) return undefined;
     const prevOverflow = document.body.style.overflow;
@@ -21,10 +30,30 @@ export default function InterviewLimitModal({ open, onClose, message }) {
     };
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open) setRequestFeedback("");
+  }, [open]);
+
   if (!open) return null;
 
   const body =
     (message && String(message).trim()) || MESSAGES.INTERVIEW_LIMIT_REACHED;
+  const isPending = limitRequestStatus === "pending";
+
+  const handleRequest = async () => {
+    if (!onRequestAccess || isPending || requesting) return;
+    setRequestFeedback("");
+    try {
+      const result = await onRequestAccess();
+      setRequestFeedback(result?.message || MESSAGES.INTERVIEW_LIMIT_REQUEST_SUBMITTED);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Could not submit your request. Please try again.";
+      setRequestFeedback(msg);
+    }
+  };
 
   return (
     <div
@@ -50,18 +79,43 @@ export default function InterviewLimitModal({ open, onClose, message }) {
               Interview limit
             </p>
             <h3 className="text-2xl sm:text-3xl font-bold text-theme-primary leading-tight">
-              One interview per week
+              Come back in a week
             </h3>
           </div>
         </div>
         <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{body}</p>
-        <div className="flex justify-end pt-2 border-t border-theme">
+        <p className="text-sm text-theme-muted leading-relaxed">
+          Need another mock interview sooner? You can request access from the admin team.
+        </p>
+        {isPending ? (
+          <p className="text-sm text-amber-600 dark:text-indigo-400" aria-live="polite">
+            {MESSAGES.INTERVIEW_LIMIT_REQUEST_PENDING}
+          </p>
+        ) : null}
+        {requestFeedback ? (
+          <p className="text-sm text-theme-secondary" aria-live="polite">
+            {requestFeedback}
+          </p>
+        ) : null}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2 border-t border-theme">
           <button
             type="button"
             onClick={onClose}
-            className="px-8 py-3.5 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors hover:opacity-95"
+            className="px-6 py-3 rounded-xl border border-theme text-theme-primary text-base font-semibold transition-colors hover:bg-theme-hero"
           >
             OK
+          </button>
+          <button
+            type="button"
+            onClick={handleRequest}
+            disabled={isPending || requesting}
+            className="px-6 py-3 rounded-xl bg-theme-accent text-white text-base font-semibold shadow-lg transition-colors hover:opacity-95 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isPending
+              ? "Request pending"
+              : requesting
+                ? "Sending request…"
+                : "Request additional interview"}
           </button>
         </div>
       </div>

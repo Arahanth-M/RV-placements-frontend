@@ -875,6 +875,8 @@ function AIInterviewTab({
   const [interviewLimitReached, setInterviewLimitReached] = useState(false);
   const [interviewLimitOpen, setInterviewLimitOpen] = useState(false);
   const [interviewLimitMessage, setInterviewLimitMessage] = useState("");
+  const [interviewLimitRequestStatus, setInterviewLimitRequestStatus] = useState("none");
+  const [interviewLimitRequesting, setInterviewLimitRequesting] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1154,6 +1156,7 @@ function AIInterviewTab({
     if (!user?.userId || user?.betaAccess === false) {
       setInterviewLimitReached(false);
       setInterviewLimitMessage("");
+      setInterviewLimitRequestStatus("none");
       return;
     }
     if (status === "in_progress") return;
@@ -1168,10 +1171,12 @@ function AIInterviewTab({
         setInterviewLimitMessage(
           blocked ? data?.message || MESSAGES.INTERVIEW_LIMIT_REACHED : ""
         );
+        setInterviewLimitRequestStatus(data?.limitRequest?.status || "none");
       } catch {
         if (!cancelled) {
           setInterviewLimitReached(false);
           setInterviewLimitMessage("");
+          setInterviewLimitRequestStatus("none");
         }
       }
     })();
@@ -1612,6 +1617,17 @@ function AIInterviewTab({
   const openInterviewLimitModal = useCallback((message) => {
     setInterviewLimitMessage(message || MESSAGES.INTERVIEW_LIMIT_REACHED);
     setInterviewLimitOpen(true);
+  }, []);
+
+  const handleInterviewLimitRequest = useCallback(async () => {
+    setInterviewLimitRequesting(true);
+    try {
+      const { data } = await interviewAPI.submitInterviewLimitRequest();
+      setInterviewLimitRequestStatus(data?.status || "pending");
+      return data;
+    } finally {
+      setInterviewLimitRequesting(false);
+    }
   }, []);
 
   /** Sync coding / MCQ / topic metadata for the active question from interview-status. */
@@ -2779,6 +2795,9 @@ function AIInterviewTab({
         open={interviewLimitOpen}
         onClose={() => setInterviewLimitOpen(false)}
         message={interviewLimitMessage}
+        limitRequestStatus={interviewLimitRequestStatus}
+        onRequestAccess={handleInterviewLimitRequest}
+        requesting={interviewLimitRequesting}
       />
 
       {quitConfirmOpen && (
@@ -3274,6 +3293,7 @@ function AIInterviewTab({
                           value: type,
                           label: type,
                         }))}
+                        triggerSurface="card"
                       />
                     </div>
                     {roundTypeHasFocusPicker(round.type) && (
@@ -3286,6 +3306,7 @@ function AIInterviewTab({
                             value: opt.id,
                             label: opt.label,
                           }))}
+                          triggerSurface="card"
                         />
                       </div>
                     )}
@@ -3298,6 +3319,7 @@ function AIInterviewTab({
                           value: difficulty,
                           label: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
                         }))}
+                        triggerSurface="card"
                       />
                     </div>
                   </div>
