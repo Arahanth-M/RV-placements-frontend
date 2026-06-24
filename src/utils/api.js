@@ -400,6 +400,10 @@ export const adminAPI = {
   updatePlacementHubSettings: (body) =>
     API.put('/api/admin/placement-hub-settings', body),
   getStudentRequests: () => API.get('/api/admin/student-requests'),
+  approveInterviewLimitRequest: (requestId) =>
+    API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/approve`),
+  dismissInterviewLimitRequest: (requestId) =>
+    API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/dismiss`),
 };
 
 export const getPlacementHubSettings = () =>
@@ -503,6 +507,8 @@ export const leaderboardAPI = {
 
 export const interviewAPI = {
   getInterviewEligibility: () => interviewHttp.get("/api/interview/eligibility"),
+  getInterviewLimitRequestStatus: () => interviewHttp.get("/api/interview/limit-request/status"),
+  submitInterviewLimitRequest: () => interviewHttp.post("/api/interview/limit-request"),
   async startInterview({
     userId,
     companyId,

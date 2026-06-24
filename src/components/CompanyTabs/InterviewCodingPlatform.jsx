@@ -630,8 +630,7 @@ export default function InterviewCodingPlatform({
                   options={languageOptions}
                   onChange={(next) => onLanguageChange?.(next)}
                   disabled={disabled}
-                  triggerClassName="rounded-lg py-2 text-[0.82rem] font-semibold"
-                  menuClassName="z-50"
+                  triggerSurface="card"
                 />
               ) : (
                 <div className="icp-lang-select flex items-center">

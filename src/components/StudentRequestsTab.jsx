@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaExternalLinkAlt, FaPaperPlane, FaUserCheck } from "react-icons/fa";
+import { FaExternalLinkAlt, FaMicrophone, FaPaperPlane, FaUserCheck } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 
 function formatWhen(value) {
@@ -15,10 +15,14 @@ export default function StudentRequestsTab() {
   const [error, setError] = useState("");
   const [companyDetailRequests, setCompanyDetailRequests] = useState([]);
   const [profileDiscrepancies, setProfileDiscrepancies] = useState([]);
+  const [interviewLimitRequests, setInterviewLimitRequests] = useState([]);
+  const [actionId, setActionId] = useState("");
+  const [actionError, setActionError] = useState("");
   const [totals, setTotals] = useState({
     companyDetailRequestCount: 0,
     companiesWithRequests: 0,
     profileDiscrepancyCount: 0,
+    interviewLimitRequestCount: 0,
   });
 
   const loadData = async () => {
@@ -28,16 +32,21 @@ export default function StudentRequestsTab() {
       const { data } = await adminAPI.getStudentRequests();
       setCompanyDetailRequests(Array.isArray(data?.companyDetailRequests) ? data.companyDetailRequests : []);
       setProfileDiscrepancies(Array.isArray(data?.profileDiscrepancies) ? data.profileDiscrepancies : []);
+      setInterviewLimitRequests(
+        Array.isArray(data?.interviewLimitRequests) ? data.interviewLimitRequests : []
+      );
       setTotals({
         companyDetailRequestCount: Number(data?.totals?.companyDetailRequestCount) || 0,
         companiesWithRequests: Number(data?.totals?.companiesWithRequests) || 0,
         profileDiscrepancyCount: Number(data?.totals?.profileDiscrepancyCount) || 0,
+        interviewLimitRequestCount: Number(data?.totals?.interviewLimitRequestCount) || 0,
       });
     } catch (err) {
       console.error("Failed to load student requests:", err);
       setError("Failed to load student requests. Please try again.");
       setCompanyDetailRequests([]);
       setProfileDiscrepancies([]);
+      setInterviewLimitRequests([]);
     } finally {
       setLoading(false);
     }
@@ -46,6 +55,34 @@ export default function StudentRequestsTab() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleApproveInterviewRequest = async (requestId) => {
+    setActionId(requestId);
+    setActionError("");
+    try {
+      await adminAPI.approveInterviewLimitRequest(requestId);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to approve interview limit request:", err);
+      setActionError("Failed to approve interview request. Please try again.");
+    } finally {
+      setActionId("");
+    }
+  };
+
+  const handleDismissInterviewRequest = async (requestId) => {
+    setActionId(requestId);
+    setActionError("");
+    try {
+      await adminAPI.dismissInterviewLimitRequest(requestId);
+      await loadData();
+    } catch (err) {
+      console.error("Failed to dismiss interview limit request:", err);
+      setActionError("Failed to dismiss interview request. Please try again.");
+    } finally {
+      setActionId("");
+    }
+  };
 
   if (loading) {
     return (
@@ -75,8 +112,8 @@ export default function StudentRequestsTab() {
       <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
         <h2 className="text-xl font-semibold text-theme-accent">Student requests</h2>
         <p className="mt-1 text-sm text-theme-secondary">
-          Requests for more company details and profile discrepancy reports from students. These are
-          not sent as bell notifications.
+          Requests for more company details, additional AI interviews, and profile discrepancy
+          reports from students. These are not sent as bell notifications.
         </p>
         <div className="mt-4 flex flex-wrap gap-3 text-sm">
           <span className="rounded-full border border-theme bg-theme-hero px-3 py-1 text-theme-primary">
@@ -84,10 +121,83 @@ export default function StudentRequestsTab() {
             {totals.companyDetailRequestCount === 1 ? "" : "s"}
           </span>
           <span className="rounded-full border border-theme bg-theme-hero px-3 py-1 text-theme-primary">
+            {totals.interviewLimitRequestCount} interview request
+            {totals.interviewLimitRequestCount === 1 ? "" : "s"}
+          </span>
+          <span className="rounded-full border border-theme bg-theme-hero px-3 py-1 text-theme-primary">
             {totals.profileDiscrepancyCount} profile discrepanc
             {totals.profileDiscrepancyCount === 1 ? "y" : "ies"}
           </span>
         </div>
+      </div>
+
+      {actionError ? (
+        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {actionError}
+        </p>
+      ) : null}
+
+      <div className="rounded-xl border border-theme bg-theme-card overflow-hidden">
+        <div className="border-b border-theme px-5 py-4 flex items-center gap-2">
+          <FaMicrophone className="text-theme-accent" aria-hidden />
+          <div>
+            <h3 className="text-lg font-semibold text-theme-primary">Additional interview requests</h3>
+            <p className="text-sm text-theme-secondary">
+              Students hit the weekly interview cap and asked for another mock interview.
+            </p>
+          </div>
+        </div>
+        {interviewLimitRequests.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-theme-muted">No interview limit requests yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-theme text-sm">
+              <thead className="bg-theme-hero text-theme-muted">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium">Student</th>
+                  <th className="px-5 py-3 text-left font-medium">USN</th>
+                  <th className="px-5 py-3 text-left font-medium">Email</th>
+                  <th className="px-5 py-3 text-left font-medium">Requested</th>
+                  <th className="px-5 py-3 text-left font-medium">Available again</th>
+                  <th className="px-5 py-3 text-left font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-theme">
+                {interviewLimitRequests.map((row) => (
+                  <tr key={row.requestId} className="text-theme-secondary">
+                    <td className="px-5 py-3 font-medium text-theme-primary">
+                      {row.name || row.email}
+                    </td>
+                    <td className="px-5 py-3">{row.usn || "—"}</td>
+                    <td className="px-5 py-3">{row.email}</td>
+                    <td className="px-5 py-3">{formatWhen(row.requestedAt)}</td>
+                    <td className="px-5 py-3">{formatWhen(row.nextAvailableAt)}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={actionId === row.requestId}
+                          onClick={() => handleApproveInterviewRequest(row.requestId)}
+                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={actionId === row.requestId}
+                          onClick={() => handleDismissInterviewRequest(row.requestId)}
+                          className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary hover:bg-theme-hero disabled:opacity-60"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-theme bg-theme-card overflow-hidden">
