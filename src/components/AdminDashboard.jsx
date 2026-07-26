@@ -1,23 +1,129 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ResponsiveContainer, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import StudentRequestsTab from './StudentRequestsTab';
 import AdminGeneralStatsUpload from './AdminGeneralStatsUpload';
+import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
+import DashboardRefreshButton from './DashboardRefreshButton.jsx';
+import { PageBackButton, PageBackNavRow } from './PageBackNav.jsx';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from '../constants/placementYears.js';
-import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaFileAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel, FaInbox } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaEdit, FaTrash, FaExternalLinkAlt, FaBuilding, FaCalendar, FaChartLine, FaInfoCircle, FaChevronDown, FaUserShield, FaUpload, FaFileExcel, FaInbox } from 'react-icons/fa';
 
-function submissionSupportsEnhancement(type) {
-  return String(type || '').trim() !== 'mustDoTopics';
+const ADMIN_MISCELLANEOUS_TAB = 'miscellaneous';
+
+const ADMIN_HUB_TAB_KEYS = new Set([
+  'stats',
+  'events',
+  'companies',
+  'student-placement-stats',
+  ADMIN_MISCELLANEOUS_TAB,
+]);
+
+const ADMIN_MISC_TAB_KEYS = new Set([
+  'assign-spc',
+  'general-stats-upload',
+  'student-requests',
+  'add-next-batch',
+  'placement-settings',
+]);
+
+const ADMIN_HUB_POLL_MS = 60_000;
+
+function buildAdminMiscNavTabs() {
+  return [
+    {
+      key: 'assign-spc',
+      title: 'Assign SPC',
+      description: 'Assign or remove SPC roles for placement coordinators.',
+      cta: 'Assign SPC',
+      accent: 'border-l-indigo-500',
+      ctaColor: 'text-indigo-500',
+    },
+    {
+      key: 'general-stats-upload',
+      title: 'Update the placement General stats',
+      description: 'Upload and manage general placement statistics files.',
+      cta: 'Update stats',
+      accent: 'border-l-violet-500',
+      ctaColor: 'text-violet-500',
+    },
+    {
+      key: 'student-requests',
+      title: 'Student requests',
+      description: 'Review student-submitted requests and support tickets.',
+      cta: 'View requests',
+      accent: 'border-l-amber-500',
+      ctaColor: 'text-amber-600',
+    },
+    {
+      key: 'add-next-batch',
+      title: 'Add next batch',
+      description: 'Import the next student batch from an Excel file.',
+      cta: 'Import batch',
+      accent: 'border-l-emerald-500',
+      ctaColor: 'text-emerald-600',
+    },
+    {
+      key: 'placement-settings',
+      title: 'Dream thresholds',
+      description: 'Configure dream company CTC thresholds by branch.',
+      cta: 'Edit thresholds',
+      accent: 'border-l-violet-500',
+      ctaColor: 'text-violet-500',
+    },
+  ];
 }
 
-function submissionSupportsAddAnswer(type) {
-  const t = String(type || '').trim();
-  return t === 'onlineQuestions' || t === 'interviewQuestions';
+function buildAdminPrimaryNavTabs(stats) {
+  return [
+    {
+      key: 'stats',
+      title: 'Stats of the platform',
+      description: 'Platform growth, usage, and the most demanded company data.',
+      cta: 'View stats',
+      accent: 'border-l-violet-500',
+      ctaColor: 'text-violet-500',
+    },
+    {
+      key: 'events',
+      title: 'Upload an event/Announcement',
+      description: 'Create and manage placement events shown to students.',
+      cta: 'Manage events',
+      accent: 'border-l-sky-500',
+      ctaColor: 'text-sky-600',
+    },
+    {
+      key: 'companies',
+      title: 'Approve/Reject a company',
+      description: 'Approve new companies and manage approved company records.',
+      cta: 'Manage companies',
+      accent: 'border-l-emerald-500',
+      ctaColor: 'text-emerald-600',
+      badge: stats.pendingCompanies ?? 0,
+    },
+    {
+      key: 'student-placement-stats',
+      title: 'Student Placement Stats',
+      description: 'Browse placed students and run custom placement searches.',
+      cta: 'View placement stats',
+      accent: 'border-l-violet-500',
+      ctaColor: 'text-violet-500',
+    },
+    {
+      key: ADMIN_MISCELLANEOUS_TAB,
+      title: 'Miscellaneous Features',
+      description: 'SPC tools, batch import, general stats, and other admin utilities.',
+      cta: 'View features',
+      accent: 'border-l-amber-500',
+      ctaColor: 'text-amber-600',
+    },
+  ];
 }
 
 const ADMIN_PAGE_SIZE = 25;
@@ -45,7 +151,89 @@ const InfoHint = ({ text }) => (
   </span>
 );
 
+const ADMIN_CHART_MARGIN = { top: 8, right: 12, left: -12, bottom: 0 };
+const ADMIN_AXIS_TICK = { fill: 'var(--chart-axis-tick)', fontSize: 11 };
+const ADMIN_AXIS_LINE = { stroke: 'var(--chart-axis-line)' };
+
+function formatAdminChartDate(value) {
+  if (!value) return '';
+  const parsed = new Date(`${value}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function sumChartValues(data, key = 'count') {
+  if (!Array.isArray(data)) return 0;
+  return data.reduce((sum, row) => sum + (Number(row?.[key]) || 0), 0);
+}
+
+function latestChartValue(data, key = 'count') {
+  if (!Array.isArray(data) || data.length === 0) return 0;
+  return Number(data[data.length - 1]?.[key]) || 0;
+}
+
+function AdminChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-theme bg-theme-card px-3 py-2.5 text-xs shadow-lg">
+      <p className="mb-1.5 font-semibold text-theme-primary">{formatAdminChartDate(label)}</p>
+      <div className="space-y-1">
+        {payload.map((entry) => (
+          <p key={String(entry.dataKey)} className="flex items-center justify-between gap-4 text-theme-secondary">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              {entry.name || entry.dataKey}
+            </span>
+            <span className="font-semibold tabular-nums text-theme-primary">{entry.value}</span>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdminChartKpi({ label, value }) {
+  return (
+    <div className="min-w-[5.5rem] rounded-lg border border-theme bg-theme-hero px-3 py-2 text-right">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-theme-muted">{label}</p>
+      <p className="mt-0.5 text-lg font-bold tabular-nums text-theme-primary">{value}</p>
+    </div>
+  );
+}
+
+function AdminChartHeader({ eyebrow, title, hint, subtitle, accentClass, children }) {
+  return (
+    <div className="flex flex-col gap-3 border-b border-theme/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">{eyebrow}</p>
+        <div className="mt-1.5 flex items-center gap-2">
+          <span className={`h-5 w-1 shrink-0 rounded-full ${accentClass}`} aria-hidden />
+          <h3 className="text-base font-semibold text-theme-primary">{title}</h3>
+          <InfoHint text={hint} />
+        </div>
+        {subtitle ? (
+          <p className="mt-1 pl-3 text-xs leading-relaxed text-theme-secondary">{subtitle}</p>
+        ) : null}
+      </div>
+      {children ? <div className="flex flex-wrap gap-2">{children}</div> : null}
+    </div>
+  );
+}
+
+function AdminChartEmpty({ message }) {
+  return (
+    <div className="flex h-full min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-theme bg-theme-hero px-4 text-center">
+      <FaChartLine className="mb-2 h-7 w-7 text-theme-muted opacity-40" aria-hidden />
+      <p className="text-sm text-theme-secondary">{message}</p>
+    </div>
+  );
+}
+
 const AdminDashboard = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalUsers: 0,
     dau: 0,
@@ -62,19 +250,14 @@ const AdminDashboard = () => {
     dauTrend: [],
     submissionAcceptanceTrend: [],
   });
-  const [submissions, setSubmissions] = useState([]);
-  const [approvedSubmissions, setApprovedSubmissions] = useState([]);
-  const [activeMainTab, setActiveMainTab] = useState('stats'); // 'stats', 'submissions', 'companies', 'events', 'student-placement-stats', 'general-stats-upload', 'student-requests', 'assign-spc', 'add-next-batch', 'placement-settings'
-  const [submissionsSubTab, setSubmissionsSubTab] = useState('pending'); // 'pending' or 'approved'
   const [companies, setCompanies] = useState([]);
   const [approvedCompanies, setApprovedCompanies] = useState([]);
+  const [activeMainTab, setActiveMainTab] = useState(null);
   const [selectedCompanyYear, setSelectedCompanyYear] = useState('all');
   const [companiesSubTab, setCompaniesSubTab] = useState('pending'); // 'pending' or 'approved'
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [approvingIds, setApprovingIds] = useState(new Set());
-  const [rejectingIds, setRejectingIds] = useState(new Set());
   const [approvingCompanyIds, setApprovingCompanyIds] = useState(new Set());
   const [rejectingCompanyIds, setRejectingCompanyIds] = useState(new Set());
   const [showEventForm, setShowEventForm] = useState(false);
@@ -88,17 +271,7 @@ const AdminDashboard = () => {
   });
   const [deletingIds, setDeletingIds] = useState(new Set());
   const [deletingCompanyIds, setDeletingCompanyIds] = useState(new Set());
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
-  const [showSubmissionModal, setShowSubmissionModal] = useState(false);
-  const [submissionEnhancedContent, setSubmissionEnhancedContent] = useState(null);
-  const [submissionAnswerGenerated, setSubmissionAnswerGenerated] = useState(false);
-  const [submissionEnhancing, setSubmissionEnhancing] = useState(false);
-  const [submissionAddingAnswer, setSubmissionAddingAnswer] = useState(false);
-  const [submissionEnhanceError, setSubmissionEnhanceError] = useState('');
-  const [approvingAll, setApprovingAll] = useState(false);
   const [approvingAllCompanies, setApprovingAllCompanies] = useState(false);
-  const [subPendingMeta, setSubPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
-  const [subApprovedMeta, setSubApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [coPendingMeta, setCoPendingMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [coApprovedMeta, setCoApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [eventsLoaded, setEventsLoaded] = useState(false);
@@ -114,28 +287,46 @@ const AdminDashboard = () => {
   const [studentBatchImportResult, setStudentBatchImportResult] = useState(null);
   const [studentBatchFileKey, setStudentBatchFileKey] = useState(0);
   const [studentBatchSelectedFileName, setStudentBatchSelectedFileName] = useState('');
+  const [hubRefreshing, setHubRefreshing] = useState(false);
+  const [statsRefreshing, setStatsRefreshing] = useState(false);
+  const [companiesRefreshing, setCompaniesRefreshing] = useState(false);
 
-  const loadPendingSubmissionsList = useCallback(async (page) => {
-    const res = await adminAPI.getSubmissions({ params: { status: 'pending', page, limit: ADMIN_PAGE_SIZE } });
-    const d = res.data;
-    setSubmissions(d.items || []);
-    setSubPendingMeta({
-      page: d.page || page,
-      total: d.total ?? 0,
-      totalPages: Math.max(1, d.totalPages || 1),
-    });
-  }, []);
+  const navigateAdminTab = useCallback(
+    (tabKey) => {
+      if (tabKey == null) {
+        setActiveMainTab(null);
+        setSearchParams({}, { replace: true });
+        return;
+      }
+      if (ADMIN_HUB_TAB_KEYS.has(tabKey)) {
+        setActiveMainTab(tabKey);
+        setSearchParams({ tab: tabKey }, { replace: true });
+        return;
+      }
+      if (ADMIN_MISC_TAB_KEYS.has(tabKey)) {
+        setActiveMainTab(tabKey);
+        if (searchParams.get('tab') !== ADMIN_MISCELLANEOUS_TAB) {
+          setSearchParams({ tab: ADMIN_MISCELLANEOUS_TAB }, { replace: true });
+        }
+      }
+    },
+    [searchParams, setSearchParams]
+  );
 
-  const loadApprovedSubmissionsList = useCallback(async (page) => {
-    const res = await adminAPI.getSubmissions({ params: { status: 'approved', page, limit: ADMIN_PAGE_SIZE } });
-    const d = res.data;
-    setApprovedSubmissions(d.items || []);
-    setSubApprovedMeta({
-      page: d.page || page,
-      total: d.total ?? 0,
-      totalPages: Math.max(1, d.totalPages || 1),
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (!tab) {
+      setActiveMainTab(null);
+      return;
+    }
+    if (!ADMIN_HUB_TAB_KEYS.has(tab)) return;
+    setActiveMainTab((prev) => {
+      if (tab === ADMIN_MISCELLANEOUS_TAB && ADMIN_MISC_TAB_KEYS.has(prev)) {
+        return prev;
+      }
+      return tab;
     });
-  }, []);
+  }, [searchParams]);
 
   const companyYearLabel = selectedCompanyYear === 'all' ? 'all years' : selectedCompanyYear;
   const resolveCompanyActionYear = (placementYear) => {
@@ -171,6 +362,39 @@ const AdminDashboard = () => {
       totalPages: Math.max(1, d.totalPages || 1),
     });
   }, [selectedCompanyYear]);
+
+  const refreshAdminStats = useCallback(async () => {
+    const statsRes = await getAdminStats();
+    setStats(statsRes.data);
+  }, []);
+
+  const refreshCompaniesView = useCallback(async () => {
+    await refreshAdminStats();
+    if (companiesSubTab === 'pending') {
+      await loadPendingCompaniesList(coPendingMeta.page);
+    } else {
+      await loadApprovedCompaniesList(coApprovedMeta.page);
+    }
+  }, [
+    refreshAdminStats,
+    companiesSubTab,
+    coPendingMeta.page,
+    coApprovedMeta.page,
+    loadPendingCompaniesList,
+    loadApprovedCompaniesList,
+  ]);
+
+  const runRefresh = useCallback(async (runner, setRefreshingFlag) => {
+    try {
+      setRefreshingFlag(true);
+      await runner();
+    } catch (err) {
+      console.error('Dashboard refresh failed:', err);
+      setAdminToast({ type: 'error', message: 'Failed to refresh. Please try again.' });
+    } finally {
+      setRefreshingFlag(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!adminToast) return undefined;
@@ -265,37 +489,48 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (loading) return;
-    if (activeMainTab !== 'submissions') return;
-    if (submissionsSubTab !== 'pending') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadPendingSubmissionsList(subPendingMeta.page);
-      } catch (e) {
-        if (!cancelled) console.error(e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, activeMainTab, submissionsSubTab, subPendingMeta.page, loadPendingSubmissionsList]);
+    if (activeMainTab === 'stats') {
+      void refreshAdminStats().catch((err) => {
+        console.error('Failed to refresh stats on section open:', err);
+      });
+    }
+  }, [activeMainTab, loading, refreshAdminStats]);
 
   useEffect(() => {
-    if (loading) return;
-    if (activeMainTab !== 'submissions') return;
-    if (submissionsSubTab !== 'approved') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await loadApprovedSubmissionsList(subApprovedMeta.page);
-      } catch (e) {
-        if (!cancelled) console.error(e);
+    if (loading || activeMainTab != null) return undefined;
+    const intervalId = window.setInterval(() => {
+      void refreshAdminStats().catch((err) => {
+        console.error('Hub stats poll failed:', err);
+      });
+    }, ADMIN_HUB_POLL_MS);
+    return () => window.clearInterval(intervalId);
+  }, [loading, activeMainTab, refreshAdminStats]);
+
+  useEffect(() => {
+    if (loading) return undefined;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (activeMainTab == null) {
+        void refreshAdminStats().catch((err) => {
+          console.error('Hub visibility refresh failed:', err);
+        });
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
+      if (activeMainTab === 'stats') {
+        void refreshAdminStats().catch((err) => {
+          console.error('Stats visibility refresh failed:', err);
+        });
+        return;
+      }
+      if (activeMainTab === 'companies') {
+        void refreshCompaniesView().catch((err) => {
+          console.error('Companies visibility refresh failed:', err);
+        });
+      }
     };
-  }, [loading, activeMainTab, submissionsSubTab, subApprovedMeta.page, loadApprovedSubmissionsList]);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [loading, activeMainTab, refreshAdminStats, refreshCompaniesView]);
 
   useEffect(() => {
     if (loading) return;
@@ -440,25 +675,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const parseContent = (contentString) => {
-    try {
-      return JSON.parse(contentString);
-    } catch {
-      return { question: contentString, solution: '' };
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const renderStatsList = (title, description, items, valueKey, valueLabel) => (
     <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
       <div className="flex items-center gap-2">
@@ -519,128 +735,6 @@ const AdminDashboard = () => {
         </div>
       </div>
     );
-  };
-
-  const handleApprove = async (submissionId, mergeContent) => {
-    const withEnhanced = typeof mergeContent === 'string' && mergeContent.trim().length > 0;
-    const confirmMsg = withEnhanced
-      ? submissionAnswerGenerated
-        ? 'Approve using the generated answer? This will update the company database.'
-        : 'Approve using the AI-enhanced text? This will update the company database.'
-      : 'Are you sure you want to approve this submission? This will update the company database.';
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
-
-    const sid = String(submissionId);
-    const pendingSnapshot = submissions.find((s) => String(s._id) === sid) || null;
-    const pendingPage = subPendingMeta.page;
-    const approvedPage = subApprovedMeta.page;
-
-    setSubmissions((prev) => prev.filter((s) => String(s._id) !== sid));
-    setSubPendingMeta((prev) => ({
-      ...prev,
-      total: Math.max(0, (prev.total || 0) - 1),
-    }));
-
-    try {
-      setApprovingIds(prev => new Set(prev).add(submissionId));
-
-      await adminAPI.approveSubmission(submissionId, withEnhanced ? { mergeContent } : {});
-
-      alert('Submission approved successfully!');
-      setSubmissionEnhancedContent(null);
-      setSubmissionAnswerGenerated(false);
-      setSubmissionEnhanceError('');
-      if (selectedSubmission && String(selectedSubmission._id) === sid) {
-        setShowSubmissionModal(false);
-        setSelectedSubmission(null);
-      }
-
-      void Promise.all([
-        adminAPI.getStats().then((statsResponse) => setStats(statsResponse.data)),
-        loadPendingSubmissionsList(pendingPage),
-        loadApprovedSubmissionsList(approvedPage),
-      ]).catch((refreshErr) => {
-        console.error('Error refreshing after submission approval:', refreshErr);
-      });
-    } catch (err) {
-      if (pendingSnapshot) {
-        setSubmissions((prev) => {
-          if (prev.some((s) => String(s._id) === sid)) return prev;
-          return [pendingSnapshot, ...prev];
-        });
-        setSubPendingMeta((prev) => ({
-          ...prev,
-          total: (prev.total || 0) + 1,
-        }));
-      }
-      console.error('Error approving submission:', err);
-      console.error('Error response:', err.response?.data);
-      
-      // Show detailed error message
-      let errorMessage = 'Failed to approve submission. Please try again.';
-      if (err.response?.data) {
-        const errorData = err.response.data;
-        if (errorData.details) {
-          // If it's a validation error with details
-          const details = typeof errorData.details === 'object' 
-            ? Object.entries(errorData.details).map(([key, value]) => `${key}: ${value}`).join('\n')
-            : errorData.details;
-          errorMessage = `Validation Error:\n${details}`;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      }
-      alert(errorMessage);
-    } finally {
-      setApprovingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(submissionId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleReject = async (submissionId) => {
-    if (!window.confirm('Are you sure you want to reject this submission? This will permanently delete it from the database.')) {
-      return;
-    }
-
-    try {
-      setRejectingIds(prev => new Set(prev).add(submissionId));
-      
-      await adminAPI.rejectSubmission(submissionId);
-
-      const statsResponse = await adminAPI.getStats();
-      setStats(statsResponse.data);
-      await loadPendingSubmissionsList(subPendingMeta.page);
-
-      alert('Submission rejected and deleted successfully!');
-    } catch (err) {
-      console.error('Error rejecting submission:', err);
-      console.error('Error response:', err.response?.data);
-      
-      // Show detailed error message
-      let errorMessage = 'Failed to reject submission. Please try again.';
-      if (err.response?.data) {
-        const errorData = err.response.data;
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      }
-      alert(errorMessage);
-    } finally {
-      setRejectingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(submissionId);
-        return newSet;
-      });
-    }
   };
 
   const handleApproveCompany = async (companyId, placementYear, companyVisitId) => {
@@ -727,33 +821,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteApprovedSubmission = async (submissionId) => {
-    if (!window.confirm('Are you sure you want to delete this approved submission? This will permanently remove it from the database.')) {
-      return;
-    }
-
-    try {
-      setDeletingIds(prev => new Set(prev).add(submissionId));
-      
-      await adminAPI.deleteApprovedSubmission(submissionId);
-
-      const statsResponse = await adminAPI.getStats();
-      setStats(statsResponse.data);
-      await loadApprovedSubmissionsList(subApprovedMeta.page);
-
-      alert('Approved submission deleted successfully!');
-    } catch (err) {
-      console.error('Error deleting approved submission:', err);
-      alert('Failed to delete approved submission. Please try again.');
-    } finally {
-      setDeletingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(submissionId);
-        return newSet;
-      });
-    }
-  };
-
   const handleDeleteApprovedCompany = async (companyId, placementYear, companyVisitId) => {
     const companyYear = resolveCompanyActionYear(placementYear);
     const actionKey = getCompanyActionKey(companyId, placementYear, companyVisitId);
@@ -783,179 +850,6 @@ const AdminDashboard = () => {
         newSet.delete(actionKey);
         return newSet;
       });
-    }
-  };
-
-  const handleViewFullSubmission = async (submission) => {
-    if (submission.contentTruncated) {
-      try {
-        const res = await adminAPI.getSubmission(submission._id);
-        setSelectedSubmission(res.data);
-      } catch {
-        setSelectedSubmission(submission);
-      }
-    } else {
-      setSelectedSubmission(submission);
-    }
-    setSubmissionEnhancedContent(null);
-    setSubmissionAnswerGenerated(false);
-    setSubmissionEnhanceError('');
-    setShowSubmissionModal(true);
-  };
-
-  const handleSubmissionEnhance = async (submissionId) => {
-    setSubmissionEnhancing(true);
-    setSubmissionEnhanceError('');
-    setSubmissionEnhancedContent(null);
-    setSubmissionAnswerGenerated(false);
-    try {
-      const { data } = await adminAPI.enhanceSubmission(submissionId);
-      const next = data?.content;
-      if (typeof next !== 'string' || !next.trim()) {
-        setSubmissionEnhanceError('Enhancement returned empty content.');
-        return;
-      }
-      setSubmissionEnhancedContent(next);
-      setSubmissionAnswerGenerated(false);
-    } catch (err) {
-      const msg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Could not enhance submission.';
-      setSubmissionEnhanceError(typeof msg === 'string' ? msg : JSON.stringify(msg));
-    } finally {
-      setSubmissionEnhancing(false);
-    }
-  };
-
-  const handleSubmissionAddAnswer = async (submissionId) => {
-    setSubmissionAddingAnswer(true);
-    setSubmissionEnhanceError('');
-    setSubmissionEnhancedContent(null);
-    setSubmissionAnswerGenerated(false);
-    try {
-      const { data } = await adminAPI.addAnswerToSubmission(submissionId);
-      const next = data?.content;
-      if (typeof next !== 'string' || !next.trim()) {
-        setSubmissionEnhanceError('Answer generation returned empty content.');
-        return;
-      }
-      setSubmissionEnhancedContent(next);
-      setSubmissionAnswerGenerated(true);
-    } catch (err) {
-      const msg =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        err?.message ||
-        'Could not generate answer.';
-      setSubmissionEnhanceError(typeof msg === 'string' ? msg : JSON.stringify(msg));
-    } finally {
-      setSubmissionAddingAnswer(false);
-    }
-  };
-
-  const submissionAiBusy = submissionEnhancing || submissionAddingAnswer;
-
-  const handleApproveAll = async () => {
-    if (submissions.length === 0) {
-      alert('No pending submissions to approve.');
-      return;
-    }
-
-    const confirmMessage = `Approve all ${submissions.length} pending submission(s) on this page? (Up to ${ADMIN_BULK_FETCH_LIMIT} total can be loaded for bulk.) This will update the company database.`;
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    let bulkSnapshot = [];
-    try {
-      setApprovingAll(true);
-      let bulkList = submissions;
-      if (subPendingMeta.total > submissions.length) {
-        const bulkRes = await adminAPI.getSubmissions({
-          params: { status: 'pending', page: 1, limit: ADMIN_BULK_FETCH_LIMIT },
-        });
-        bulkList = bulkRes.data.items || [];
-      }
-
-      bulkSnapshot = bulkList;
-      const bulkIdSet = new Set(bulkSnapshot.map((s) => String(s._id)));
-      const pendingPage = subPendingMeta.page;
-      const approvedPage = subApprovedMeta.page;
-
-      setSubmissions((prev) => prev.filter((s) => !bulkIdSet.has(String(s._id))));
-      setSubPendingMeta((prev) => ({
-        ...prev,
-        total: Math.max(0, (prev.total || 0) - bulkSnapshot.length),
-      }));
-
-      const { data } = await adminAPI.approveSubmissionsBatch([...bulkIdSet]);
-      const successCount = Number(data?.successCount) || 0;
-      const failCount = Number(data?.failCount) || 0;
-      const resultRows = Array.isArray(data?.results) ? data.results : [];
-
-      if (failCount > 0) {
-        const failedIds = new Set(
-          resultRows.filter((row) => row && row.ok === false).map((row) => String(row.submissionId))
-        );
-        const restoreRows = bulkSnapshot.filter((s) => failedIds.has(String(s._id)));
-        if (restoreRows.length > 0) {
-          setSubmissions((prev) => {
-            const existing = new Set(prev.map((s) => String(s._id)));
-            const toAdd = restoreRows.filter((s) => !existing.has(String(s._id)));
-            return toAdd.length ? [...toAdd, ...prev] : prev;
-          });
-          setSubPendingMeta((prev) => ({
-            ...prev,
-            total: (prev.total || 0) + restoreRows.length,
-          }));
-        }
-      }
-
-      void Promise.all([
-        adminAPI.getStats().then((statsResponse) => setStats(statsResponse.data)),
-        loadPendingSubmissionsList(pendingPage),
-        loadApprovedSubmissionsList(approvedPage),
-      ]).catch((refreshErr) => {
-        console.error('Error refreshing after batch approval:', refreshErr);
-      });
-
-      if (failCount === 0) {
-        alert(`Successfully approved all ${successCount} submission(s)!`);
-      } else {
-        const errors = resultRows
-          .filter((row) => row && row.ok === false)
-          .map((row) => {
-            const match = bulkSnapshot.find((s) => String(s._id) === String(row.submissionId));
-            const label = match?.companyId?.name || row.submissionId;
-            return `Submission ${label}: ${row.error || 'Unknown error'}`;
-          });
-        const errorSummary = errors.slice(0, 5).join('\n');
-        const moreErrors = errors.length > 5 ? `\n... and ${errors.length - 5} more error(s)` : '';
-        alert(`Approved ${successCount} submission(s), but ${failCount} failed:\n\n${errorSummary}${moreErrors}`);
-      }
-    } catch (err) {
-      console.error('Error in bulk approval:', err);
-      if (bulkSnapshot.length > 0) {
-        setSubmissions((prev) => {
-          const toAdd = bulkSnapshot.filter((s) => !prev.some((row) => String(row._id) === String(s._id)));
-          return toAdd.length ? [...toAdd, ...prev] : prev;
-        });
-        setSubPendingMeta((prev) => ({
-          ...prev,
-          total: (prev.total || 0) + bulkSnapshot.length,
-        }));
-      }
-      alert(
-        err?.response?.data?.error ||
-          err?.response?.data?.details ||
-          err?.response?.data?.message ||
-          'An error occurred during bulk approval. Please try again.'
-      );
-      void loadPendingSubmissionsList(subPendingMeta.page);
-    } finally {
-      setApprovingAll(false);
     }
   };
 
@@ -1117,6 +1011,28 @@ const AdminDashboard = () => {
     });
   };
 
+  const adminPrimaryNavTabs = useMemo(
+    () => buildAdminPrimaryNavTabs(stats),
+    [stats.pendingCompanies]
+  );
+
+  const adminMiscNavTabs = useMemo(() => buildAdminMiscNavTabs(), []);
+
+  const handleAdminBack = () => {
+    if (ADMIN_MISC_TAB_KEYS.has(activeMainTab)) {
+      navigateAdminTab(ADMIN_MISCELLANEOUS_TAB);
+      return;
+    }
+    navigateAdminTab(null);
+    void refreshAdminStats().catch((err) => {
+      console.error('Failed to refresh hub stats on back:', err);
+    });
+  };
+
+  const adminBackLabel = ADMIN_MISC_TAB_KEYS.has(activeMainTab)
+    ? 'Back to Miscellaneous Features'
+    : 'Back to Admin Dashboard';
+
   return (
     <div className="admin-dashboard-theme min-h-screen py-6 sm:py-8 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
       {adminToast?.message && (
@@ -1130,9 +1046,17 @@ const AdminDashboard = () => {
       )}
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
-          <p className="text-sm sm:text-base text-slate-400">Manage and monitor platform activity</p>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
+            <p className="text-sm sm:text-base text-slate-400">Manage and monitor platform activity</p>
+          </div>
+          {!loading && !error && activeMainTab == null ? (
+            <DashboardRefreshButton
+              loading={hubRefreshing}
+              onClick={() => runRefresh(refreshAdminStats, setHubRefreshing)}
+            />
+          ) : null}
         </div>
 
         {/* Loading State */}
@@ -1170,135 +1094,78 @@ const AdminDashboard = () => {
         )}
 
         {!loading && !error && (
-          <>
-            {/* Main Tabs Navigation */}
-            <div className="flex gap-2 sm:gap-4 mb-6 flex-wrap overflow-x-auto pb-2">
-              <button
-                onClick={() => setActiveMainTab('stats')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'stats'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaChartLine />
-                Stats
-              </button>
-              <button
-                onClick={() => setActiveMainTab('submissions')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'submissions'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaFileAlt />
-                Submissions ({stats.pendingSubmissions ?? 0})
-              </button>
-              <button
-                onClick={() => setActiveMainTab('companies')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'companies'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaBuilding />
-                Companies ({stats.pendingCompanies ?? 0})
-              </button>
-              <button
-                onClick={() => setActiveMainTab('events')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'events'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaCalendar />
-                Events
-              </button>
-              <button
-                onClick={() => setActiveMainTab('assign-spc')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'assign-spc'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaUserShield />
-                Assign SPC
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMainTab('student-placement-stats')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'student-placement-stats'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaBuilding />
-                Student Placement Stats
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMainTab('general-stats-upload')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'general-stats-upload'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaChartLine />
-                General stats
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMainTab('student-requests')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'student-requests'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaInbox />
-                Student requests
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMainTab('add-next-batch')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'add-next-batch'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaUpload />
-                Add next batch
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMainTab('placement-settings')}
-                className={`px-4 py-2 rounded-lg font-semibold transition text-sm sm:text-base whitespace-nowrap flex items-center gap-2 ${
-                  activeMainTab === 'placement-settings'
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-                }`}
-              >
-                <FaChartLine />
-                Dream thresholds
-              </button>
-            </div>
+          activeMainTab == null ? (
+            <DashboardNavGrid className="mb-6" aria-label="Admin dashboard sections">
+              {adminPrimaryNavTabs.map((tab) => (
+                <DashboardNavCard
+                  key={tab.key}
+                  title={tab.title}
+                  description={tab.description}
+                  cta={tab.cta}
+                  accent={tab.accent}
+                  ctaColor={tab.ctaColor}
+                  badge={tab.badge}
+                  onClick={() => navigateAdminTab(tab.key)}
+                />
+              ))}
+            </DashboardNavGrid>
+          ) : activeMainTab === ADMIN_MISCELLANEOUS_TAB ? (
+            <>
+              <PageBackNavRow>
+                <PageBackButton
+                  onClick={() => {
+                    navigateAdminTab(null);
+                    void refreshAdminStats().catch((err) => {
+                      console.error('Failed to refresh hub stats on back:', err);
+                    });
+                  }}
+                  label="Back to Admin Dashboard"
+                />
+              </PageBackNavRow>
+
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold text-theme-accent">Miscellaneous Features</h2>
+                <p className="mt-1 text-sm text-theme-secondary">
+                  Additional admin tools grouped in one place.
+                </p>
+              </div>
+
+              <DashboardNavGrid className="mb-6" aria-label="Miscellaneous admin features">
+                {adminMiscNavTabs.map((tab) => (
+                  <DashboardNavCard
+                    key={tab.key}
+                    title={tab.title}
+                    description={tab.description}
+                    cta={tab.cta}
+                    accent={tab.accent}
+                    ctaColor={tab.ctaColor}
+                    badge={tab.badge}
+                    onClick={() => navigateAdminTab(tab.key)}
+                  />
+                ))}
+              </DashboardNavGrid>
+            </>
+          ) : (
+            <>
+              <PageBackNavRow>
+                <PageBackButton onClick={handleAdminBack} label={adminBackLabel} />
+              </PageBackNavRow>
 
             {/* Main Content Area */}
             {activeMainTab === 'stats' && (
               <div className="space-y-6">
                 <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-6 shadow-sm">
-                  <div className="mb-5">
-                    <h2 className="text-xl font-semibold text-theme-accent">Stats</h2>
-                    <p className="mt-1 text-sm text-theme-secondary">
-                      Platform growth, usage, and the most demanded company data in one place.
-                    </p>
+                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-theme-accent">Stats of the platform</h2>
+                      <p className="mt-1 text-sm text-theme-secondary">
+                        Platform growth, usage, and the most demanded company data in one place.
+                      </p>
+                    </div>
+                    <DashboardRefreshButton
+                      loading={statsRefreshing}
+                      onClick={() => runRefresh(refreshAdminStats, setStatsRefreshing)}
+                    />
                   </div>
 
                   {loading ? (
@@ -1385,108 +1252,236 @@ const AdminDashboard = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-theme-primary">User Growth (Last 7 Days)</h3>
-                      <InfoHint text="New users created each day over the last 7 days." />
-                    </div>
-                    <div className="mt-4 h-72">
-                      {Array.isArray(stats.userGrowth) && stats.userGrowth.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={stats.userGrowth}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Line
-                              type="monotone"
-                              dataKey="count"
-                              stroke="#6366f1"
-                              strokeWidth={3}
-                              dot={{ r: 4 }}
-                              activeDot={{ r: 6 }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="flex h-full items-center justify-center rounded-lg border border-theme bg-theme-hero text-sm text-theme-secondary">
-                          No growth data available.
-                        </div>
-                      )}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-0.5">
+                    <span className="h-5 w-1 rounded-full bg-theme-accent" aria-hidden />
+                    <div>
+                      <h3 className="text-lg font-semibold text-theme-primary">Platform trends</h3>
+                      <p className="text-xs text-theme-secondary">Rolling seven-day activity across users, engagement, and submissions.</p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-theme-primary">Daily Active Users Trend</h3>
-                      <InfoHint text="Tracked active-user counts for each of the last 7 days." />
+                  <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                    <div className="overflow-hidden rounded-xl border border-theme bg-theme-card p-5 shadow-sm sm:p-6">
+                      <AdminChartHeader
+                        eyebrow="Growth"
+                        title="User Growth (Last 7 Days)"
+                        hint="New users created each day over the last 7 days."
+                        subtitle="Daily new sign-ups across the platform."
+                        accentClass="bg-indigo-500"
+                      >
+                        <AdminChartKpi label="7-day total" value={sumChartValues(stats.userGrowth)} />
+                        <AdminChartKpi label="Latest day" value={latestChartValue(stats.userGrowth)} />
+                      </AdminChartHeader>
+                      <div className="mt-4 h-64 min-w-0">
+                        {Array.isArray(stats.userGrowth) && stats.userGrowth.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={stats.userGrowth} margin={ADMIN_CHART_MARGIN}>
+                              <defs>
+                                <linearGradient id="adminGradUserGrowth" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.22} />
+                                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                              <XAxis
+                                dataKey="date"
+                                tick={ADMIN_AXIS_TICK}
+                                tickLine={ADMIN_AXIS_LINE}
+                                axisLine={ADMIN_AXIS_LINE}
+                                tickFormatter={formatAdminChartDate}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis
+                                allowDecimals={false}
+                                tick={ADMIN_AXIS_TICK}
+                                tickLine={false}
+                                axisLine={false}
+                                width={36}
+                              />
+                              <Tooltip content={<AdminChartTooltip />} cursor={{ stroke: 'var(--chart-grid)', strokeWidth: 1 }} />
+                              <Area
+                                type="monotone"
+                                dataKey="count"
+                                name="New users"
+                                stroke="var(--accent)"
+                                strokeWidth={1.5}
+                                fill="url(#adminGradUserGrowth)"
+                                dot={false}
+                                activeDot={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="count"
+                                name="New users"
+                                stroke="var(--accent)"
+                                strokeWidth={3}
+                                dot={{ r: 3.5, fill: 'var(--bg-card)', strokeWidth: 2, stroke: 'var(--accent)' }}
+                                activeDot={{ r: 5.5, fill: 'var(--accent-secondary)', strokeWidth: 2, stroke: 'var(--bg-card)' }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <AdminChartEmpty message="No growth data available for the last 7 days." />
+                        )}
+                      </div>
                     </div>
-                    <div className="mt-4 h-72">
-                      {Array.isArray(stats.dauTrend) && stats.dauTrend.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={stats.dauTrend}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                            <Tooltip />
-                            <Line
-                              type="monotone"
-                              dataKey="count"
-                              stroke="#10b981"
-                              strokeWidth={3}
-                              dot={{ r: 4 }}
-                              activeDot={{ r: 6 }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="flex h-full items-center justify-center rounded-lg border border-theme bg-theme-hero text-sm text-theme-secondary">
-                          No DAU trend data available.
-                        </div>
-                      )}
+
+                    <div className="overflow-hidden rounded-xl border border-theme bg-theme-card p-5 shadow-sm sm:p-6">
+                      <AdminChartHeader
+                        eyebrow="Engagement"
+                        title="Daily Active Users Trend"
+                        hint="Tracked active-user counts for each of the last 7 days."
+                        subtitle="Users with recorded activity on each calendar day."
+                        accentClass="bg-emerald-500"
+                      >
+                        <AdminChartKpi label="7-day total" value={sumChartValues(stats.dauTrend)} />
+                        <AdminChartKpi label="Latest day" value={latestChartValue(stats.dauTrend)} />
+                      </AdminChartHeader>
+                      <div className="mt-4 h-64 min-w-0">
+                        {Array.isArray(stats.dauTrend) && stats.dauTrend.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={stats.dauTrend} margin={ADMIN_CHART_MARGIN}>
+                              <defs>
+                                <linearGradient id="adminGradDau" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="var(--green)" stopOpacity={0.2} />
+                                  <stop offset="95%" stopColor="var(--green)" stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                              <XAxis
+                                dataKey="date"
+                                tick={ADMIN_AXIS_TICK}
+                                tickLine={ADMIN_AXIS_LINE}
+                                axisLine={ADMIN_AXIS_LINE}
+                                tickFormatter={formatAdminChartDate}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis
+                                allowDecimals={false}
+                                tick={ADMIN_AXIS_TICK}
+                                tickLine={false}
+                                axisLine={false}
+                                width={36}
+                              />
+                              <Tooltip content={<AdminChartTooltip />} cursor={{ stroke: 'var(--chart-grid)', strokeWidth: 1 }} />
+                              <Area
+                                type="monotone"
+                                dataKey="count"
+                                name="Active users"
+                                stroke="var(--green)"
+                                strokeWidth={1.5}
+                                fill="url(#adminGradDau)"
+                                dot={false}
+                                activeDot={false}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="count"
+                                name="Active users"
+                                stroke="var(--green)"
+                                strokeWidth={3}
+                                dot={{ r: 3.5, fill: 'var(--bg-card)', strokeWidth: 2, stroke: 'var(--green)' }}
+                                activeDot={{ r: 5.5, fill: '#34d399', strokeWidth: 2, stroke: 'var(--bg-card)' }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <AdminChartEmpty message="No daily active user data available for the last 7 days." />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-theme-primary">Daily Submissions vs Acceptances</h3>
-                      <InfoHint text="Daily platform submissions and daily approved submissions over the last 7 days." />
+                  <div className="overflow-hidden rounded-xl border border-theme bg-theme-card p-5 shadow-sm sm:p-6">
+                    <AdminChartHeader
+                      eyebrow="Activity"
+                      title="Daily Submissions vs Acceptances"
+                      hint="Daily platform submissions and daily approved submissions over the last 7 days."
+                      subtitle="Compare incoming submissions with approvals processed each day."
+                      accentClass="bg-violet-500"
+                    >
+                      <AdminChartKpi label="Submissions" value={sumChartValues(stats.submissionAcceptanceTrend, 'submissions')} />
+                      <AdminChartKpi label="Acceptances" value={sumChartValues(stats.submissionAcceptanceTrend, 'acceptances')} />
+                    </AdminChartHeader>
+
+                    <div className="mt-3 flex flex-wrap gap-4 border-b border-theme/40 pb-3">
+                      <span className="inline-flex items-center gap-2 text-xs text-theme-secondary">
+                        <span className="inline-block h-0.5 w-5 rounded-full bg-violet-500" />
+                        Submissions
+                      </span>
+                      <span className="inline-flex items-center gap-2 text-xs text-theme-secondary">
+                        <span
+                          className="inline-block h-0.5 w-5"
+                          style={{
+                            background:
+                              'repeating-linear-gradient(90deg, var(--warning) 0, var(--warning) 4px, transparent 4px, transparent 7px)',
+                          }}
+                        />
+                        Acceptances
+                      </span>
                     </div>
-                    <div className="mt-4 h-80">
+
+                    <div className="mt-4 h-72 min-w-0">
                       {Array.isArray(stats.submissionAcceptanceTrend) && stats.submissionAcceptanceTrend.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={stats.submissionAcceptanceTrend}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" />
-                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                            <Tooltip />
+                          <LineChart data={stats.submissionAcceptanceTrend} margin={ADMIN_CHART_MARGIN}>
+                            <defs>
+                              <linearGradient id="adminGradSubmissions" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.18} />
+                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                            <XAxis
+                              dataKey="date"
+                              tick={ADMIN_AXIS_TICK}
+                              tickLine={ADMIN_AXIS_LINE}
+                              axisLine={ADMIN_AXIS_LINE}
+                              tickFormatter={formatAdminChartDate}
+                              interval="preserveStartEnd"
+                            />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={ADMIN_AXIS_TICK}
+                              tickLine={false}
+                              axisLine={false}
+                              width={36}
+                            />
+                            <Tooltip content={<AdminChartTooltip />} cursor={{ stroke: 'var(--chart-grid)', strokeWidth: 1 }} />
+                            <Area
+                              type="monotone"
+                              dataKey="submissions"
+                              name="Submissions"
+                              stroke="#8b5cf6"
+                              strokeWidth={1.5}
+                              fill="url(#adminGradSubmissions)"
+                              dot={false}
+                              activeDot={false}
+                            />
                             <Line
                               type="monotone"
                               dataKey="submissions"
                               name="Submissions"
                               stroke="#8b5cf6"
                               strokeWidth={3}
-                              dot={{ r: 4 }}
-                              activeDot={{ r: 6 }}
+                              dot={{ r: 3.5, fill: 'var(--bg-card)', strokeWidth: 2, stroke: '#8b5cf6' }}
+                              activeDot={{ r: 5.5, fill: '#a78bfa', strokeWidth: 2, stroke: 'var(--bg-card)' }}
                             />
                             <Line
                               type="monotone"
                               dataKey="acceptances"
                               name="Acceptances"
-                              stroke="#f59e0b"
-                              strokeWidth={3}
-                              dot={{ r: 4 }}
-                              activeDot={{ r: 6 }}
+                              stroke="var(--warning)"
+                              strokeWidth={2.5}
+                              strokeDasharray="6 4"
+                              dot={{ r: 3.5, fill: 'var(--warning)', strokeWidth: 2, stroke: 'var(--bg-card)' }}
+                              activeDot={{ r: 5.5, fill: '#fbbf24', strokeWidth: 2, stroke: 'var(--bg-card)' }}
                             />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="flex h-full items-center justify-center rounded-lg border border-theme bg-theme-hero text-sm text-theme-secondary">
-                          No submission trend data available.
-                        </div>
+                        <AdminChartEmpty message="No submission trend data available for the last 7 days." />
                       )}
                     </div>
                   </div>
@@ -1620,205 +1615,7 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {/* {activeMainTab === 'add-next-batch' && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-                  <div className="mb-5">
-                    <h2 className="text-xl font-semibold text-theme-accent">Add next batch</h2>
-                    <p className="mt-1 text-sm text-theme-secondary">
-                      Upload an Excel sheet (.xlsx) with a header row. Required columns use common labels such as
-                      Name, Email, and USN.
-                    </p>
-                  </div>
-                                    <form
-                    key={studentBatchFileKey}
-                    onSubmit={handleStudentBatchImport}
-                    className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end"
-                  >
-                    <label className="block min-w-[220px] flex-1">
-                      <span className="mb-2 block text-sm font-medium text-theme-primary">Excel file (.xlsx)</span>
-                      <div className="mb-2 flex items-center gap-2">
-                        <label
-                          htmlFor="student-batch-file-input"
-                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-theme bg-theme-hero px-3 py-2 text-xs font-semibold text-theme-secondary transition hover:bg-theme-nav"
-                        >
-                          <FaFileExcel className="text-emerald-500" />
-                          <span>Choose Excel file</span>
-                        </label>
-                        {studentBatchSelectedFileName ? (
-                          <span className="truncate text-xs text-theme-secondary">
-                            {studentBatchSelectedFileName}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-theme-muted">No file selected</span>
-                        )}
-                      </div>
-                      <input
-                        id="student-batch-file-input"
-                        type="file"
-                        name="file"
-                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          setStudentBatchSelectedFileName(file?.name || '');
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={studentBatchImportLoading}
-                      className="rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {studentBatchImportLoading ? 'Importing…' : 'Upload and import'}
-                    </button>
-                  </form>
-
-                  <div className="mb-6 overflow-x-auto rounded-lg border border-theme">
-                    <table className="min-w-full divide-y divide-theme text-sm">
-                      <thead className="bg-theme-hero">
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-                          <th className="px-4 py-3">Accepted header labels (examples)</th>
-                          <th className="px-4 py-3">Stored as</th>
-                          <th className="px-4 py-3">Required</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-theme text-theme-primary">
-                        {(studentBatchColumnGuide.length
-                          ? studentBatchColumnGuide
-                          : [
-                              { labels: ['Name'], field: 'name', required: true },
-                              { labels: ['Email'], field: 'email', required: true },
-                              { labels: ['USN'], field: 'usn', required: true },
-        
-                            ]
-                        ).map((row) => (
-                          <tr key={row.field}>
-                            <td className="px-4 py-3 text-theme-secondary">
-                              {Array.isArray(row.labels) ? row.labels.join(', ') : row.labels}
-                            </td>
-                            <td className="px-4 py-3 font-mono text-xs">{row.field}</td>
-                            <td className="px-4 py-3">{row.required ? 'Yes' : 'No'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div> 
-
-                {studentBatchImportResult && (
-                  <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-                    <h3 className="text-lg font-semibold text-theme-primary">Import result</h3>
-                    <p
-                      className={`mt-2 text-sm ${
-                        studentBatchImportResult.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {studentBatchImportResult.message ||
-                        studentBatchImportResult.error ||
-                        (studentBatchImportResult.success ? 'Completed.' : 'Import did not complete.')}
-                    </p>
-                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
-                        <p className="text-xs font-semibold uppercase text-theme-secondary">Inserted</p>
-                        <p className="mt-1 text-2xl font-bold text-theme-primary">
-                          {studentBatchImportResult.inserted ?? 0}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
-                        <p className="text-xs font-semibold uppercase text-theme-secondary">Skipped</p>
-                        <p className="mt-1 text-2xl font-bold text-theme-primary">
-                          {studentBatchImportResult.skippedCount ??
-                            (Array.isArray(studentBatchImportResult.skipped)
-                              ? studentBatchImportResult.skipped.length
-                              : 0)}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-theme bg-theme-hero px-4 py-3">
-                        <p className="text-xs font-semibold uppercase text-theme-secondary">Failed (validation)</p>
-                        <p className="mt-1 text-2xl font-bold text-theme-primary">
-                          {studentBatchImportResult.failedCount ??
-                            (Array.isArray(studentBatchImportResult.failed)
-                              ? studentBatchImportResult.failed.length
-                              : 0)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {Array.isArray(studentBatchImportResult.failed) && studentBatchImportResult.failed.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="text-sm font-semibold text-theme-primary">Failed rows</h4>
-                        <p className="mt-1 text-xs text-theme-secondary">
-                          Each sheet row number matches Excel (row 1 is the header; the first data row is 2). Fix these
-                          cells and upload again — nothing was saved for this attempt.
-                        </p>
-                        <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-theme">
-                          <table className="min-w-full divide-y divide-theme text-sm">
-                            <thead className="bg-theme-hero sticky top-0">
-                              <tr className="text-left text-xs font-semibold uppercase text-theme-secondary">
-                                <th className="px-3 py-2">Sheet row</th>
-                                <th className="px-3 py-2">Reason</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-theme">
-                              {studentBatchImportResult.failed.map((f, idx) => (
-                                <tr key={`${f.excelRow}-${idx}`}>
-                                  <td className="px-3 py-2 font-mono text-theme-primary">{f.excelRow}</td>
-                                  <td className="px-3 py-2 text-theme-secondary">{f.reason}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {Array.isArray(studentBatchImportResult.skipped) && studentBatchImportResult.skipped.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="text-sm font-semibold text-theme-primary">Skipped rows</h4>
-                        <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-theme">
-                          <table className="min-w-full divide-y divide-theme text-sm">
-                            <thead className="bg-theme-hero sticky top-0">
-                              <tr className="text-left text-xs font-semibold uppercase text-theme-secondary">
-                                <th className="px-3 py-2">Sheet row</th>
-                                <th className="px-3 py-2">Reason</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-theme">
-                              {studentBatchImportResult.skipped.map((s, idx) => (
-                                <tr key={`${s.excelRow}-${idx}`}>
-                                  <td className="px-3 py-2 font-mono text-theme-primary">{s.excelRow}</td>
-                                  <td className="px-3 py-2 text-theme-secondary">{s.reason}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-
-                    {studentBatchImportResult.success &&
-                      Array.isArray(studentBatchImportResult.insertedExcelRows) &&
-                      studentBatchImportResult.insertedExcelRows.length > 0 && (
-                        <div className="mt-6">
-                          <h4 className="text-sm font-semibold text-theme-primary">Inserted sheet rows</h4>
-                          <p className="mt-1 max-h-40 overflow-y-auto font-mono text-xs text-theme-secondary break-all">
-                            {(() => {
-                              const rows = studentBatchImportResult.insertedExcelRows;
-                              const cap = 200;
-                              const head = rows.slice(0, cap);
-                              const more = rows.length - head.length;
-                              return more > 0
-                                ? `${head.join(', ')} …and ${more} more row number(s).`
-                                : head.join(', ');
-                            })()}
-                          </p>
-                        </div>
-                      )}
-                  </div>
-                )}
-              </div>
-            )} */}
+       
             {activeMainTab === 'add-next-batch' && (
   <div className="space-y-6">
     <div className="rounded-xl border border-theme bg-theme-card p-6 shadow-sm">
@@ -2080,324 +1877,19 @@ const AdminDashboard = () => {
 
             {activeMainTab === 'general-stats-upload' && <AdminGeneralStatsUpload />}
 
-            {activeMainTab === 'submissions' && (
-            <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                      <h2 className="text-xl font-semibold text-indigo-400">Submissions Management</h2>
-                      <p className="text-sm text-slate-400 mt-1">Review and approve user submissions</p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                      {submissionsSubTab === 'pending' && submissions.length > 0 && (
-                      <button
-                        onClick={handleApproveAll}
-                        disabled={approvingAll}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          approvingAll
-                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                      >
-                        {approvingAll ? 'Approving All...' : `Approve all on page (${submissions.length})`}
-                      </button>
-                    )}
-                    <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
-                      <button
-                          type="button"
-                          onClick={() => {
-                            setSubmissionsSubTab('pending');
-                            setSubPendingMeta((m) => ({ ...m, page: 1 }));
-                          }}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                            submissionsSubTab === 'pending'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-300 hover:bg-slate-700'
-                        }`}
-                      >
-                        Pending ({stats.pendingSubmissions || 0})
-                      </button>
-                      <button
-                          type="button"
-                          onClick={() => {
-                            setSubmissionsSubTab('approved');
-                            setSubApprovedMeta((m) => ({ ...m, page: 1 }));
-                          }}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                            submissionsSubTab === 'approved'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-300 hover:bg-slate-700'
-                        }`}
-                      >
-                        Approved ({stats.approvedSubmissions || 0})
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-                {submissionsSubTab === 'pending' ? (
-                submissions.length === 0 ? (
-                  <div className="p-8 sm:p-12 text-center">
-                    <p className="text-slate-400 text-sm sm:text-base">No pending submissions found.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto -mx-4 sm:mx-0">
-                    <div className="inline-block min-w-full align-middle">
-                      <table className="min-w-full divide-y divide-slate-700">
-                        <thead className="bg-slate-800/60">
-                          <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                              Submitted By
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                              Company
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden md:table-cell">
-                              Content
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden lg:table-cell">
-                              Submitted At
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-slate-800/40 divide-y divide-slate-700">
-                          {submissions.map((submission) => {
-                            const content = parseContent(submission.content);
-                            return (
-                              <tr 
-                                key={submission._id} 
-                                className="hover:bg-slate-700/50 cursor-pointer"
-                                onClick={() => handleViewFullSubmission(submission)}
-                              >
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <div>
-                                    <p className="text-xs sm:text-sm font-medium text-slate-200">
-                                      {submission.submittedBy?.name || 'N/A'}
-                                      {submission.isAnonymous && (
-                                        <span className="ml-2 text-xs text-orange-600 font-normal">(Anonymous)</span>
-                                      )}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy?.email || ''}</p>
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <div>
-                                    <p className="text-xs sm:text-sm text-slate-200">
-                                      {submission.companyId?.name || 'N/A'}
-                                    </p>
-                                    <p className="text-[11px] sm:text-xs text-slate-400">
-                                      Year: {submission.placementYear || 'N/A'} · Cluster: {submission.cluster || 'N/A'}
-                                    </p>
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
-                                    {submission.type}
-                                  </span>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                                  <div className="text-xs sm:text-sm text-slate-300 max-w-md">
-                                    {content.question && (
-                                      <p className="font-medium mb-1 truncate">Q: {content.question}</p>
-                                    )}
-                                    {content.solution && (
-                                      <p className="text-slate-400 truncate">A: {content.solution}</p>
-                                    )}
-                                    {!content.question && !content.solution && (
-                                      <p className="text-slate-400 truncate">{submission.content}</p>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
-                                  {formatDate(submission.submittedAt)}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                                  <div className="flex items-center gap-1 sm:gap-2 flex-col sm:flex-row">
-                                    <button
-                                      onClick={() => handleApprove(submission._id)}
-                                      disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
-                                      className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
-                                        approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                                          : 'bg-green-600 text-white hover:bg-green-700'
-                                      }`}
-                                    >
-                                      {approvingIds.has(submission._id) ? 'Approving...' : 'Approve'}
-                                    </button>
-                                    <button
-                                      onClick={() => handleReject(submission._id)}
-                                      disabled={approvingIds.has(submission._id) || rejectingIds.has(submission._id)}
-                                      className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
-                                        approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                                          : 'bg-red-600 text-white hover:bg-red-700'
-                                      }`}
-                                    >
-                                      {rejectingIds.has(submission._id) ? 'Rejecting...' : 'Reject'}
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {renderAdminPagination(subPendingMeta, (p) =>
-                      setSubPendingMeta((m) => ({ ...m, page: p }))
-                    )}
-                  </div>
-                )
-              ) : (
-                approvedSubmissions.length === 0 ? (
-                  <div className="p-8 sm:p-12 text-center">
-                    <p className="text-slate-400 text-sm sm:text-base">No approved submissions found.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto -mx-4 sm:mx-0">
-                    <div className="inline-block min-w-full align-middle">
-                      <table className="min-w-full divide-y divide-slate-700">
-                        <thead className="bg-slate-800/60">
-                          <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Submitted By
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Company
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Type
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                              Content
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                              Submitted At
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                              Approved At
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-                              Reviewed by
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Status
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-slate-800/40 divide-y divide-slate-700">
-                          {approvedSubmissions.map((submission) => {
-                            const content = parseContent(submission.content);
-                            return (
-                              <tr 
-                                key={submission._id} 
-                                className="hover:bg-slate-700/50 cursor-pointer"
-                                onClick={() => handleViewFullSubmission(submission)}
-                              >
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <div>
-                                    <p className="text-xs sm:text-sm font-medium text-slate-200">
-                                      {submission.submittedBy?.name || 'N/A'}
-                                      {submission.isAnonymous && (
-                                        <span className="ml-2 text-xs text-orange-400 font-normal">(Anonymous)</span>
-                                      )}
-                                    </p>
-                                    <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">{submission.submittedBy?.email || ''}</p>
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <div>
-                                    <p className="text-xs sm:text-sm text-slate-200">
-                                      {submission.companyId?.name || 'N/A'}
-                                    </p>
-                                    <p className="text-[11px] sm:text-xs text-slate-400">
-                                      Year: {submission.placementYear || 'N/A'} · Cluster: {submission.cluster || 'N/A'}
-                                    </p>
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-600 text-white capitalize">
-                                    {submission.type}
-                                  </span>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                                  <div className="text-xs sm:text-sm text-slate-300 max-w-md">
-                                    {content.question && (
-                                      <p className="font-medium mb-1 truncate">Q: {content.question}</p>
-                                    )}
-                                    {content.solution && (
-                                      <p className="text-slate-400 truncate">A: {content.solution}</p>
-                                    )}
-                                    {!content.question && !content.solution && (
-                                      <p className="text-slate-400 truncate">{submission.content}</p>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
-                                  {formatDate(submission.submittedAt)}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
-                                  {submission.approvedAt ? formatDate(submission.approvedAt) : 'N/A'}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-300 hidden lg:table-cell">
-                                  {submission.reviewedBy?.name
-                                    ? `${submission.reviewedBy.name}${
-                                        submission.reviewedBy.role === 'spc' ? ' (SPC)' : ''
-                                      }`
-                                    : '—'}
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-600 text-white">
-                                    Approved
-                                  </span>
-                                </td>
-                                <td className="px-3 sm:px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    onClick={() => handleDeleteApprovedSubmission(submission._id)}
-                                    disabled={deletingIds.has(submission._id)}
-                                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
-                                      deletingIds.has(submission._id)
-                                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                                        : 'bg-red-600 text-white hover:bg-red-700'
-                                    }`}
-                                  >
-                                    {deletingIds.has(submission._id) ? 'Deleting...' : 'Delete'}
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {renderAdminPagination(subApprovedMeta, (p) =>
-                      setSubApprovedMeta((m) => ({ ...m, page: p }))
-                    )}
-                  </div>
-                )
-              )}
-            </div>
-            )}
-
             {activeMainTab === 'companies' && (
               <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                      <h2 className="text-xl font-semibold text-indigo-400">Companies Management</h2>
+                      <h2 className="text-xl font-semibold text-indigo-400">Approve/Reject a company</h2>
                       <p className="text-sm text-slate-400 mt-1">Review and approve company submissions by placement year</p>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
+                      <DashboardRefreshButton
+                        loading={companiesRefreshing}
+                        onClick={() => runRefresh(refreshCompaniesView, setCompaniesRefreshing)}
+                      />
                       <label className="min-w-[170px] rounded-xl border border-theme bg-theme-card px-3 py-2.5 shadow-sm">
                         <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
                           Placement year
@@ -2631,7 +2123,7 @@ const AdminDashboard = () => {
               <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
                 <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                   <div>
-                    <h2 className="text-xl font-semibold text-indigo-400">Events Management</h2>
+                    <h2 className="text-xl font-semibold text-indigo-400">Upload an event/Announcement</h2>
                     <p className="text-xs sm:text-sm text-slate-400 mt-1">Manage off-campus placements, hackathons, and other events</p>
                   </div>
                   <button
@@ -2841,313 +2333,11 @@ const AdminDashboard = () => {
               )}
               </div>
             )}
-          </>
+            </>
+          )
         )}
       </div>
 
-      {/* Full Submission Details Modal */}
-      {showSubmissionModal && selectedSubmission && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-indigo-400">Full Submission Details</h3>
-              <button
-                onClick={() => {
-                  setShowSubmissionModal(false);
-                  setSelectedSubmission(null);
-                  setSubmissionEnhancedContent(null);
-                  setSubmissionAnswerGenerated(false);
-                  setSubmissionEnhanceError('');
-                }}
-                className="text-slate-400 hover:text-slate-200 text-2xl font-bold"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {/* Submission Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Submitted By</p>
-                  <p className="text-base text-slate-200 mt-1">
-                    {selectedSubmission.submittedBy?.name || 'N/A'}
-                    {selectedSubmission.isAnonymous && (
-                      <span className="ml-2 text-sm text-orange-400">(Anonymous)</span>
-                    )}
-                  </p>
-                  <p className="text-sm text-slate-400 mt-1">{selectedSubmission.submittedBy?.email || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Company</p>
-                  <p className="text-base text-slate-200 mt-1">{selectedSubmission.companyId?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Type</p>
-                  <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-indigo-600 text-white capitalize">
-                    {selectedSubmission.type || 'N/A'}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Placement Year</p>
-                  <p className="text-base text-slate-200 mt-1">{selectedSubmission.placementYear || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Cluster</p>
-                  <p className="text-base text-slate-200 mt-1">{selectedSubmission.cluster || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Status</p>
-                  <span className={`inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full ${
-                    selectedSubmission.status === 'approved' 
-                      ? 'bg-green-600 text-white' 
-                      : 'bg-yellow-600 text-white'
-                  }`}>
-                    {selectedSubmission.status === 'approved' ? 'Approved' : 'Pending'}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-400">Submitted At</p>
-                  <p className="text-base text-slate-200 mt-1">{formatDate(selectedSubmission.submittedAt)}</p>
-                </div>
-                {selectedSubmission.approvedAt && (
-                  <div>
-                    <p className="text-sm font-medium text-slate-400">Approved At</p>
-                    <p className="text-base text-slate-200 mt-1">{formatDate(selectedSubmission.approvedAt)}</p>
-                  </div>
-                )}
-                {selectedSubmission.status === 'approved' && (
-                  <div>
-                    <p className="text-sm font-medium text-slate-400">Reviewed by</p>
-                    <p className="text-base text-slate-200 mt-1">
-                      {selectedSubmission.reviewedBy?.name
-                        ? `${selectedSubmission.reviewedBy.name}${
-                            selectedSubmission.reviewedBy.role === 'spc' ? ' (SPC)' : ' (Admin)'
-                          }`
-                        : 'Admin (legacy)'}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Full Content */}
-              <div className="border-t border-slate-700 pt-4">
-                <p className="text-sm font-medium text-slate-400 mb-2">Full Submission Content</p>
-                <div className="bg-slate-900 rounded-lg p-4">
-                  {(() => {
-                    const content = parseContent(selectedSubmission.content);
-                    if (content.question || content.solution) {
-                      return (
-                        <div className="space-y-3">
-                          {content.question && (
-                            <div>
-                              <p className="text-sm font-semibold text-slate-300 mb-1">Question:</p>
-                              <p className="text-base text-slate-200 whitespace-pre-wrap break-words">{content.question}</p>
-                            </div>
-                          )}
-                          {content.solution && (
-                            <div>
-                              <p className="text-sm font-semibold text-slate-300 mb-1">Solution:</p>
-                              <pre className="text-base text-slate-200 whitespace-pre-wrap break-words font-sans bg-slate-800 p-3 rounded border border-slate-700 overflow-x-auto">
-                                {content.solution}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    } else {
-                      return (
-                        <p className="text-base text-slate-200 whitespace-pre-wrap break-words">{selectedSubmission.content}</p>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-
-              {submissionEnhanceError ? (
-                <p className="text-sm text-red-400 border-t border-slate-700 pt-4">{submissionEnhanceError}</p>
-              ) : null}
-
-              {submissionEnhancedContent ? (
-                <div className="border-t border-slate-700 pt-4">
-                  <p className="text-sm font-medium text-slate-400 mb-2">
-                    {submissionAnswerGenerated ? 'Generated answer preview' : 'AI-enhanced preview'}
-                  </p>
-                  <div className="bg-slate-900/80 border border-violet-500/30 rounded-lg p-4">
-                    {(() => {
-                      const content = parseContent(submissionEnhancedContent);
-                      if (content.question || content.solution) {
-                        return (
-                          <div className="space-y-3">
-                            {content.question && (
-                              <div>
-                                <p className="text-sm font-semibold text-slate-300 mb-1">Question:</p>
-                                <p className="text-base text-slate-200 whitespace-pre-wrap break-words">{content.question}</p>
-                              </div>
-                            )}
-                            {content.solution && (
-                              <div>
-                                <p className="text-sm font-semibold text-slate-300 mb-1">Solution:</p>
-                                <pre className="text-base text-slate-200 whitespace-pre-wrap break-words font-sans bg-slate-800 p-3 rounded border border-slate-700 overflow-x-auto max-h-48">
-                                  {content.solution}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      }
-                      return (
-                        <p className="text-base text-slate-200 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
-                          {submissionEnhancedContent}
-                        </p>
-                      );
-                    })()}
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Action Buttons for Pending Submissions */}
-              {selectedSubmission.status !== 'approved' && (
-                <div className="border-t border-slate-700 pt-4 flex flex-wrap gap-3">
-                  {submissionSupportsAddAnswer(selectedSubmission.type) ? (
-                    <button
-                      type="button"
-                      onClick={() => handleSubmissionAddAnswer(selectedSubmission._id)}
-                      disabled={
-                        submissionAiBusy ||
-                        approvingIds.has(selectedSubmission._id) ||
-                        rejectingIds.has(selectedSubmission._id)
-                      }
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        submissionAiBusy ||
-                        approvingIds.has(selectedSubmission._id) ||
-                        rejectingIds.has(selectedSubmission._id)
-                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                          : 'bg-sky-600 text-white hover:bg-sky-700'
-                      }`}
-                    >
-                      {submissionAddingAnswer ? 'Generating answer...' : 'Add answer'}
-                    </button>
-                  ) : null}
-                  {submissionSupportsEnhancement(selectedSubmission.type) ? (
-                  <button
-                    type="button"
-                    onClick={() => handleSubmissionEnhance(selectedSubmission._id)}
-                    disabled={
-                      submissionAiBusy ||
-                      approvingIds.has(selectedSubmission._id) ||
-                      rejectingIds.has(selectedSubmission._id)
-                    }
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                      submissionAiBusy ||
-                      approvingIds.has(selectedSubmission._id) ||
-                      rejectingIds.has(selectedSubmission._id)
-                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                        : 'bg-violet-600 text-white hover:bg-violet-700'
-                    }`}
-                  >
-                    {submissionEnhancing ? 'Enhancing...' : 'Enhance with AI'}
-                  </button>
-                  ) : null}
-                  {submissionEnhancedContent ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await handleApprove(selectedSubmission._id, submissionEnhancedContent);
-                        }}
-                        disabled={
-                          submissionAiBusy ||
-                          approvingIds.has(selectedSubmission._id) ||
-                          rejectingIds.has(selectedSubmission._id)
-                        }
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          submissionAiBusy ||
-                          approvingIds.has(selectedSubmission._id) ||
-                          rejectingIds.has(selectedSubmission._id)
-                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                      >
-                        {approvingIds.has(selectedSubmission._id)
-                          ? 'Approving...'
-                          : submissionAnswerGenerated
-                            ? 'Approve with answer'
-                            : 'Approve with enhanced'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await handleApprove(selectedSubmission._id);
-                        }}
-                        disabled={
-                          submissionAiBusy ||
-                          approvingIds.has(selectedSubmission._id) ||
-                          rejectingIds.has(selectedSubmission._id)
-                        }
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          submissionAiBusy ||
-                          approvingIds.has(selectedSubmission._id) ||
-                          rejectingIds.has(selectedSubmission._id)
-                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                            : 'border border-slate-500 text-slate-200 hover:bg-slate-700'
-                        }`}
-                      >
-                        {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve original'}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await handleApprove(selectedSubmission._id);
-                      }}
-                      disabled={
-                        submissionAiBusy ||
-                        approvingIds.has(selectedSubmission._id) ||
-                        rejectingIds.has(selectedSubmission._id)
-                      }
-                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                        submissionAiBusy ||
-                        approvingIds.has(selectedSubmission._id) ||
-                        rejectingIds.has(selectedSubmission._id)
-                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                          : 'bg-green-600 text-white hover:bg-green-700'
-                      }`}
-                    >
-                      {approvingIds.has(selectedSubmission._id) ? 'Approving...' : 'Approve'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await handleReject(selectedSubmission._id);
-                      setShowSubmissionModal(false);
-                      setSelectedSubmission(null);
-                      setSubmissionEnhancedContent(null);
-                      setSubmissionAnswerGenerated(false);
-                      setSubmissionEnhanceError('');
-                    }}
-                    disabled={
-                      submissionAiBusy ||
-                      approvingIds.has(selectedSubmission._id) ||
-                      rejectingIds.has(selectedSubmission._id)
-                    }
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                      submissionAiBusy ||
-                      approvingIds.has(selectedSubmission._id) ||
-                      rejectingIds.has(selectedSubmission._id)
-                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                        : 'bg-red-600 text-white hover:bg-red-700'
-                    }`}
-                  >
-                    {rejectingIds.has(selectedSubmission._id) ? 'Rejecting...' : 'Reject'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
