@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /** Border-only hover (cluster-card style); plan-setup-control blocks global card lift. */
 const PLAN_PICKER_TRIGGER_CLASS =
   "plan-setup-control w-full min-w-0 rounded-xl border-2 border-theme bg-theme-input px-3 py-2.5 text-sm text-theme-primary text-left flex items-center justify-between gap-2 focus:outline-none focus:border-theme-accent hover:border-theme-accent";
 
 const PLAN_PICKER_MENU_CLASS =
-  "plan-setup-menu absolute mt-2 left-0 right-0 w-full max-h-56 overflow-auto rounded-xl border-2 border-theme bg-theme-card shadow-lg py-1.5 px-1.5 space-y-1 z-40";
+  "plan-setup-menu max-h-56 overflow-auto rounded-xl border-2 border-theme bg-theme-card shadow-lg py-1.5 px-1.5 space-y-1";
 
 const planPickerOptionClass = ({ isActive, isHovered }) =>
   [
@@ -26,21 +27,54 @@ export default function ThemedSelect({
   disabled = false,
   triggerClassName = "",
   menuClassName = "",
+  /** Use card surface on triggers sitting on bg-theme-input rows. */
+  triggerSurface = "input",
 }) {
   const [open, setOpen] = useState(false);
   const [hoveredValue, setHoveredValue] = useState(null);
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
+  const listboxId = useId();
+  const [panelRect, setPanelRect] = useState(null);
+
+  const measurePanel = () => {
+    const el = triggerRef.current;
+    if (!el || typeof window === "undefined") return;
+    const r = el.getBoundingClientRect();
+    setPanelRect({ top: r.bottom + 8, left: r.left, width: r.width });
+  };
+
+  useLayoutEffect(() => {
+    if (!open || disabled) {
+      setPanelRect(null);
+      return;
+    }
+    measurePanel();
+  }, [open, disabled]);
 
   useEffect(() => {
     const onDocPointer = (event) => {
-      if (!rootRef.current) return;
-      if (!rootRef.current.contains(event.target)) {
-        setOpen(false);
-      }
+      const target = event.target instanceof Node ? event.target : null;
+      if (!target) return;
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDocPointer);
     return () => document.removeEventListener("mousedown", onDocPointer);
   }, []);
+
+  useEffect(() => {
+    if (!open || disabled) return undefined;
+
+    const onScrollOrResize = () => measurePanel();
+    window.addEventListener("resize", onScrollOrResize);
+    document.addEventListener("scroll", onScrollOrResize, true);
+    return () => {
+      window.removeEventListener("resize", onScrollOrResize);
+      document.removeEventListener("scroll", onScrollOrResize, true);
+    };
+  }, [open, disabled]);
 
   useEffect(() => {
     if (disabled) setOpen(false);
@@ -48,19 +82,70 @@ export default function ThemedSelect({
 
   const active = options.find((item) => String(item.value) === String(value)) || null;
 
+  const triggerSurfaceClass =
+    triggerSurface === "card" ? "bg-theme-card hover:bg-theme-card" : "";
+
+  const menu =
+    open && !disabled && panelRect && typeof document !== "undefined"
+      ? createPortal(
+          <ul
+            ref={panelRef}
+            id={listboxId}
+            role="listbox"
+            aria-label={ariaLabel}
+            className={`${PLAN_PICKER_MENU_CLASS} ${menuClassName}`.trim()}
+            style={{
+              position: "fixed",
+              top: panelRect.top,
+              left: panelRect.left,
+              width: panelRect.width,
+              zIndex: 10050,
+            }}
+          >
+            {options.map((item) => {
+              const isActive = String(item.value) === String(value);
+              const isHovered = String(item.value) === String(hoveredValue);
+              return (
+                <li
+                  key={`${ariaLabel || "select"}-${item.value}`}
+                  role="option"
+                  aria-selected={isActive}
+                >
+                  <button
+                    type="button"
+                    onMouseEnter={() => setHoveredValue(item.value)}
+                    onMouseLeave={() => setHoveredValue(null)}
+                    onClick={() => {
+                      onChange(item.value);
+                      setOpen(false);
+                    }}
+                    className={`px-3 py-2.5 ${planPickerOptionClass({ isActive, isHovered })}`}
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>,
+          document.body
+        )
+      : null;
+
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative min-w-0">
       <button
+        ref={triggerRef}
         type="button"
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={open ? listboxId : undefined}
         disabled={disabled}
         onClick={() => {
           if (disabled) return;
           setOpen((prev) => !prev);
         }}
-        className={`${PLAN_PICKER_TRIGGER_CLASS} ${triggerClassName} ${
+        className={`${PLAN_PICKER_TRIGGER_CLASS} ${triggerSurfaceClass} ${triggerClassName} ${
           disabled ? "opacity-60 cursor-not-allowed hover:border-theme" : ""
         }`.trim()}
       >
@@ -78,35 +163,7 @@ export default function ThemedSelect({
           />
         </svg>
       </button>
-
-      {open && !disabled && (
-        <ul role="listbox" className={`${PLAN_PICKER_MENU_CLASS} ${menuClassName}`.trim()}>
-          {options.map((item) => {
-            const isActive = String(item.value) === String(value);
-            const isHovered = String(item.value) === String(hoveredValue);
-            return (
-              <li
-                key={`${ariaLabel || "select"}-${item.value}`}
-                role="option"
-                aria-selected={isActive}
-              >
-                <button
-                  type="button"
-                  onMouseEnter={() => setHoveredValue(item.value)}
-                  onMouseLeave={() => setHoveredValue(null)}
-                  onClick={() => {
-                    onChange(item.value);
-                    setOpen(false);
-                  }}
-                  className={`px-3 py-2.5 ${planPickerOptionClass({ isActive, isHovered })}`}
-                >
-                  {item.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {menu}
     </div>
   );
 }

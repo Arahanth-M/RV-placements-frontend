@@ -5,6 +5,10 @@ import Analytics from "./Analytics";
 import { DEFAULT_OPEN_DREAM_MIN_LPA } from "../constants/placementTiers.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import { resolveYearStatsRowCategory } from "../utils/yearStatsCategory.js";
+import {
+  findYearStatsSerialFieldKeyFromRows,
+  sortYearStatsRows,
+} from "../utils/yearStatsSort.js";
 
 const PAGE_SIZE = 100;
 
@@ -36,21 +40,23 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
     [thresholdLpa]
   );
 
+  const sortedData = useMemo(() => sortYearStatsRows(data), [data]);
+
   // Filter data based on search term
   // Search in all fields, but prioritize company name fields
   const branchFieldKey = useMemo(() => {
-    if (!data || data.length === 0) return null;
+    if (!sortedData || sortedData.length === 0) return null;
     const keys = new Set();
-    data.forEach((row) => {
+    sortedData.forEach((row) => {
       Object.keys(row || {}).forEach((key) => keys.add(key));
     });
-    return Array.from(keys).find((key) => /branch/i.test(key)) || null;
-  }, [data]);
+    return Array.from(keys).find((key) => /branch|program/i.test(key)) || null;
+  }, [sortedData]);
 
   const branchOptions = useMemo(() => {
     if (!branchFieldKey) return [];
     const values = new Set();
-    (data || []).forEach((row) => {
+    (sortedData || []).forEach((row) => {
       const raw = row?.[branchFieldKey];
       if (raw === null || raw === undefined) return;
       const normalized = String(raw).trim();
@@ -58,10 +64,10 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
       values.add(normalized);
     });
     return Array.from(values).sort((a, b) => a.localeCompare(b));
-  }, [data, branchFieldKey]);
+  }, [sortedData, branchFieldKey]);
 
   const filteredData = useMemo(() => {
-    const categoryFiltered = (data || []).filter((row) => {
+    const categoryFiltered = (sortedData || []).filter((row) => {
       if (categoryFilter === "all") return true;
       if (categoryFilter === "dream") return resolveRowCategory(row) === "dream";
       if (categoryFilter === "open_dream") return resolveRowCategory(row) === "open_dream";
@@ -99,7 +105,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
         return valueStr.includes(searchLower);
       });
     });
-  }, [data, searchTerm, categoryFilter, branchFilter, branchFieldKey, resolveRowCategory]);
+  }, [sortedData, searchTerm, categoryFilter, branchFilter, branchFieldKey, resolveRowCategory]);
 
   useEffect(() => {
     setPage(1);
@@ -130,15 +136,20 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
 
   const headers = useMemo(() => {
     const allKeys = new Set();
-    (data || []).forEach((item) => {
+    (sortedData || []).forEach((item) => {
       Object.keys(item || {}).forEach((key) => {
         if (key !== "_id" && key !== "__v") {
           allKeys.add(key);
         }
       });
     });
-    return Array.from(allKeys);
-  }, [data]);
+    const keys = Array.from(allKeys);
+    const serialKey = findYearStatsSerialFieldKeyFromRows(sortedData);
+    if (serialKey && keys.includes(serialKey)) {
+      return [serialKey, ...keys.filter((key) => key !== serialKey)];
+    }
+    return keys;
+  }, [sortedData]);
 
   const tableRows = useMemo(
     () =>
@@ -238,7 +249,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
                     data-tour="year-stats-branch"
                     className="w-full sm:w-52 sm:ml-auto px-3 py-2 border border-theme-input rounded-lg bg-theme-input text-theme-primary focus:ring-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] text-sm sm:text-base"
                   >
-                    <option value="all">All Branches</option>
+                    <option value="all">All Programmes</option>
                     {branchOptions.map((branch) => (
                       <option key={branch} value={branch}>
                         {branch}
@@ -249,7 +260,7 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
               </div>
               {(searchTerm || categoryFilter !== "all" || branchFilter !== "all") && (
                 <p className="text-sm text-theme-muted mt-2">
-                  Showing {filteredData.length} of {data.length} results
+                  Showing {filteredData.length} of {sortedData.length} results
                 </p>
               )}
               {/* <p className="text-sm text-theme-muted mt-2">

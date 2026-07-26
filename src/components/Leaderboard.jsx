@@ -200,7 +200,7 @@ const Leaderboard = () => {
   const [search, setSearch]           = useState('');
   const [showAll, setShowAll]         = useState(false);
   const myRowRef = useRef(null);
-  const RESTRICTED_MSG = "LeaderBoard is warming up. Will be live soon";
+  const RESTRICTED_MSG = "Access to the leaderboard is restricted by the organization. Please contact the admin team for access.";
 
   const PAGE_SIZE = 10;
 
@@ -485,7 +485,7 @@ const Leaderboard = () => {
               margin: '0 auto',
             }}
           >
-            <div
+            {/* <div
               style={{
                 width: 68,
                 height: 68,
@@ -501,7 +501,7 @@ const Leaderboard = () => {
               aria-hidden
             >
               🚀
-            </div>
+            </div> */}
             <p
               style={{
                 fontSize: 'clamp(1.05rem, 2.4vw, 1.2rem)',
@@ -512,9 +512,9 @@ const Leaderboard = () => {
             >
               {RESTRICTED_MSG}
             </p>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            {/* <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
               Stay tuned while we finish polishing the leaderboard experience.
-            </p>
+            </p> */}
           </div>
         )}
 

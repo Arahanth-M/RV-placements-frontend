@@ -212,7 +212,7 @@ function GeneralTab({
                   ))}
                 </select>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Chemical sciences visits: use Chemical, Civil, or Biotechnology so cards and branch stats match the chem hub.
+                  Chemical sciences visits: use Chemical, Civil, or Biotechnology so cards and program stats match the chem hub.
                 </p>
               </div>
               <div>

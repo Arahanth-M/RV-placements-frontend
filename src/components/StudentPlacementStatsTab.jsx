@@ -20,6 +20,8 @@ import {
   placementRecordTimestamp,
 } from "../utils/placementRecordDisplay.js";
 
+import { formatPpoBranchLabel, formatPpoProgramName, normalizePpoBranchCode } from "../constants/ppoBranchCodes.js";
+
 const YEAR_OPTIONS_FALLBACK = [];
 const PLACEMENT_STATS_EXTRA_YEARS = [2029, 2028];
 
@@ -93,9 +95,12 @@ const CUSTOM_SEARCH_MODE_NAV_ITEMS = [
 ];
 
 function titleCaseBranch(code) {
-  const c = String(code || "").trim();
-  if (!c) return "Unknown";
-  return c.toUpperCase();
+  return formatPpoProgramName(code);
+}
+
+function branchChipLabel(code) {
+  const normalized = normalizePpoBranchCode(code);
+  return normalized ? normalized.toUpperCase() : "—";
 }
 
 function paginateList(items, page, pageSize = PLACEMENT_STATS_PAGE_SIZE) {
@@ -1015,13 +1020,17 @@ export default function StudentPlacementStatsTab() {
                       setExpandedRows(new Set());
                       setRosterPage(1);
                     }}
-                    className={`min-w-[4.25rem] rounded-xl border px-5 py-2.5 text-sm font-semibold tracking-wide transition-all ${
+                    title={formatPpoBranchLabel(code)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
                       isActive
                         ? "border-indigo-500 bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
                         : "border-theme bg-theme-hero text-theme-primary hover:border-indigo-400/40 hover:bg-theme-nav hover:shadow-sm"
                     }`}
                   >
-                    {titleCaseBranch(code)}
+                    {branchChipLabel(code)}{" "}
+                    <span className={isActive ? "opacity-80" : "opacity-60"}>
+                      {Number(branch.count) || 0}
+                    </span>
                   </button>
                 );
               })}
@@ -1070,7 +1079,7 @@ export default function StudentPlacementStatsTab() {
                   <div className="divide-y divide-theme rounded-lg border border-theme overflow-hidden">
                     {students.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-theme-secondary">
-                        No students found for this branch.
+                        No students found for this program.
                       </p>
                     ) : (
                       pagedStudents.map((student, idx) => {

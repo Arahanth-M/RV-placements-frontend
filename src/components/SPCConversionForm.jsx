@@ -35,7 +35,7 @@ function formatSpcSubmitError(err, fallbackMessage) {
 
 /** Custom picker options — native `<select>` popups ignore dark theme on Windows (white list + light text). */
 const BRANCH_PICKER_OPTIONS = [
-  { value: "", label: "Select branch" },
+  { value: "", label: "Select program" },
   ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
 ];
 
@@ -328,7 +328,7 @@ export default function SPCConversionForm() {
           <div>
             <h1 className="text-3xl font-bold text-theme-primary">Update conversion details</h1>
             <p className="mt-2 text-sm text-theme-secondary">
-              Pick company, year, and branch from the list so roles load from that hub&apos;s visit. CTC,
+              Pick company, year, and program from the list so roles load from that hub&apos;s visit. CTC,
               base, and stipend merge into the company card (same rules as add placement).
             </p>
           </div>
@@ -395,7 +395,7 @@ export default function SPCConversionForm() {
                 </div>
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label id="conv-branch-label" className="block text-sm font-medium text-theme-primary">
-                    Branch <span className="text-theme-accent">*</span>
+                    Program <span className="text-theme-accent">*</span>
                   </label>
                   <SimplePicker
                     value={form.branchCode}
@@ -405,7 +405,7 @@ export default function SPCConversionForm() {
                       setForm((prev) => ({ ...prev, branchCode: v, role: "" }));
                     }}
                     options={BRANCH_PICKER_OPTIONS}
-                    placeholder="Select branch"
+                    placeholder="Select program"
                     labelId="conv-branch-label"
                   />
                 </div>

@@ -590,7 +590,8 @@ function CompanyDetails() {
     return (
       <div className="p-6 flex flex-col items-center justify-center text-center min-h-screen bg-theme-app">
         <p className="text-theme-secondary mb-4">
-          Stay connected, we will be back soon
+          {/* Stay connected, we will be back soon */}
+          Access is restricted by organization
         </p>
         <button
           onClick={() => navigate(-1)}

@@ -102,23 +102,49 @@ function NotificationBell() {
     if (user?.betaAccess === false) return;
 
     const streamUrl = `${BASE_URL}/api/notifications/stream`;
-    const eventSource = new EventSource(streamUrl, { withCredentials: true });
+    let eventSource = null;
+    let reconnectTimer = null;
+    let disposed = false;
+    let retryMs = 3000;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    const connect = () => {
+      if (disposed) return;
+      eventSource = new EventSource(streamUrl, { withCredentials: true });
 
-        if (data.type === "NEW_NOTIFICATION" && data.notification) {
-          setNotifications((prev) => [data.notification, ...prev]);
-          setUnreadCount((prev) => prev + 1);
+      eventSource.onopen = () => {
+        retryMs = 3000;
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "NEW_NOTIFICATION" && data.notification) {
+            setNotifications((prev) => [data.notification, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+          }
+        } catch (err) {
+          console.error("SSE notification parse error:", err);
         }
-      } catch (err) {
-        console.error("SSE notification parse error:", err);
-      }
+      };
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+        eventSource = null;
+        if (disposed) return;
+        reconnectTimer = setTimeout(() => {
+          retryMs = Math.min(retryMs * 2, 60_000);
+          connect();
+        }, retryMs);
+      };
     };
 
+    connect();
+
     return () => {
-      eventSource.close();
+      disposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      eventSource?.close();
     };
   }, [user]);
 

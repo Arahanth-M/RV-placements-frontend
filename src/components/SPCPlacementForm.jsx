@@ -77,7 +77,7 @@ const PLACEMENT_FORM_YEAR_OPTIONS = PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
 }));
 
 const PLACEMENT_FORM_BRANCH_OPTIONS = [
-  { value: "", label: "Select branch" },
+  { value: "", label: "Select program" },
   ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
 ];
 
@@ -257,7 +257,7 @@ export default function SPCPlacementForm() {
           <div>
             <h1 className="text-3xl font-bold text-theme-primary">Placement Form</h1>
             {/* <p className="mt-2 text-sm text-theme-secondary">
-              With company, placement year, and branch from suggestions, role and the compensation fields you see
+              With company, placement year, and program from suggestions, role and the compensation fields you see
               (by type of offer) update the matched company visit the same way as Update conversion details.
             </p> */}
           </div>
@@ -341,7 +341,7 @@ export default function SPCPlacementForm() {
                 </div>
                 <div className="flex min-h-0 w-full flex-col gap-2 self-start">
                   <label htmlFor="spc-pl-branch" id="spc-pl-branch-label" className="block text-sm font-medium text-theme-primary">
-                    Branch <span className="text-theme-accent">*</span>
+                    Program <span className="text-theme-accent">*</span>
                   </label>
                   <SpcThemeSelect
                     id="spc-pl-branch"

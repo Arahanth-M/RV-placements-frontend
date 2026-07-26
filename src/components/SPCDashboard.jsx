@@ -128,7 +128,7 @@ const SPC_EDIT_YEAR_OPTIONS = PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
 }));
 
 const SPC_EDIT_BRANCH_OPTIONS = [
-  { value: "", label: "Select branch" },
+  { value: "", label: "Select program" },
   ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
 ];
 
@@ -993,7 +993,7 @@ export default function SPCDashboard() {
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Student</th>
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Company</th>
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Year</th>
-                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Branch</th>
+                              <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Program</th>
                               <th className="whitespace-nowrap px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Offer</th>
                               <th className="min-w-[11.5rem] px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-theme-muted">Actions</th>
                             </tr>
@@ -1060,7 +1060,7 @@ export default function SPCDashboard() {
             <div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-theme-input bg-theme-input/40 p-3 text-sm text-theme-secondary sm:grid-cols-2">
               <p><span className="font-medium text-theme-primary">Updated:</span> {formatWhen(selectedRecord.updatedAt || selectedRecord.createdAt)}</p>
               <p><span className="font-medium text-theme-primary">Year:</span> {selectedRecord.placementYear ?? "—"}</p>
-              <p><span className="font-medium text-theme-primary">Branch:</span> {String(selectedRecord.branchCode || "—").toUpperCase()}</p>
+              <p><span className="font-medium text-theme-primary">Program:</span> {String(selectedRecord.branchCode || "—").toUpperCase()}</p>
               <p><span className="font-medium text-theme-primary">Type Of Offer:</span> {selectedRecord.typeOfOffer || "—"}</p>
             </div>
 
@@ -1141,7 +1141,7 @@ export default function SPCDashboard() {
                       id="spc-edit-branch-label"
                       className="block text-sm font-medium text-theme-primary"
                     >
-                      Branch <span className="text-theme-accent">*</span>
+                      Program <span className="text-theme-accent">*</span>
                     </label>
                     <SpcThemeSelect
                       id="spc-edit-branch"
@@ -1177,7 +1177,7 @@ export default function SPCDashboard() {
               <section className="space-y-4 rounded-xl border border-theme-input bg-theme-input/30 p-4">
                 <h4 className="text-sm font-semibold text-theme-primary">Role &amp; compensation</h4>
                 <p className="text-xs text-theme-muted">
-                  With company, placement year, and branch from the list, roles load from that hub&apos;s visit.
+                  With company, placement year, and program from the list, roles load from that hub&apos;s visit.
                   If not known, use TBD.
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 items-start">

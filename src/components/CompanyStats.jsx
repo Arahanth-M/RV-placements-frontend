@@ -1362,13 +1362,13 @@ function CompanyStats() {
       "Year stats table with placement outcomes.",
       "Scan companies and packages at a glance.",
       "Sort / browse rows for quick comparison.",
-      "Filter by dream and open-dream and view branch-wise analytics.",
+      "Filter by dream and open-dream and view program-wise analytics.",
     ],
     2025: [
       "Year stats table with placement outcomes.",
       "Same layout as 2024 for easy comparison.",
       "Sort / browse rows for quick comparison.",
-      "Filter by dream and open-dream and view branch-wise analytics.",
+      "Filter by dream and open-dream and view program-wise analytics.",
     ],
     2026: [
       "OA questions and interview Q&A with solutions.",
@@ -1524,19 +1524,19 @@ function CompanyStats() {
   const clusterHubBullets = {
     [PLACEMENT_CLUSTER_EC]: [
       "Electronics & Communication cluster hub.",
-      "Branches include: ECE ,EEE ,EIE ,ETE",
+      "Programmes include: EC, EE, EI, ET",
     ],
     [PLACEMENT_CLUSTER_ME]: [
       "Mechanical cluster hub.",
-      "Branches include: Aerospace, IEM, Mechanical",
+      "Programmes include: AS, IM, ME",
     ],
     [PLACEMENT_CLUSTER_CS]: [
       "Computer Science & Engineering cluster hub.",
-      "Branches include: CD, CY, ISE, CSE, AIML.",
+      "Programmes include: AI, CD, CS, CY, IS",
     ],
     [PLACEMENT_CLUSTER_CHEM]: [
       "Chemical sciences cluster hub.",
-      "Branches include: Biotechnology, Chemical, Civil.",
+      "Programmes include: BT, CH, CV",
     ],
   };
 
@@ -1609,7 +1609,7 @@ function CompanyStats() {
               Choose your cluster
             </h2>
             <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
-              Pick your branch cluster for the selected year company hub.
+              Pick your program cluster for the selected year company hub.
             </p>
             <div
               className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6"

@@ -110,6 +110,10 @@ export const MESSAGES = {
   SUBMISSION_ERROR: "Something went wrong. Try again.",
   INTERVIEW_LIMIT_REACHED:
     "You can take one AI mock interview every 7 days. Please try again later.",
+  INTERVIEW_LIMIT_REQUEST_SUBMITTED:
+    "Your request was sent to the admin team. You will be notified when it is reviewed.",
+  INTERVIEW_LIMIT_REQUEST_PENDING:
+    "You already have a pending request. Please wait for admin review or try again after your weekly limit resets.",
   VALIDATION_ERRORS: {
     COMPANY_NAME: "Invalid company name. Use 2–50 letters/numbers only.",
     POSITIVE_COUNT: "Count must be a positive integer.",

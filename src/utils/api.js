@@ -414,6 +414,10 @@ export const adminAPI = {
   updatePlacementHubSettings: (body) =>
     API.put('/api/admin/placement-hub-settings', body),
   getStudentRequests: () => API.get('/api/admin/student-requests'),
+  approveInterviewLimitRequest: (requestId) =>
+    API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/approve`),
+  dismissInterviewLimitRequest: (requestId) =>
+    API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/dismiss`),
 };
 
 export const getPlacementHubSettings = () =>
@@ -517,6 +521,8 @@ export const leaderboardAPI = {
 
 export const interviewAPI = {
   getInterviewEligibility: () => interviewHttp.get("/api/interview/eligibility"),
+  getInterviewLimitRequestStatus: () => interviewHttp.get("/api/interview/limit-request/status"),
+  submitInterviewLimitRequest: () => interviewHttp.post("/api/interview/limit-request"),
   async startInterview({
     userId,
     companyId,
@@ -656,7 +662,7 @@ export const interviewAPI = {
     interviewDetailPromises.delete(String(sessionId));
   },
   async getUserAnalytics(userId) {
-    const key = encodeURIComponent(String(userId || ""));
+    const key = `${encodeURIComponent(String(userId || ""))}:v2`;
     const cached = getFreshCachedEntry(
       interviewAnalyticsCache,
       key,
@@ -683,8 +689,9 @@ export const interviewAPI = {
     return interviewAnalyticsPromises.get(key);
   },
   invalidateUserInterviewAnalyticsCache: (userId) => {
-    interviewAnalyticsCache.delete(encodeURIComponent(String(userId || "")));
-    interviewAnalyticsPromises.delete(encodeURIComponent(String(userId || "")));
+    const base = encodeURIComponent(String(userId || ""));
+    interviewAnalyticsCache.delete(`${base}:v2`);
+    interviewAnalyticsPromises.delete(`${base}:v2`);
   },
 };
 

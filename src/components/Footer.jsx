@@ -14,9 +14,9 @@ function Footer() {
             <h2 className="text-2xl font-serif text-theme-primary tracking-tight">
               lastminute<span className="italic text-theme-accent">placementprep</span>
             </h2>
-            <p className="mt-1 text-sm font-medium text-theme-secondary/80">
+            {/* <p className="mt-1 text-sm font-medium text-theme-secondary/80">
               A product of Devomation AI
-            </p>
+            </p> */}
             <p className="mt-4 text-base text-theme-secondary leading-relaxed max-w-xs">
               Your ultimate placement preparation platform with company insights,
               interview experiences, and premium resources.
@@ -75,10 +75,10 @@ function Footer() {
               {" "}
               ·{" "}
             </span>
-            <span className="text-theme-secondary/60">A product of Devomation AI</span>
+            {/* <span className="text-theme-secondary/60">A product of Devomation AI</span> */}
           </p>
           <p className="text-sm text-theme-secondary/60">
-            © {new Date().getFullYear()} Devomation AI. All rights reserved.
+            © {new Date().getFullYear()} All rights reserved.
           </p>
         </div>
 
