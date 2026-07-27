@@ -283,4 +283,27 @@ function InterviewSlotsPage() {
                     ))}
                   </div>
                 )}
-     
+              </div>
+
+              {bookings.length === 0 ? (
+                <p className="text-center text-sm text-theme-muted">
+                  You have no interview slots booked yet. Use Book slot to reserve an hour for DSA
+                  mock interviews.
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <InterviewSlotBookModal
+        open={bookModalOpen}
+        onClose={closeModal}
+        rescheduleBookingId={rescheduleId}
+        onBooked={loadPageData}
+      />
+    </div>
+  );
+}
+
+export default InterviewSlotsPage;
