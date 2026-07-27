@@ -166,4 +166,50 @@ function InterviewSlotBookModal({
                           </span>
                           <span className="mt-1 block text-xs text-theme-muted">
                             {slot.bookedCount}/{slot.capacity} booked
-                            {slot.isFull ? " �
+                            {slot.isFull ? " · Full" : ""}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {error ? (
+          <p className="shrink-0 border-t border-theme px-5 py-2 text-sm text-red-400 sm:px-6">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-theme px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-lg border border-theme px-4 py-2.5 text-sm font-semibold text-theme-primary hover:bg-theme-nav disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!selectedSlotKey || submitting}
+            className="rounded-lg bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {submitting
+              ? "Saving…"
+              : rescheduleBookingId
+                ? "Confirm reschedule"
+                : "Confirm booking"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export default InterviewSlotBookModal;
