@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { interviewAPI } from "../utils/api";
 
 function groupSlotsByDay(slots) {
@@ -12,15 +13,30 @@ function groupSlotsByDay(slots) {
   return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
 
+function lockBodyScroll() {
+  const scrollBarGap = window.innerWidth - document.documentElement.clientWidth;
+  const prevOverflow = document.body.style.overflow;
+  const prevPaddingRight = document.body.style.paddingRight;
+  document.body.style.overflow = "hidden";
+  if (scrollBarGap > 0) {
+    document.body.style.paddingRight = `${scrollBarGap}px`;
+  }
+  return () => {
+    document.body.style.overflow = prevOverflow;
+    document.body.style.paddingRight = prevPaddingRight;
+  };
+}
+
 /**
  * Modal to book or reschedule a DSA interview slot (IST hourly, max 5 per slot).
  */
 function InterviewSlotBookModal({
   open,
   onClose,
-  customRounds,
   rescheduleBookingId = null,
   onBooked,
+  /** Optional prefetched availability slots from the parent page — avoids a loading flash. */
+  initialSlots = null,
 }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,24 +44,36 @@ function InterviewSlotBookModal({
   const [error, setError] = useState("");
   const [selectedSlotKey, setSelectedSlotKey] = useState("");
 
-  const loadSlots = useCallback(async () => {
-    setLoading(true);
+  const loadSlots = useCallback(async ({ soft = false } = {}) => {
+    if (!soft) setLoading(true);
     setError("");
     try {
       const { data } = await interviewAPI.getSlotAvailability();
       setSlots(Array.isArray(data?.slots) ? data.slots : []);
     } catch (err) {
       setError(err?.response?.data?.error || "Failed to load available slots.");
-      setSlots([]);
+      if (!soft) setSlots([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     setSelectedSlotKey("");
-    loadSlots();
+    setError("");
+    const seeded = Array.isArray(initialSlots) && initialSlots.length > 0;
+    if (seeded) {
+      setSlots(initialSlots);
+      setLoading(false);
+      loadSlots({ soft: true });
+    } else {
+      loadSlots({ soft: false });
+    }
+    const unlock = lockBodyScroll();
+    return unlock;
+    // Only re-run when the modal opens/closes — not when parent slot data updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: seed once on open
   }, [open, loadSlots]);
 
   const grouped = useMemo(() => groupSlotsByDay(slots), [slots]);
@@ -75,17 +103,23 @@ function InterviewSlotBookModal({
     }
   };
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[220] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[220] flex items-center justify-center bg-black/55 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="slot-book-modal-title"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && !submitting) onClose?.();
+      }}
     >
-      <div className="flex max-h-[min(90vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
-        <div className="border-b border-theme px-5 py-4 sm:px-6">
+      <div
+        className="flex h-[min(90vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="shrink-0 border-b border-theme px-5 py-4 sm:px-6">
           <h2 id="slot-book-modal-title" className="text-lg font-semibold text-theme-primary">
             {rescheduleBookingId ? "Reschedule interview slot" : "Book interview slot"}
           </h2>
@@ -96,7 +130,7 @@ function InterviewSlotBookModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-          {loading ? (
+          {loading && slots.length === 0 ? (
             <p className="animate-pulse text-sm text-theme-secondary">Loading slots…</p>
           ) : grouped.length === 0 ? (
             <p className="text-sm text-theme-secondary">No bookable slots in the next 7 days.</p>
@@ -132,47 +166,4 @@ function InterviewSlotBookModal({
                           </span>
                           <span className="mt-1 block text-xs text-theme-muted">
                             {slot.bookedCount}/{slot.capacity} booked
-                            {slot.isFull ? " · Full" : ""}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {error ? (
-          <p className="border-t border-theme px-5 py-2 text-sm text-red-400 sm:px-6">{error}</p>
-        ) : null}
-
-        <div className="flex flex-col-reverse gap-2 border-t border-theme px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="rounded-lg border border-theme px-4 py-2.5 text-sm font-semibold text-theme-primary hover:bg-theme-nav disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!selectedSlotKey || submitting}
-            className="rounded-lg bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting
-              ? "Saving…"
-              : rescheduleBookingId
-                ? "Confirm reschedule"
-                : "Confirm booking"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default InterviewSlotBookModal;
+                            {slot.isFull ? " �

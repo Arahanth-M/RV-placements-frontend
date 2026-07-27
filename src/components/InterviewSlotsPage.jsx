@@ -78,9 +78,11 @@ function InterviewSlotsPage() {
     [bookingsByDate, selectedDateKey]
   );
 
-  const loadPageData = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadPageData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const [mineRes, availRes] = await Promise.all([
         interviewAPI.getMySlotBookings(),
@@ -94,12 +96,14 @@ function InterviewSlotsPage() {
           : {}
       );
     } catch (err) {
-      setError(err?.response?.data?.error || "Failed to load interview slots.");
-      setBookings([]);
-      setAvailabilitySlots([]);
-      setDayCountsFromApi({});
+      if (!silent) {
+        setError(err?.response?.data?.error || "Failed to load interview slots.");
+        setBookings([]);
+        setAvailabilitySlots([]);
+        setDayCountsFromApi({});
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -113,7 +117,7 @@ function InterviewSlotsPage() {
     setActionError("");
     try {
       await interviewAPI.cancelSlotBooking(bookingId);
-      await loadPageData();
+      await loadPageData({ silent: true });
     } catch (err) {
       setActionError(err?.response?.data?.error || "Failed to cancel booking.");
     } finally {
@@ -278,32 +282,4 @@ function InterviewSlotsPage() {
                               </span>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {bookings.length === 0 ? (
-                <p className="text-center text-sm text-theme-muted">
-                  You have no interview slots booked yet. Use Book slot to reserve an hour for DSA
-                  mock interviews.
-                </p>
-              ) : null}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <InterviewSlotBookModal
-        open={bookModalOpen}
-        onClose={closeModal}
-        rescheduleBookingId={rescheduleId}
-        onBooked={loadPageData}
-      />
-    </div>
-  );
-}
-
-export default InterviewSlotsPage;
+               
