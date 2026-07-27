@@ -559,7 +559,8 @@ export const interviewAPI = {
     return res;
   },
   runPreview: ({ sessionId, code, language }) =>
-    interviewHttp.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 30000 }),
+    // C++/Java may need a first-time runtime image pull; keep headroom above default 30s.
+    interviewHttp.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 120000 }),
   async beginQuestionReattempt({ sessionId }) {
     const res = await interviewHttp.post('/api/interview/begin-question-reattempt', { sessionId });
     interviewDetailCache.delete(String(sessionId));
@@ -693,6 +694,16 @@ export const interviewAPI = {
     interviewAnalyticsCache.delete(`${base}:v2`);
     interviewAnalyticsPromises.delete(`${base}:v2`);
   },
+  getSlotAvailability: () => interviewHttp.get("/api/interview/slot-bookings/availability"),
+  getMySlotBookings: () => interviewHttp.get("/api/interview/slot-bookings/mine"),
+  getSlotBookingStatus: (customRounds) =>
+    interviewHttp.post("/api/interview/slot-bookings/status", { customRounds }),
+  bookSlot: ({ slotKey }) =>
+    interviewHttp.post("/api/interview/slot-bookings", { slotKey }),
+  rescheduleSlotBooking: ({ bookingId, newSlotKey }) =>
+    interviewHttp.post("/api/interview/slot-bookings/reschedule", { bookingId, newSlotKey }),
+  cancelSlotBooking: (bookingId) =>
+    interviewHttp.delete(`/api/interview/slot-bookings/${encodeURIComponent(bookingId)}`),
 };
 
 export default API;

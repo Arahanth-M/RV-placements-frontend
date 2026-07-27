@@ -27,6 +27,7 @@ import MySubmissionsPage from "./components/MySubmissionsPage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
+import InterviewSlotsPage from "./components/InterviewSlotsPage";
 import Feedback from "./components/Feedback";
 import UserManual from "./components/UserManual";
 import ResumeBuilderPage from "./components/ResumeBuilderPage";
@@ -96,6 +97,14 @@ function AppShell() {
             element={
               <ProtectedRoute>
                 <AIInterviews />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interview-slots"
+            element={
+              <ProtectedRoute>
+                <InterviewSlotsPage />
               </ProtectedRoute>
             }
           />

@@ -395,6 +395,8 @@ export function buildCppStubFromInterviewDraft(functionSignature, sampleInput, s
 
   return `${includes}
 
+using namespace std;
+
 // Don't alter the existing boilerplate.
 // Write your code below this line (implement inside class Solution — Solution::${method}).
 

@@ -56,6 +56,7 @@ const adminCornerLinks = [
 const studentCornerLinksBase = [
   { label: "Company Stats", path: "/companystats", icon: FaChartBar },
   { label: "AI Interviews", path: "/interviews", icon: FaComments },
+  { label: "Interview slots", path: "/interview-slots", icon: FaCalendarAlt },
   { label: "Resources", path: "/resources", icon: FaBook },
   ...(RESUME_BUILDER_ENABLED ? [{ label: "Resume Builder", path: "/resume-builder", icon: FaFileAlt }] : []),
   { label: "Leaderboard", path: "/leaderboard", icon: FaTrophy },
@@ -175,7 +176,9 @@ const Header = () => {
     localStorage.getItem(profileAvailabilityKey) === "no_profile";
   const shouldHideAiInterviews = shouldHideViewProfile;
   const studentCornerLinks = shouldHideAiInterviews
-    ? studentCornerLinksBase.filter((l) => l.path !== "/interviews")
+    ? studentCornerLinksBase.filter(
+        (l) => l.path !== "/interviews" && l.path !== "/interview-slots"
+      )
     : studentCornerLinksBase;
 
   const isStudentCornerActive = studentCornerLinks.some((l) => isPathActive(l.path));

@@ -21,9 +21,10 @@ import {
   roundTypeHasFocusPicker,
 } from "../../constants/interviewRoundFocus";
 import { clampInterviewQuestionCountForRound } from "../../utils/interviewRoundLimits";
+import InterviewSlotBookModal from "../InterviewSlotBookModal";
 
 /** Languages shown in the mock-interview coding picker (backend may still support more). */
-const INTERVIEW_UI_CODING_LANGUAGES = ["python", "java"];
+const INTERVIEW_UI_CODING_LANGUAGES = ["python", "cpp", "java"];
 
 function filterInterviewUiCodingLanguages(langs) {
   const allowed = new Set(INTERVIEW_UI_CODING_LANGUAGES);
@@ -34,6 +35,7 @@ function filterInterviewUiCodingLanguages(langs) {
 /** Display labels with runtime versions — aligned with backend `executeCode.js` default images. */
 const CODING_LANGUAGE_OPTION_LABELS = {
   python: "Python 3.11",
+  cpp: "C++ 17",
   java: "Java 17",
 };
 
@@ -983,13 +985,50 @@ function AIInterviewTab({
     return "";
   }, [normalizedCustomRounds]);
 
+  const [slotBookModalOpen, setSlotBookModalOpen] = useState(false);
+  const [slotBookingStatus, setSlotBookingStatus] = useState(null);
+  const [slotStatusLoading, setSlotStatusLoading] = useState(false);
+
+  const planRequiresDsaSlot = useMemo(
+    () => normalizedCustomRounds.some((round) => round.type === "DSA"),
+    [normalizedCustomRounds]
+  );
+
+  const refreshSlotBookingStatus = useCallback(async () => {
+    if (!user?.userId || normalizedCustomRounds.length < 1) {
+      setSlotBookingStatus(null);
+      return;
+    }
+    setSlotStatusLoading(true);
+    try {
+      const { data } = await interviewAPI.getSlotBookingStatus(normalizedCustomRounds);
+      setSlotBookingStatus(data || null);
+    } catch (err) {
+      console.warn("[AIInterviewTab] slot booking status failed", err?.message || err);
+      setSlotBookingStatus(null);
+    } finally {
+      setSlotStatusLoading(false);
+    }
+  }, [user?.userId, normalizedCustomRounds]);
+
+  const hasActiveDsaSlotNow = Boolean(slotBookingStatus?.hasActiveBookingNow);
+  const dsaSlotBlocked =
+    planRequiresDsaSlot && (slotStatusLoading || !hasActiveDsaSlotNow);
+
   const canStart = useMemo(() => {
     return (
       Boolean(user?.userId && company?._id) &&
       !loading &&
-      !customPlanValidationError
+      !customPlanValidationError &&
+      !dsaSlotBlocked
     );
-  }, [user?.userId, company?._id, loading, customPlanValidationError]);
+  }, [
+    user?.userId,
+    company?._id,
+    loading,
+    customPlanValidationError,
+    dsaSlotBlocked,
+  ]);
 
   const isMcqQuestionUI = useMemo(() => {
     if (String(expectedAnswerMode || "").toLowerCase() === "mcq") return true;
@@ -1775,6 +1814,15 @@ function AIInterviewTab({
         openInterviewLimitModal(msg);
         return;
       }
+      if (code === "DSA_SLOT_REQUIRED" || err?.response?.data?.requiresSlotBooking) {
+        setError(
+          err?.response?.data?.error ||
+            "Book a slot for your DSA interview hour (IST), then start during that window."
+        );
+        setSlotBookModalOpen(true);
+        refreshSlotBookingStatus();
+        return;
+      }
       setError(err?.response?.data?.error || "Failed to start interview.");
     } finally {
       loadingRef.current = false;
@@ -1989,7 +2037,21 @@ function AIInterviewTab({
       if (codingLanguage === "python" && looksLikeCppInterviewCode(payloadCode)) {
         setError("");
         setPreviewRunInlineHint(
-          "Python is selected but the editor looks like C++. Use Python that matches the Grader contract, or switch the language to Java."
+          "Python is selected but the editor looks like C++. Switch the language to C++, or replace with a Python implementation."
+        );
+        return;
+      }
+      if (codingLanguage === "cpp" && looksLikePythonInterviewCode(payloadCode)) {
+        setError("");
+        setPreviewRunInlineHint(
+          "C++ is selected but the editor looks like Python. Switch the language to Python, or replace with a C++ implementation."
+        );
+        return;
+      }
+      if (codingLanguage === "cpp" && looksLikeJavaInterviewCode(payloadCode)) {
+        setError("");
+        setPreviewRunInlineHint(
+          "C++ is selected but the editor looks like Java. Switch the language to Java, or replace with a C++ implementation."
         );
         return;
       }
@@ -2003,7 +2065,7 @@ function AIInterviewTab({
       if (codingLanguage === "java" && looksLikeCppInterviewCode(payloadCode)) {
         setError("");
         setPreviewRunInlineHint(
-          "Java is selected but the editor looks like C++. Use Java that matches the Grader contract, or switch the language to Python."
+          "Java is selected but the editor looks like C++. Switch the language to C++, or replace with a Java implementation."
         );
         return;
       }
@@ -2031,8 +2093,13 @@ function AIInterviewTab({
       setPreviewExecutionResult(data?.execution || null);
       setPreviewLastRunAtMs(Date.now());
     } catch (err) {
-      const message =
-        err?.response?.data?.message || err?.response?.data?.error || "Failed to run preview.";
+      const timedOut =
+        err?.code === "ECONNABORTED" || /timeout/i.test(String(err?.message || ""));
+      const message = timedOut
+        ? "Preview timed out. The first C++/Java run can take longer while the runtime image loads — try again."
+        : err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Failed to run preview.";
       setError(message);
     } finally {
       previewRunInFlightRef.current = false;
@@ -2555,6 +2622,11 @@ function AIInterviewTab({
 
   const showStartPrompt = !sessionId || status === "idle";
   const interviewCompleted = status === "completed";
+
+  useEffect(() => {
+    if (!showStartPrompt || !user?.userId) return;
+    refreshSlotBookingStatus();
+  }, [showStartPrompt, user?.userId, refreshSlotBookingStatus]);
 
   const showInterviewQuestionHero = useMemo(() => {
     return (
@@ -3178,9 +3250,18 @@ function AIInterviewTab({
       )}
 
       {!isInterviewActive && (
-      <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
-        <div data-tour="company-ai-interview-start" className="shrink-0 rounded-xl p-1">
+        <div data-tour="company-ai-interview-start" className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl p-1">
+          {showStartPrompt && planRequiresDsaSlot ? (
+            <button
+              type="button"
+              onClick={() => setSlotBookModalOpen(true)}
+              className="flex items-center justify-center gap-2 rounded-lg border border-theme-accent/50 bg-theme-hero px-4 py-2.5 text-sm font-semibold text-theme-accent hover:bg-theme-nav"
+            >
+              Book slot
+            </button>
+          ) : null}
           <button
             onClick={showStartPrompt ? handleStartInterview : resetInterviewState}
             disabled={
@@ -3212,6 +3293,36 @@ function AIInterviewTab({
 
       {user?.userId && user?.betaAccess !== false && showStartPrompt && (
         <div data-tour="company-ai-interview-setup" className="space-y-4">
+        {planRequiresDsaSlot ? (
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              hasActiveDsaSlotNow
+                ? "border-emerald-500/40 bg-emerald-500/10 text-theme-secondary"
+                : "border-amber-500/40 bg-amber-500/10 text-theme-secondary"
+            }`}
+          >
+            {slotStatusLoading ? (
+              <span>Checking your interview slot…</span>
+            ) : hasActiveDsaSlotNow ? (
+              <span>
+                <strong className="text-theme-primary">Slot active:</strong>{" "}
+                {slotBookingStatus?.activeBooking?.label || "Your booked hour is now — you can start."}
+              </span>
+            ) : (
+              <span>
+                Your plan includes a <strong className="text-theme-primary">DSA</strong> round. Book a
+                1-hour IST slot (max 5 students/hour), then start anytime during that hour.{" "}
+                <button
+                  type="button"
+                  onClick={() => setSlotBookModalOpen(true)}
+                  className="font-semibold text-theme-accent underline underline-offset-2"
+                >
+                  Book slot
+                </button>
+              </span>
+            )}
+          </div>
+        ) : null}
         <div className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -3668,6 +3779,12 @@ function AIInterviewTab({
         </div>
       )}
     </div>
+    <InterviewSlotBookModal
+      open={slotBookModalOpen}
+      onClose={() => setSlotBookModalOpen(false)}
+      customRounds={normalizedCustomRounds}
+      onBooked={refreshSlotBookingStatus}
+    />
     </>
   );
 }
