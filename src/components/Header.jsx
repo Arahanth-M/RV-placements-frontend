@@ -22,6 +22,8 @@ import {
   FaClipboardList,
   FaBuilding,
   FaCalendarAlt,
+  FaMapMarkedAlt,
+  FaRoute,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -29,7 +31,6 @@ import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo2.webp";
 import { useProductTour } from "../context/ProductTourContext";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
-import { FaRoute } from "react-icons/fa";
 
 const primaryLinks = [
   { label: "Home", path: "/" },
@@ -57,6 +58,7 @@ const studentCornerLinksBase = [
   { label: "Company Stats", path: "/companystats", icon: FaChartBar },
   { label: "AI Interviews", path: "/interviews", icon: FaComments },
   { label: "Interview slots", path: "/interview-slots", icon: FaCalendarAlt },
+  { label: "PrepPath", path: "/prep-path", icon: FaMapMarkedAlt },
   { label: "Resources", path: "/resources", icon: FaBook },
   ...(RESUME_BUILDER_ENABLED ? [{ label: "Resume Builder", path: "/resume-builder", icon: FaFileAlt }] : []),
   { label: "Leaderboard", path: "/leaderboard", icon: FaTrophy },

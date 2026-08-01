@@ -40,6 +40,7 @@ attachApiRoutingDebug(interviewHttp, 'interview');
 
 // In-flight promise deduplication: only one network request for companies list at a time
 let companiesListPromise = null;
+let companyNamesPromise = null;
 const companyDetailsPromises = new Map();
 const previewLogosPromises = new Map();
 
@@ -136,6 +137,24 @@ export const companyAPI = {
       );
     }
     return companiesListPromise.get(key);
+  },
+
+  /**
+   * Lightweight {_id, name}[] from CompanyStatic only (no visit merge).
+   * Prefer this for autocomplete / PrepPath company pickers.
+   */
+  async getCompanyNames() {
+    if (!companyNamesPromise) {
+      companyNamesPromise = API.get("/api/companies/names")
+        .then((res) => {
+          const list = Array.isArray(res.data) ? res.data : [];
+          return { data: list };
+        })
+        .finally(() => {
+          companyNamesPromise = null;
+        });
+    }
+    return companyNamesPromise;
   },
 
   /** Year-aware category tiles: small counts + 5 logo rows per bucket. */
@@ -485,6 +504,29 @@ export const resumeAPI = {
   exportDocx: (payload) =>
     API.post("/api/resume/export/docx", { payload }, { responseType: "blob" }),
   analyze: ({ payload }) => API.post("/api/resume/analyze", { payload }),
+};
+
+export const prepPathAPI = {
+  getQuota: () => API.get("/api/prep-path/quota"),
+  getPeerDemand: (companyId) =>
+    API.get("/api/prep-path/peer-demand", {
+      params: { companyId: String(companyId || "") },
+    }),
+  listPlans: () => API.get("/api/prep-path/plans"),
+  getPlan: (id) => API.get(`/api/prep-path/plans/${encodeURIComponent(String(id || ""))}`),
+  generate: ({ companyId, role, track, days, hoursPerDay, resumeFile }) => {
+    const formData = new FormData();
+    formData.append("companyId", String(companyId || ""));
+    formData.append("role", String(role || ""));
+    formData.append("track", String(track || "full_time"));
+    formData.append("days", String(days ?? ""));
+    formData.append("hoursPerDay", String(hoursPerDay ?? ""));
+    formData.append("resume", resumeFile);
+    return API.post("/api/prep-path/generate", formData, {
+      // Large LLM generation; avoid default short axios timeouts.
+      timeout: 180000,
+    });
+  },
 };
 
 export const placementAPI = {

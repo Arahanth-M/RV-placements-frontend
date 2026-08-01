@@ -77,7 +77,8 @@ const AuthCallback = () => {
         if (reason === 'domain') {
           setLoginError({
             title: "Login restricted",
-            message: "Only official RVCE email IDs ending with @rvce.edu.in are allowed to sign in.",
+            message:
+              "Only official college email IDs ending with @rvce.edu.in or .rvitm@rvei.edu.in are allowed to sign in.",
           });
         } else if (reason === 'not_allowed') {
           setLoginError({
@@ -87,7 +88,8 @@ const AuthCallback = () => {
         } else if (reason === 'not_found') {
           setLoginError({
             title: "Login restricted",
-            message: "Only official RVCE email IDs ending with @rvce.edu.in are allowed to sign in.",
+            message:
+              "Only official college email IDs ending with @rvce.edu.in or .rvitm@rvei.edu.in are allowed to sign in.",
           });
         } else if (reason === 'not_admin') {
           setLoginError({

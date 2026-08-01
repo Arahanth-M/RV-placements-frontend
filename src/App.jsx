@@ -28,6 +28,7 @@ import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
 import InterviewSlotsPage from "./components/InterviewSlotsPage";
+import PrepPathPage from "./components/PrepPathPage";
 import Feedback from "./components/Feedback";
 import UserManual from "./components/UserManual";
 import ResumeBuilderPage from "./components/ResumeBuilderPage";
@@ -105,6 +106,14 @@ function AppShell() {
             element={
               <ProtectedRoute>
                 <InterviewSlotsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/prep-path"
+            element={
+              <ProtectedRoute>
+                <PrepPathPage />
               </ProtectedRoute>
             }
           />
