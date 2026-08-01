@@ -1,10 +1,82 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit, FaExternalLinkAlt, FaTrash } from "react-icons/fa";
 import rvLogo from "../../assets/logo2.webp";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
+import {
+  resolveMustDoTopicResources,
+  resourceLinkChipClass,
+} from "../../utils/mustDoTopicResources.js";
+
+function ResourceLinkChip({ link }) {
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={resourceLinkChipClass(link.source)}
+    >
+      <span className="font-bold text-theme-accent">{link.source}</span>
+      <span className="text-theme-muted" aria-hidden>
+        ·
+      </span>
+      <span>{link.label}</span>
+      <FaExternalLinkAlt className="h-2.5 w-2.5 opacity-70" aria-hidden />
+    </a>
+  );
+}
+
+function TopicResourcePanel({ topicText }) {
+  const resolved = useMemo(
+    () => resolveMustDoTopicResources(topicText),
+    [topicText]
+  );
+
+  if (resolved.hasCurated) {
+    return (
+      <div className="mt-3 space-y-2.5 border-t border-theme pt-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
+          Prep resources
+        </p>
+        {resolved.matches.map((match) => (
+          <div key={match.id} className="space-y-1.5">
+            {resolved.matches.length > 1 && (
+              <p className="text-xs font-medium text-theme-secondary">{match.label}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {match.links.map((link) => (
+                <ResourceLinkChip
+                  key={`${match.id}-${link.source}-${link.label}`}
+                  link={link}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (resolved.fallbackLinks.length === 0) return null;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-theme pt-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
+        Explore this topic
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {resolved.fallbackLinks.map((link) => (
+          <ResourceLinkChip
+            key={`fallback-${link.source}-${link.label}`}
+            link={link}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function MustDoTab({
   company = {},
@@ -36,7 +108,7 @@ function MustDoTab({
       const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Include cookies for authentication
+        credentials: "include",
         body: JSON.stringify({
           companyId: company._id,
           type: "mustDoTopics",
@@ -133,97 +205,115 @@ function MustDoTab({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
-          Must Do Topics
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-theme-primary">
+      <div className="rounded-xl border border-theme bg-theme-card p-6 shadow-sm">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold text-theme-accent">Must Do Topics</h2>
+            <p className="mt-1 text-xs text-theme-muted sm:text-sm">
+              Focus areas for this company — with direct learn &amp; practice links.
+            </p>
+          </div>
           <button
             type="button"
-            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-theme-accent px-3 py-2 text-xs font-medium text-white transition hover:opacity-90 sm:text-sm"
             onClick={() => setShowModal(true)}
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             <span>Add Topic</span>
           </button>
-        </h2>
+        </div>
 
         {topics.length > 0 ? (
           <div className="space-y-3">
-            {topics.map((topic, index) => (
+            {topics.map((topicItem, index) => (
               <div
-                key={index}
-                className="flex items-start gap-3 p-4 rounded-lg border border-slate-700 bg-slate-800/60 hover:bg-slate-800 transition min-w-0"
+                key={`${index}-${String(topicItem).slice(0, 24)}`}
+                className="rounded-xl border border-theme bg-theme-input/30 p-4 shadow-sm transition hover:border-theme-accent/40"
               >
-                <span className="text-indigo-400 font-bold flex-shrink-0">{index + 1}.</span>
-                <div className="min-w-0 flex-1">
-                  {editIndex === index ? (
-                    <div className="space-y-3">
-                      <textarea
-                        value={editTopic}
-                        onChange={(e) => setEditTopic(e.target.value)}
-                        className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[90px]"
-                        disabled={actionLoading}
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAdminUpdate(index)}
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-theme-accent/35 bg-theme-accent/10 text-xs font-bold text-theme-accent">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    {editIndex === index ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={editTopic}
+                          onChange={(e) => setEditTopic(e.target.value)}
+                          className="min-h-[90px] w-full rounded-lg border border-theme bg-theme-input px-3 py-2 text-sm text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
                           disabled={actionLoading}
-                          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEdit}
-                          disabled={actionLoading}
-                          className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:opacity-60"
-                        >
-                          Cancel
-                        </button>
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAdminUpdate(index)}
+                            disabled={actionLoading}
+                            className="rounded-lg bg-theme-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-60"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            disabled={actionLoading}
+                            className="rounded-lg border border-theme bg-theme-card px-3 py-1.5 text-xs font-semibold text-theme-secondary hover:bg-theme-nav disabled:opacity-60"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <p className="break-words text-[15px] leading-relaxed text-theme-secondary">
+                          {topicItem}
+                        </p>
+                        <TopicResourcePanel topicText={topicItem} />
+                      </>
+                    )}
+                  </div>
+                  {isAdmin && editIndex !== index && (
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(index, topicItem)}
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-1 rounded-md border border-theme-accent/50 px-2 py-1 text-xs font-semibold text-theme-accent hover:bg-theme-accent/10 disabled:opacity-60"
+                      >
+                        <FaEdit className="h-3 w-3" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAdminDelete(index)}
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-1 rounded-md border border-red-400/60 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-500/10 disabled:opacity-60"
+                      >
+                        <FaTrash className="h-3 w-3" />
+                        Delete
+                      </button>
                     </div>
-                  ) : (
-                    <p className="text-slate-300 leading-relaxed break-words">{topic}</p>
                   )}
                 </div>
-                {isAdmin && editIndex !== index && (
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(index, topic)}
-                      disabled={actionLoading}
-                      className="inline-flex items-center gap-1 rounded-md border border-indigo-500/50 px-2 py-1 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-60"
-                    >
-                      <FaEdit className="h-3 w-3" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAdminDelete(index)}
-                      disabled={actionLoading}
-                      className="inline-flex items-center gap-1 rounded-md border border-red-500/50 px-2 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-60"
-                    >
-                      <FaTrash className="h-3 w-3" />
-                      Delete
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-slate-400 italic">No Must Do Topics provided yet.</p>
+          <div className="rounded-xl border border-dashed border-theme bg-theme-input/20 px-4 py-10 text-center">
+            <p className="font-medium text-theme-primary">No Must Do Topics provided yet.</p>
+            <p className="mt-2 text-sm text-theme-muted">
+              Add focus areas and students will get prep links automatically.
+            </p>
+          </div>
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <div className="flex items-center gap-3 mb-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-96 max-w-[90vw] rounded-xl border border-theme bg-theme-card p-6 shadow-xl">
+            <div className="mb-4 flex items-center gap-3">
               <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
                 <img
                   src={rvLogo}
@@ -231,20 +321,20 @@ function MustDoTab({
                   className="h-full w-full object-contain"
                 />
               </div>
-              <h3 className="text-lg font-semibold text-indigo-400">Add Must Do Topic</h3>
+              <h3 className="text-lg font-semibold text-theme-accent">Add Must Do Topic</h3>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <textarea
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Enter the topic that students must prepare for this company..."
-                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]"
+                className="min-h-[100px] w-full rounded-lg border border-theme bg-theme-input p-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
                 required
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="rounded-lg border border-theme px-4 py-2 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
+                  className="rounded-lg border border-theme bg-theme-card px-4 py-2 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-nav"
                   onClick={() => {
                     setShowModal(false);
                     setTopic("");
@@ -254,7 +344,7 @@ function MustDoTab({
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-theme-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="rounded-lg bg-theme-accent px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 >
                   Submit
                 </button>

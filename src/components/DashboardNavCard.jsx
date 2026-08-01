@@ -36,6 +36,7 @@ export default function DashboardNavCard({
   ctaColor = "text-violet-500",
   accent = "border-l-violet-500",
   badge = null,
+  badgeLabel = "pending",
   isActive = false,
   activeCta = "Currently viewing",
   onClick,
@@ -62,8 +63,11 @@ export default function DashboardNavCard({
           {title}
         </p>
         {showBadge ? (
-          <span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-sm font-medium text-amber-600">
-            {badge} pending
+          <span
+            className="inline-flex shrink-0 items-center rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-sm font-semibold text-red-500"
+            title={`${badge} ${badgeLabel}`}
+          >
+            {badge} {badgeLabel}
           </span>
         ) : null}
       </div>

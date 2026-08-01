@@ -26,6 +26,7 @@ import {
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
 import NotificationBell from "./NotificationBell";
+import NotificationSubscribeButton from "./NotificationSubscribeButton";
 import logo from "../assets/logo2.webp";
 import { useProductTour } from "../context/ProductTourContext";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
@@ -46,6 +47,7 @@ const spcCornerLinks = [
 ];
 
 const adminCornerLinks = [
+  { label: "Admin Dashboard", path: "/admin/dashboard", icon: FaTachometerAlt },
   { label: "Stats of the platform", path: "/admin/dashboard?tab=stats", icon: FaChartBar, tab: "stats" },
   { label: "Upload an event/Announcement", path: "/admin/dashboard?tab=events", icon: FaCalendarAlt, tab: "events" },
   { label: "Approve/Reject a company", path: "/admin/dashboard?tab=companies", icon: FaBuilding, tab: "companies" },
@@ -84,10 +86,21 @@ function accountDisplayName(user, studentData) {
 
 function accountInitialLetter(user, displayName) {
   if (displayName && displayName !== "Account") {
-    return displayName.charAt(0).toUpperCase();
+    const parts = displayName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+    if (parts[0]?.length >= 2) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (parts[0]) {
+      return parts[0].charAt(0).toUpperCase();
+    }
   }
   const e = user?.email;
   if (e && /[a-zA-Z]/.test(e)) {
+    const local = (e.split("@")[0] || "").replace(/[^a-zA-Z]/g, "");
+    if (local.length >= 2) return local.slice(0, 2).toUpperCase();
     const m = e.match(/[a-zA-Z]/);
     return m ? m[0].toUpperCase() : "U";
   }
@@ -202,6 +215,7 @@ const Header = () => {
     setMobileNavOpen(false);
     setMobileStudentCornerOpen(false);
     setMobileSpcCornerOpen(false);
+    setMobileAdminCornerOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -214,7 +228,7 @@ const Header = () => {
   }, [mobileNavOpen]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handlePointerDown = (event) => {
       const el = event.target;
       if (!(el instanceof Node)) return;
       if (headerShellRef.current && !headerShellRef.current.contains(el)) {
@@ -237,8 +251,8 @@ const Header = () => {
       }
     };
 
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
   useEffect(() => {
@@ -294,6 +308,22 @@ const Header = () => {
     </div>
   );
 
+  /** Shared chip — fixed height + rounded-xl so short labels (Home) match Feedback / Video tour */
+  const headerChipBase =
+    "inline-flex box-border h-10 min-h-10 max-h-10 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-xs font-semibold leading-none transition-colors";
+  /** Slightly larger for main nav: Home, Events, Contact, Student Corner */
+  const headerNavChipBase =
+    "inline-flex box-border h-11 min-h-11 max-h-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-sm font-semibold leading-none transition-colors";
+  const headerChipIdle =
+    "border-theme bg-theme-card text-theme-primary hover:bg-theme-hero";
+  const headerChipActive =
+    "border-theme-accent bg-theme-accent text-white";
+  const headerChipOpen =
+    "border-theme-accent bg-theme-accent/12 text-theme-primary";
+  const headerIconChip =
+    "inline-flex box-border h-10 w-10 min-h-10 max-h-10 shrink-0 items-center justify-center rounded-xl border border-theme bg-theme-card text-theme-primary transition-colors hover:bg-theme-hero";
+  const headerChipPad = "px-3.5";
+
   const renderAccountMenu = (isMobile = false) => {
     if (loading) {
       return <span className="text-sm text-theme-secondary">Loading...</span>;
@@ -309,7 +339,7 @@ const Header = () => {
           <button
             type="button"
             onClick={() => setAccountMenuOpen((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-theme px-3 py-2 text-sm font-semibold text-theme-primary bg-theme-card hover:bg-theme-hero transition sm:gap-2 sm:px-5 sm:py-3 sm:text-base"
+            className={`${headerNavChipBase} ${headerChipIdle}`}
           >
             Login
             <FaChevronDown className={`h-3 w-3 transition ${accountMenuOpen ? "rotate-180" : ""}`} />
@@ -318,60 +348,41 @@ const Header = () => {
           <button
             type="button"
             onClick={() => setAccountMenuOpen((prev) => !prev)}
-            className={`inline-flex items-center rounded-full border-2 text-left text-sm font-semibold text-theme-primary transition-[background-color,border-color] duration-200 ${
+            className={
               isMobile
-                ? "min-h-9 gap-1 py-1 pl-1 pr-1.5"
-                : condensedHeader
-                  ? "min-h-[2.5rem] gap-1.5 py-2 pl-1.5 pr-2.5 md:min-h-[2.75rem] md:pl-2 md:pr-3"
-                  : "min-h-[2.5rem] gap-2 py-1 pl-1.5 pr-2.5 sm:min-h-[2.75rem] sm:gap-3 sm:py-1.5 sm:pl-2 sm:pr-4"
-            } ${
-              accountMenuOpen
-                ? "border-theme-accent bg-theme-accent/12"
-                : "border-theme bg-theme-card hover:border-theme-accent/45 hover:bg-theme-hero"
-            }`}
+                ? `${headerIconChip} ${
+                    accountMenuOpen ? "border-theme-accent bg-theme-accent/12" : ""
+                  }`
+                : `${headerNavChipBase} ${
+                    accountMenuOpen ? headerChipOpen : headerChipIdle
+                  }`
+            }
             title={headerDisplayName}
+            aria-label={`Account menu for ${headerDisplayName}`}
+            aria-expanded={accountMenuOpen}
           >
             {user.picture && !avatarFailed ? (
               <img
                 src={user.picture}
                 alt=""
                 referrerPolicy="no-referrer"
-                className={`shrink-0 rounded-full border-2 border-theme object-cover ${
-                  isMobile ? "h-8 w-8" : condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
-                }`}
+                className={`shrink-0 rounded-full object-cover ${isMobile ? "h-6 w-6" : "h-6 w-6"}`}
                 onError={() => setAvatarFailed(true)}
               />
             ) : (
-              <div
-                className={`flex shrink-0 items-center justify-center rounded-full border-2 border-theme bg-theme-hero ${
-                  isMobile ? "h-8 w-8" : condensedHeader ? "h-8 w-8" : "h-9 w-9 sm:h-10 sm:w-10"
+              <span
+                className={`flex shrink-0 items-center justify-center rounded-full bg-theme-hero text-[11px] font-bold leading-none tracking-tight text-theme-primary ${
+                  isMobile ? "h-6 w-6" : "h-6 w-6"
                 }`}
               >
-                <span
-                  className={`font-semibold text-theme-primary ${
-                    condensedHeader ? "text-xs" : "text-xs sm:text-sm"
-                  }`}
-                >
-                  {headerInitial}
-                </span>
-              </div>
+                {headerInitial}
+              </span>
             )}
-            <span
-              className={`hidden min-w-0 truncate text-sm font-semibold text-theme-primary ${
-                isMobile
-                  ? ""
-                  : condensedHeader
-                    ? "md:inline max-w-[7rem] lg:max-w-[10rem] xl:max-w-[13rem]"
-                    : "md:inline max-w-[10rem] md:max-w-[13rem]"
-              }`}
-            >
-              {headerDisplayName}
-            </span>
-            <FaChevronDown
-              className={`h-3 w-3 shrink-0 text-theme-secondary transition ${accountMenuOpen ? "rotate-180" : ""} ${
-                isMobile ? "hidden" : ""
-              }`}
-            />
+            {!isMobile && (
+              <FaChevronDown
+                className={`h-3 w-3 shrink-0 transition ${accountMenuOpen ? "rotate-180" : ""}`}
+              />
+            )}
           </button>
         )}
 
@@ -438,26 +449,39 @@ const Header = () => {
     "flex w-full items-center gap-3 px-4 py-3.5 text-base font-semibold text-theme-primary border-b border-theme hover:bg-theme-hero transition-colors";
 
   const videoTourButtonBaseClass =
-    "shrink-0 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50";
+    `${headerChipBase} ${headerChipPad} ${headerChipIdle} disabled:opacity-50`;
+
+  const toggleMobileNav = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMobileAccountMenuOpen(false);
+    setMobileNavOpen((open) => {
+      const next = !open;
+      if (next) {
+        setMobileStudentCornerOpen(false);
+        setMobileSpcCornerOpen(false);
+        setMobileAdminCornerOpen(false);
+      }
+      return next;
+    });
+  };
 
   return (
-    <div ref={headerShellRef} className="sticky top-0 z-50 mb-2">
-      <header className="flex w-full items-stretch overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
-        <div className="flex shrink-0 items-center gap-1 pl-2 pr-1 py-1.5 sm:gap-2.5 sm:pl-5 sm:pr-2 sm:py-2.5">
+    <div ref={headerShellRef} className="relative sticky top-0 z-50 mb-2">
+      <header className="flex w-full min-w-0 items-center overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5 pl-2 pr-1.5 py-2 sm:gap-2.5 sm:pl-5 sm:pr-3 sm:py-2.5">
           <Link
             to="/"
-            className="flex h-10 w-[3.35rem] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-theme bg-white px-2 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-14 sm:w-[5rem] sm:rounded-full sm:px-2.5 sm:py-1.5"
+            className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-theme bg-white px-1.5 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-12 sm:w-[4.5rem] sm:px-2"
             title="RVCE Placement — Home"
           >
             <img src={logo} alt="" className="h-full w-full max-h-full object-contain object-center" />
           </Link>
           <Link
             to="/feedback"
-            className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold transition-colors sm:h-10 sm:w-auto sm:gap-1.5 sm:px-3.5 sm:text-xs ${
-              isPathActive("/feedback")
-                ? "border-theme-accent bg-theme-accent text-white"
-                : "border-theme bg-theme-card text-theme-primary hover:bg-theme-hero"
-            }`}
+            className={`${headerChipBase} ${
+              isPathActive("/feedback") ? headerChipActive : headerChipIdle
+            } w-10 px-0 sm:w-auto sm:px-3.5`}
             title="Open feedback form"
             aria-label="Open feedback form"
           >
@@ -469,7 +493,7 @@ const Header = () => {
               type="button"
               disabled={isRunning}
               onClick={() => startTour()}
-              className={`${videoTourButtonBaseClass} hidden h-9 gap-1.5 px-3.5 text-xs font-semibold md:inline-flex sm:h-10`}
+              className={`${videoTourButtonBaseClass} max-md:!hidden`}
               title="Start video tour"
               aria-label="Start video tour"
             >
@@ -480,84 +504,48 @@ const Header = () => {
         </div>
 
         <div
-          className={`flex min-h-[3.25rem] min-w-0 flex-1 flex-col justify-center border-l border-theme py-2 pl-2 pr-2 sm:min-h-[4.5rem] sm:flex-row sm:items-center sm:justify-between sm:py-2 ${
-            condensedHeader ? "sm:gap-2 sm:px-4 md:px-5" : "sm:gap-4 sm:px-6"
+          className={`flex min-w-0 flex-1 items-center justify-end border-l border-theme py-2 pl-2 pr-2 ${
+            condensedHeader ? "sm:gap-1.5 sm:px-3 md:px-4" : "sm:gap-2 sm:px-4 md:px-5"
           }`}
         >
           {/* Mobile: compact actions + menu */}
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1 md:hidden">
-            {user && canStartTour && (
-              <button
-                type="button"
-                disabled={isRunning}
-                onClick={() => startTour()}
-                className={`${videoTourButtonBaseClass} inline-flex h-9 w-9 p-0 md:hidden`}
-                title={isRunning ? "Tour in progress" : "Start video tour"}
-                aria-label={isRunning ? "Tour in progress" : "Start video tour"}
-              >
-                <FaRoute className="h-[1.05rem] w-[1.05rem]" />
-              </button>
-            )}
-            {user && (
-              <div
-                className="flex shrink-0 items-center [&_button]:p-2 [&_svg]:h-[1.05rem] [&_svg]:w-[1.05rem]"
-                data-tour="header-notifications"
-              >
-                <NotificationBell />
-              </div>
-            )}
+          <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-1 md:hidden">
+            {user && <NotificationBell />}
             <button
               type="button"
               data-tour="header-theme"
               onClick={toggleTheme}
-              className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors"
+              className={headerIconChip}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
-              {theme === "dark" ? <FaSun className="h-[1.05rem] w-[1.05rem]" /> : <FaMoon className="h-[1.05rem] w-[1.05rem]" />}
+              {theme === "dark" ? <FaSun className="h-3.5 w-3.5" /> : <FaMoon className="h-3.5 w-3.5" />}
             </button>
             <div className="relative z-0 shrink-0">{renderAccountMenu(true)}</div>
             <button
               type="button"
-              onClick={() =>
-                setMobileNavOpen((open) => {
-                  const next = !open;
-                  if (next) {
-                    setMobileStudentCornerOpen(false);
-                    setMobileSpcCornerOpen(false);
-                  }
-                  return next;
-                })
-              }
-              className="relative z-20 ml-0.5 shrink-0 inline-flex h-11 w-11 min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors touch-manipulation"
+              data-tour="header-mobile-menu"
+              onClick={toggleMobileNav}
+              className={`${headerIconChip} relative z-[70] shrink-0 touch-manipulation`}
               aria-expanded={mobileNavOpen}
+              aria-controls="mobile-nav-drawer"
               aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
             >
-              {mobileNavOpen ? <FaTimes className="h-[1.15rem] w-[1.15rem]" /> : <FaBars className="h-[1.15rem] w-[1.15rem]" />}
+              {mobileNavOpen ? <FaTimes className="h-3.5 w-3.5" /> : <FaBars className="h-3.5 w-3.5" />}
             </button>
           </div>
 
           {/* Desktop navigation (md+) */}
           <nav
-            className={`hidden min-h-0 w-full min-w-0 items-center justify-end overflow-visible py-0.5 md:flex ${
-              condensedHeader
-                ? "flex-nowrap gap-1.5 md:gap-2"
-                : "flex-wrap gap-2 md:gap-2 lg:gap-3"
-            }`}
+            className="hidden min-h-0 w-full min-w-0 flex-nowrap items-center justify-end gap-2 overflow-visible md:flex"
             aria-label="Main"
           >
             {primaryLinks.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`shrink-0 whitespace-nowrap rounded-full font-semibold transition ${
-                  condensedHeader
-                    ? "px-3 py-2 text-sm md:px-3.5 md:py-2.5"
-                    : "px-4 py-2.5 text-sm lg:px-5 lg:py-3 lg:text-base"
-                } ${
-                  location.pathname === item.path
-                    ? "bg-theme-accent text-white"
-                    : "text-theme-secondary hover:bg-theme-hero"
+                className={`${headerNavChipBase} ${
+                  location.pathname === item.path ? headerChipActive : headerChipIdle
                 }`}
               >
                 {item.label}
@@ -569,22 +557,18 @@ const Header = () => {
                 type="button"
                 onClick={() => setStudentMenuOpen((prev) => !prev)}
                 aria-label="Student Corner"
-                className={`inline-flex items-center whitespace-nowrap rounded-full border-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 ${
-                  condensedHeader
-                    ? "min-h-[2.5rem] gap-1.5 px-3 py-2 md:min-h-[2.75rem] md:px-3.5"
-                    : "min-h-[2.75rem] gap-2 px-4 py-2 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base"
-                } ${
+                className={`${headerNavChipBase} ${
                   isStudentCornerActive
-                    ? "border-theme-accent bg-theme-accent text-white"
+                    ? headerChipActive
                     : studentMenuOpen
-                      ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
-                      : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                      ? headerChipOpen
+                      : headerChipIdle
                 }`}
               >
-                <FaGraduationCap className={`h-4 w-4 shrink-0 ${isStudentCornerActive ? "text-white" : "opacity-90"}`} />
+                <FaGraduationCap className={`h-4 w-4 shrink-0 ${isStudentCornerActive ? "text-white" : ""}`} />
                 <span>
                   Student
-                  {condensedHeader ? <span className="hidden lg:inline"> Corner</span> : <span> Corner</span>}
+                  <span className="hidden lg:inline"> Corner</span>
                 </span>
                 <FaChevronDown
                   className={`h-3 w-3 transition ${studentMenuOpen ? "rotate-180" : ""} ${isStudentCornerActive ? "text-white/90" : ""}`}
@@ -617,22 +601,18 @@ const Header = () => {
                   type="button"
                   onClick={() => setSpcMenuOpen((prev) => !prev)}
                   aria-label="SPC Corner"
-                  className={`inline-flex items-center whitespace-nowrap rounded-full border-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 ${
-                    condensedHeader
-                      ? "min-h-[2.5rem] gap-1.5 px-3 py-2 md:min-h-[2.75rem] md:px-3.5"
-                      : "min-h-[2.75rem] gap-2 px-4 py-2 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base"
-                  } ${
+                  className={`${headerNavChipBase} ${
                     isSpcCornerActive
-                      ? "border-theme-accent bg-theme-accent text-white"
+                      ? headerChipActive
                       : spcMenuOpen
-                        ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
-                        : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                        ? headerChipOpen
+                        : headerChipIdle
                   }`}
                 >
-                  <FaBriefcase className={`h-4 w-4 shrink-0 ${isSpcCornerActive ? "text-white" : "opacity-90"}`} />
+                  <FaBriefcase className={`h-4 w-4 shrink-0 ${isSpcCornerActive ? "text-white" : ""}`} />
                   <span>
                     SPC
-                    {condensedHeader ? <span className="hidden lg:inline"> Corner</span> : <span> Corner</span>}
+                    <span className="hidden lg:inline"> Corner</span>
                   </span>
                   <FaChevronDown
                     className={`h-3 w-3 transition ${spcMenuOpen ? "rotate-180" : ""} ${isSpcCornerActive ? "text-white/90" : ""}`}
@@ -666,19 +646,15 @@ const Header = () => {
                   type="button"
                   onClick={() => setAdminMenuOpen((prev) => !prev)}
                   aria-label="Admin"
-                  className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full border-2 text-sm font-semibold transition-[background-color,border-color,color] duration-200 ${
-                    condensedHeader
-                      ? "min-h-[2.5rem] gap-1.5 px-3 py-2 md:min-h-[2.75rem] md:px-3.5"
-                      : "min-h-[2.75rem] px-4 py-2 lg:min-h-[3rem] lg:px-5 lg:py-2.5 lg:text-base"
-                  } ${
+                  className={`${headerChipBase} ${headerChipPad} ${
                     location.pathname.startsWith("/admin")
-                      ? "border-theme-accent bg-theme-accent text-white"
+                      ? headerChipActive
                       : adminMenuOpen
-                        ? "border-theme-accent bg-theme-accent/12 text-theme-primary"
-                        : "box-border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero hover:border-theme-accent/55"
+                        ? headerChipOpen
+                        : headerChipIdle
                   }`}
                 >
-                  <FaUserShield className={`h-4 w-4 shrink-0 ${location.pathname.startsWith("/admin") ? "text-white" : ""}`} />
+                  <FaUserShield className={`h-3.5 w-3.5 shrink-0 ${location.pathname.startsWith("/admin") ? "text-white" : ""}`} />
                   <span>Admin</span>
                   {hasPendingItems && (
                     <FaExclamationCircle className="h-3.5 w-3.5 text-red-400 animate-pulse" title="Pending items" />
@@ -713,21 +689,20 @@ const Header = () => {
               type="button"
               data-tour="header-theme"
               onClick={toggleTheme}
-              className={`shrink-0 rounded-full border border-theme bg-theme-card text-theme-primary hover:bg-theme-card-hover transition-colors ${
-                condensedHeader ? "p-2 md:p-2.5" : "p-2.5 lg:p-3"
-              }`}
+              className={headerIconChip}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {theme === "dark" ? (
-                <FaSun className={condensedHeader ? "h-[1.15rem] w-[1.15rem] md:h-5 md:w-5" : "h-5 w-5"} />
+                <FaSun className="h-3.5 w-3.5" />
               ) : (
-                <FaMoon className={condensedHeader ? "h-[1.15rem] w-[1.15rem] md:h-5 md:w-5" : "h-5 w-5"} />
+                <FaMoon className="h-3.5 w-3.5" />
               )}
             </button>
 
             {user && (
-              <div className="shrink-0 flex items-center" data-tour="header-notifications">
+              <div className="shrink-0 flex items-center gap-1.5" data-tour="header-notifications">
+                <NotificationSubscribeButton />
                 <NotificationBell />
               </div>
             )}
@@ -738,32 +713,45 @@ const Header = () => {
       </header>
 
       {mobileNavOpen && (
-        <nav
-          className="absolute left-0 right-0 top-full z-[60] max-h-[min(75vh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain border-b border-theme bg-theme-card shadow-lg md:hidden"
-          aria-label="Mobile menu"
-        >
-          {primaryLinks.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setMobileNavOpen(false)}
-              className={`${mobileNavLinkClass} ${
-                location.pathname === item.path ? "bg-theme-accent/15 text-theme-accent border-theme-accent/20" : ""
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-          {/* <button
+        <>
+          <button
             type="button"
-            onClick={() => {
-              setMobileNavOpen(false);
-              handleOpenPlacementForm();
-            }}
-            className={mobileNavLinkClass}
+            className="fixed inset-0 z-[55] bg-black/40 md:hidden"
+            aria-label="Close menu overlay"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <nav
+            id="mobile-nav-drawer"
+            className="absolute left-0 right-0 top-full z-[60] max-h-[min(75vh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain border-b border-theme bg-theme-card shadow-lg md:hidden"
+            aria-label="Mobile menu"
           >
-            Fill the form
-          </button> */}
+            {user && <NotificationSubscribeButton variant="menu" />}
+            {user && canStartTour && (
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={() => {
+                  setMobileNavOpen(false);
+                  startTour();
+                }}
+                className="flex w-full items-center gap-3 border-b border-theme px-4 py-3.5 text-left text-base font-semibold text-theme-primary transition-colors hover:bg-theme-hero disabled:opacity-50"
+              >
+                <FaRoute className="h-4 w-4 shrink-0 opacity-80" />
+                {isRunning ? "Tour in progress…" : "Video tour"}
+              </button>
+            )}
+            {primaryLinks.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileNavOpen(false)}
+                className={`${mobileNavLinkClass} ${
+                  location.pathname === item.path ? "bg-theme-accent/15 text-theme-accent border-theme-accent/20" : ""
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
 
           <button
             type="button"
@@ -902,6 +890,7 @@ const Header = () => {
             </>
           )}
         </nav>
+        </>
       )}
     </div>
   );

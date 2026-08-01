@@ -9,6 +9,7 @@ import {
   CompensationDisclaimerFootnote,
 } from "../PlacementCompensationNote.jsx";
 import { formatInternshipStipendDisplay } from "../../utils/compensationDisplay.js";
+import { listRolePointSections } from "../../utils/workDescriptionDisplay.js";
 
 function GeneralTab({
   company = {},
@@ -27,18 +28,71 @@ function GeneralTab({
   });
   const [isEditingRoles, setIsEditingRoles] = useState(false);
   const [savingRoles, setSavingRoles] = useState(false);
+  const [pointsModal, setPointsModal] = useState(null);
+  const mapRolesToDraft = (roles) =>
+    (roles || []).map((role) => {
+      /** @type {Record<string, unknown>} */
+      const draft = {
+        roleName: role.roleName || "",
+        internshipStipend:
+          role.internshipStipend !== undefined &&
+          role.internshipStipend !== null &&
+          Number(role.internshipStipend) !== 0
+            ? String(role.internshipStipend)
+            : "",
+        ctc: { ...(role.ctc || {}) },
+        skills: Array.isArray(role.skills)
+          ? role.skills.join("\n")
+          : role.skills != null
+            ? String(role.skills)
+            : "",
+        workDescription: Array.isArray(role.workDescription)
+          ? role.workDescription.join("\n")
+          : role.workDescription != null
+            ? String(role.workDescription)
+            : "",
+      };
+      for (const [key, value] of Object.entries(role || {})) {
+        const nk = String(key || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "");
+        if (
+          !nk ||
+          nk === "rolename" ||
+          nk === "name" ||
+          nk === "ctc" ||
+          nk === "internshipstipend" ||
+          nk === "stipend" ||
+          nk === "skills" ||
+          nk === "workdescription" ||
+          nk === "work" ||
+          nk === "_id" ||
+          nk === "id"
+        ) {
+          continue;
+        }
+        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+          continue;
+        }
+        draft[key] = Array.isArray(value)
+          ? value.join("\n")
+          : value != null
+            ? String(value)
+            : "";
+      }
+      return draft;
+    });
+
   const [rolesDraft, setRolesDraft] = useState(() =>
-    (company.roles || []).map((role) => ({
-      roleName: role.roleName || "",
-      internshipStipend:
-        role.internshipStipend !== undefined &&
-        role.internshipStipend !== null &&
-        Number(role.internshipStipend) !== 0
-          ? String(role.internshipStipend)
-          : "",
-      ctc: { ...(role.ctc || {}) },
-    }))
+    mapRolesToDraft(company.roles)
   );
+
+  useEffect(() => {
+    if (!isEditingRoles) {
+      setRolesDraft(mapRolesToDraft(company.roles));
+    }
+  }, [company.roles, isEditingRoles]);
 
   // General info edit state
   const [isEditingGeneral, setIsEditingGeneral] = useState(false);
@@ -487,17 +541,26 @@ function GeneralTab({
 
         {/* Read-only view */}
         {!isEditingRoles &&
-          (company.roles ?? []).map((role, index) => (
+          (company.roles ?? []).map((role, index) => {
+            const roleTitle = String(role.roleName || "").trim();
+            const pointSections = listRolePointSections(role);
+            const hasCtc =
+              !isInternshipOnlyCompany &&
+              role.ctc &&
+              Object.keys(role.ctc).length > 0;
+            return (
             <div
               key={index}
               className="mb-6 bg-gradient-to-br from-slate-800/70 to-slate-900 rounded-xl p-5 border border-slate-700"
             >
-              <h3 className="text-lg font-semibold text-white mb-4">
-                {role.roleName}
-              </h3>
+              {roleTitle ? (
+                <h3 className="text-lg font-semibold text-white mb-4">
+                  {roleTitle}
+                </h3>
+              ) : null}
 
               {/* CTC (hidden for internship-only companies) */}
-              {!isInternshipOnlyCompany && role.ctc && (
+              {hasCtc && (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                   {Object.entries(role.ctc).map(([key, value]) => (
                     <div key={key} className="bg-slate-800 rounded-lg p-4">
@@ -514,7 +577,7 @@ function GeneralTab({
               )}
 
               {/* Stipend */}
-              <div className="bg-slate-800 rounded-lg p-4 w-fit">
+              <div className="bg-slate-800 rounded-lg p-4 w-fit mb-4">
                 <p className="text-slate-400 text-xs inline-flex items-baseline gap-0 flex-wrap">
                   <span>Internship Stipend</span>
                   <CompensationAsterisk className="text-slate-500" />
@@ -523,8 +586,77 @@ function GeneralTab({
                   {formatInternshipStipendDisplay(role.internshipStipend)}
                 </p>
               </div>
+
+              {pointSections.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {pointSections.map((section) => (
+                    <button
+                      key={section.key}
+                      type="button"
+                      onClick={() =>
+                        setPointsModal({
+                          title: section.key,
+                          points: section.points,
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:border-indigo-500 hover:bg-slate-700 hover:text-white transition-colors"
+                    >
+                      View {section.key}
+                      <span className="rounded-md bg-slate-700 px-1.5 py-0.5 text-xs text-slate-300">
+                        {section.points.length}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ))}
+            );
+          })}
+
+        {pointsModal ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="role-points-modal-title"
+            onClick={() => setPointsModal(null)}
+          >
+            <div
+              className="w-full max-w-lg max-h-[80vh] overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-xl flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
+                <h4
+                  id="role-points-modal-title"
+                  className="text-base font-semibold text-white"
+                >
+                  {pointsModal.title}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setPointsModal(null)}
+                  className="rounded-md px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-white text-sm"
+                  aria-label="Close"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="overflow-y-auto px-5 py-4">
+                {pointsModal.points.length === 1 ? (
+                  <p className="text-slate-200 whitespace-pre-wrap text-sm leading-relaxed">
+                    {pointsModal.points[0]}
+                  </p>
+                ) : (
+                  <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-200">
+                    {pointsModal.points.map((point, pointIdx) => (
+                      <li key={`${pointIdx}-${point.slice(0, 24)}`}>{point}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {/* Editable view for admins */}
         {isEditingRoles && (
@@ -559,7 +691,7 @@ function GeneralTab({
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-slate-300 text-sm mb-1">
-                      Role name
+                      Role name (optional if skills/work only)
                     </label>
                     <input
                       type="text"
@@ -570,6 +702,7 @@ function GeneralTab({
                         setRolesDraft(next);
                       }}
                       className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Leave blank when role is unknown"
                     />
                   </div>
                   <div>
@@ -594,6 +727,97 @@ function GeneralTab({
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm mb-1">
+                    Work description
+                  </label>
+                  <textarea
+                    value={
+                      Array.isArray(role.workDescription)
+                        ? role.workDescription.join("\n")
+                        : role.workDescription || ""
+                    }
+                    onChange={(e) => {
+                      const next = [...rolesDraft];
+                      next[index] = {
+                        ...next[index],
+                        workDescription: e.target.value,
+                      };
+                      setRolesDraft(next);
+                    }}
+                    className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[88px]"
+                    placeholder={"One point per line…\nBuild APIs\nOwn on-call"}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm mb-1">
+                    Skills (one point per line)
+                  </label>
+                  <textarea
+                    value={
+                      Array.isArray(role.skills)
+                        ? role.skills.join("\n")
+                        : role.skills || ""
+                    }
+                    onChange={(e) => {
+                      const next = [...rolesDraft];
+                      next[index] = {
+                        ...next[index],
+                        skills: e.target.value,
+                      };
+                      setRolesDraft(next);
+                    }}
+                    className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[88px]"
+                    placeholder={"One point per line…\nStrong DSA\nSystem design basics"}
+                  />
+                </div>
+
+                {Object.keys(role)
+                  .filter((key) => {
+                    const nk = String(key || "")
+                      .trim()
+                      .toLowerCase()
+                      .replace(/\s+/g, "");
+                    return (
+                      nk &&
+                      nk !== "rolename" &&
+                      nk !== "name" &&
+                      nk !== "ctc" &&
+                      nk !== "internshipstipend" &&
+                      nk !== "stipend" &&
+                      nk !== "skills" &&
+                      nk !== "workdescription" &&
+                      nk !== "work" &&
+                      nk !== "_id" &&
+                      nk !== "id"
+                    );
+                  })
+                  .map((fieldKey) => (
+                    <div key={fieldKey}>
+                      <label className="block text-slate-300 text-sm mb-1">
+                        {fieldKey} (one point per line)
+                      </label>
+                      <textarea
+                        value={
+                          Array.isArray(role[fieldKey])
+                            ? role[fieldKey].join("\n")
+                            : role[fieldKey] || ""
+                        }
+                        onChange={(e) => {
+                          const next = [...rolesDraft];
+                          next[index] = {
+                            ...next[index],
+                            [fieldKey]: e.target.value,
+                          };
+                          setRolesDraft(next);
+                        }}
+                        className="w-full px-3 py-2 rounded-md bg-slate-900 border border-slate-600 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[88px]"
+                        placeholder="One point per line…"
+                      />
+                    </div>
+                  ))}
 
                 <div>
                   <label className="block text-slate-300 text-sm mb-2 inline-flex items-baseline gap-0 flex-wrap">

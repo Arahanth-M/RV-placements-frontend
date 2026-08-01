@@ -8,6 +8,7 @@ import {
   getRecruitmentProcessSubmitter,
   isRecruitmentProcessEmpty,
   normalizeRecruitmentProcess,
+  normalizeRoundTypes,
   OA_ASSESSMENT_MODE_OPTIONS,
   oaAssessmentModeLabel,
   RECRUITMENT_ROUND_TYPE_OPTIONS,
@@ -47,10 +48,31 @@ function YesNoToggle({ value, onChange, disabled }) {
 }
 
 function CountBadge({ attended, cleared }) {
+  const hasAttended =
+    attended !== null && attended !== undefined && attended !== "";
+  const clearedNum = Number(cleared);
+  const showCleared =
+    cleared !== null &&
+    cleared !== undefined &&
+    cleared !== "" &&
+    Number.isFinite(clearedNum) &&
+    clearedNum > 0;
+
+  if (!hasAttended && !showCleared) return null;
+
   return (
     <p className="text-sm text-theme-muted mt-1">
-      <span className="text-theme-secondary font-medium">{attended}</span> attended ·{" "}
-      <span className="text-theme-accent font-semibold">{cleared}</span> cleared
+      {hasAttended ? (
+        <>
+          <span className="text-theme-secondary font-medium">{attended}</span> attended
+        </>
+      ) : null}
+      {hasAttended && showCleared ? " · " : null}
+      {showCleared ? (
+        <>
+          <span className="text-theme-accent font-semibold">{cleared}</span> cleared
+        </>
+      ) : null}
     </p>
   );
 }
@@ -109,7 +131,7 @@ function RecruitmentProcessSubmitter({ process }) {
   );
 }
 
-function RecruitmentProcessTimeline({ process }) {
+function RecruitmentProcessTimeline({ process, showSubmitter = false }) {
   const data = normalizeRecruitmentProcess(process);
   if (!data) return null;
 
@@ -137,7 +159,7 @@ function RecruitmentProcessTimeline({ process }) {
               {oa.topics}
             </p>
           ) : null}
-          <CountBadge attended={oa.attended ?? 0} cleared={oa.cleared ?? 0} />
+          <CountBadge attended={oa.attended} cleared={oa.cleared} />
         </>
       ),
     });
@@ -145,7 +167,10 @@ function RecruitmentProcessTimeline({ process }) {
 
   visibleRounds.forEach((round) => {
     const modeLabel = oaAssessmentModeLabel(round.mode);
-    const typeLabel = recruitmentRoundTypeLabel(round.type, round.otherTypeLabel);
+    const typeLabel = recruitmentRoundTypeLabel(
+      normalizeRoundTypes(round),
+      round.otherTypeLabel
+    );
     steps.push({
       key: `round-${round.roundNumber}`,
       title: `Round ${round.roundNumber}`,
@@ -158,7 +183,7 @@ function RecruitmentProcessTimeline({ process }) {
               {modeLabel}
             </p>
           ) : null}
-          <CountBadge attended={round.attended ?? 0} cleared={round.cleared ?? 0} />
+          <CountBadge attended={round.attended} cleared={round.cleared} />
         </>
       ),
     });
@@ -176,7 +201,7 @@ function RecruitmentProcessTimeline({ process }) {
           {step.body}
         </TimelineStep>
       ))}
-      <RecruitmentProcessSubmitter process={process} />
+      {showSubmitter ? <RecruitmentProcessSubmitter process={process} /> : null}
     </div>
   );
 }
@@ -205,7 +230,7 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
         {
           roundNumber: prev.rounds.length + 1,
           occurred: false,
-          type: "technical",
+          types: ["technical"],
           mode: "online",
           otherTypeLabel: "",
           attended: "",
@@ -213,6 +238,30 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
         },
       ],
     }));
+  };
+
+  const toggleRoundType = (index, typeValue) => {
+    setForm((prev) => {
+      const rounds = [...prev.rounds];
+      const current = rounds[index] || {};
+      const selected = new Set(normalizeRoundTypes(current));
+      if (selected.has(typeValue)) {
+        if (selected.size <= 1) return prev;
+        selected.delete(typeValue);
+      } else {
+        selected.add(typeValue);
+      }
+      const types = RECRUITMENT_ROUND_TYPE_OPTIONS.map((o) => o.value).filter((v) =>
+        selected.has(v)
+      );
+      rounds[index] = {
+        ...current,
+        types,
+        roundNumber: index + 1,
+        ...(types.includes("other") ? {} : { otherTypeLabel: "" }),
+      };
+      return { ...prev, rounds };
+    });
   };
 
   const removeRound = (index) => {
@@ -270,7 +319,7 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass} htmlFor="rp-oa-attended">
-                  Attended
+                  Attended (optional)
                 </label>
                 <input
                   id="rp-oa-attended"
@@ -279,12 +328,13 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                   value={form.onlineAssessment.attended}
                   onChange={(e) => updateOa({ attended: e.target.value })}
                   className={inputClass}
+                  placeholder="Leave blank if unknown"
                   disabled={disabled}
                 />
               </div>
               <div>
                 <label className={labelClass} htmlFor="rp-oa-cleared">
-                  Cleared
+                  Cleared (optional)
                 </label>
                 <input
                   id="rp-oa-cleared"
@@ -293,6 +343,7 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                   value={form.onlineAssessment.cleared}
                   onChange={(e) => updateOa({ cleared: e.target.value })}
                   className={inputClass}
+                  placeholder="Leave blank if unknown"
                   disabled={disabled}
                 />
               </div>
@@ -347,25 +398,42 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
             {round.occurred ? (
               <div className="space-y-3 pl-1 border-l-2 border-theme-accent/30 ml-1">
                 <div>
-                  <label
+                  <span
                     className={labelClass}
                     id={`rp-round-type-label-${index}`}
-                    htmlFor={`rp-round-type-${index}`}
                   >
-                    Round type
-                  </label>
-                  <SpcThemeSelect
-                    id={`rp-round-type-${index}`}
-                    name={`roundType-${index}`}
-                    value={round.type}
-                    onChange={(e) => updateRound(index, { type: e.target.value })}
-                    options={RECRUITMENT_ROUND_TYPE_OPTIONS}
-                    labelId={`rp-round-type-label-${index}`}
-                    disabled={disabled}
-                    required
-                  />
+                    Round type(s)
+                  </span>
+                  <div
+                    className="flex flex-wrap gap-2"
+                    role="group"
+                    aria-labelledby={`rp-round-type-label-${index}`}
+                  >
+                    {RECRUITMENT_ROUND_TYPE_OPTIONS.map((opt) => {
+                      const selected = normalizeRoundTypes(round).includes(opt.value);
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={disabled}
+                          aria-pressed={selected}
+                          onClick={() => toggleRoundType(index, opt.value)}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
+                            selected
+                              ? "bg-theme-accent text-white"
+                              : "border border-theme bg-theme-card text-theme-secondary hover:bg-theme-nav"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-xs text-theme-muted">
+                    Select one or more types for this round.
+                  </p>
                 </div>
-                {round.type === "other" ? (
+                {normalizeRoundTypes(round).includes("other") ? (
                   <div>
                     <label className={labelClass} htmlFor={`rp-round-other-${index}`}>
                       Describe round type
@@ -403,7 +471,7 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass} htmlFor={`rp-round-attended-${index}`}>
-                      Attended
+                      Attended (optional)
                     </label>
                     <input
                       id={`rp-round-attended-${index}`}
@@ -412,12 +480,13 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                       value={round.attended}
                       onChange={(e) => updateRound(index, { attended: e.target.value })}
                       className={inputClass}
+                      placeholder="Leave blank if unknown"
                       disabled={disabled}
                     />
                   </div>
                   <div>
                     <label className={labelClass} htmlFor={`rp-round-cleared-${index}`}>
-                      Cleared
+                      Cleared (optional)
                     </label>
                     <input
                       id={`rp-round-cleared-${index}`}
@@ -426,6 +495,7 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                       value={round.cleared}
                       onChange={(e) => updateRound(index, { cleared: e.target.value })}
                       className={inputClass}
+                      placeholder="Leave blank if unknown"
                       disabled={disabled}
                     />
                   </div>
@@ -538,9 +608,9 @@ function RecruitmentProcessTab({
             <p className="mt-1 text-xs text-theme-muted">
               Placement cycle{" "}
               <span className="font-semibold text-theme-secondary">{placementYear}</span>
-              {company?.placementCompanyVisitId ? (
+              {/* {company?.placementCompanyVisitId ? (
                 <span className="hidden sm:inline"> · visit-specific data for this hub/year</span>
-              ) : null}
+              ) : null} */}
             </p>
           </div>
           {canManage ? (
@@ -606,7 +676,7 @@ function RecruitmentProcessTab({
         {editing && canManage ? (
           <RecruitmentProcessEditor form={form} setForm={setForm} disabled={actionLoading} />
         ) : hasProcess ? (
-          <RecruitmentProcessTimeline process={stored} />
+          <RecruitmentProcessTimeline process={stored} showSubmitter={canManage} />
         ) : (
           <div className="rounded-xl border border-dashed border-theme bg-theme-input/20 px-4 py-10 text-center">
             <p className="text-theme-primary font-medium">Not added yet</p>

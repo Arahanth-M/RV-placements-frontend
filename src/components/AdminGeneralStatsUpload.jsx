@@ -109,17 +109,15 @@ export default function AdminGeneralStatsUpload() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-theme bg-theme-card p-6 shadow-sm">
-        <div className="mb-6 flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
             <FaChartLine className="h-5 w-5" />
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-theme-accent">Update the placement General stats</h2>
-            <p className="mt-1 text-sm text-theme-secondary">
-              Upload the placement statistics Excel for a year. This updates the public General Stats
-              page only — no other database collections are modified.
-            </p>
-          </div>
+          <h2 className="text-2xl font-semibold text-theme-accent">Update the placement General stats</h2>
+          <p className="mx-auto mt-1 max-w-2xl text-sm text-theme-secondary">
+            Upload the placement statistics Excel for a year. This updates the public General Stats
+            page only — no other database collections are modified.
+          </p>
         </div>
 
         <form key={fileKey} onSubmit={handleSubmit} className="flex flex-col gap-5">

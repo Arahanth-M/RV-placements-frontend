@@ -12,6 +12,8 @@ import {
 import {
   PageBackButton,
   PageBackNavRow,
+  PageHeroFontStyles,
+  PageHeroHeader,
   pageShellInnerClass,
   pageShellOuterClass,
 } from "./PageBackNav.jsx";
@@ -169,6 +171,85 @@ function normalizeTierCategory(tier, rawCategory) {
   return "all";
 }
 
+/** Parse user CGPA input; null means filter is off / invalid. */
+function parseCgpaFilterInput(raw) {
+  if (raw == null || String(raw).trim() === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 10) return null;
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Resolve minCgpa for the current hub tier + optional type category.
+ * Prefers the visit matching that cluster's placement context / type.
+ * @param {object} company
+ * @param {string|null|undefined} placementTier
+ * @param {string|null|undefined} activeCategory
+ */
+function resolveMinCgpaForFilter(company, placementTier, activeCategory) {
+  const byTier =
+    company?.minCgpaByTier && typeof company.minCgpaByTier === "object"
+      ? company.minCgpaByTier
+      : null;
+  // Prefer the cutoff for the active hub tier. When the map has an entry (even null),
+  // do not fall back to card-level minCgpa — that is often the Dream/FTE visit (e.g. IBM 7)
+  // while Summer/PPO lives on another year with a higher cutoff (e.g. 8).
+  if (placementTier && byTier && Object.prototype.hasOwnProperty.call(byTier, placementTier)) {
+    return byTier[placementTier];
+  }
+
+  const byType =
+    company?.minCgpaByVisitType && typeof company.minCgpaByVisitType === "object"
+      ? company.minCgpaByVisitType
+      : null;
+  const category = String(activeCategory || "")
+    .trim()
+    .toLowerCase();
+  if (byType && category && category !== "all") {
+    if (Object.prototype.hasOwnProperty.call(byType, category)) {
+      return byType[category];
+    }
+    // Loose match for labels like "Internship + FTE"
+    const hit = Object.keys(byType).find(
+      (k) => k.toLowerCase() === category || k.toLowerCase().includes(category)
+    );
+    if (hit) return byType[hit];
+  }
+
+  // Without a tier map, avoid using Dream card minCgpa on Summer / internship-only hubs.
+  if (
+    placementTier === PLACEMENT_TIER_SUMMER_INTERNSHIP ||
+    placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY ||
+    placementTier === PLACEMENT_TIER_OFF_CAMPUS
+  ) {
+    return null;
+  }
+
+  return company?.minCgpa;
+}
+
+/**
+ * Keep companies with unknown cutoff, or cutoff ≤ student CGPA.
+ * Uses the minCgpa for the active placement tier / visit type when available.
+ * @param {object} company
+ * @param {number|null} studentCgpa
+ * @param {string|null|undefined} [placementTier]
+ * @param {string|null|undefined} [activeCategory]
+ */
+function companyPassesCgpaFilter(
+  company,
+  studentCgpa,
+  placementTier = null,
+  activeCategory = null
+) {
+  if (studentCgpa == null) return true;
+  const min = resolveMinCgpaForFilter(company, placementTier, activeCategory);
+  if (min == null || min === "") return true;
+  const n = Number(min);
+  if (!Number.isFinite(n)) return true;
+  return n <= studentCgpa;
+}
+
 function CompanyStats() {
   // Year selection state
   const [selectedYear, setSelectedYear] = useState(null);
@@ -184,6 +265,8 @@ function CompanyStats() {
   const [companiesFetchDone, setCompaniesFetchDone] = useState(false);
   const isPlacementCardsYear = isPlacementDetailVisitYear(selectedYear);
   const [search, setSearch] = useState("");
+  /** Empty string = filter off. When set, keep companies with no cutoff or minCgpa ≤ this value. */
+  const [cgpaFilter, setCgpaFilter] = useState("");
   const [tierCategories, setTierCategories] = useState({
     [PLACEMENT_TIER_DREAM]: "all",
     [PLACEMENT_TIER_OPEN_DREAM]: "all",
@@ -328,14 +411,20 @@ function CompanyStats() {
     if (clusterParam === PLACEMENT_CLUSTER_ME) return meCompanies;
     return [];
   }, [clusterParam, ecCompanies, meCompanies]);
+  const parsedCgpaFilter = useMemo(() => parseCgpaFilterInput(cgpaFilter), [cgpaFilter]);
+
   const ecMeFilteredCompanies = useMemo(
     () =>
-      ecMeClusterCompanies.filter((c) =>
-        String(c?.name || "")
-          .toLowerCase()
-          .includes(search.toLowerCase())
-      ),
-    [ecMeClusterCompanies, search]
+      ecMeClusterCompanies
+        .filter((c) =>
+          String(c?.name || "")
+            .toLowerCase()
+            .includes(search.toLowerCase())
+        )
+        .filter((c) =>
+          companyPassesCgpaFilter(c, parsedCgpaFilter, placementTier, activeCategory)
+        ),
+    [ecMeClusterCompanies, search, parsedCgpaFilter, placementTier, activeCategory]
   );
   const ecMeTotalPages = Math.max(1, Math.ceil(ecMeFilteredCompanies.length / companiesPerPage));
   const ecMeSlice = ecMeFilteredCompanies.slice(
@@ -447,6 +536,7 @@ function CompanyStats() {
       const keysToCheck = [
         'companystats_selectedYear',
         'companystats_search',
+        'companystats_cgpa_filter',
         'companystats_category',
         'companystats_dream_category',
         'companystats_open_dream_category',
@@ -477,6 +567,7 @@ function CompanyStats() {
       const keysToRemove = [
         'companystats_selectedYear',
         'companystats_search',
+        'companystats_cgpa_filter',
         'companystats_category',
         'companystats_dream_category',
         'companystats_open_dream_category',
@@ -697,6 +788,8 @@ function CompanyStats() {
           : null;
 
       if (storedSearch !== null) setSearch(storedSearch);
+      const storedCgpa = getStoredValue("companystats_cgpa_filter");
+      if (storedCgpa !== null) setCgpaFilter(storedCgpa);
       setTierCategories({
         [PLACEMENT_TIER_DREAM]: normalizeTierCategory(
           PLACEMENT_TIER_DREAM,
@@ -733,6 +826,7 @@ function CompanyStats() {
   useEffect(() => {
     if (isPlacementCardsYear && user && user.userId) {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
+      sessionStorage.setItem(getStorageKey('companystats_cgpa_filter'), cgpaFilter);
       sessionStorage.setItem(
         getStorageKey('companystats_dream_category'),
         normalizeTierCategory(PLACEMENT_TIER_DREAM, tierCategories[PLACEMENT_TIER_DREAM])
@@ -756,6 +850,7 @@ function CompanyStats() {
     isPlacementCardsYear,
     selectedYear,
     search,
+    cgpaFilter,
     tierCategories,
     dreamPage,
     openDreamPage,
@@ -907,6 +1002,9 @@ function CompanyStats() {
   // Filter companies (only for 2026)
   const filteredCompanies = clusterScopedCompanies
     .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((c) =>
+      companyPassesCgpaFilter(c, parsedCgpaFilter, placementTier, activeCategory)
+    )
     .filter((c) => {
       const showPlacementTypeFilter =
         placementTier === PLACEMENT_TIER_DREAM ||
@@ -1388,21 +1486,23 @@ function CompanyStats() {
   ) {
     return (
       <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
+        <PageHeroFontStyles />
         <div className={pageShellInnerClass}>
           <PageBackNavRow>
             <PageBackButton onClick={handleBack} label="Back" />
           </PageBackNavRow>
         <div className="mx-auto w-full max-w-6xl min-w-0">
           {/* Year Selection Cards */}
-          <div className="mb-8">
-            <h2 className="text-center text-2xl font-bold tracking-tight text-theme-primary sm:text-3xl">
-              Select Year
-            </h2>
-            <p className="mx-auto mt-2 max-w-xl text-center text-sm text-theme-secondary sm:text-base">
-              Pick a batch to open placement stats or the company hub.
-            </p>
+          <div className="mb-8" data-tour="company-stats-years-hero">
+            <PageHeroHeader
+              subtitle="Pick a batch to open placement stats or the company hub."
+              subtitleClassName="text-slate-400"
+              subtitleMaxWidth="520px"
+            >
+              Select <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Year</em>
+            </PageHeroHeader>
           <div
-            className="mt-8 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6"
+            className="mt-2 grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 lg:gap-6"
             data-tour="company-stats-years"
           >
             {[2024, 2025, DEFAULT_PLACEMENT_DETAIL_YEAR].map((year) => {
@@ -1678,7 +1778,7 @@ function CompanyStats() {
               <h2 className="text-xl font-bold text-theme-primary sm:text-2xl">{clusterLabel}</h2>
             </div>
             <div className="top-bar mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex w-full items-center gap-2 sm:max-w-md">
+              <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
                 <input
                   type="text"
                   placeholder={`Search in ${clusterLabel}...`}
@@ -1687,7 +1787,23 @@ function CompanyStats() {
                     setSearch(e.target.value);
                     setClusterBranchPage(1);
                   }}
-                  className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+                  className="search-bar w-full flex-1 px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+                />
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max="10"
+                  step="0.01"
+                  placeholder="My CGPA"
+                  title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
+                  value={cgpaFilter}
+                  onChange={(e) => {
+                    setCgpaFilter(e.target.value);
+                    setClusterBranchPage(1);
+                  }}
+                  className="w-full sm:w-28 px-3 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+                  aria-label="Filter by my CGPA"
                 />
                 <button
                   type="button"
@@ -1958,7 +2074,7 @@ function CompanyStats() {
         </PageBackNavRow>
         <div className="mb-4 sm:mb-6">
         <div className="top-bar flex flex-col sm:flex-row items-center sm:justify-between gap-4 mb-8 w-full">
-          <div className="w-full sm:w-auto sm:max-w-md">
+          <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
           <input
             type="text"
             placeholder="Search companies..."
@@ -1968,7 +2084,24 @@ function CompanyStats() {
               resetListPages();
             }}
             data-tour="company-stats-2026-search"
-            className="search-bar w-full px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+            className="search-bar w-full flex-1 px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+          />
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            max="10"
+            step="0.01"
+            placeholder="My CGPA"
+            title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
+            value={cgpaFilter}
+            onChange={(e) => {
+              setCgpaFilter(e.target.value);
+              resetListPages();
+            }}
+            data-tour="company-stats-cgpa-filter"
+            className="w-full sm:w-28 px-3 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+            aria-label="Filter by my CGPA"
           />
         </div>
       </div>

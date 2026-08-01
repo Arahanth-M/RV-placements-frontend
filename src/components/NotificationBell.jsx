@@ -198,6 +198,12 @@ function NotificationBell() {
     if (notification.companyId) {
       navigate(`/companies/${notification.companyId}`);
       setShowDropdown(false);
+      return;
+    }
+    const eventId = notification.payload?.eventId;
+    if (notification.type === "EVENT_CREATED" || eventId) {
+      navigate("/events");
+      setShowDropdown(false);
     }
   };
 
@@ -234,10 +240,10 @@ function NotificationBell() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleBellClick}
-        className="relative p-2.5 rounded-full border border-theme bg-theme-card text-theme-secondary hover:text-theme-primary hover:bg-theme-card-hover transition-colors focus:outline-none"
+        className="relative inline-flex box-border h-10 w-10 min-h-10 max-h-10 shrink-0 items-center justify-center rounded-xl border border-theme bg-theme-card text-theme-primary transition-colors hover:bg-theme-hero focus:outline-none"
         title="Notifications"
       >
-        <FaBell className="w-5 h-5" />
+        <FaBell className="h-3.5 w-3.5" />
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-theme-app">
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -284,11 +290,12 @@ function NotificationBell() {
               <div className="divide-y divide-theme">
                 {notifications.map((notification) => {
                   const isCompanyApproved = notification.type === "COMPANY_APPROVED";
+                  const isCompanyUpdated = notification.type === "COMPANY_UPDATED";
                   const companyNameOnly = (() => {
                     const raw = notification.payload?.companyName;
                     if (typeof raw === "string" && raw.trim()) return raw.trim();
                     const t = String(notification.title || "").trim();
-                    return t.replace(/\s+approved\s*$/i, "").trim() || t;
+                    return t.replace(/\s+(approved|updated)\s*$/i, "").trim() || t;
                   })();
                   return (
                   <div
@@ -306,7 +313,7 @@ function NotificationBell() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2">
-                          {isCompanyApproved ? (
+                          {isCompanyApproved || isCompanyUpdated ? (
                             <div className="min-w-0 flex-1">
                               <p
                                 className={`text-[15px] sm:text-base font-bold leading-snug tracking-tight ${
@@ -324,8 +331,11 @@ function NotificationBell() {
                                     : "text-theme-muted"
                                 }`}
                               >
-                                It is approved. A new company has been added — please check
-                                it out.
+                                {isCompanyUpdated
+                                  ? notification.message ||
+                                    notification.body ||
+                                    "New updates were added — tap to open the company page."
+                                  : "It is approved. A new company has been added — please check it out."}
                               </p>
                             </div>
                           ) : (
@@ -345,7 +355,7 @@ function NotificationBell() {
                             <FaTimes className="w-3 h-3" />
                           </button>
                         </div>
-                        {!isCompanyApproved && (
+                        {!isCompanyApproved && !isCompanyUpdated && (
                           <>
                             <p className="text-theme-secondary text-[13px] sm:text-sm mt-1 leading-relaxed">
                               {notification.message ||
@@ -366,6 +376,16 @@ function NotificationBell() {
                               )}
                             </p>
                           </>
+                        )}
+                        {(isCompanyApproved || isCompanyUpdated) && (
+                          <p className="text-[10px] text-theme-muted mt-2 font-medium uppercase tracking-wider">
+                            {new Date(notification.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
                         )}
                       </div>
                     </div>
