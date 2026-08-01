@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
@@ -6,9 +6,10 @@ import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import StudentRequestsTab from './StudentRequestsTab';
 import AdminGeneralStatsUpload from './AdminGeneralStatsUpload';
+import AdminSubmissionsTab from './AdminSubmissionsTab';
 import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
 import DashboardRefreshButton from './DashboardRefreshButton.jsx';
-import { PageBackButton, PageBackNavRow } from './PageBackNav.jsx';
+import { PageBackButton, PageBackNavRow, PageHeroFontStyles, PageHeroHeader, pageShellInnerClass, pageShellOuterClassCompact } from './PageBackNav.jsx';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
@@ -29,13 +30,14 @@ const ADMIN_MISC_TAB_KEYS = new Set([
   'assign-spc',
   'general-stats-upload',
   'student-requests',
+  'submissions',
   'add-next-batch',
   'placement-settings',
 ]);
 
 const ADMIN_HUB_POLL_MS = 60_000;
 
-function buildAdminMiscNavTabs() {
+function buildAdminMiscNavTabs(stats) {
   return [
     {
       key: 'assign-spc',
@@ -60,6 +62,16 @@ function buildAdminMiscNavTabs() {
       cta: 'View requests',
       accent: 'border-l-amber-500',
       ctaColor: 'text-amber-600',
+    },
+    {
+      key: 'submissions',
+      title: 'Submissions Management',
+      description: 'Review and approve user company contribution submissions.',
+      cta: 'Manage submissions',
+      accent: 'border-l-rose-500',
+      ctaColor: 'text-rose-500',
+      badge: stats.pendingSubmissions ?? 0,
+      badgeLabel: 'pending',
     },
     {
       key: 'add-next-batch',
@@ -106,6 +118,7 @@ function buildAdminPrimaryNavTabs(stats) {
       accent: 'border-l-emerald-500',
       ctaColor: 'text-emerald-600',
       badge: stats.pendingCompanies ?? 0,
+      badgeLabel: 'companies pending',
     },
     {
       key: 'student-placement-stats',
@@ -122,6 +135,8 @@ function buildAdminPrimaryNavTabs(stats) {
       cta: 'View features',
       accent: 'border-l-amber-500',
       ctaColor: 'text-amber-600',
+      badge: stats.pendingSubmissions ?? 0,
+      badgeLabel: 'submissions pending',
     },
   ];
 }
@@ -197,7 +212,7 @@ function AdminChartTooltip({ active, payload, label }) {
 
 function AdminChartKpi({ label, value }) {
   return (
-    <div className="min-w-[5.5rem] rounded-lg border border-theme bg-theme-hero px-3 py-2 text-right">
+    <div className="min-w-[5.5rem] shrink-0 rounded-lg border border-theme bg-theme-hero px-3 py-2 text-right">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-theme-muted">{label}</p>
       <p className="mt-0.5 text-lg font-bold tabular-nums text-theme-primary">{value}</p>
     </div>
@@ -218,7 +233,9 @@ function AdminChartHeader({ eyebrow, title, hint, subtitle, accentClass, childre
           <p className="mt-1 pl-3 text-xs leading-relaxed text-theme-secondary">{subtitle}</p>
         ) : null}
       </div>
-      {children ? <div className="flex flex-wrap gap-2">{children}</div> : null}
+      {children ? (
+        <div className="flex shrink-0 flex-row flex-nowrap items-stretch gap-2">{children}</div>
+      ) : null}
     </div>
   );
 }
@@ -327,6 +344,11 @@ const AdminDashboard = () => {
       return tab;
     });
   }, [searchParams]);
+
+  // Tab / hub swaps often keep the same pathname, so App ScrollToTop does not run.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activeMainTab]);
 
   const companyYearLabel = selectedCompanyYear === 'all' ? 'all years' : selectedCompanyYear;
   const resolveCompanyActionYear = (placementYear) => {
@@ -1013,10 +1035,13 @@ const AdminDashboard = () => {
 
   const adminPrimaryNavTabs = useMemo(
     () => buildAdminPrimaryNavTabs(stats),
-    [stats.pendingCompanies]
+    [stats.pendingCompanies, stats.pendingSubmissions]
   );
 
-  const adminMiscNavTabs = useMemo(() => buildAdminMiscNavTabs(), []);
+  const adminMiscNavTabs = useMemo(
+    () => buildAdminMiscNavTabs(stats),
+    [stats.pendingSubmissions]
+  );
 
   const handleAdminBack = () => {
     if (ADMIN_MISC_TAB_KEYS.has(activeMainTab)) {
@@ -1034,7 +1059,8 @@ const AdminDashboard = () => {
     : 'Back to Admin Dashboard';
 
   return (
-    <div className="admin-dashboard-theme min-h-screen py-6 sm:py-8 px-4 sm:px-6 lg:px-8 bg-theme-app text-theme-primary">
+    <div className={`admin-dashboard-theme min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
       {adminToast?.message && (
         <div
           className={`fixed right-4 top-4 z-[90] rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-xl ${
@@ -1044,20 +1070,32 @@ const AdminDashboard = () => {
           {adminToast.message}
         </div>
       )}
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
-            <p className="text-sm sm:text-base text-slate-400">Manage and monitor platform activity</p>
+      <div className={pageShellInnerClass}>
+        {!loading && !error && activeMainTab != null ? (
+          <PageBackNavRow>
+            <PageBackButton onClick={handleAdminBack} label={adminBackLabel} />
+          </PageBackNavRow>
+        ) : null}
+
+        {/* Header — hub only (tab views keep Back at the top like Resources) */}
+        {activeMainTab == null ? (
+          <div className="mb-6">
+            <PageHeroHeader
+              subtitle="Manage and monitor platform activity"
+              subtitleClassName="text-slate-400"
+            >
+              Admin <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Dashboard</em>
+            </PageHeroHeader>
+            {!loading && !error ? (
+              <div className="flex justify-end -mt-2">
+                <DashboardRefreshButton
+                  loading={hubRefreshing}
+                  onClick={() => runRefresh(refreshAdminStats, setHubRefreshing)}
+                />
+              </div>
+            ) : null}
           </div>
-          {!loading && !error && activeMainTab == null ? (
-            <DashboardRefreshButton
-              loading={hubRefreshing}
-              onClick={() => runRefresh(refreshAdminStats, setHubRefreshing)}
-            />
-          ) : null}
-        </div>
+        ) : null}
 
         {/* Loading State */}
         {loading && (
@@ -1105,27 +1143,16 @@ const AdminDashboard = () => {
                   accent={tab.accent}
                   ctaColor={tab.ctaColor}
                   badge={tab.badge}
+                  badgeLabel={tab.badgeLabel}
                   onClick={() => navigateAdminTab(tab.key)}
                 />
               ))}
             </DashboardNavGrid>
           ) : activeMainTab === ADMIN_MISCELLANEOUS_TAB ? (
             <>
-              <PageBackNavRow>
-                <PageBackButton
-                  onClick={() => {
-                    navigateAdminTab(null);
-                    void refreshAdminStats().catch((err) => {
-                      console.error('Failed to refresh hub stats on back:', err);
-                    });
-                  }}
-                  label="Back to Admin Dashboard"
-                />
-              </PageBackNavRow>
-
-              <div className="mb-5">
-                <h2 className="text-xl font-semibold text-theme-accent">Miscellaneous Features</h2>
-                <p className="mt-1 text-sm text-theme-secondary">
+              <div className="mb-5 text-center">
+                <h2 className="text-2xl font-semibold text-theme-accent">Miscellaneous Features</h2>
+                <p className="mx-auto mt-1 max-w-xl text-sm text-theme-secondary">
                   Additional admin tools grouped in one place.
                 </p>
               </div>
@@ -1140,6 +1167,7 @@ const AdminDashboard = () => {
                     accent={tab.accent}
                     ctaColor={tab.ctaColor}
                     badge={tab.badge}
+                    badgeLabel={tab.badgeLabel}
                     onClick={() => navigateAdminTab(tab.key)}
                   />
                 ))}
@@ -1147,25 +1175,26 @@ const AdminDashboard = () => {
             </>
           ) : (
             <>
-              <PageBackNavRow>
-                <PageBackButton onClick={handleAdminBack} label={adminBackLabel} />
-              </PageBackNavRow>
-
             {/* Main Content Area */}
             {activeMainTab === 'stats' && (
               <div className="space-y-6">
                 <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-6 shadow-sm">
-                  <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold text-theme-accent">Stats of the platform</h2>
-                      <p className="mt-1 text-sm text-theme-secondary">
-                        Platform growth, usage, and the most demanded company data in one place.
-                      </p>
+                  <div className="mb-5">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                      <div aria-hidden="true" />
+                      <h2 className="text-center text-2xl font-semibold text-theme-accent">
+                        Stats of the platform
+                      </h2>
+                      <div className="justify-self-end">
+                        <DashboardRefreshButton
+                          loading={statsRefreshing}
+                          onClick={() => runRefresh(refreshAdminStats, setStatsRefreshing)}
+                        />
+                      </div>
                     </div>
-                    <DashboardRefreshButton
-                      loading={statsRefreshing}
-                      onClick={() => runRefresh(refreshAdminStats, setStatsRefreshing)}
-                    />
+                    <p className="mx-auto mt-1 max-w-2xl text-center text-sm text-theme-secondary">
+                      Platform growth, usage, and the most demanded company data in one place.
+                    </p>
                   </div>
 
                   {loading ? (
@@ -1497,12 +1526,20 @@ const AdminDashboard = () => {
               <StudentRequestsTab />
             )}
 
+            {activeMainTab === 'submissions' && (
+              <AdminSubmissionsTab
+                pendingCount={stats.pendingSubmissions ?? 0}
+                approvedCount={stats.approvedSubmissions ?? 0}
+                onCountsChanged={refreshAdminStats}
+              />
+            )}
+
             {activeMainTab === 'assign-spc' && (
               <div className="space-y-6">
                 <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-                  <div className="mb-5">
-                    <h2 className="text-xl font-semibold text-theme-accent">Assign SPC Access</h2>
-                    <p className="mt-1 text-sm text-theme-secondary">
+                  <div className="mb-5 text-center">
+                    <h2 className="text-2xl font-semibold text-theme-accent">Assign SPC Access</h2>
+                    <p className="mx-auto mt-1 max-w-2xl text-sm text-theme-secondary">
                       Assign SPC access by validating the student email ID and USN, then manage all current SPC users from the same place.
                     </p>
                   </div>
@@ -1620,13 +1657,13 @@ const AdminDashboard = () => {
   <div className="space-y-6">
     <div className="rounded-xl border border-theme bg-theme-card p-6 shadow-sm">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 text-center">
         {/* <p className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-theme-secondary">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Batch import
         </p> */}
-        <h2 className="text-xl font-semibold text-theme-accent">Add next batch</h2>
-        <p className="mt-1 text-sm text-theme-secondary">
+        <h2 className="text-2xl font-semibold text-theme-accent">Add next batch</h2>
+        <p className="mx-auto mt-1 max-w-2xl text-sm text-theme-secondary">
           Upload an Excel sheet (.xlsx) with a header row. Required columns use common labels such as Name, Email, and USN.
         </p>
       </div>
@@ -1880,86 +1917,90 @@ const AdminDashboard = () => {
             {activeMainTab === 'companies' && (
               <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                      <h2 className="text-xl font-semibold text-indigo-400">Approve/Reject a company</h2>
-                      <p className="text-sm text-slate-400 mt-1">Review and approve company submissions by placement year</p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                <div className="mb-4">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div className="relative min-w-[140px] justify-self-start">
+                      <select
+                        value={selectedCompanyYear}
+                        onChange={(e) => {
+                          const nextYear = e.target.value || 'all';
+                          setSelectedCompanyYear(nextYear);
+                          setCoPendingMeta((m) => ({ ...m, page: 1 }));
+                          setCoApprovedMeta((m) => ({ ...m, page: 1 }));
+                        }}
+                        className="h-[38px] w-full appearance-none rounded-lg border border-theme-input bg-theme-input px-3 pr-9 text-sm font-medium text-theme-primary shadow-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-theme-accent focus:border-theme-accent"
+                        aria-label="Placement year"
+                      >
+                        {ADMIN_COMPANY_YEARS.map((year) => (
+                          <option key={year.value} value={year.value}>
+                            {year.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-theme-muted">
+                        <FaChevronDown className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                    <h2 className="text-center text-2xl font-semibold text-indigo-400">
+                      Approve/Reject a company
+                    </h2>
+                    <div className="justify-self-end">
                       <DashboardRefreshButton
                         loading={companiesRefreshing}
                         onClick={() => runRefresh(refreshCompaniesView, setCompaniesRefreshing)}
                       />
-                      <label className="min-w-[170px] rounded-xl border border-theme bg-theme-card px-3 py-2.5 shadow-sm">
-                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
-                          Placement year
-                        </span>
-                        <div className="relative">
-                          <select
-                            value={selectedCompanyYear}
-                            onChange={(e) => {
-                              const nextYear = e.target.value || 'all';
-                              setSelectedCompanyYear(nextYear);
-                              setCoPendingMeta((m) => ({ ...m, page: 1 }));
-                              setCoApprovedMeta((m) => ({ ...m, page: 1 }));
-                            }}
-                            className="w-full appearance-none rounded-xl border border-theme-input bg-theme-input px-3 py-2.5 pr-10 text-sm font-medium text-theme-primary shadow-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-theme-accent focus:border-theme-accent"
-                          >
-                            {ADMIN_COMPANY_YEARS.map((year) => (
-                              <option key={year.value} value={year.value}>
-                                {year.label}
-                              </option>
-                            ))}
-                          </select>
-                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-theme-muted">
-                            <FaChevronDown className="h-3.5 w-3.5" />
-                          </span>
-                        </div>
-                      </label>
-                      {companiesSubTab === 'pending' && companies.length > 0 && (
-                      <button
-                        onClick={handleApproveAllCompanies}
-                        disabled={approvingAllCompanies}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                          approvingAllCompanies
-                            ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                            : 'bg-green-600 text-white hover:bg-green-700'
-                        }`}
-                      >
-                        {approvingAllCompanies ? 'Approving All...' : `Approve all on page (${companies.length})`}
-                      </button>
-                    )}
-                    <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
-                      <button
-                          type="button"
-                          onClick={() => {
-                            setCompaniesSubTab('pending');
-                            setCoPendingMeta((m) => ({ ...m, page: 1 }));
-                          }}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                            companiesSubTab === 'pending'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-300 hover:bg-slate-700'
-                        }`}
-                      >
-                        Pending ({coPendingMeta.total || 0})
-                      </button>
-                      <button
-                          type="button"
-                          onClick={() => {
-                            setCompaniesSubTab('approved');
-                            setCoApprovedMeta((m) => ({ ...m, page: 1 }));
-                          }}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
-                            companiesSubTab === 'approved'
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-300 hover:bg-slate-700'
-                        }`}
-                      >
-                        Approved ({coApprovedMeta.total || 0})
-                      </button>
                     </div>
                   </div>
+                  <p className="mx-auto mt-1 max-w-2xl text-center text-sm text-slate-400">
+                    Review and approve company submissions by placement year
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompaniesSubTab('pending');
+                        setCoPendingMeta((m) => ({ ...m, page: 1 }));
+                      }}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        companiesSubTab === 'pending'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompaniesSubTab('approved');
+                        setCoApprovedMeta((m) => ({ ...m, page: 1 }));
+                      }}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        companiesSubTab === 'approved'
+                          ? 'bg-indigo-600 text-white'
+                          : 'text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      Approved
+                    </button>
+                  </div>
+                  {companiesSubTab === 'pending' && companies.length > 0 ? (
+                    <button
+                      onClick={handleApproveAllCompanies}
+                      disabled={approvingAllCompanies}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                        approvingAllCompanies
+                          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {approvingAllCompanies ? 'Approving All...' : `Approve all on page (${companies.length})`}
+                    </button>
+                  ) : (
+                    <div aria-hidden="true" />
+                  )}
                 </div>
               </div>
 
@@ -1983,7 +2024,6 @@ const AdminDashboard = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-400">
                                   <p><span className="font-medium">Year:</span> {company.placementYear || 'N/A'}</p>
                                   <p><span className="font-medium">Type:</span> {company.type || 'N/A'}</p>
-                                  <p><span className="font-medium">Count:</span> {company.count || 'N/A'}</p>
                                   {company.submittedBy && (
                                     <>
                                       <p><span className="font-medium">Submitted By:</span> {company.submittedBy.name || 'N/A'}</p>
@@ -2039,11 +2079,11 @@ const AdminDashboard = () => {
                               })()}
                             </div>
 
-                            <p className="mt-4 rounded-lg border border-slate-600/80 bg-slate-900/50 px-3 py-2 text-xs text-slate-400">
+                            {/* <p className="mt-4 rounded-lg border border-slate-600/80 bg-slate-900/50 px-3 py-2 text-xs text-slate-400">
                               OA questions, interview Q&amp;A, interview process, must-do topics, and internship write-ups
                               are reviewed under{" "}
                               <span className="font-medium text-slate-300">Submissions</span>, not on this card.
-                            </p>
+                            </p> */}
                           </div>
                         ))}
                       </div>
@@ -2121,28 +2161,33 @@ const AdminDashboard = () => {
 
             {activeMainTab === 'events' && (
               <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                  <div>
-                    <h2 className="text-xl font-semibold text-indigo-400">Upload an event/Announcement</h2>
-                    <p className="text-xs sm:text-sm text-slate-400 mt-1">Manage off-campus placements, hackathons, and other events</p>
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-700">
+                  <div className="grid grid-cols-[1fr_auto] items-center gap-3 sm:gap-4">
+                    <div className="min-w-0 text-center sm:pl-16">
+                      <h2 className="text-2xl font-semibold text-indigo-400">Upload an event/Announcement</h2>
+                      <p className="mt-1 text-xs sm:text-sm text-slate-400">
+                        Manage off-campus placements, hackathons, and other events
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEventForm(!showEventForm);
+                        setEditingEvent(null);
+                        setEventForm({
+                          type: '',
+                          organizer: '',
+                          title: '',
+                          url: '',
+                          lastDateToRegister: '',
+                        });
+                      }}
+                      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white hover:bg-indigo-700"
+                    >
+                      <FaPlus className="h-3.5 w-3.5" />
+                      {showEventForm ? 'Cancel' : 'Post an Event'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowEventForm(!showEventForm);
-                      setEditingEvent(null);
-                      setEventForm({
-                        type: '',
-                        organizer: '',
-                        title: '',
-                        url: '',
-                        lastDateToRegister: '',
-                      });
-                    }}
-                    className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
-                  >
-                    <FaPlus className="w-4 h-4" />
-                    {showEventForm ? 'Cancel' : 'Post an Event'}
-                  </button>
                 </div>
 
               {/* Event Form */}

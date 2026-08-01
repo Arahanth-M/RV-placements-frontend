@@ -91,12 +91,13 @@ const PlacementHubSettingsTab = ({ onToast }) => {
 
   return (
     <div className="rounded-xl border border-theme bg-theme-card p-5 sm:p-6 shadow-sm">
-      <h2 className="text-xl font-semibold text-theme-accent">Dream / Open dream thresholds</h2>
-      <p className="mt-2 text-sm text-theme-secondary max-w-2xl">
-        Set the minimum package (LPA) for <strong>Open dream</strong> vs <strong>Dream</strong> per{" "}
-        <strong>placement year</strong> and <strong>hub cluster</strong>. Company stats and filters use the
-        year from the URL (<code className="text-xs">?year=</code>) together with the visit cluster.
-      </p>
+      <div className="text-center">
+        <h2 className="text-2xl font-semibold text-theme-accent">Dream / Open dream thresholds</h2>
+        <p className="mx-auto mt-2 max-w-2xl text-sm text-theme-secondary">
+          Set the minimum package (LPA) for <strong>Open dream</strong> vs <strong>Dream</strong> per{" "}
+          <strong>placement year</strong> and <strong>hub cluster</strong>. 
+        </p>
+      </div>
 
       {error && (
         <p className="mt-4 rounded-lg border border-red-700/50 bg-red-900/20 px-3 py-2 text-sm text-red-300">

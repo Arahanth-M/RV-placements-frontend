@@ -19,6 +19,9 @@ import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
 import ProtectedSpcRoute from "./components/ProtectedSpcRoute";
 import Resources from "./components/Resources";
 import AdminDashboard from "./components/AdminDashboard";
+import JdImportPage from "./components/JdImportPage";
+import MinCgpaGapsPage from "./components/MinCgpaGapsPage";
+import RvitmDataPage from "./components/RvitmDataPage";
 import Events from "./components/Events";
 import Analytics from "./components/Analytics";
 import Developers from "./components/Developers";
@@ -138,6 +141,30 @@ function AppShell() {
             element={
               <ProtectedAdminRoute>
                 <AdminDashboard />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/jd-import"
+            element={
+              <ProtectedAdminRoute>
+                <JdImportPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/min-cgpa"
+            element={
+              <ProtectedAdminRoute>
+                <MinCgpaGapsPage />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin/rvitm-data"
+            element={
+              <ProtectedAdminRoute>
+                <RvitmDataPage />
               </ProtectedAdminRoute>
             }
           />

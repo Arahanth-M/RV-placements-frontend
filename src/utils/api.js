@@ -401,6 +401,31 @@ export const adminAPI = {
     }),
   updateCompanyRoles: (companyId, roles, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/roles`, { roles }, { params: adminPlacementYearParams(opts) }),
+  extractJdImport: (formData) =>
+    API.post('/api/admin/jd-import/extract', formData),
+  scanJdImport: (formData) =>
+    API.post('/api/admin/jd-import/scan', formData),
+  applyJdImport: (data, opts = {}) =>
+    API.post('/api/admin/jd-import/apply', data, {
+      params: adminPlacementYearParams(opts),
+    }),
+  listMinCgpaGaps: (year) =>
+    API.get('/api/admin/min-cgpa-gaps', {
+      params: year == null || year === '' || year === 'all' ? undefined : { year },
+    }),
+  setVisitMinCgpa: (visitId, payload) =>
+    API.put(
+      `/api/admin/min-cgpa-gaps/${encodeURIComponent(visitId)}`,
+      typeof payload === "object" && payload != null && !Array.isArray(payload)
+        ? payload
+        : { minCgpa: payload }
+    ),
+  listRvitmData: (year) =>
+    API.get('/api/admin/rvitm-data', {
+      params: year == null || year === '' || year === 'all' ? undefined : { year },
+    }),
+  saveRvitmData: (visitId, payload) =>
+    API.put(`/api/admin/rvitm-data/${encodeURIComponent(visitId)}`, payload),
   updateCompanyGeneralInfo: (companyId, data, opts = {}) =>
     API.put(`/api/admin/companies/${companyId}/general`, data, { params: adminPlacementYearParams(opts) }),
   getStudentBatchColumnGuide: () => API.get('/api/admin/students/batch-import/column-guide'),
@@ -482,6 +507,9 @@ export const notificationAPI = {
   markAllAsSeen: () => API.put('/api/notifications/mark-all-seen'),
   deleteNotification: (id) => API.delete(`/api/notifications/${id}`),
   clearAllNotifications: () => API.delete('/api/notifications'),
+  getSubscriptionStatus: () => API.get('/api/notifications/subscription'),
+  subscribe: () => API.post('/api/notifications/subscription'),
+  unsubscribe: () => API.delete('/api/notifications/subscription'),
 };
 
 export const studentAPI = {

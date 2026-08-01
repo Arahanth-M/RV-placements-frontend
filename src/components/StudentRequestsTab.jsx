@@ -109,13 +109,13 @@ export default function StudentRequestsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-        <h2 className="text-xl font-semibold text-theme-accent">Student requests</h2>
-        <p className="mt-1 text-sm text-theme-secondary">
+      <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm text-center">
+        <h2 className="text-2xl font-semibold text-theme-accent">Student requests</h2>
+        <p className="mx-auto mt-1 max-w-2xl text-sm text-theme-secondary">
           Requests for more company details, additional AI interviews, and profile discrepancy
           reports from students. These are not sent as bell notifications.
         </p>
-        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+        <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
           <span className="rounded-full border border-theme bg-theme-hero px-3 py-1 text-theme-primary">
             {totals.companyDetailRequestCount} detail request
             {totals.companyDetailRequestCount === 1 ? "" : "s"}

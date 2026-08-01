@@ -39,7 +39,7 @@ const PLACEMENT_STATS_NAV_ITEMS = [
   {
     key: PLACEMENT_STATS_VIEWS.roster,
     title: PLACEMENT_STATS_VIEW_LABELS[PLACEMENT_STATS_VIEWS.roster],
-    description: "Browse placed students branch by branch.",
+    description: "Browse placed students by program.",
     cta: "View student data",
     accent: "border-l-indigo-500",
     ctaColor: "text-indigo-500",
@@ -79,7 +79,7 @@ const CUSTOM_SEARCH_MODE_NAV_ITEMS = [
   {
     key: CUSTOM_SEARCH_MODES.filter,
     title: CUSTOM_SEARCH_MODE_LABELS[CUSTOM_SEARCH_MODES.filter],
-    description: "Branch, company, offer type, and CTC range.",
+    description: "Program, company, offer type, and CTC range.",
     cta: "Use filters",
     accent: "border-l-violet-500",
     ctaColor: "text-violet-500",
@@ -156,10 +156,10 @@ function PlacementStatsPagination({ pagination, onPageChange }) {
 function buildBranchSelectOptions(branches, allValue = BRANCH_FILTER_ALL) {
   const list = Array.isArray(branches) ? branches : [];
   return [
-    { value: allValue, label: "All branches" },
+    { value: allValue, label: "All programs" },
     ...list.map((branch) => ({
       value: String(branch.branchCode),
-      label: titleCaseBranch(branch.branchCode),
+      label: branchChipLabel(branch.branchCode),
     })),
   ];
 }
@@ -382,6 +382,26 @@ function CustomSearchStudentField({ value, onChange, branches }) {
   );
 }
 
+function DetailField({ label, value, accent = false, stipend = false }) {
+  const display = stipend ? formatInternshipStipendDisplay(value) : String(value ?? "").trim();
+  if (!stipend && (!display || display === "-")) return null;
+  if (!stipend && !display) return null;
+  return (
+    <div className="rounded-lg border border-theme bg-theme-card px-3 py-2.5">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+        {label}
+      </p>
+      <p
+        className={`text-sm font-medium break-words ${
+          accent ? "text-indigo-600 dark:text-indigo-400" : "text-theme-primary"
+        }`}
+      >
+        {display}
+      </p>
+    </div>
+  );
+}
+
 function PlacementCustomSearchPanel({ branches, selectedYear }) {
   const [searchMode, setSearchMode] = useState(CUSTOM_SEARCH_MODES.filter);
   const [branchFilter, setBranchFilter] = useState(CUSTOM_SEARCH_BRANCH_ALL);
@@ -393,6 +413,8 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
   const [appliedFilters, setAppliedFilters] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [resultsPage, setResultsPage] = useState(1);
+  const [expandedRows, setExpandedRows] = useState(new Set());
+  const [addedByViewer, setAddedByViewer] = useState(null);
 
   const branchOptions = useMemo(
     () => buildBranchSelectOptions(branches, CUSTOM_SEARCH_BRANCH_ALL),
@@ -424,6 +446,7 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
 
   const handleApplyFilters = () => {
     setResultsPage(1);
+    setExpandedRows(new Set());
     if (searchMode === CUSTOM_SEARCH_MODES.student) {
       setAppliedFilters({
         mode: CUSTOM_SEARCH_MODES.student,
@@ -446,6 +469,7 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
     setSearchMode(nextMode);
     setAppliedFilters(null);
     setResultsPage(1);
+    setExpandedRows(new Set());
   };
 
   const handleResetFilters = () => {
@@ -456,6 +480,7 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
     setCtcMinInput("");
     setCtcMaxInput("");
     setResultsPage(1);
+    setExpandedRows(new Set());
     setAppliedFilters(null);
   };
 
@@ -471,10 +496,15 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
     }
   };
 
-  const cellText = (value) => {
-    const text = String(value ?? "").trim();
-    return text || "—";
+  const toggleRow = (key) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
   };
+
+  const gridCols = "1rem 1.5fr 0.7fr 1.3fr 1fr 0.55fr 0.75fr 3rem";
 
   return (
     <div className="space-y-4">
@@ -499,7 +529,7 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
         <p className="text-sm text-theme-secondary">
           {searchMode === CUSTOM_SEARCH_MODES.student
             ? "Search placed students by name, USN, or email. Click "
-            : "Filter placed students by branch, company, offer type, and CTC range. Click "}
+            : "Filter placed students by program, company, offer type, and CTC range. Click "}
           <span className="font-medium text-theme-primary">Apply filter</span> to load results.
         </p>
 
@@ -531,7 +561,7 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
         <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
           <ThemeFilterSelect
             id="custom-search-branch"
-            label="Branch"
+            label="Programs"
             name="customSearchBranch"
             value={branchFilter}
             onChange={(e) => setBranchFilter(String(e.target.value))}
@@ -624,67 +654,185 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
             No students match the selected filters.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-theme">
-            <table className="min-w-[1100px] w-full divide-y divide-theme text-sm">
-              <thead className="bg-theme-hero">
-                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-                  <th className="px-3 py-3">Branch</th>
-                  <th className="px-3 py-3">Name</th>
-                  <th className="px-3 py-3">USN</th>
-                  <th className="px-3 py-3">Email</th>
-                  <th className="px-3 py-3">Company</th>
-                  <th className="px-3 py-3">Offer type</th>
-                  <th className="px-3 py-3">CTC</th>
-                  <th className="px-3 py-3">Role</th>
-                  <th className="px-3 py-3">Stipend</th>
-                  <th className="px-3 py-3">6 mo. stipend</th>
-                  <th className="px-3 py-3">PPO conversion</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-theme bg-theme-card">
-                {resultsPagination.items.map((student, idx) => {
-                  const rowKey = `${student.usn || student.email || "row"}-${resultsPagination.rangeStart + idx}`;
-                  return (
-                    <tr key={rowKey} className="text-theme-primary">
-                      <td className="px-3 py-2.5 font-medium whitespace-nowrap">
-                        {titleCaseBranch(student.branchCode)}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{cellText(student.name)}</td>
-                      <td className="px-3 py-2.5 font-mono text-xs whitespace-nowrap">
-                        {cellText(student.usn)}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[180px] truncate">{cellText(student.email)}</td>
-                      <td className="px-3 py-2.5 max-w-[160px] truncate">
-                        {cellText(student.companyPlaced)}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[160px] truncate">
-                        {cellText(student.typeOfOffer)}
-                      </td>
-                      <td className="px-3 py-2.5 font-semibold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
-                        {cellText(student.ctc)}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[140px] truncate">{cellText(student.role)}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        {formatInternshipStipendDisplay(student.stipend) || "—"}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        {formatInternshipStipendDisplay(student.sixMonthsInternshipStipend) || "—"}
-                      </td>
-                      <td className="px-3 py-2.5 max-w-[140px] truncate">
-                        {cellText(student.ppoConversionType)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div>
+            <div
+              className="mb-1 grid items-center gap-x-3 px-4 py-1"
+              style={{ gridTemplateColumns: gridCols }}
+            >
+              <span />
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                Name / USN
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                Program
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                Company
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                Offer
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                CTC
+              </span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+                Role
+              </span>
+              <span />
+            </div>
+
+            <div className="divide-y divide-theme overflow-hidden rounded-lg border border-theme">
+              {resultsPagination.items.map((student, idx) => {
+                const rowKey = `${student.usn || student.email || "row"}-${resultsPagination.rangeStart + idx}`;
+                const isOpen = expandedRows.has(rowKey);
+
+                return (
+                  <div key={rowKey}>
+                    <button
+                      type="button"
+                      onClick={() => toggleRow(rowKey)}
+                      className={`w-full text-left transition-colors ${
+                        isOpen
+                          ? "bg-indigo-50 dark:bg-indigo-950/20"
+                          : "bg-theme-card hover:bg-theme-hero"
+                      }`}
+                    >
+                      <div
+                        className="grid items-center gap-x-3 px-4 py-3"
+                        style={{ gridTemplateColumns: gridCols }}
+                      >
+                        <FaChevronDown
+                          className={`h-3 w-3 shrink-0 text-theme-secondary transition-transform duration-200 ${
+                            isOpen ? "rotate-180 text-indigo-500" : ""
+                          }`}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-theme-primary">
+                            {student.name || "—"}
+                          </p>
+                          <p className="font-mono text-xs text-theme-secondary">
+                            {student.usn || "—"}
+                          </p>
+                        </div>
+                        <span className="truncate text-sm font-medium text-theme-secondary">
+                          {branchChipLabel(student.branchCode)}
+                        </span>
+                        <span className="truncate text-sm text-theme-secondary">
+                          {student.companyPlaced || "—"}
+                        </span>
+                        <span className="truncate text-sm text-theme-secondary">
+                          {student.typeOfOffer || "—"}
+                        </span>
+                        <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                          {student.ctc || "—"}
+                        </span>
+                        <span className="truncate text-sm text-theme-secondary">
+                          {student.role || "—"}
+                        </span>
+                        <span className="text-right text-xs text-theme-secondary">
+                          {isOpen ? "Hide" : "Details"}
+                        </span>
+                      </div>
+                    </button>
+
+                    {isOpen ? (
+                      <div className="border-t border-indigo-200 bg-theme-hero px-4 py-4 dark:border-indigo-800">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          <DetailField
+                            label="Program"
+                            value={titleCaseBranch(student.branchCode)}
+                          />
+                          <DetailField label="Email ID" value={student.email} />
+                          <DetailField label="Company placed" value={student.companyPlaced} />
+                          <DetailField label="Type of offer" value={student.typeOfOffer} />
+                          <DetailField label="Role" value={student.role} />
+                          <DetailField label="Stipend" value={student.stipend} stipend />
+                          <DetailField
+                            label="6 mo. internship stipend"
+                            value={student.sixMonthsInternshipStipend}
+                            stipend
+                          />
+                          <DetailField label="CTC" value={student.ctc} accent />
+                          <DetailField
+                            label="PPO conversion type"
+                            value={student.ppoConversionType}
+                          />
+                          <DetailField
+                            label="Last updated"
+                            value={formatPlacementRecordWhen(
+                              placementRecordTimestamp(student)
+                            )}
+                          />
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between gap-3 border-t border-theme pt-3">
+                          <p className="text-xs text-theme-secondary">
+                            Placement record source
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAddedByViewer({
+                                addedByName: student.addedByName || "",
+                                addedByUsn: student.addedByUsn || "",
+                                addedByEmail: student.addedByEmail || "",
+                              });
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-theme bg-theme-card px-2.5 py-1.5 text-xs font-semibold text-theme-primary transition hover:bg-theme-nav"
+                          >
+                            View added by
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
             <PlacementStatsPagination
               pagination={resultsPagination}
-              onPageChange={setResultsPage}
+              onPageChange={(page) => {
+                setResultsPage(page);
+                setExpandedRows(new Set());
+              }}
             />
           </div>
         )}
       </div>
+      ) : null}
+
+      {addedByViewer ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border border-theme bg-theme-card p-5 shadow-xl">
+            <h4 className="text-base font-semibold text-theme-primary">
+              Placement Record Source
+            </h4>
+            <div className="mt-3 space-y-2 text-sm text-theme-secondary">
+              <p>
+                <span className="font-semibold text-theme-primary">Name:</span>{" "}
+                {addedByViewer.addedByName || "Unavailable"}
+              </p>
+              <p>
+                <span className="font-semibold text-theme-primary">USN:</span>{" "}
+                {addedByViewer.addedByUsn || "Unavailable"}
+              </p>
+              <p>
+                <span className="font-semibold text-theme-primary">Email:</span>{" "}
+                {addedByViewer.addedByEmail || "Unavailable"}
+              </p>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setAddedByViewer(null)}
+                className="rounded-lg bg-theme-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -711,10 +859,52 @@ export default function StudentPlacementStatsTab() {
     [branches]
   );
 
-  const activeBranch = useMemo(
-    () => branches.find((branch) => String(branch.branchCode) === openBranchCode) || null,
-    [branches, openBranchCode]
-  );
+  const isAllBranches = openBranchCode === BRANCH_FILTER_ALL;
+
+  const activeBranch = useMemo(() => {
+    if (!isAllBranches) {
+      return branches.find((branch) => String(branch.branchCode) === openBranchCode) || null;
+    }
+    if (branches.length === 0) return null;
+
+    let latestUpdatedAt = null;
+    let latestTs = -1;
+    let latestSpcPlacement = null;
+    for (const branch of branches) {
+      const ts = Date.parse(String(branch?.lastUpdatedAt || "")) || 0;
+      if (ts > latestTs) {
+        latestTs = ts;
+        latestUpdatedAt = branch.lastUpdatedAt || null;
+        latestSpcPlacement = branch.latestSpcPlacement || null;
+      }
+    }
+    return {
+      branchCode: BRANCH_FILTER_ALL,
+      count: totalStudents,
+      lastUpdatedAt: latestUpdatedAt,
+      latestSpcPlacement,
+    };
+  }, [branches, openBranchCode, isAllBranches, totalStudents]);
+
+  const rosterBranches = useMemo(() => {
+    if (!isAllBranches) {
+      return branches.filter((branch) => String(branch.branchCode) === openBranchCode);
+    }
+    const students = branches.flatMap((branch) => {
+      const code = String(branch.branchCode || "");
+      return (Array.isArray(branch.students) ? branch.students : []).map((student) => ({
+        ...student,
+        branchCode: student.branchCode || code,
+      }));
+    });
+    return [
+      {
+        branchCode: BRANCH_FILTER_ALL,
+        count: students.length,
+        students,
+      },
+    ];
+  }, [branches, openBranchCode, isAllBranches]);
 
   const loadData = useCallback(async (yearArg, options = {}) => {
     const { silent = false } = options;
@@ -737,9 +927,10 @@ export default function StudentPlacementStatsTab() {
       setBranches(nextBranches);
       if (nextBranches.length > 0) {
         setOpenBranchCode((prev) =>
+          prev === BRANCH_FILTER_ALL ||
           nextBranches.some((b) => String(b.branchCode) === prev)
-            ? prev
-            : String(nextBranches[0].branchCode)
+            ? prev || BRANCH_FILTER_ALL
+            : BRANCH_FILTER_ALL
         );
       } else {
         setOpenBranchCode("");
@@ -820,112 +1011,88 @@ export default function StudentPlacementStatsTab() {
     });
   };
 
-  // Small helper: renders a labelled detail card inside the expanded panel
-  const DetailField = ({ label, value, accent = false, stipend = false }) => {
-    const display = stipend ? formatInternshipStipendDisplay(value) : String(value ?? "").trim();
-    if (!stipend && (!display || display === "-")) return null;
-    if (!stipend && !display) return null;
-    return (
-      <div className="rounded-lg border border-theme bg-theme-card px-3 py-2.5">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-          {label}
-        </p>
-        <p
-          className={`text-sm font-medium break-words ${
-            accent
-              ? "text-indigo-600 dark:text-indigo-400"
-              : "text-theme-primary"
-          }`}
-        >
-          {display}
-        </p>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Header card */}
       <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-theme-accent">
-              Student Placement Stats
-            </h2>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-x-2">
+          <div className="justify-self-start">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-theme-secondary">
+              Year
+            </p>
+            <div className="relative min-w-[120px]">
+            <button
+              type="button"
+              onClick={() => {
+                if (loading || years.length === 0) return;
+                setYearDropdownOpen((prev) => !prev);
+              }}
+              className="flex h-[38px] w-full items-center justify-between rounded-lg border border-theme-input bg-theme-input px-3 text-left text-sm font-medium text-theme-primary outline-none transition focus:border-theme-accent focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={loading || years.length === 0}
+              aria-label="Year"
+            >
+              <span>{selectedYear || "No years"}</span>
+              <FaChevronDown
+                className={`text-xs text-theme-muted transition-transform ${
+                  yearDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+            {yearDropdownOpen && years.length > 0 ? (
+              <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-lg border border-theme bg-theme-card shadow-xl">
+                <div className="max-h-56 overflow-y-auto py-1">
+                  {years.map((y) => {
+                    const value = String(y);
+                    const isSelected = value === selectedYear;
+                    return (
+                      <button
+                        type="button"
+                        key={value}
+                        onClick={() => handleYearSelect(value)}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
+                          isSelected
+                            ? "bg-indigo-600/15 text-theme-primary"
+                            : "text-theme-secondary hover:bg-theme-nav hover:text-theme-primary"
+                        }`}
+                      >
+                        <span>{value}</span>
+                        {isSelected ? (
+                          <span className="text-xs font-semibold text-indigo-400">
+                            Selected
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            </div>
+          </div>
+          <h2 className="pb-1 text-center text-2xl font-semibold text-theme-accent">
+            Student Placement Stats
+          </h2>
+          <div className="flex flex-col items-end gap-1 justify-self-end">
+            <DashboardRefreshButton
+              loading={refreshing}
+              disabled={loading}
+              onClick={handleRefresh}
+            />
             {!loading && selectedYear ? (
-              <p className="mt-1 text-sm text-theme-secondary">
+              <p className="max-w-[220px] text-right text-xs leading-snug text-theme-secondary sm:max-w-xs">
                 {lastUpdatedAt ? (
                   <>
-                    Last placement update for{" "}
+                    Last update{" "}
                     <span className="font-medium text-theme-primary">{selectedYear}</span>:{" "}
                     <span className="font-medium text-theme-primary">
                       {formatPlacementRecordWhen(lastUpdatedAt)}
                     </span>
                   </>
                 ) : (
-                  <>No placement records for {selectedYear} yet.</>
+                  <>No records for {selectedYear} yet.</>
                 )}
               </p>
             ) : null}
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <DashboardRefreshButton
-              loading={refreshing}
-              disabled={loading}
-              onClick={handleRefresh}
-            />
-            <div className="min-w-[220px]">
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-theme-secondary">
-              Placement Year
-            </label>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  if (loading || years.length === 0) return;
-                  setYearDropdownOpen((prev) => !prev);
-                }}
-                className="flex w-full items-center justify-between rounded-lg border border-theme-input bg-theme-input px-3 py-2.5 text-left text-sm font-medium text-theme-primary outline-none transition focus:border-theme-accent focus:ring-2 focus:ring-indigo-500/30 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={loading || years.length === 0}
-              >
-                <span>{selectedYear || "No years"}</span>
-                <FaChevronDown
-                  className={`text-xs text-theme-muted transition-transform ${
-                    yearDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {yearDropdownOpen && years.length > 0 ? (
-                <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-lg border border-theme bg-theme-card shadow-xl">
-                  <div className="max-h-56 overflow-y-auto py-1">
-                    {years.map((y) => {
-                      const value = String(y);
-                      const isSelected = value === selectedYear;
-                      return (
-                        <button
-                          type="button"
-                          key={value}
-                          onClick={() => handleYearSelect(value)}
-                          className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
-                            isSelected
-                              ? "bg-indigo-600/15 text-theme-primary"
-                              : "text-theme-secondary hover:bg-theme-nav hover:text-theme-primary"
-                          }`}
-                        >
-                          <span>{value}</span>
-                          {isSelected ? (
-                            <span className="text-xs font-semibold text-indigo-400">
-                              Selected
-                            </span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            </div>
           </div>
         </div>
       </div>
@@ -977,7 +1144,7 @@ export default function StudentPlacementStatsTab() {
           <div className="rounded-xl border border-theme bg-theme-card p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-theme-primary">Branches</p>
+                {/* <p className="text-sm font-semibold text-theme-primary">Programs</p> */}
                 {activeBranch ? (
                   <div className="mt-1 space-y-0.5 text-xs text-theme-secondary">
                     <p>
@@ -994,6 +1161,7 @@ export default function StudentPlacementStatsTab() {
                         {activeBranch.latestSpcPlacement?.companyPlaced || "—"}
                       </span>
                     </p>
+                     <p className="text-xl font-semibold text-theme-primary">Programs</p>
                   </div>
                 ) : null}
               </div>
@@ -1008,6 +1176,25 @@ export default function StudentPlacementStatsTab() {
               </button>
             </div>
             <div className="flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenBranchCode(BRANCH_FILTER_ALL);
+                  setExpandedRows(new Set());
+                  setRosterPage(1);
+                }}
+                title="All programs"
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                  isAllBranches
+                    ? "border-indigo-500 bg-indigo-600 text-white shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
+                    : "border-theme bg-theme-hero text-theme-primary hover:border-indigo-400/40 hover:bg-theme-nav hover:shadow-sm"
+                }`}
+              >
+                All{" "}
+                <span className={isAllBranches ? "opacity-80" : "opacity-60"}>
+                  {totalStudents}
+                </span>
+              </button>
               {branches.map((branch) => {
                 const code = String(branch.branchCode);
                 const isActive = openBranchCode === code;
@@ -1038,14 +1225,16 @@ export default function StudentPlacementStatsTab() {
           </div>
 
           {/* Student list — expandable rows */}
-          {branches
-            .filter((branch) => String(branch.branchCode) === openBranchCode)
-            .map((branch) => {
+          {rosterBranches.map((branch) => {
               const students = Array.isArray(branch.students)
                 ? branch.students
                 : [];
               const rosterPagination = paginateList(students, rosterPage);
               const pagedStudents = rosterPagination.items;
+              const showProgramCol = String(branch.branchCode) === BRANCH_FILTER_ALL;
+              const gridCols = showProgramCol
+                ? "1rem 1.5fr 0.7fr 1.3fr 1fr 0.55fr 0.75fr 3rem"
+                : "1rem 1.8fr 1.4fr 1fr 0.6fr 0.8fr 3rem";
               return (
                 <div
                   key={String(branch.branchCode)}
@@ -1054,20 +1243,23 @@ export default function StudentPlacementStatsTab() {
                   {/* Card header */}
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <h3 className="text-lg font-semibold text-theme-primary">
-                      {titleCaseBranch(branch.branchCode)}
+                      {showProgramCol ? "All programs" : titleCaseBranch(branch.branchCode)}
                     </h3>
                     <span className="rounded-full bg-indigo-600/15 px-3 py-1 text-xs font-semibold text-indigo-400">
-                      {Number(branch.count) || 0} students
+                      {Number(branch.count) || students.length || 0} students
                     </span>
                   </div>
 
                   {/* Column headers — same grid template as rows */}
                   <div
                     className="mb-1 grid items-center gap-x-3 px-4 py-1"
-                    style={{ gridTemplateColumns: "1rem 1.8fr 1.4fr 1fr 0.6fr 0.8fr 3rem" }}
+                    style={{ gridTemplateColumns: gridCols }}
                   >
                     <span />
                     <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Name / USN</span>
+                    {showProgramCol ? (
+                      <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Program</span>
+                    ) : null}
                     <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Company</span>
                     <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">Offer</span>
                     <span className="text-xs font-semibold uppercase tracking-wide text-theme-secondary">CTC</span>
@@ -1100,7 +1292,7 @@ export default function StudentPlacementStatsTab() {
                             >
                               <div
                                 className="grid items-center gap-x-3 px-4 py-3"
-                                style={{ gridTemplateColumns: "1rem 1.8fr 1.4fr 1fr 0.6fr 0.8fr 3rem" }}
+                                style={{ gridTemplateColumns: gridCols }}
                               >
                                 {/* Chevron */}
                                 <FaChevronDown
@@ -1117,6 +1309,11 @@ export default function StudentPlacementStatsTab() {
                                     {student.usn || "—"}
                                   </p>
                                 </div>
+                                {showProgramCol ? (
+                                  <span className="truncate text-sm font-medium text-theme-secondary">
+                                    {branchChipLabel(student.branchCode)}
+                                  </span>
+                                ) : null}
                                 {/* Company */}
                                 <span className="truncate text-sm text-theme-secondary">
                                   {student.companyPlaced || "—"}
@@ -1144,6 +1341,12 @@ export default function StudentPlacementStatsTab() {
                             {isOpen && (
                               <div className="border-t border-indigo-200 bg-theme-hero px-4 py-4 dark:border-indigo-800">
                                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                  {showProgramCol ? (
+                                    <DetailField
+                                      label="Program"
+                                      value={titleCaseBranch(student.branchCode)}
+                                    />
+                                  ) : null}
                                   <DetailField label="Email ID" value={student.email} />
                                   <DetailField label="Company placed" value={student.companyPlaced} />
                                   <DetailField label="Type of offer" value={student.typeOfOffer} />
