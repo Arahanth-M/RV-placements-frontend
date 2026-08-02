@@ -22,6 +22,10 @@ import {
 } from "../../constants/interviewRoundFocus";
 import { clampInterviewQuestionCountForRound } from "../../utils/interviewRoundLimits";
 import InterviewSlotBookModal from "../InterviewSlotBookModal";
+import {
+  findActiveBookingClient,
+  msUntilNextSlotBoundary,
+} from "../../utils/interviewSlotWindow.js";
 
 /** Languages shown in the mock-interview coding picker (backend may still support more). */
 const INTERVIEW_UI_CODING_LANGUAGES = ["python", "cpp", "java"];
@@ -988,6 +992,9 @@ function AIInterviewTab({
   const [slotBookModalOpen, setSlotBookModalOpen] = useState(false);
   const [slotBookingStatus, setSlotBookingStatus] = useState(null);
   const [slotStatusLoading, setSlotStatusLoading] = useState(false);
+  /** Bumps on a schedule so we re-evaluate the booked hour without polling. */
+  const [slotClockMs, setSlotClockMs] = useState(() => Date.now());
+  const prevClientSlotActiveRef = useRef(false);
 
   const planRequiresDsaSlot = useMemo(
     () => normalizedCustomRounds.some((round) => round.type === "DSA"),
@@ -995,25 +1002,55 @@ function AIInterviewTab({
   );
 
   const refreshSlotBookingStatus = useCallback(async () => {
-    if (!user?.userId || normalizedCustomRounds.length < 1) {
+    const authUserId = user?.userId || user?._id;
+    if (!authUserId || normalizedCustomRounds.length < 1) {
       setSlotBookingStatus(null);
       return;
     }
     setSlotStatusLoading(true);
     try {
-      const { data } = await interviewAPI.getSlotBookingStatus(normalizedCustomRounds);
+      // Status schema only needs type/difficulty; strip focus etc. to avoid validation 400s.
+      const roundsForStatus = normalizedCustomRounds.map((r) => ({
+        type: r.type,
+        difficulty: r.difficulty,
+      }));
+      const { data } = await interviewAPI.getSlotBookingStatus(roundsForStatus);
       setSlotBookingStatus(data || null);
     } catch (err) {
       console.warn("[AIInterviewTab] slot booking status failed", err?.message || err);
-      setSlotBookingStatus(null);
+      // Fallback: still unlock Start from /mine bookings if status endpoint fails.
+      try {
+        const mineRes = await interviewAPI.getMySlotBookings();
+        const bookings = Array.isArray(mineRes?.data?.bookings) ? mineRes.data.bookings : [];
+        setSlotBookingStatus({
+          requiresSlot: true,
+          hasActiveBookingNow: bookings.some((b) => b?.isActiveNow),
+          activeBooking: bookings.find((b) => b?.isActiveNow) || null,
+          upcomingBookings: bookings,
+          canStartDsaInterview: bookings.some((b) => b?.isActiveNow),
+        });
+      } catch {
+        setSlotBookingStatus(null);
+      }
     } finally {
       setSlotStatusLoading(false);
     }
-  }, [user?.userId, normalizedCustomRounds]);
+  }, [user?.userId, user?._id, normalizedCustomRounds]);
 
-  const hasActiveDsaSlotNow = Boolean(slotBookingStatus?.hasActiveBookingNow);
-  const dsaSlotBlocked =
-    planRequiresDsaSlot && (slotStatusLoading || !hasActiveDsaSlotNow);
+  const clientActiveBooking = useMemo(
+    () => findActiveBookingClient(slotBookingStatus, slotClockMs),
+    [slotBookingStatus, slotClockMs]
+  );
+
+  const hasActiveDsaSlotNow = Boolean(
+    slotBookingStatus?.hasActiveBookingNow || clientActiveBooking
+  );
+  const activeDsaSlotLabel =
+    slotBookingStatus?.activeBooking?.label ||
+    clientActiveBooking?.label ||
+    null;
+  // Do not tie this to slotStatusLoading — a refresh must not disable Start mid-window.
+  const dsaSlotBlocked = planRequiresDsaSlot && !hasActiveDsaSlotNow;
 
   const canStart = useMemo(() => {
     return (
@@ -2624,9 +2661,56 @@ function AIInterviewTab({
   const interviewCompleted = status === "completed";
 
   useEffect(() => {
-    if (!showStartPrompt || !user?.userId) return;
+    if (!showStartPrompt || !(user?.userId || user?._id)) return;
     refreshSlotBookingStatus();
-  }, [showStartPrompt, user?.userId, refreshSlotBookingStatus]);
+  }, [showStartPrompt, user?.userId, user?._id, refreshSlotBookingStatus]);
+
+  // Wake at the next booking boundary so Start unlocks when the hour begins (no steady polling).
+  useEffect(() => {
+    if (!showStartPrompt || !(user?.userId || user?._id) || !planRequiresDsaSlot) return;
+    if (!slotBookingStatus) return;
+
+    const tick = () => setSlotClockMs(Date.now());
+
+    const schedule = () => {
+      if (typeof document !== "undefined" && document.hidden) return null;
+      const wait = msUntilNextSlotBoundary(slotBookingStatus, Date.now());
+      if (wait == null) return null;
+      // Small buffer so we cross the boundary after the server clock.
+      const delay = Math.max(250, Math.min(wait + 250, 60 * 60 * 1000));
+      return window.setTimeout(() => {
+        tick();
+      }, delay);
+    };
+
+    let timerId = schedule();
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (timerId != null) window.clearTimeout(timerId);
+        timerId = null;
+        return;
+      }
+      tick();
+      if (timerId != null) window.clearTimeout(timerId);
+      timerId = schedule();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      if (timerId != null) window.clearTimeout(timerId);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [showStartPrompt, user?.userId, user?._id, planRequiresDsaSlot, slotBookingStatus, slotClockMs]);
+
+  // When the client clock enters an active window, sync once with the server.
+  useEffect(() => {
+    const nowActive = Boolean(clientActiveBooking);
+    if (nowActive && !prevClientSlotActiveRef.current) {
+      refreshSlotBookingStatus();
+    }
+    prevClientSlotActiveRef.current = nowActive;
+  }, [clientActiveBooking, refreshSlotBookingStatus]);
 
   const showInterviewQuestionHero = useMemo(() => {
     return (
@@ -3306,7 +3390,7 @@ function AIInterviewTab({
             ) : hasActiveDsaSlotNow ? (
               <span>
                 <strong className="text-theme-primary">Slot active:</strong>{" "}
-                {slotBookingStatus?.activeBooking?.label || "Your booked hour is now — you can start."}
+                {activeDsaSlotLabel || "Your booked hour is now — you can start."}
               </span>
             ) : (
               <span>

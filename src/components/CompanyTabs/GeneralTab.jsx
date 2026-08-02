@@ -1,6 +1,6 @@
 
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { COMPANY_VISIT_CLUSTER_FORM_OPTIONS } from "../../constants/placementTiers.js";
@@ -10,6 +10,12 @@ import {
 } from "../PlacementCompensationNote.jsx";
 import { formatInternshipStipendDisplay } from "../../utils/compensationDisplay.js";
 import { listRolePointSections } from "../../utils/workDescriptionDisplay.js";
+import { useAuth } from "../../utils/AuthContext";
+import {
+  COLLEGE_ID_RVITM,
+  collegeIdFromUser,
+  roleHasUsableCompensationForDisplay,
+} from "../../utils/collegeScope.js";
 
 function GeneralTab({
   company = {},
@@ -20,6 +26,8 @@ function GeneralTab({
   placementCompanyVisitId,
   placementCluster,
 }) {
+  const { user } = useAuth();
+  const isRvitmViewer = collegeIdFromUser(user) === COLLEGE_ID_RVITM;
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -94,6 +102,19 @@ function GeneralTab({
     }
   }, [company.roles, isEditingRoles]);
 
+  /** RVITM: only show roles that have CTC or internship stipend. */
+  const displayRoles = useMemo(() => {
+    const roles = Array.isArray(company.roles) ? company.roles : [];
+    if (!isRvitmViewer) return roles;
+    return roles.filter((r) => roleHasUsableCompensationForDisplay(r));
+  }, [company.roles, isRvitmViewer]);
+
+  /** Hide empty Roles Offered for RVITM students; admins can still open edit. */
+  const showRolesSection =
+    !isRvitmViewer ||
+    isAdmin ||
+    isEditingRoles ||
+    displayRoles.length > 0;
   // General info edit state
   const [isEditingGeneral, setIsEditingGeneral] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
@@ -517,7 +538,8 @@ function GeneralTab({
         </div>
       )}
 
-      {/* ROLES */}
+      {/* ROLES — hidden for RVITM when no role has CTC or internship stipend */}
+      {showRolesSection && (
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6" data-tour="company-tab-general-roles-ctc">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-indigo-400">
@@ -541,7 +563,7 @@ function GeneralTab({
 
         {/* Read-only view */}
         {!isEditingRoles &&
-          (company.roles ?? []).map((role, index) => {
+          displayRoles.map((role, index) => {
             const roleTitle = String(role.roleName || "").trim();
             const pointSections = listRolePointSections(role);
             const hasCtc =
@@ -900,7 +922,7 @@ function GeneralTab({
               </div>
             ))}
 
-            {(isEditingRoles || (company.roles ?? []).length > 0) && (
+            {(isEditingRoles || displayRoles.length > 0) && (
               <CompensationDisclaimerFootnote className="text-[11px] sm:text-xs text-slate-500 mt-4 italic leading-snug" />
             )}
 
@@ -924,10 +946,11 @@ function GeneralTab({
           </form>
         )}
 
-        {(isEditingRoles || (company.roles ?? []).length > 0) && (
+        {(isEditingRoles || displayRoles.length > 0) && (
           <CompensationDisclaimerFootnote className="text-[11px] sm:text-xs text-slate-500 mt-4 italic leading-snug" />
         )}
       </div>
+      )}
 
     </div>
   );

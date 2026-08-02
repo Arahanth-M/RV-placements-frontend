@@ -16,14 +16,19 @@ import {
   pageShellInnerClass,
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+import { isBookingActiveNow } from "../utils/interviewSlotWindow.js";
 
-function bookingStatusLabel(booking) {
-  if (booking.isActiveNow) return "Active now — you can start your interview";
-  const now = Date.now();
+function bookingIsActiveNow(booking, nowMs = Date.now()) {
+  if (booking?.status && booking.status !== "active") return false;
+  return isBookingActiveNow(booking, nowMs);
+}
+
+function bookingStatusLabel(booking, nowMs = Date.now()) {
+  if (bookingIsActiveNow(booking, nowMs)) return "Active now — you can start your interview";
   const start = new Date(booking.slotStart).getTime();
   const end = new Date(booking.slotEnd).getTime();
-  if (end <= now) return "Past (no-show)";
-  if (start > now) return "Upcoming";
+  if (end <= nowMs) return "Past (no-show)";
+  if (start > nowMs) return "Upcoming";
   return "Ended";
 }
 
@@ -51,6 +56,7 @@ function InterviewSlotsPage() {
   const [bookModalOpen, setBookModalOpen] = useState(false);
   const [rescheduleId, setRescheduleId] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
+  const [slotClockMs, setSlotClockMs] = useState(() => Date.now());
 
   const todayParts = useMemo(() => {
     const key = istDateKeyFromDate(new Date());
@@ -110,6 +116,35 @@ function InterviewSlotsPage() {
   useEffect(() => {
     loadPageData();
   }, [loadPageData]);
+
+  // Advance clock at the next booking boundary (no steady polling).
+  useEffect(() => {
+    if (!Array.isArray(bookings) || bookings.length === 0) return;
+    const wait = (() => {
+      let soonest = null;
+      const nowMs = Date.now();
+      for (const b of bookings) {
+        const start = new Date(b.slotStart).getTime();
+        const end = new Date(b.slotEnd).getTime();
+        if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+        if (start > nowMs) soonest = soonest == null ? start : Math.min(soonest, start);
+        else if (end > nowMs) soonest = soonest == null ? end : Math.min(soonest, end);
+      }
+      if (soonest == null) return null;
+      return Math.min(Math.max(0, soonest - nowMs), 60 * 60 * 1000);
+    })();
+    if (wait == null) return undefined;
+    const delay = Math.max(250, wait + 250);
+    const id = window.setTimeout(() => setSlotClockMs(Date.now()), delay);
+    const onVisibility = () => {
+      if (!document.hidden) setSlotClockMs(Date.now());
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [bookings, slotClockMs]);
 
   const handleCancel = async (bookingId) => {
     if (!bookingId || cancellingId) return;
@@ -241,11 +276,13 @@ function InterviewSlotsPage() {
                   </p>
                 ) : (
                   <div className="mt-4 space-y-3">
-                    {selectedDayBookings.map((booking) => (
+                    {selectedDayBookings.map((booking) => {
+                      const activeNow = bookingIsActiveNow(booking, slotClockMs);
+                      return (
                       <div
                         key={booking.id}
                         className={`rounded-lg border p-4 ${
-                          booking.isActiveNow
+                          activeNow
                             ? "border-emerald-500/40 bg-emerald-500/5"
                             : "border-theme bg-theme-input/50"
                         }`}
@@ -254,10 +291,19 @@ function InterviewSlotsPage() {
                           <div>
                             <p className="font-semibold text-theme-primary">{booking.label}</p>
                             <p className="mt-1 text-sm text-theme-secondary">
-                              {bookingStatusLabel(booking)}
+                              {bookingStatusLabel(booking, slotClockMs)}
                             </p>
                           </div>
                           <div className="flex flex-wrap gap-2">
+                            {activeNow ? (
+                              <button
+                                type="button"
+                                onClick={() => navigate("/companystats")}
+                                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
+                              >
+                                Start interview
+                              </button>
+                            ) : null}
                             {booking.canCancel ? (
                               <>
                                 <button
@@ -276,6 +322,10 @@ function InterviewSlotsPage() {
                                   {cancellingId === booking.id ? "Cancelling…" : "Cancel"}
                                 </button>
                               </>
+                            ) : activeNow ? (
+                              <span className="self-center text-xs text-theme-muted">
+                                Open a company → AI Interview, with DSA in your plan
+                              </span>
                             ) : (
                               <span className="text-xs text-theme-muted">
                                 Cancel/reschedule locked within 2 hours of start
@@ -284,7 +334,8 @@ function InterviewSlotsPage() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

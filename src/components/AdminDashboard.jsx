@@ -7,6 +7,7 @@ import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import StudentRequestsTab from './StudentRequestsTab';
 import AdminGeneralStatsUpload from './AdminGeneralStatsUpload';
 import AdminSubmissionsTab from './AdminSubmissionsTab';
+import AdminUsageAnalyticsTab from './AdminUsageAnalyticsTab';
 import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
 import DashboardRefreshButton from './DashboardRefreshButton.jsx';
 import { PageBackButton, PageBackNavRow, PageHeroFontStyles, PageHeroHeader, pageShellInnerClass, pageShellOuterClassCompact } from './PageBackNav.jsx';
@@ -33,6 +34,7 @@ const ADMIN_MISC_TAB_KEYS = new Set([
   'submissions',
   'add-next-batch',
   'placement-settings',
+  'usage-analytics',
 ]);
 
 const ADMIN_HUB_POLL_MS = 60_000;
@@ -88,6 +90,15 @@ function buildAdminMiscNavTabs(stats) {
       cta: 'Edit thresholds',
       accent: 'border-l-violet-500',
       ctaColor: 'text-violet-500',
+    },
+    {
+      key: 'usage-analytics',
+      title: 'AI & PrepPath usage',
+      description:
+        'Day-wise AI mock interviews and PrepPath plans generated (with company breakdown).',
+      cta: 'View usage',
+      accent: 'border-l-cyan-500',
+      ctaColor: 'text-cyan-600',
     },
   ];
 }
@@ -1911,6 +1922,8 @@ const AdminDashboard = () => {
                 onToast={(message) => setAdminToast({ type: 'success', message })}
               />
             )}
+
+            {activeMainTab === 'usage-analytics' && <AdminUsageAnalyticsTab />}
 
             {activeMainTab === 'general-stats-upload' && <AdminGeneralStatsUpload />}
 

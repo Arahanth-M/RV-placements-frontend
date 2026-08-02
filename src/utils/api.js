@@ -458,6 +458,10 @@ export const adminAPI = {
   updatePlacementHubSettings: (body) =>
     API.put('/api/admin/placement-hub-settings', body),
   getStudentRequests: () => API.get('/api/admin/student-requests'),
+  getUsageAnalytics: ({ days } = {}) =>
+    API.get('/api/admin/usage-analytics', {
+      params: days != null ? { days } : undefined,
+    }),
   approveInterviewLimitRequest: (requestId) =>
     API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/approve`),
   dismissInterviewLimitRequest: (requestId) =>

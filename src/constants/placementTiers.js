@@ -22,6 +22,35 @@ export const PLACEMENT_HUB_CLUSTER_KEYS = [
   PLACEMENT_CLUSTER_CHEM,
 ];
 
+/** RVITM only offers CS / EC programme hubs. */
+export const PLACEMENT_HUB_CLUSTER_KEYS_RVITM = [
+  PLACEMENT_CLUSTER_CS,
+  PLACEMENT_CLUSTER_EC,
+];
+
+/**
+ * @param {unknown} collegeId
+ * @returns {string[]}
+ */
+export function hubClusterKeysForCollege(collegeId) {
+  const id = String(collegeId ?? "")
+    .trim()
+    .toLowerCase();
+  if (id === "rvitm") return [...PLACEMENT_HUB_CLUSTER_KEYS_RVITM];
+  return [...PLACEMENT_HUB_CLUSTER_KEYS];
+}
+
+/**
+ * @param {unknown} cluster
+ * @param {unknown} collegeId
+ * @returns {boolean}
+ */
+export function isHubClusterAllowedForCollege(cluster, collegeId) {
+  const key = normalizeClusterParam(cluster);
+  if (!key) return false;
+  return hubClusterKeysForCollege(collegeId).includes(key);
+}
+
 export const PLACEMENT_HUB_CLUSTER_LABELS = {
   [PLACEMENT_CLUSTER_CS]: "Computer Science & Engineering",
   [PLACEMENT_CLUSTER_EC]: "Electronics & Communication",

@@ -55,6 +55,8 @@ import {
   isPlacementTierParam,
   normalizeClusterParam,
   PLACEMENT_CATEGORY_NO_VISIT_COPY,
+  hubClusterKeysForCollege,
+  isHubClusterAllowedForCollege,
 } from "../constants/placementTiers.js";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
@@ -63,6 +65,7 @@ import {
 } from "../constants/placementYears.js";
 import { sortCompaniesByVisitDate } from "../utils/visitDateSort.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
+import { collegeIdFromUser } from "../utils/collegeScope.js";
 
 /** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -306,6 +309,11 @@ function CompanyStats() {
       ? clusterParam || PLACEMENT_CLUSTER_CS
       : clusterParam;
   const { user, isAdmin } = useAuth();
+  const collegeId = collegeIdFromUser(user);
+  const allowedHubClusters = useMemo(
+    () => new Set(hubClusterKeysForCollege(collegeId)),
+    [collegeId]
+  );
 
   const getPersistedPlacementCardsYear = () => {
     const fromSession = user?.userId
@@ -705,9 +713,20 @@ function CompanyStats() {
   }, [location.pathname, tierQuery, isPlacementCardsYear, placementTier, navigate]);
 
   useEffect(() => {
+    if (!isPlacementCardsYear) return;
+    if (clusterParam == null) return;
+    if (isHubClusterAllowedForCollege(clusterParam, collegeId)) return;
+    // RVITM (and any college without ME/CHEM): bounce off unsupported hub URLs.
+    navigate(PATH_COMPANY_CATEGORY, { replace: true });
+  }, [isPlacementCardsYear, clusterParam, collegeId, navigate]);
+
+  useEffect(() => {
     if (location.pathname !== PATH_COMPANY_STATS) return;
     if (!isPlacementCardsYear) return;
     if (!isNonCsStrictHubCluster(clusterParam)) {
+      return;
+    }
+    if (!isHubClusterAllowedForCollege(clusterParam, collegeId)) {
       return;
     }
     const tierAllowedForEcMe =
@@ -719,7 +738,7 @@ function CompanyStats() {
     if (!tierAllowedForEcMe) {
       navigate(companystatsClusterCategoryUrl(clusterParam), { replace: true });
     }
-  }, [location.pathname, isPlacementCardsYear, clusterParam, tierQuery, navigate]);
+  }, [location.pathname, isPlacementCardsYear, clusterParam, tierQuery, navigate, collegeId]);
 
   // Only clear tier when leaving placement-card years for a concrete other year.
   // (otherwise this runs before URL sync and wipes tier after /companystats?tier= navigation → infinite "Loading…").
@@ -1691,7 +1710,7 @@ function CompanyStats() {
         bullets: clusterHubBullets[PLACEMENT_CLUSTER_CHEM],
         companies: chemCompanies,
       },
-    ];
+    ].filter((c) => allowedHubClusters.has(c.id));
 
     return (
       <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
