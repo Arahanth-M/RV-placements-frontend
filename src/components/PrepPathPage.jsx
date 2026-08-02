@@ -181,10 +181,11 @@ function buildSnakeRows(days, cols = FLOW_COLS) {
   return rows;
 }
 
-function DayPrepBox({ day, showNext, onNext, isLatest }) {
+function DayPrepBox({ day, showNext, onNext, isLatest, nextArrow = "right" }) {
+  const NextIcon = nextArrow === "down" ? FaArrowDown : FaArrowRight;
   return (
     <div
-      className={`flex w-full flex-col rounded-xl border px-3 py-3 ${
+      className={`flex w-full min-w-0 flex-col rounded-xl border px-3 py-3 ${
         isLatest
           ? "border-theme-accent bg-theme-hero shadow-sm"
           : "border-theme bg-theme-card"
@@ -193,26 +194,33 @@ function DayPrepBox({ day, showNext, onNext, isLatest }) {
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-semibold text-theme-accent">Day {day.day}</span>
-        <span className="text-[11px] text-theme-muted">{day.hours}h</span>
+        <span className="shrink-0 text-[11px] text-theme-muted">{day.hours}h</span>
       </div>
       {day.focus ? (
-        <p className="mt-1 text-xs font-medium text-theme-primary">{day.focus}</p>
+        <p className="mt-1 break-words text-xs font-medium text-theme-primary">{day.focus}</p>
       ) : null}
 
       <CampusEvidenceChips items={day.campusEvidence} />
 
       <ul className="mt-2 space-y-1.5 text-xs text-theme-secondary">
         {(day.tasks || []).map((task, idx) => (
-          <li key={`${day.day}-${idx}-${task.title}`} className="rounded-md border border-theme/40 bg-theme-card/50 px-2 py-1.5">
-            <span className="font-medium text-theme-primary">{task.title}</span>
+          <li
+            key={`${day.day}-${idx}-${task.title}`}
+            className="rounded-md border border-theme/40 bg-theme-card/50 px-2 py-1.5"
+          >
+            <span className="break-words font-medium text-theme-primary">{task.title}</span>
             {task.minutes ? (
               <span className="text-theme-muted"> · {task.minutes} min</span>
             ) : null}
             {task.resourceHint ? (
-              <div className="mt-0.5 text-[10px] text-theme-muted">{task.resourceHint}</div>
+              <div className="mt-0.5 break-words text-[10px] text-theme-muted">
+                {task.resourceHint}
+              </div>
             ) : null}
             {task.notes ? (
-              <div className="mt-0.5 text-[10px] text-theme-secondary">{task.notes}</div>
+              <div className="mt-0.5 break-words text-[10px] text-theme-secondary">
+                {task.notes}
+              </div>
             ) : null}
           </li>
         ))}
@@ -228,7 +236,7 @@ function DayPrepBox({ day, showNext, onNext, isLatest }) {
           className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-theme-accent px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
         >
           Next day
-          <FaArrowRight className="h-3 w-3" />
+          <NextIcon className="h-3 w-3" />
         </button>
       ) : isLatest ? (
         <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-wide text-theme-muted">
@@ -260,7 +268,7 @@ function DayByDayFlowchart({ days, planKey }) {
   };
 
   return (
-    <section className="rounded-2xl border border-theme bg-theme-card p-5 sm:p-6">
+    <section className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-6">
       <div>
         <h3 className="text-lg font-semibold text-theme-primary">Day-by-day flowchart</h3>
         <p className="mt-1 text-xs text-theme-muted">
@@ -268,10 +276,34 @@ function DayByDayFlowchart({ days, planKey }) {
         </p>
       </div>
 
-      <div className="mt-5 flex w-full flex-col gap-3">
+      {/* Mobile: vertical stack — each next day appends below with a down arrow */}
+      <div className="mt-5 flex w-full min-w-0 flex-col sm:hidden">
+        {visibleDays.map((day, idx) => {
+          const dayNum = Number(day.day);
+          const isLatest = dayNum === unlocked;
+          const showNext = Boolean(isLatest && canNext);
+          return (
+            <React.Fragment key={`m-day-${day.day}`}>
+              {idx > 0 ? (
+                <div className="flex justify-center py-2" aria-hidden>
+                  <FaArrowDown className="h-5 w-5 text-theme-accent" />
+                </div>
+              ) : null}
+              <DayPrepBox
+                day={day}
+                isLatest={isLatest}
+                showNext={showNext}
+                onNext={revealNext}
+                nextArrow="down"
+              />
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* sm+: zigzag snake layout */}
+      <div className="mt-5 hidden w-full flex-col gap-3 sm:flex">
         {rows.map((row, rowIdx) => {
-          // Place days into fixed columns so zigzag stays aligned and fills width.
-          // LTR: day i → column i | RTL: day i → column (cols-1-i)
           const cells = Array.from({ length: FLOW_COLS }, () => null);
           row.days.forEach((day, i) => {
             const col = row.rtl ? FLOW_COLS - 1 - i : i;
@@ -394,11 +426,11 @@ function PrepPathPlanView({ plan }) {
   };
 
   return (
-    <div className="w-full space-y-6">
-      <section className="rounded-2xl border border-theme bg-theme-card p-5 sm:p-6">
+    <div className="w-full min-w-0 space-y-6 overflow-x-hidden">
+      <section className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-theme-primary sm:text-2xl">
+          <div className="min-w-0">
+            <h2 className="break-words text-xl font-semibold text-theme-primary sm:text-2xl">
               {plan.companyName || "Company"} · {plan.role}
             </h2>
             <p className="mt-1 text-sm text-theme-secondary">
@@ -514,21 +546,26 @@ function PrepPathPlanView({ plan }) {
       </section>
 
       {topicsWithLinks.length > 0 ? (
-        <section className="rounded-2xl border border-theme bg-theme-card p-5 sm:p-6">
+        <section className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-theme-primary">Topics & hour split</h3>
           <p className="mt-1 text-xs text-theme-muted">
             Each subtopic includes hours and a practice link. Campus tags cite RVCE visit data when matched.
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {topicsWithLinks.map((t) => (
-              <div key={`${t.title}-${t.hours}`} className="rounded-xl border border-theme bg-theme-hero p-4">
-                <div className="flex items-baseline justify-between gap-2">
-                  <h4 className="font-medium text-theme-primary">{t.title}</h4>
+              <div
+                key={`${t.title}-${t.hours}`}
+                className="min-w-0 overflow-hidden rounded-xl border border-theme bg-theme-hero p-3 sm:p-4"
+              >
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
+                  <h4 className="min-w-0 break-words font-medium text-theme-primary">{t.title}</h4>
                   <span className="shrink-0 text-sm font-semibold text-theme-accent">
                     {t.hours}h total
                   </span>
                 </div>
-                {t.why ? <p className="mt-2 text-sm text-theme-secondary">{t.why}</p> : null}
+                {t.why ? (
+                  <p className="mt-2 break-words text-sm text-theme-secondary">{t.why}</p>
+                ) : null}
                 <CampusEvidenceChips items={t.campusEvidence} />
                 {Array.isArray(t.subtopics) && t.subtopics.length > 0 ? (
                   <ul className="mt-3 space-y-1.5">
@@ -539,13 +576,15 @@ function PrepPathPlanView({ plan }) {
                       return (
                         <li
                           key={`${t.title}-${s.title}`}
-                          className="rounded-md border border-theme/50 bg-theme-card/60 px-2.5 py-1.5 text-xs"
+                          className="min-w-0 rounded-md border border-theme/50 bg-theme-card/60 px-2.5 py-1.5 text-xs"
                         >
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
                             <div className="min-w-0">
-                              <span className="font-medium text-theme-primary">{s.title}</span>
+                              <span className="break-words font-medium text-theme-primary">
+                                {s.title}
+                              </span>
                               {s.notes ? (
-                                <div className="mt-0.5 text-theme-muted">{s.notes}</div>
+                                <div className="mt-0.5 break-words text-theme-muted">{s.notes}</div>
                               ) : null}
                             </div>
                             <span className="shrink-0 font-semibold text-theme-accent">
@@ -557,7 +596,7 @@ function PrepPathPlanView({ plan }) {
                               href={linkUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-1 inline-block text-[11px] font-medium text-theme-accent underline-offset-2 hover:underline"
+                              className="mt-1 inline-block max-w-full break-all text-[11px] font-medium text-theme-accent underline-offset-2 hover:underline"
                               title={linkWhy || linkTitle}
                             >
                               {linkTitle}
@@ -571,7 +610,9 @@ function PrepPathPlanView({ plan }) {
                 {Array.isArray(t.practiceHints) && t.practiceHints.length > 0 ? (
                   <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-theme-muted">
                     {t.practiceHints.map((h) => (
-                      <li key={h}>{h}</li>
+                      <li key={h} className="break-words">
+                        {h}
+                      </li>
                     ))}
                   </ul>
                 ) : null}
@@ -1045,7 +1086,7 @@ function PrepPathPage() {
         <div className="flex items-center justify-between gap-2 border-b border-theme px-3 py-2.5">
           <div>
             <h3 className="text-sm font-semibold text-theme-primary">Previous roadmaps</h3>
-            <p className="text-xs text-theme-muted">Last 5 · older kept</p>
+            <p className="text-xs text-theme-muted">Last 10 · older kept</p>
           </div>
           <button
             type="button"

@@ -179,6 +179,17 @@ function parseCgpaFilterInput(raw) {
   return Math.round(n * 100) / 100;
 }
 
+/** Keep CGPA filter field at most 10 (and non-negative). Empty string stays empty. */
+function clampCgpaFilterInput(raw) {
+  const s = String(raw ?? "");
+  if (s.trim() === "") return "";
+  const n = Number(s);
+  if (!Number.isFinite(n)) return s;
+  if (n > 10) return "10";
+  if (n < 0) return "0";
+  return s;
+}
+
 /**
  * Resolve minCgpa for the current hub tier + optional type category.
  * Prefers the visit matching that cluster's placement context / type.
@@ -789,7 +800,7 @@ function CompanyStats() {
 
       if (storedSearch !== null) setSearch(storedSearch);
       const storedCgpa = getStoredValue("companystats_cgpa_filter");
-      if (storedCgpa !== null) setCgpaFilter(storedCgpa);
+      if (storedCgpa !== null) setCgpaFilter(clampCgpaFilterInput(storedCgpa));
       setTierCategories({
         [PLACEMENT_TIER_DREAM]: normalizeTierCategory(
           PLACEMENT_TIER_DREAM,
@@ -1799,7 +1810,7 @@ function CompanyStats() {
                   title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
                   value={cgpaFilter}
                   onChange={(e) => {
-                    setCgpaFilter(e.target.value);
+                    setCgpaFilter(clampCgpaFilterInput(e.target.value));
                     setClusterBranchPage(1);
                   }}
                   className="w-full sm:w-28 px-3 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
@@ -2096,7 +2107,7 @@ function CompanyStats() {
             title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
             value={cgpaFilter}
             onChange={(e) => {
-              setCgpaFilter(e.target.value);
+              setCgpaFilter(clampCgpaFilterInput(e.target.value));
               resetListPages();
             }}
             data-tour="company-stats-cgpa-filter"
