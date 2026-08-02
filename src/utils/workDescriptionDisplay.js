@@ -50,6 +50,8 @@ const ROLE_STRUCTURAL_KEYS = new Set([
   "ctc",
   "internshipstipend",
   "stipend",
+  "collegeid",
+  "college_id",
   "_id",
   "id",
 ]);

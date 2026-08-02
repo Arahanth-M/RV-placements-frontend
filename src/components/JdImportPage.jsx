@@ -400,7 +400,7 @@ export default function JdImportPage() {
       );
       setToast({
         type: "success",
-        message: `Saved to ${selectedCompany.name} (${year}).`,
+        message: `Saved to company_visits_with_rvitm · ${selectedCompany.name} (${year}).`,
       });
     } catch (err) {
       console.error(err);

@@ -812,6 +812,8 @@ function GeneralTab({
                       nk !== "skills" &&
                       nk !== "workdescription" &&
                       nk !== "work" &&
+                      nk !== "collegeid" &&
+                      nk !== "college_id" &&
                       nk !== "_id" &&
                       nk !== "id"
                     );
