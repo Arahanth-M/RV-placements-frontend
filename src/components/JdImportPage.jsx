@@ -94,7 +94,7 @@ export default function JdImportPage() {
   const debounceRef = useRef(null);
 
   const [year, setYear] = useState(DEFAULT_PLACEMENT_DETAIL_YEAR);
-  const [cluster, setCluster] = useState("");
+  const [cluster, setCluster] = useState("Computer Science and Engineering");
   const [roleName, setRoleName] = useState("");
   const [file, setFile] = useState(null);
 
@@ -400,7 +400,9 @@ export default function JdImportPage() {
       );
       setToast({
         type: "success",
-        message: `Saved to company_visits_with_rvitm · ${selectedCompany.name} (${year}).`,
+        message: `Saved to company_visits_with_rvitm · ${selectedCompany.name} (${year}${
+          cluster ? `, ${cluster}` : ", CS hub"
+        }).`,
       });
     } catch (err) {
       console.error(err);
