@@ -16,6 +16,16 @@ import {
 
 const STORE_AS_PRESETS = ["skills", "workDescription"];
 
+/** Common visit `type` values (composite key with year + cluster). */
+const JD_VISIT_TYPE_PRESETS = [
+  "FTE",
+  "Internship(PPO)",
+  "Internship+FTE",
+  "Internship + FTE (PBC)",
+  "Only internship(6 months)",
+];
+const JD_VISIT_TYPE_CUSTOM = "__custom__";
+
 function guessStoreAs(sourceField) {
   const raw = String(sourceField || "").trim();
   if (!raw) return "";
@@ -95,6 +105,8 @@ export default function JdImportPage() {
 
   const [year, setYear] = useState(DEFAULT_PLACEMENT_DETAIL_YEAR);
   const [cluster, setCluster] = useState("Computer Science and Engineering");
+  const [visitTypeChoice, setVisitTypeChoice] = useState("FTE");
+  const [visitTypeCustom, setVisitTypeCustom] = useState("");
   const [roleName, setRoleName] = useState("");
   const [file, setFile] = useState(null);
 
@@ -354,10 +366,19 @@ export default function JdImportPage() {
     setEditRows((prev) => prev.filter((row) => row.id !== id));
   };
 
+  const resolvedVisitType =
+    visitTypeChoice === JD_VISIT_TYPE_CUSTOM
+      ? String(visitTypeCustom || "").trim()
+      : String(visitTypeChoice || "").trim();
+
   const handleSave = async () => {
     setError("");
     if (!selectedCompany?.id) {
       setError("Select a company from suggestions before saving.");
+      return;
+    }
+    if (!resolvedVisitType) {
+      setError("Select a visit type (FTE, Internship(PPO), …) or enter a custom type.");
       return;
     }
 
@@ -392,6 +413,7 @@ export default function JdImportPage() {
           roleName: roleName.trim(),
           payload,
           placementCluster: cluster || undefined,
+          visitType: resolvedVisitType,
         },
         {
           year,
@@ -400,9 +422,9 @@ export default function JdImportPage() {
       );
       setToast({
         type: "success",
-        message: `Saved to company_visits_with_rvitm · ${selectedCompany.name} (${year}${
+        message: `Saved · ${selectedCompany.name} (${year}${
           cluster ? `, ${cluster}` : ", CS hub"
-        }).`,
+        }, ${resolvedVisitType}).`,
       });
     } catch (err) {
       console.error(err);
@@ -555,23 +577,56 @@ export default function JdImportPage() {
                 ))}
               </select>
             </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="jd-role-name"
-              className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
-            >
-              Role name (optional)
-            </label>
-            <input
-              id="jd-role-name"
-              type="text"
-              value={roleName}
-              onChange={(e) => setRoleName(e.target.value)}
-              placeholder="Leave blank to save without a role name"
-              className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <div>
+              <label
+                htmlFor="jd-visit-type"
+                className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+              >
+                Visit type
+              </label>
+              <select
+                id="jd-visit-type"
+                value={visitTypeChoice}
+                onChange={(e) => setVisitTypeChoice(e.target.value)}
+                className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {JD_VISIT_TYPE_PRESETS.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+                <option value={JD_VISIT_TYPE_CUSTOM}>Custom…</option>
+              </select>
+              {visitTypeChoice === JD_VISIT_TYPE_CUSTOM ? (
+                <input
+                  type="text"
+                  value={visitTypeCustom}
+                  onChange={(e) => setVisitTypeCustom(e.target.value)}
+                  placeholder="Exact type string as stored on the visit"
+                  className="mt-2 w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              ) : null}
+              <p className="mt-1 text-[11px] text-slate-500">
+                Part of the visit key with year + cluster. Use Custom for labels
+                like &quot;Internship + FTE / Hackathon&quot;.
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="jd-role-name"
+                className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+              >
+                Role name (optional)
+              </label>
+              <input
+                id="jd-role-name"
+                type="text"
+                value={roleName}
+                onChange={(e) => setRoleName(e.target.value)}
+                placeholder="Leave blank to save without a role name"
+                className="w-full rounded-md border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
           <div>
