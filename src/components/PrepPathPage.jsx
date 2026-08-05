@@ -420,6 +420,8 @@ function PrepPathPlanView({ plan }) {
         return "Experience";
       case "must_do":
         return "Must-do";
+      case "platform_role":
+        return "Platform roles";
       default:
         return "Campus data";
     }
