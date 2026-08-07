@@ -8,6 +8,7 @@ import StudentRequestsTab from './StudentRequestsTab';
 import AdminGeneralStatsUpload from './AdminGeneralStatsUpload';
 import AdminSubmissionsTab from './AdminSubmissionsTab';
 import AdminUsageAnalyticsTab from './AdminUsageAnalyticsTab';
+import AdminDauModal from './AdminDauModal.jsx';
 import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
 import DashboardRefreshButton from './DashboardRefreshButton.jsx';
 import { PageBackButton, PageBackNavRow, PageHeroFontStyles, PageHeroHeader, pageShellInnerClass, pageShellOuterClassCompact } from './PageBackNav.jsx';
@@ -289,6 +290,7 @@ const AdminDashboard = () => {
   const [approvingCompanyIds, setApprovingCompanyIds] = useState(new Set());
   const [rejectingCompanyIds, setRejectingCompanyIds] = useState(new Set());
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showDauModal, setShowDauModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventForm, setEventForm] = useState({
     type: '',
@@ -1377,6 +1379,18 @@ const AdminDashboard = () => {
                       >
                         <AdminChartKpi label="7-day total" value={sumChartValues(stats.dauTrend)} />
                         <AdminChartKpi label="Latest day" value={latestChartValue(stats.dauTrend)} />
+                        <button
+                          type="button"
+                          onClick={() => setShowDauModal(true)}
+                          className="min-w-[5.5rem] shrink-0 self-stretch rounded-lg border border-emerald-500/40 bg-theme-hero px-3 py-2 text-left transition hover:border-emerald-500 hover:bg-emerald-500/10"
+                        >
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-theme-muted">
+                            Details
+                          </p>
+                          <p className="mt-0.5 text-xs font-bold leading-snug text-emerald-600 dark:text-emerald-400">
+                            View daily active users
+                          </p>
+                        </button>
                       </AdminChartHeader>
                       <div className="mt-4 h-64 min-w-0">
                         {Array.isArray(stats.dauTrend) && stats.dauTrend.length > 0 ? (
@@ -2396,6 +2410,7 @@ const AdminDashboard = () => {
         )}
       </div>
 
+      <AdminDauModal open={showDauModal} onClose={() => setShowDauModal(false)} />
     </div>
   );
 };

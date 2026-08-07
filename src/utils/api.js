@@ -462,6 +462,13 @@ export const adminAPI = {
     API.get('/api/admin/usage-analytics', {
       params: days != null ? { days } : undefined,
     }),
+  getDau: ({ days } = {}) =>
+    API.get('/api/admin/dau', {
+      params: days != null ? { days } : undefined,
+    }),
+  getDauDay: (dayKey) =>
+    API.get(`/api/admin/dau/${encodeURIComponent(dayKey)}`),
+  getDauExport: () => API.get('/api/admin/dau/export'),
   approveInterviewLimitRequest: (requestId) =>
     API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/approve`),
   dismissInterviewLimitRequest: (requestId) =>
