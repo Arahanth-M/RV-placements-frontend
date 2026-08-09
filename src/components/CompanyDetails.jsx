@@ -61,6 +61,53 @@ function readPreferredPlacementYearFromLocation(location) {
   return null;
 }
 
+/**
+ * Keep header/static identity while a placement-year switch loads.
+ * Clears visit-scoped fields so Roles / date / OA / etc. cannot flash the previous year.
+ * Frontend-only — does not write to the DB.
+ * @param {Record<string, unknown>|null|undefined} prev
+ */
+function companyShellWhileYearSwitch(prev) {
+  if (!prev || typeof prev !== "object") return null;
+  return {
+    _id: prev._id,
+    name: prev.name,
+    logo: prev.logo,
+    business_model: prev.business_model,
+    helpfulCount: prev.helpfulCount,
+    focusTags: prev.focusTags,
+    // Keep year maps so the year dropdown stays usable during reload
+    placementYearsAvailable: prev.placementYearsAvailable,
+    placementDreamTierVisitByYear: prev.placementDreamTierVisitByYear,
+    placementSummerInternshipVisitByYear: prev.placementSummerInternshipVisitByYear,
+    roles: [],
+    date_of_visit: "",
+    type: "",
+    eligibility: "",
+    minCgpa: null,
+    offCampus: false,
+    onlineQuestions: [],
+    onlineQuestions_solution: [],
+    interviewQuestions: [],
+    interviewQuestions_solution: [],
+    interview_questions: [],
+    interviewProcess: [],
+    internshipExperience: [],
+    must_do_topics: [],
+    Must_Do_Topics: [],
+    mcqQuestions: [],
+    recruitment_process: undefined,
+    totalGotIn: 0,
+    totalGotInByYear: prev.totalGotInByYear,
+    placementBranchStatsByYear: undefined,
+    placementDetailHeadlineType: undefined,
+    placementDreamTierVisitMissingForYear: false,
+    placementSummerInternshipVisitMissingForYear: false,
+    placementInternshipOnlyVisitMissingForYear: false,
+    placementCompanyVisitId: undefined,
+  };
+}
+
 function readPlacementCompanyVisitIdFromLocation(location) {
   try {
     const params = new URLSearchParams(location.search || "");
@@ -240,6 +287,9 @@ function CompanyDetails() {
   const detailFetchIdRef = useRef(null);
   /** Increments per fetch so older responses cannot overwrite newer ones (race when year switches quickly). */
   const companyDetailFetchGenRef = useRef(0);
+  /** Avoid depending on `placementYear` in the fetch effect (would re-fetch after setState). */
+  const placementYearRef = useRef(placementYear);
+  placementYearRef.current = placementYear;
   const interviewExitHandlerRef = useRef(null);
   const dropdownRef = useRef(null);
   const tabContentRef = useRef(null);
@@ -313,12 +363,21 @@ function CompanyDetails() {
     if (switchedCompany) {
       detailFetchIdRef.current = id;
       yearForRequest = preferredYear ?? DEFAULT_PLACEMENT_DETAIL_YEAR;
+      setPlacementYear(yearForRequest);
       setPlacementYearLoading(false);
       setLoading(true);
       setLoadError(null);
       setCompany(null);
     } else {
-      yearForRequest = preferredYear ?? placementYear;
+      yearForRequest = preferredYear ?? placementYearRef.current;
+      const yearChanged =
+        Number(yearForRequest) !== Number(placementYearRef.current);
+      // Sync selected year immediately and drop previous year's visit fields so
+      // Roles / date of visit cannot show mixed 2026+2027 data while loading.
+      if (yearChanged) {
+        setPlacementYear(yearForRequest);
+        setCompany((prev) => companyShellWhileYearSwitch(prev));
+      }
       setPlacementYearLoading(true);
       setLoadError(null);
     }
@@ -365,7 +424,6 @@ function CompanyDetails() {
   }, [
     id,
     user?.betaAccess,
-    placementYear,
     location.pathname,
     location.search,
     location.state?.defaultPlacementYear,
@@ -1075,6 +1133,26 @@ function CompanyDetails() {
         </div>
         )}
         <div ref={tabContentRef} className="company-tab-content">
+          {placementYearLoading && YEAR_TABS.includes(activeTab) ? (
+            <div
+              className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6"
+              aria-busy="true"
+              aria-live="polite"
+              data-tour="company-tab-year-loading"
+            >
+              <p className="text-sm text-theme-secondary mb-4 animate-pulse">
+                Loading {placementYear} visit details…
+              </p>
+              <div className="space-y-4">
+                <div className="shimmer-box h-6 w-48 rounded-md" />
+                <div className="shimmer-box h-4 w-full rounded-md" />
+                <div className="shimmer-box h-4 w-[92%] rounded-md" />
+                <div className="shimmer-box h-4 w-[85%] rounded-md" />
+                <div className="shimmer-box h-24 w-full rounded-lg" />
+              </div>
+            </div>
+          ) : (
+            <>
           {activeTab === "about" && <AboutTab company={company} />}
           {activeTab === "general" &&
             (hideTierContextVisitDetails ? (
@@ -1187,33 +1265,4 @@ function CompanyDetails() {
               />
             ))}
           {activeTab === "offcampus" &&
-            (hideTierContextVisitDetails ? (
-              <DreamTierVisitEmptyPanel />
-            ) : (
-              <OffCampusQuestionsTab company={company} />
-            ))}
-        </div>
-          </div>
-        </div>
-      </div>
-
-      {!shouldHideAiInterviews && isCsClusterForInterview && activeTab !== "aiinterview" && (
-        <div
-          className="ai-interview-explore-scope fixed z-[30] pointer-events-none flex flex-col items-end gap-2"
-          style={{
-            bottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
-            right: "max(1rem, env(safe-area-inset-right, 0px))",
-          }}
-        >
-          <AiInterviewExploreButton
-            data-tour="company-ai-interview-explore"
-            className="pointer-events-auto shadow-lg"
-            onClick={() => handleTabChange("aiinterview")}
-          />
-        </div>
-      )}
-    </>
-  );
-}
-
-export default CompanyDetails;
+       
