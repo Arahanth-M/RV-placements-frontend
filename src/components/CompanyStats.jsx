@@ -890,7 +890,7 @@ function CompanyStats() {
     user,
   ]);
 
-  // Fetch companies for year-based cards (currently 2026/2027); preview-logos in parallel.
+  // Category hub: preview-logos only for first paint. Full GET /companies when a tier is opened.
   useEffect(() => {
     let cancelled = false;
     if (isPlacementDetailVisitYear(selectedYear)) {
@@ -908,6 +908,8 @@ function CompanyStats() {
         (clusterParam === PLACEMENT_CLUSTER_CS ||
           clusterParam === PLACEMENT_CLUSTER_EC ||
           clusterParam === PLACEMENT_CLUSTER_ME);
+      // Defer heavy list until user opens Dream / Open dream / etc.
+      const deferFullCompanyList = shouldFetchCategoryPreview === true;
       if (shouldFetchCategoryPreview) {
         const previewClusterKey = clusterParam;
         const cachedPreview = getCachedCompanyPreview(selectedYear, previewClusterKey);
@@ -929,29 +931,34 @@ function CompanyStats() {
             }
           } catch (err) {
             console.error("❌ Error fetching category preview:", err);
+          } finally {
+            // Hub tiles can render from preview without waiting on full list.
+            if (!cancelled && deferFullCompanyList) setCompaniesFetchDone(true);
           }
         })();
       } else {
         setCategoryPreview(null);
       }
-      (async () => {
-        try {
-          const apiClusterParam = isPlacementHubCluster(clusterParam) ? clusterParam : undefined;
-          const res = await companyAPI.getAllCompanies({
-            year: selectedYear,
-            cluster: apiClusterParam,
-          });
-          if (!cancelled) {
-            const nextCompanies = res.data || [];
-            setCompanies(nextCompanies);
-            setCachedCompanies(selectedYear, nextCompanies, companyCacheScope);
+      if (!deferFullCompanyList) {
+        (async () => {
+          try {
+            const apiClusterParam = isPlacementHubCluster(clusterParam) ? clusterParam : undefined;
+            const res = await companyAPI.getAllCompanies({
+              year: selectedYear,
+              cluster: apiClusterParam,
+            });
+            if (!cancelled) {
+              const nextCompanies = res.data || [];
+              setCompanies(nextCompanies);
+              setCachedCompanies(selectedYear, nextCompanies, companyCacheScope);
+            }
+          } catch (err) {
+            console.error("❌ Error fetching companies:", err);
+          } finally {
+            if (!cancelled) setCompaniesFetchDone(true);
           }
-        } catch (err) {
-          console.error("❌ Error fetching companies:", err);
-        } finally {
-          if (!cancelled) setCompaniesFetchDone(true);
-        }
-      })();
+        })();
+      }
     } else {
       localStorage.setItem('companystats_selectedYear', selectedYear ? String(selectedYear) : '');
       setCategoryPreview(null);
@@ -1886,9 +1893,8 @@ function CompanyStats() {
     location.pathname === PATH_COMPANY_CATEGORY &&
     isPlacementHubCluster(clusterParam)
   ) {
-    const useFullListForCategoryTiles = isNonCsStrictHubCluster(clusterParam)
-      ? true
-      : companies.length > 0;
+    // Prefer preview tiles on hub until (optional) cached full list is present.
+    const useFullListForCategoryTiles = companies.length > 0;
     const p = categoryPreview;
     const nTile = CATEGORY_TILE_LOGO_GRID;
     const dreamLogoPreview = useFullListForCategoryTiles
@@ -1967,7 +1973,8 @@ function CompanyStats() {
       },
     ].filter((tile) => tile.count > 0);
 
-    const isCategoryTilesLoading = categoryTiles.length === 0 && !companiesFetchDone;
+    const isCategoryTilesLoading =
+      categoryTiles.length === 0 && !categoryPreview && !companiesFetchDone;
 
     const categorySubtitle = (() => {
       if (isCategoryTilesLoading) {
