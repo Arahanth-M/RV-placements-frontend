@@ -184,11 +184,11 @@ export function validateRecruitmentProcessForm(form) {
 
   if (oaOccurred) {
     const mode = String(form.onlineAssessment?.mode ?? "").trim().toLowerCase();
-    if (!OA_ASSESSMENT_MODES.includes(mode)) {
-      return { ok: false, error: "Select online or offline mode for the assessment." };
+    if (OA_ASSESSMENT_MODES.includes(mode)) {
+      payload.onlineAssessment.mode = mode;
     }
     const topics = String(form.onlineAssessment?.topics ?? "").trim();
-    if (!topics) return { ok: false, error: "Enter OA topics when online assessment occurred." };
+    if (topics) payload.onlineAssessment.topics = topics;
     const attended = parseOptionalNonNegInt(form.onlineAssessment?.attended);
     const cleared = parseOptionalNonNegInt(form.onlineAssessment?.cleared);
     if (attended === undefined) {
@@ -200,13 +200,10 @@ export function validateRecruitmentProcessForm(form) {
     if (attended != null && cleared != null && cleared > attended) {
       return { ok: false, error: "OA cleared count cannot exceed attended count." };
     }
-    payload.onlineAssessment.topics = topics;
-    payload.onlineAssessment.mode = mode;
     if (attended != null) payload.onlineAssessment.attended = attended;
     if (cleared != null) payload.onlineAssessment.cleared = cleared;
   }
 
-  let anyRound = false;
   const rounds = Array.isArray(form.rounds) ? form.rounds : [];
   for (let i = 0; i < rounds.length; i++) {
     const r = rounds[i];
@@ -215,7 +212,6 @@ export function validateRecruitmentProcessForm(form) {
     /** @type {Record<string, unknown>} */
     const round = { roundNumber, occurred };
     if (occurred) {
-      anyRound = true;
       const uniqueTypes = Array.isArray(r?.types)
         ? [
             ...new Set(
@@ -225,23 +221,18 @@ export function validateRecruitmentProcessForm(form) {
             ),
           ]
         : normalizeRoundTypes(r);
-      if (uniqueTypes.length === 0) {
-        return { ok: false, error: `Round ${roundNumber}: select at least one round type.` };
+      if (uniqueTypes.length > 0) {
+        round.types = uniqueTypes;
+        round.type = uniqueTypes[0];
       }
-      round.types = uniqueTypes;
-      round.type = uniqueTypes[0];
       if (uniqueTypes.includes("other")) {
         const label = String(r?.otherTypeLabel ?? "").trim();
-        if (!label) {
-          return { ok: false, error: `Round ${roundNumber}: describe the round type.` };
-        }
-        round.otherTypeLabel = label;
+        if (label) round.otherTypeLabel = label;
       }
       const mode = String(r?.mode ?? "").trim().toLowerCase();
-      if (!OA_ASSESSMENT_MODES.includes(mode)) {
-        return { ok: false, error: `Round ${roundNumber}: select online or offline mode.` };
+      if (OA_ASSESSMENT_MODES.includes(mode)) {
+        round.mode = mode;
       }
-      round.mode = mode;
       const attended = parseOptionalNonNegInt(r?.attended);
       const cleared = parseOptionalNonNegInt(r?.cleared);
       if (attended === undefined) {
@@ -266,13 +257,6 @@ export function validateRecruitmentProcessForm(form) {
       if (cleared != null) round.cleared = cleared;
     }
     payload.rounds.push(round);
-  }
-
-  if (!oaOccurred && !anyRound) {
-    return {
-      ok: false,
-      error: "Mark online assessment or at least one interview round as occurred.",
-    };
   }
 
   return { ok: true, payload };

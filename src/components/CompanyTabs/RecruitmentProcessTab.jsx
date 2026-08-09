@@ -300,7 +300,6 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                 options={OA_ASSESSMENT_MODE_OPTIONS}
                 labelId="rp-oa-mode-label"
                 disabled={disabled}
-                required
               />
             </div>
             <div>
@@ -430,7 +429,7 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                     })}
                   </div>
                   <p className="mt-1.5 text-xs text-theme-muted">
-                    Select one or more types for this round.
+                    Optional — select one or more types for this round.
                   </p>
                 </div>
                 {normalizeRoundTypes(round).includes("other") ? (
@@ -465,7 +464,6 @@ function RecruitmentProcessEditor({ form, setForm, disabled }) {
                     options={OA_ASSESSMENT_MODE_OPTIONS}
                     labelId={`rp-round-mode-label-${index}`}
                     disabled={disabled}
-                    required
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

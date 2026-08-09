@@ -45,6 +45,30 @@ function lockBodyScrollForModal() {
     window.scrollTo(0, scrollY);
   };
 }
+
+function openRolePointsModal(buttonEl, section, setPointsModal) {
+  const open = () =>
+    setPointsModal({
+      title: section.key,
+      points: section.points,
+    });
+
+  if (typeof buttonEl?.scrollIntoView === "function") {
+    try {
+      buttonEl.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    } catch {
+      buttonEl.scrollIntoView(true);
+    }
+    // Let the scroll settle on mobile before locking the body for the dialog.
+    window.setTimeout(open, 220);
+    return;
+  }
+  open();
+}
 function GeneralTab({
   company = {},
   isAdmin = false,
@@ -656,11 +680,8 @@ function GeneralTab({
                     <button
                       key={section.key}
                       type="button"
-                      onClick={() =>
-                        setPointsModal({
-                          title: section.key,
-                          points: section.points,
-                        })
+                      onClick={(e) =>
+                        openRolePointsModal(e.currentTarget, section, setPointsModal)
                       }
                       className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:border-indigo-500 hover:bg-slate-700 hover:text-white transition-colors"
                     >
@@ -679,16 +700,17 @@ function GeneralTab({
         {pointsModal
           ? createPortal(
               <div
-                className="submission-feedback-backdrop fixed inset-0 z-[200] flex items-center justify-center p-4"
+                className="submission-feedback-backdrop fixed inset-0 z-[200] flex items-end justify-center p-0 sm:items-center sm:p-4"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="role-points-modal-title"
                 onClick={() => setPointsModal(null)}
               >
                 <div
-                  className="w-full max-w-lg max-h-[min(80vh,100dvh-2rem)] overflow-hidden rounded-xl border border-theme bg-theme-card shadow-[var(--shadow-soft)] flex flex-col"
+                  className="w-full max-w-lg max-h-[min(88dvh,100%)] sm:max-h-[min(80vh,100dvh-2rem)] overflow-hidden rounded-t-2xl sm:rounded-xl border border-theme bg-theme-card shadow-[var(--shadow-soft)] flex flex-col pb-[env(safe-area-inset-bottom)]"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-theme-muted/40 sm:hidden" aria-hidden />
                   <div className="flex items-center justify-between gap-3 border-b border-theme px-4 py-3 shrink-0">
                     <h4
                       id="role-points-modal-title"
