@@ -1,6 +1,7 @@
 
 
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { COMPANY_VISIT_CLUSTER_FORM_OPTIONS } from "../../constants/placementTiers.js";
@@ -17,6 +18,33 @@ import {
   roleHasUsableCompensationForDisplay,
 } from "../../utils/collegeScope.js";
 
+function lockBodyScrollForModal() {
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const scrollBarGap = window.innerWidth - document.documentElement.clientWidth;
+  const prevOverflow = document.body.style.overflow;
+  const prevPaddingRight = document.body.style.paddingRight;
+  const prevPosition = document.body.style.position;
+  const prevTop = document.body.style.top;
+  const prevWidth = document.body.style.width;
+
+  // Freeze scroll position so opening the dialog does not jump the page.
+  document.body.style.overflow = "hidden";
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = "100%";
+  if (scrollBarGap > 0) {
+    document.body.style.paddingRight = `${scrollBarGap}px`;
+  }
+
+  return () => {
+    document.body.style.overflow = prevOverflow;
+    document.body.style.paddingRight = prevPaddingRight;
+    document.body.style.position = prevPosition;
+    document.body.style.top = prevTop;
+    document.body.style.width = prevWidth;
+    window.scrollTo(0, scrollY);
+  };
+}
 function GeneralTab({
   company = {},
   isAdmin = false,
@@ -101,6 +129,19 @@ function GeneralTab({
       setRolesDraft(mapRolesToDraft(company.roles));
     }
   }, [company.roles, isEditingRoles]);
+
+  useEffect(() => {
+    if (!pointsModal) return undefined;
+    const unlock = lockBodyScrollForModal();
+    const onKey = (e) => {
+      if (e.key === "Escape") setPointsModal(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      unlock();
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pointsModal]);
 
   /** RVITM: only show roles that have CTC or internship stipend. */
   const displayRoles = useMemo(() => {
@@ -635,50 +676,55 @@ function GeneralTab({
             );
           })}
 
-        {pointsModal ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="role-points-modal-title"
-            onClick={() => setPointsModal(null)}
-          >
-            <div
-              className="w-full max-w-lg max-h-[80vh] overflow-hidden rounded-xl border border-slate-600 bg-slate-900 shadow-xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between gap-3 border-b border-slate-700 px-4 py-3">
-                <h4
-                  id="role-points-modal-title"
-                  className="text-base font-semibold text-white"
+        {pointsModal
+          ? createPortal(
+              <div
+                className="submission-feedback-backdrop fixed inset-0 z-[200] flex items-center justify-center p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="role-points-modal-title"
+                onClick={() => setPointsModal(null)}
+              >
+                <div
+                  className="w-full max-w-lg max-h-[min(80vh,100dvh-2rem)] overflow-hidden rounded-xl border border-theme bg-theme-card shadow-[var(--shadow-soft)] flex flex-col"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {pointsModal.title}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => setPointsModal(null)}
-                  className="rounded-md px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-white text-sm"
-                  aria-label="Close"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="overflow-y-auto px-5 py-4">
-                {pointsModal.points.length === 1 ? (
-                  <p className="text-slate-200 whitespace-pre-wrap text-sm leading-relaxed">
-                    {pointsModal.points[0]}
-                  </p>
-                ) : (
-                  <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-200">
-                    {pointsModal.points.map((point, pointIdx) => (
-                      <li key={`${pointIdx}-${point.slice(0, 24)}`}>{point}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null}
+                  <div className="flex items-center justify-between gap-3 border-b border-theme px-4 py-3 shrink-0">
+                    <h4
+                      id="role-points-modal-title"
+                      className="text-base font-semibold text-theme-primary"
+                    >
+                      {pointsModal.title}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setPointsModal(null)}
+                      className="rounded-md px-2 py-1 text-theme-muted hover:bg-theme-input hover:text-theme-primary text-sm"
+                      aria-label="Close"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto overscroll-contain px-5 py-4">
+                    {pointsModal.points.length === 1 ? (
+                      <p className="text-theme-secondary whitespace-pre-wrap text-sm leading-relaxed">
+                        {pointsModal.points[0]}
+                      </p>
+                    ) : (
+                      <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-theme-secondary">
+                        {pointsModal.points.map((point, pointIdx) => (
+                          <li key={`${pointIdx}-${point.slice(0, 24)}`}>
+                            {point}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )
+          : null}
 
         {/* Editable view for admins */}
         {isEditingRoles && (

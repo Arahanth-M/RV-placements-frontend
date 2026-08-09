@@ -104,7 +104,7 @@ function NotificationSubscribeButton({ variant = "chip" }) {
       title={
         subscribed
           ? "Unsubscribe from email updates (in-app notifications continue)"
-          : "Subscribe to receive email updates about companies"
+          : "Subscribe to receive email about latest updates and new features and submissions."
       }
       aria-label={
         subscribed
