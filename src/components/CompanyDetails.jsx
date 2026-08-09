@@ -1265,4 +1265,35 @@ function CompanyDetails() {
               />
             ))}
           {activeTab === "offcampus" &&
-       
+            (hideTierContextVisitDetails ? (
+              <DreamTierVisitEmptyPanel />
+            ) : (
+              <OffCampusQuestionsTab company={company} />
+            ))}
+            </>
+          )}
+        </div>
+          </div>
+        </div>
+      </div>
+
+      {!shouldHideAiInterviews && isCsClusterForInterview && activeTab !== "aiinterview" && (
+        <div
+          className="ai-interview-explore-scope fixed z-[30] pointer-events-none flex flex-col items-end gap-2"
+          style={{
+            bottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
+            right: "max(1rem, env(safe-area-inset-right, 0px))",
+          }}
+        >
+          <AiInterviewExploreButton
+            data-tour="company-ai-interview-explore"
+            className="pointer-events-auto shadow-lg"
+            onClick={() => handleTabChange("aiinterview")}
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+export default CompanyDetails;
