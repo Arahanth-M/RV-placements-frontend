@@ -7,7 +7,7 @@ const RVCE_EMAIL_SUFFIX = "@rvce.edu.in";
 const RVITM_EMAIL_SUFFIX = ".rvitm@rvei.edu.in";
 
 /** TEMP: keep in sync with backend TEST_RVITM_EMAILS. */
-const TEST_RVITM_EMAILS = new Set(["arahanthmahaveer76@gmail.com"]);
+const TEST_RVITM_EMAILS = new Set(["arahanthmahaveer76@gmail.com","akshathaanilkumar@gmail.com"]);
 
 /**
  * @param {unknown} raw

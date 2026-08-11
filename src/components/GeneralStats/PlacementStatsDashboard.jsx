@@ -206,19 +206,23 @@ function BusinessModelSummaryTable({ rows, ctcColorMap = {} }) {
       <p className="mb-1.5 text-xs text-theme-secondary">
         Click a business model row to view CTC breakdown and company names.
       </p>
-      <table className="w-full min-w-[560px] table-fixed text-sm">
+      <table className="w-full min-w-[640px] table-fixed text-sm">
         <colgroup>
-          <col className="w-[34%]" />
-          <col className="w-[16%]" />
-          <col className="w-[16%]" />
-          <col className="w-[16%]" />
+          <col className="w-[28%]" />
+          <col className="w-[24%]" />
+          <col className="w-[24%]" />
+          <col className="w-[12%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-theme/60">
             <th className={`${cellPad} text-left font-semibold text-theme-primary`}>Business model</th>
-            <th className={`${cellPad} text-right font-semibold tabular-nums text-theme-primary`}>Recruited</th>
-            <th className={`${cellPad} text-right font-semibold tabular-nums text-theme-primary`}>Visited</th>
-            <th className={`${cellPad} text-right font-semibold tabular-nums text-theme-primary`}>Offers</th>
+            <th className={`${cellPad} text-center font-semibold leading-snug text-theme-primary`}>
+              No. of companies visited
+            </th>
+            <th className={`${cellPad} text-center font-semibold leading-snug text-theme-primary`}>
+              No. of companies recruited
+            </th>
+            <th className={`${cellPad} text-right font-semibold tabular-nums text-theme-primary`}>No. of Offers</th>
           </tr>
         </thead>
         <tbody>
@@ -248,10 +252,10 @@ function BusinessModelSummaryTable({ rows, ctcColorMap = {} }) {
                       <span className="min-w-0 truncate">{row.model}</span>
                     </button>
                   </td>
-                  <td className={`${cellPad} text-right tabular-nums`}>{row.companies}</td>
-                  <td className={`${cellPad} text-right tabular-nums text-theme-secondary`}>
+                  <td className={`${cellPad} text-center tabular-nums text-theme-secondary`}>
                     {row.hubCompanies ?? "—"}
                   </td>
+                  <td className={`${cellPad} text-center tabular-nums`}>{row.companies}</td>
                   <td className={`${cellPad} text-right tabular-nums`}>{row.offers}</td>
                 </tr>
                 {isExpanded ? (

@@ -444,11 +444,6 @@ function PrepPathPlanView({ plan }) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            {flags.limitedData ? (
-              <span className="status-badge-warning px-2.5 py-1">
-                Limited campus data
-              </span>
-            ) : null}
             {flags.webAugmented ? (
               <span className="rounded-full border border-theme px-2.5 py-1 text-theme-secondary">
                 Web-augmented
@@ -465,11 +460,6 @@ function PrepPathPlanView({ plan }) {
         {roadmap.summary ? (
           <p className="mt-4 text-sm leading-relaxed text-theme-secondary sm:text-base">
             {roadmap.summary}
-          </p>
-        ) : null}
-        {roadmap.dataQualityNote ? (
-          <p className="mt-3 rounded-lg border border-[color:var(--status-warning-border)] bg-[color:var(--status-warning-subtle-bg)] px-3 py-2 text-sm text-status-warning">
-            {roadmap.dataQualityNote}
           </p>
         ) : null}
 
