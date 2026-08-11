@@ -138,11 +138,13 @@ function PeerDemandBanner({ peerDemand, compact = false }) {
     <div
       className={`rounded-xl border px-3 py-2 text-sm ${
         hot
-          ? "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+          ? "border-[color:var(--status-warning-border)] bg-[color:var(--status-warning-subtle-bg)] text-status-warning"
           : "border-theme bg-theme-hero text-theme-secondary"
       } ${compact ? "text-xs" : ""}`}
     >
-      <span className="font-semibold text-theme-primary">Peer demand · </span>
+      <span className={`font-semibold ${hot ? "text-status-warning" : "text-theme-primary"}`}>
+        Peer demand ·{" "}
+      </span>
       {peerDemand.label}
       {hot ? <span className="ml-1 font-medium">(high interest this week)</span> : null}
     </div>
@@ -443,7 +445,7 @@ function PrepPathPlanView({ plan }) {
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             {flags.limitedData ? (
-              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-300">
+              <span className="status-badge-warning px-2.5 py-1">
                 Limited campus data
               </span>
             ) : null}
@@ -466,14 +468,14 @@ function PrepPathPlanView({ plan }) {
           </p>
         ) : null}
         {roadmap.dataQualityNote ? (
-          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-theme-secondary">
+          <p className="mt-3 rounded-lg border border-[color:var(--status-warning-border)] bg-[color:var(--status-warning-subtle-bg)] px-3 py-2 text-sm text-status-warning">
             {roadmap.dataQualityNote}
           </p>
         ) : null}
 
         {Array.isArray(roadmap.resumeStrengths) && roadmap.resumeStrengths.length > 0 ? (
           <div className="mt-5">
-            <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+            <h3 className="text-sm font-semibold text-status-success">
               Strengths for this company
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-theme-secondary">
@@ -486,7 +488,7 @@ function PrepPathPlanView({ plan }) {
 
         {Array.isArray(roadmap.resumeMissing) && roadmap.resumeMissing.length > 0 ? (
           <div className="mt-4">
-            <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+            <h3 className="text-sm font-semibold text-status-warning">
               Missing on the resume
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-theme-secondary">
@@ -1029,7 +1031,7 @@ function PrepPathPage() {
                 ) : null}
 
                 {error ? (
-                  <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm text-red-600 dark:text-red-300">
+                  <p className="mt-3 rounded-lg border border-[color:var(--status-danger-border)] bg-[color:var(--status-danger-subtle-bg)] px-3 py-2 text-sm text-status-danger">
                     {error}
                   </p>
                 ) : null}

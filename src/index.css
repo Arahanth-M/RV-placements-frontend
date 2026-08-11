@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* App theme uses data-theme on <html>; bind Tailwind `dark:` to that (not OS prefers-color-scheme). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /*
  * Respect notched devices only — header chrome no longer uses a fixed top-left menu,
  * so back controls align with page padding like other shell content.
