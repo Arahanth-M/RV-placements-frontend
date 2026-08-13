@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaCheckCircle, FaChevronDown, FaExclamationCircle } from "react-icons/fa";
 import { spcAPI } from "../utils/api";
@@ -6,7 +6,9 @@ import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from "../constants/placementYears.js";
-import { formatPpoBranchLabel, PPO_BRANCH_CODES } from "../constants/ppoBranchCodes.js";
+import { formatPpoBranchLabel, ppoBranchCodesForHubCluster } from "../constants/ppoBranchCodes.js";
+import { useAuth } from "../utils/AuthContext";
+import SpcClusterNotice from "./SpcClusterNotice.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -34,11 +36,6 @@ function formatSpcSubmitError(err, fallbackMessage) {
 }
 
 /** Custom picker options — native `<select>` popups ignore dark theme on Windows (white list + light text). */
-const BRANCH_PICKER_OPTIONS = [
-  { value: "", label: "Select program" },
-  ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
-];
-
 const CONVERSION_TYPES = [
   { value: "fte", label: "FTE" },
   { value: "fte_internship", label: "Internship + FTE" },
@@ -152,6 +149,8 @@ function SimplePicker({ value, onChange, options, placeholder, labelId }) {
 }
 
 export default function SPCConversionForm() {
+  const { user } = useAuth();
+  const spcCluster = user?.spcCluster || null;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -167,6 +166,14 @@ export default function SPCConversionForm() {
   const formFeedbackRef = useRef(null);
   /** Keeps latest selection for debounced suggest callback (avoids stale closures). */
   const selectedCompanyRef = useRef(null);
+  const branchOptions = useMemo(() => {
+    const codes = ppoBranchCodesForHubCluster(spcCluster);
+    if (!codes.length) return [{ value: "", label: "Select program" }];
+    return [
+      { value: "", label: "Select program" },
+      ...codes.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
+    ];
+  }, [spcCluster]);
 
   useEffect(() => {
     selectedCompanyRef.current = selectedCompany;
@@ -327,6 +334,7 @@ export default function SPCConversionForm() {
         <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
           <div>
             <h1 className="text-3xl font-bold text-theme-primary">Update conversion details</h1>
+            <SpcClusterNotice cluster={spcCluster} />
             <p className="mt-2 text-sm text-theme-secondary">
               Pick company, year, and program from the list so roles load from that hub&apos;s visit. CTC,
               base, and stipend merge into the company card (same rules as add placement).
@@ -404,7 +412,7 @@ export default function SPCConversionForm() {
                       setSuccess("");
                       setForm((prev) => ({ ...prev, branchCode: v, role: "" }));
                     }}
-                    options={BRANCH_PICKER_OPTIONS}
+                    options={branchOptions}
                     placeholder="Select program"
                     labelId="conv-branch-label"
                   />

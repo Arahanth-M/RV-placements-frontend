@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import { spcAPI } from "../utils/api";
@@ -16,7 +16,9 @@ import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from "../constants/placementYears.js";
-import { formatPpoBranchLabel, PPO_BRANCH_CODES } from "../constants/ppoBranchCodes.js";
+import { formatPpoBranchLabel, ppoBranchCodesForHubCluster } from "../constants/ppoBranchCodes.js";
+import { useAuth } from "../utils/AuthContext";
+import SpcClusterNotice from "./SpcClusterNotice.jsx";
 import {
   compensationVisibilityForTypeOfOffer,
   SPC_COMPENSATION_TBD_HINT,
@@ -76,11 +78,6 @@ const PLACEMENT_FORM_YEAR_OPTIONS = PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
   label: String(y),
 }));
 
-const PLACEMENT_FORM_BRANCH_OPTIONS = [
-  { value: "", label: "Select program" },
-  ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
-];
-
 const TYPE_OF_OFFER_OPTIONS = SPC_TYPE_OF_OFFER_OPTIONS.map((o) => ({
   value: o,
   label: o,
@@ -88,6 +85,8 @@ const TYPE_OF_OFFER_OPTIONS = SPC_TYPE_OF_OFFER_OPTIONS.map((o) => ({
 
 /* ─── Main Form ─────────────────────────────────────────────────────────── */
 export default function SPCPlacementForm() {
+  const { user } = useAuth();
+  const spcCluster = user?.spcCluster || null;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -102,6 +101,14 @@ export default function SPCPlacementForm() {
   const debounceRef = useRef(null);
   const formFeedbackRef = useRef(null);
   const selectedCompanyRef = useRef(null);
+  const branchOptions = useMemo(() => {
+    const codes = ppoBranchCodesForHubCluster(spcCluster);
+    if (!codes.length) return [{ value: "", label: "Select program" }];
+    return [
+      { value: "", label: "Select program" },
+      ...codes.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
+    ];
+  }, [spcCluster]);
 
   useEffect(() => {
     selectedCompanyRef.current = selectedCompany;
@@ -256,6 +263,7 @@ export default function SPCPlacementForm() {
         <div className="rounded-3xl border border-theme bg-theme-card p-6 shadow-xl sm:p-8">
           <div>
             <h1 className="text-3xl font-bold text-theme-primary">Placement Form</h1>
+            <SpcClusterNotice cluster={spcCluster} />
             {/* <p className="mt-2 text-sm text-theme-secondary">
               With company, placement year, and program from suggestions, role and the compensation fields you see
               (by type of offer) update the matched company visit the same way as Update conversion details.
@@ -349,7 +357,7 @@ export default function SPCPlacementForm() {
                     required
                     value={form.branchCode}
                     onChange={handleChange}
-                    options={PLACEMENT_FORM_BRANCH_OPTIONS}
+                    options={branchOptions}
                     labelId="spc-pl-branch-label"
                   />
                 </div>

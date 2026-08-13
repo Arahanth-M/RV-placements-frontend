@@ -17,11 +17,13 @@ import {
   FaUsers,
   FaSync,
 } from "react-icons/fa";
-import { formatPpoBranchLabel, PPO_BRANCH_CODES } from "../constants/ppoBranchCodes.js";
+import { formatPpoBranchLabel, ppoBranchCodesForHubCluster } from "../constants/ppoBranchCodes.js";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
 } from "../constants/placementYears.js";
+import { useAuth } from "../utils/AuthContext";
+import SpcClusterNotice from "./SpcClusterNotice.jsx";
 import SpcCompanySuggestField from "./SpcCompanySuggestField.jsx";
 import SpcRoleField from "./SpcRoleField.jsx";
 import SpcFormField from "./SpcFormField.jsx";
@@ -127,11 +129,6 @@ const SPC_EDIT_YEAR_OPTIONS = PLACEMENT_DETAIL_VISIT_YEARS.map((y) => ({
   label: String(y),
 }));
 
-const SPC_EDIT_BRANCH_OPTIONS = [
-  { value: "", label: "Select program" },
-  ...PPO_BRANCH_CODES.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
-];
-
 const SPC_EDIT_TYPE_OF_OFFER_OPTIONS = [
   { value: "", label: "Select type of offer" },
   { value: "Internship(PPO)", label: "Internship(PPO)" },
@@ -170,7 +167,7 @@ const MOD_PREVIEW_PANEL = "mt-4 rounded-xl border border-theme-accent/25 bg-them
 
 // ─── Dashboard landing ────────────────────────────────────────────────────────
 
-function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
+function DashboardLanding({ onNavigate, pendingCount, pendingLoading, spcCluster }) {
   const actions = [
     {
       key: "add",
@@ -202,7 +199,7 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
     {
       key: "mod",
       title: "Review student contributions",
-      desc: "Approve, reject, or enhance student submissions.",
+      desc: "Approve or reject student submissions.",
       cta: "Start review",
       accent: "border-l-amber-500",
       ctaColor: "text-amber-600",
@@ -220,6 +217,7 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
       <PageHeroHeader subtitle="Manage SPC placement workflows and review what you have submitted.">
         SPC <em style={{ color: "#818CF8", fontStyle: "italic" }}>Dashboard</em>
       </PageHeroHeader>
+      <SpcClusterNotice cluster={spcCluster} />
 
       {/* Pending review stat card */}
       {/* <div className="mb-6">
@@ -253,6 +251,8 @@ function DashboardLanding({ onNavigate, pendingCount, pendingLoading }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SPCDashboard() {
+  const { user } = useAuth();
+  const spcCluster = user?.spcCluster || null;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const showSubmissions = searchParams.get("view") === "submissions";
@@ -284,6 +284,14 @@ export default function SPCDashboard() {
   );
   const showEditSixMonthStipend =
     String(editForm.ppoConversionType || "").trim() === "Internship+FTE";
+  const editBranchOptions = useMemo(() => {
+    const codes = ppoBranchCodesForHubCluster(spcCluster);
+    if (!codes.length) return [{ value: "", label: "Select program" }];
+    return [
+      { value: "", label: "Select program" },
+      ...codes.map((b) => ({ value: b, label: formatPpoBranchLabel(b) })),
+    ];
+  }, [spcCluster]);
 
   // pending count for stat card
   const [pendingCount, setPendingCount] = useState(0);
@@ -774,6 +782,7 @@ export default function SPCDashboard() {
             onNavigate={handleDashboardNavigate}
             pendingCount={pendingCount}
             pendingLoading={pendingLoading}
+            spcCluster={spcCluster}
           />
         ) : showStudentMod ? (
 
@@ -791,6 +800,7 @@ export default function SPCDashboard() {
                     <p className="mt-1 text-sm text-theme-secondary">
                       Approve or reject company submissions from students.
                     </p>
+                    <SpcClusterNotice cluster={spcCluster} />
                   </div>
                   <button
                     type="button"
@@ -982,6 +992,7 @@ export default function SPCDashboard() {
                         {loading ? "Refreshing…" : "Refresh"}
                       </button>
                     </div>
+                    <SpcClusterNotice cluster={spcCluster} />
                     {placements.length === 0 && !loading ? (
                       <p className="text-sm text-theme-muted">No placement or conversion entries yet.</p>
                     ) : placements.length > 0 ? (
@@ -1149,7 +1160,7 @@ export default function SPCDashboard() {
                       required
                       value={editForm.branchCode}
                       onChange={onEditChange}
-                      options={SPC_EDIT_BRANCH_OPTIONS}
+                      options={editBranchOptions}
                       labelId="spc-edit-branch-label"
                     />
                   </div>
@@ -1407,21 +1418,6 @@ export default function SPCDashboard() {
                     {modAddingAnswer ? "Generating answer…" : "Add answer"}
                   </button>
                 ) : null}
-                {submissionSupportsEnhancement(modSelected.type) ? (
-                  <button
-                    type="button"
-                    onClick={() => handleModEnhance(modSelected._id)}
-                    disabled={
-                      modAiBusy ||
-                      modApproving.has(String(modSelected._id)) ||
-                      modRejecting.has(String(modSelected._id)) ||
-                      modLoading
-                    }
-                    className={MOD_BTN_SECONDARY}
-                  >
-                    {modEnhancing ? "Enhancing…" : "Enhance with AI"}
-                  </button>
-                ) : null}
                 {modEnhancedContent ? (
                   <>
                     <button
@@ -1502,4 +1498,4 @@ export default function SPCDashboard() {
       ) : null}
     </div>
   );
-}
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 

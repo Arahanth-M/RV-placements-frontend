@@ -29,7 +29,7 @@ import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
 import NotificationBell from "./NotificationBell";
 import NotificationSubscribeButton from "./NotificationSubscribeButton";
-import logo from "../assets/logo2.webp";
+import BrandLogo from "./BrandLogo.jsx";
 import { useProductTour } from "../context/ProductTourContext";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
@@ -480,7 +480,7 @@ const Header = () => {
             className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-theme bg-white px-1.5 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-12 sm:w-[4.5rem] sm:px-2"
             title="RVCE Placement — Home"
           >
-            <img src={logo} alt="" className="h-full w-full max-h-full object-contain object-center" />
+            <BrandLogo alt="" />
           </Link>
           <Link
             to="/feedback"

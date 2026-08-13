@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import rvLogo from "../../assets/logo2.webp";
+import BrandLogo from "../BrandLogo.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 
 function InternshipTab({
@@ -162,11 +162,7 @@ function InternshipTab({
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                <img
-                  src={rvLogo}
-                  alt="RV College logo"
-                  className="h-full w-full object-contain"
-                />
+                <BrandLogo />
               </div>
               <h3 className="text-lg font-semibold text-indigo-400">Add Internship Experience</h3>
             </div>

@@ -5,7 +5,7 @@ import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
 import { MESSAGES } from "../../utils/constants";
 import { FaChevronDown, FaMoon, FaSpinner, FaSun } from "react-icons/fa";
-import rvLogo from "../../assets/logo2.webp";
+import BrandLogo from "../BrandLogo.jsx";
 import InterviewCodingPlatform from "./InterviewCodingPlatform";
 import ThemedSelect from "../ThemedSelect.jsx";
 import InterviewLimitModal from "../InterviewLimitModal";
@@ -3011,11 +3011,7 @@ function AIInterviewTab({
             <div>
               <div className="flex items-start gap-3">
                 <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                  <img
-                    src={rvLogo}
-                    alt="RV College logo"
-                    className="h-full w-full object-contain"
-                  />
+                  <BrandLogo />
                 </div>
                 <div className="min-w-0">
                   <p
@@ -3192,11 +3188,7 @@ function AIInterviewTab({
             <div>
               <div className="flex items-start gap-3">
                 <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                  <img
-                    src={rvLogo}
-                    alt="RV College logo"
-                    className="h-full w-full object-contain"
-                  />
+                  <BrandLogo />
                 </div>
                 <div className="min-w-0">
                   <p
@@ -3581,11 +3573,7 @@ function AIInterviewTab({
             <div className="bg-theme-input px-6 pt-6 pb-4 border-b border-theme">
               <div className="flex items-start gap-3 mb-1">
                 <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                  <img
-                    src={rvLogo}
-                    alt="RV College logo"
-                    className="h-full w-full object-contain"
-                  />
+                  <BrandLogo />
                 </div>
                 <div className="min-w-0 pt-1">
                   <div className="flex items-center gap-3">

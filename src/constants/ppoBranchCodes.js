@@ -65,3 +65,18 @@ export function formatPpoProgramName(code) {
   const normalized = normalizePpoBranchCode(code);
   return PPO_PROGRAM_NAMES[normalized] || String(code || "").trim().toUpperCase();
 }
+
+/**
+ * @param {unknown} cluster
+ * @returns {string[]}
+ */
+export function ppoBranchCodesForHubCluster(cluster) {
+  const key = String(cluster ?? "")
+    .trim()
+    .toLowerCase();
+  if (key === "cs") return [...CS_BRANCH_CODES];
+  if (key === "ec") return [...EC_BRANCH_CODES];
+  if (key === "me") return [...ME_BRANCH_CODES];
+  if (key === "chem") return [...CHEM_BRANCH_CODES];
+  return [];
+}

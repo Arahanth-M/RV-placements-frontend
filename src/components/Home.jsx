@@ -252,11 +252,11 @@ function Home() {
             <div className="flex-1 text-center lg:text-left" data-tour="home-hero">
              
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-theme-primary mb-5 leading-tight">
-               Welcome to RVCE{" "}
+               Welcome to RV{" "}
                 <span className="text-theme-accent">Placement Dashboard</span>{" "}
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-theme-secondary leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8">
-                Your all-in-one placement companion at RVCE. Access company insights, real interview experiences, curated resources and AI-powered mock interviews to prepare smarter.
+                Your all-in-one placement companion at RV. Access company insights, real interview experiences, curated resources and AI-powered mock interviews to prepare smarter.
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <Link

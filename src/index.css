@@ -1268,7 +1268,21 @@ select.spc-field-control {
   border: none;
 }
 
-/* RV logo in hero slideshow – ensure visibility in dark mode */
+/* Official seal is black-on-white; parent wrappers provide the light plate. */
+.rv-brand-logo {
+  display: block;
+  max-height: 100%;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.rv-logo {
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+}
+
 [data-theme="dark"] .rv-logo {
   background-color: #f9fafb;
   border-radius: 16px;

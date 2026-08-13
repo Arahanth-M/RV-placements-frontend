@@ -2,7 +2,7 @@ const companyCache = {};
 const companyPreviewCache = {};
 
 const COMPANY_SESSION_PREFIX = "companies_";
-const COMPANY_PREVIEW_SESSION_PREFIX = "companies_preview_";
+const COMPANY_PREVIEW_SESSION_PREFIX = "companies_preview_v3_";
 
 /** Short TTL so hub cards pick up visit-row changes quickly (session + in-memory). */
 const COMPANY_LIST_CACHE_TTL_MS = 3 * 60 * 1000;

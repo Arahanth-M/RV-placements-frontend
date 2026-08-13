@@ -106,7 +106,7 @@ export const MESSAGES = {
   SUBMISSION_SUCCESS: "Submission received and pending approval.",
   /** Shown in the submission success dialog alongside the server status message. */
   SUBMISSION_CONTRIBUTION_NOTE:
-    "Your contribution is highly valued. Thousands of RVCEians will benefit from your response.",
+    "Your contribution is highly valued. Thousands of RVians will benefit from your response.",
   SUBMISSION_ERROR: "Something went wrong. Try again.",
   INTERVIEW_LIMIT_REACHED:
     "You can take one AI mock interview every 7 days. Please try again later.",

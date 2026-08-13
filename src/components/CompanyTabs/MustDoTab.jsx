@@ -3,7 +3,7 @@ import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import { FaEdit, FaExternalLinkAlt, FaTrash } from "react-icons/fa";
-import rvLogo from "../../assets/logo2.webp";
+import BrandLogo from "../BrandLogo.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import {
   resolveMustDoTopicResources,
@@ -315,11 +315,7 @@ function MustDoTab({
           <div className="w-96 max-w-[90vw] rounded-xl border border-theme bg-theme-card p-6 shadow-xl">
             <div className="mb-4 flex items-center gap-3">
               <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                <img
-                  src={rvLogo}
-                  alt="RV College logo"
-                  className="h-full w-full object-contain"
-                />
+                <BrandLogo />
               </div>
               <h3 className="text-lg font-semibold text-theme-accent">Add Must Do Topic</h3>
             </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import rvLogo from "../assets/logo2.webp";
+import BrandLogo from "./BrandLogo.jsx";
 import { MESSAGES } from "../utils/constants";
 
 /**
@@ -69,7 +69,7 @@ export default function InterviewLimitModal({
       >
         <div className="flex items-start gap-3">
           <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-            <img src={rvLogo} alt="RV College logo" className="h-full w-full object-contain" />
+            <BrandLogo />
           </div>
           <div className="min-w-0">
             <p

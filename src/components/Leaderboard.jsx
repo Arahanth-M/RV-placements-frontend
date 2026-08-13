@@ -217,7 +217,7 @@ const Leaderboard = () => {
         leaderboardAPI.getLeaderboard(),
         leaderboardAPI.getPreviousDayTopContributor(),
       ]);
-      setLeaderboard(leaderboardResponse.data || []);
+      setLeaderboard((leaderboardResponse.data || []).slice(0, 10));
       setPreviousDayTopContributor(previousDayTopResponse.data || null);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);

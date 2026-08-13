@@ -890,7 +890,7 @@ function CompanyStats() {
     user,
   ]);
 
-  // Category hub: preview-logos only for first paint. Full GET /companies when a tier is opened.
+  // Category hub: preview-logos for fast logo paint; full GET /companies for accurate counts.
   useEffect(() => {
     let cancelled = false;
     if (isPlacementDetailVisitYear(selectedYear)) {
@@ -902,14 +902,14 @@ function CompanyStats() {
       } else {
         setCompaniesFetchDone(false);
       }
+      const isCategoryHub =
+        location.pathname === PATH_COMPANY_CATEGORY && placementTier === null;
       const shouldFetchCategoryPreview =
-        location.pathname === PATH_COMPANY_CATEGORY &&
-        placementTier === null &&
+        isCategoryHub &&
         (clusterParam === PLACEMENT_CLUSTER_CS ||
           clusterParam === PLACEMENT_CLUSTER_EC ||
-          clusterParam === PLACEMENT_CLUSTER_ME);
-      // Defer heavy list until user opens Dream / Open dream / etc.
-      const deferFullCompanyList = shouldFetchCategoryPreview === true;
+          clusterParam === PLACEMENT_CLUSTER_ME ||
+          clusterParam === PLACEMENT_CLUSTER_CHEM);
       if (shouldFetchCategoryPreview) {
         const previewClusterKey = clusterParam;
         const cachedPreview = getCachedCompanyPreview(selectedYear, previewClusterKey);
@@ -927,38 +927,35 @@ function CompanyStats() {
             if (!cancelled) {
               const nextPreview = res.data || null;
               setCategoryPreview(nextPreview);
-              if (nextPreview) setCachedCompanyPreview(selectedYear, nextPreview, previewClusterKey);
+              if (nextPreview) {
+                setCachedCompanyPreview(selectedYear, nextPreview, previewClusterKey);
+              }
             }
           } catch (err) {
             console.error("❌ Error fetching category preview:", err);
-          } finally {
-            // Hub tiles can render from preview without waiting on full list.
-            if (!cancelled && deferFullCompanyList) setCompaniesFetchDone(true);
           }
         })();
       } else {
         setCategoryPreview(null);
       }
-      if (!deferFullCompanyList) {
-        (async () => {
-          try {
-            const apiClusterParam = isPlacementHubCluster(clusterParam) ? clusterParam : undefined;
-            const res = await companyAPI.getAllCompanies({
-              year: selectedYear,
-              cluster: apiClusterParam,
-            });
-            if (!cancelled) {
-              const nextCompanies = res.data || [];
-              setCompanies(nextCompanies);
-              setCachedCompanies(selectedYear, nextCompanies, companyCacheScope);
-            }
-          } catch (err) {
-            console.error("❌ Error fetching companies:", err);
-          } finally {
-            if (!cancelled) setCompaniesFetchDone(true);
+      (async () => {
+        try {
+          const apiClusterParam = isPlacementHubCluster(clusterParam) ? clusterParam : undefined;
+          const res = await companyAPI.getAllCompanies({
+            year: selectedYear,
+            cluster: apiClusterParam,
+          });
+          if (!cancelled) {
+            const nextCompanies = res.data || [];
+            setCompanies(nextCompanies);
+            setCachedCompanies(selectedYear, nextCompanies, companyCacheScope);
           }
-        })();
-      }
+        } catch (err) {
+          console.error("❌ Error fetching companies:", err);
+        } finally {
+          if (!cancelled) setCompaniesFetchDone(true);
+        }
+      })();
     } else {
       localStorage.setItem('companystats_selectedYear', selectedYear ? String(selectedYear) : '');
       setCategoryPreview(null);
@@ -1893,8 +1890,8 @@ function CompanyStats() {
     location.pathname === PATH_COMPANY_CATEGORY &&
     isPlacementHubCluster(clusterParam)
   ) {
-    // Prefer preview tiles on hub until (optional) cached full list is present.
-    const useFullListForCategoryTiles = companies.length > 0;
+    // Category counts must match tier lists — never show preview-only counts.
+    const useFullListForCategoryTiles = companies.length > 0 && companiesFetchDone;
     const p = categoryPreview;
     const nTile = CATEGORY_TILE_LOGO_GRID;
     const dreamLogoPreview = useFullListForCategoryTiles
@@ -1912,21 +1909,13 @@ function CompanyStats() {
     const summerLogoPreview = useFullListForCategoryTiles
       ? allSummerInternshipCompanies.slice(0, nTile)
       : p?.logos?.summerInternship ?? [];
-    const dreamCount = useFullListForCategoryTiles
-      ? allDreamCompanies.length
-      : p?.counts?.dream ?? 0;
-    const openDreamCount = useFullListForCategoryTiles
-      ? allOpenDreamCompanies.length
-      : p?.counts?.openDream ?? 0;
+    const dreamCount = useFullListForCategoryTiles ? allDreamCompanies.length : null;
+    const openDreamCount = useFullListForCategoryTiles ? allOpenDreamCompanies.length : null;
     const internshipOnlyCount = useFullListForCategoryTiles
       ? allInternshipOnlyCompanies.length
-      : p?.counts?.internshipOnly ?? 0;
-    const summerCount = useFullListForCategoryTiles
-      ? allSummerInternshipCompanies.length
-      : p?.counts?.summerInternship ?? 0;
-    const offCampusCount = useFullListForCategoryTiles
-      ? allOffCampusCompanies.length
-      : p?.counts?.offCampus ?? 0;
+      : null;
+    const summerCount = useFullListForCategoryTiles ? allSummerInternshipCompanies.length : null;
+    const offCampusCount = useFullListForCategoryTiles ? allOffCampusCompanies.length : null;
 
     const categoryTiles = [
       {
@@ -1971,10 +1960,9 @@ function CompanyStats() {
         logos: offCampusLogoPreview,
         logoGrid: { gridSize: 5, interval: 3000 },
       },
-    ].filter((tile) => tile.count > 0);
+    ].filter((tile) => tile.count != null && tile.count > 0);
 
-    const isCategoryTilesLoading =
-      categoryTiles.length === 0 && !categoryPreview && !companiesFetchDone;
+    const isCategoryTilesLoading = !companiesFetchDone;
 
     const categorySubtitle = (() => {
       if (isCategoryTilesLoading) {

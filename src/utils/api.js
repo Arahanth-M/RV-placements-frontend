@@ -335,6 +335,8 @@ export const adminAPI = {
   getUserCount: () => API.get('/api/admin/stats/users'),
   assignSpc: (data) => API.post('/api/admin/assign-spc', data),
   getSpcs: () => API.get('/api/admin/spcs'),
+  updateSpcCluster: (id, cluster) =>
+    API.patch(`/api/admin/spcs/${id}/cluster`, { cluster }),
   revokeSpc: (id) => API.patch(`/api/admin/spcs/${id}/revoke`),
   enhanceSubmission: (id) => API.post(`/api/admin/submissions/${id}/enhance`),
   addAnswerToSubmission: (id) => API.post(`/api/admin/submissions/${id}/add-answer`),

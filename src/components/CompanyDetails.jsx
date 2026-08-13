@@ -18,7 +18,7 @@ import {
   PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY,
 } from "../constants/placementTiers.js";
 import CompanyLogo from "./CompanyLogo";
-import rvLogo from "../assets/logo2.webp";
+import BrandLogo from "./BrandLogo.jsx";
 
 import AboutTab from "./CompanyTabs/AboutTab";
 import GeneralTab from "./CompanyTabs/GeneralTab";
@@ -933,11 +933,7 @@ function CompanyDetails() {
               className="h-11 w-[4.75rem] sm:h-12 sm:w-20 shrink-0 rounded-lg border border-theme bg-white/95 p-1.5 sm:p-2 shadow-sm"
               title="RV College of Engineering"
             >
-              <img
-                src={rvLogo}
-                alt="RV College logo"
-                className="h-full w-full object-contain"
-              />
+              <BrandLogo />
             </div>
           </div>
         ) : (

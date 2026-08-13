@@ -92,7 +92,7 @@ import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
-import rvLogo from "../../assets/logo2.webp";
+import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
 function InterviewTab({
@@ -807,11 +807,7 @@ function InterviewTab({
             <div className="border-b border-theme bg-theme-card px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                  <img
-                    src={rvLogo}
-                    alt="RV College logo"
-                    className="h-full w-full object-contain"
-                  />
+                  <BrandLogo />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-theme-primary">Add Interview Question</h3>
@@ -870,11 +866,7 @@ function InterviewTab({
             <div className="border-b border-theme bg-theme-card px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                  <img
-                    src={rvLogo}
-                    alt="RV College logo"
-                    className="h-full w-full object-contain"
-                  />
+                  <BrandLogo />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-theme-primary">Add Interview Process</h3>

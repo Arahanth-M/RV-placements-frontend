@@ -2,6 +2,12 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo } fro
 import { useSearchParams } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
+import { useAuth } from '../utils/AuthContext';
+import {
+  hubClusterKeysForCollege,
+  PLACEMENT_HUB_CLUSTER_LABELS,
+} from '../constants/placementTiers.js';
+import { inferSpcClusterFromEmailAndUsn } from '../utils/spcCluster.js';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import StudentRequestsTab from './StudentRequestsTab';
@@ -11,6 +17,7 @@ import AdminUsageAnalyticsTab from './AdminUsageAnalyticsTab';
 import AdminDauModal from './AdminDauModal.jsx';
 import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
 import DashboardRefreshButton from './DashboardRefreshButton.jsx';
+import ThemedSelect from './ThemedSelect.jsx';
 import { PageBackButton, PageBackNavRow, PageHeroFontStyles, PageHeroHeader, pageShellInnerClass, pageShellOuterClassCompact } from './PageBackNav.jsx';
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
@@ -262,6 +269,7 @@ function AdminChartEmpty({ message }) {
 }
 
 const AdminDashboard = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -306,12 +314,13 @@ const AdminDashboard = () => {
   const [coApprovedMeta, setCoApprovedMeta] = useState({ page: 1, total: 0, totalPages: 1 });
   const [eventsLoaded, setEventsLoaded] = useState(false);
   const [adminToast, setAdminToast] = useState(null);
-  const [spcForm, setSpcForm] = useState({ email: '', usn: '' });
+  const [spcForm, setSpcForm] = useState({ email: '', usn: '', cluster: '' });
   const [assigningSpc, setAssigningSpc] = useState(false);
   const [spcUsers, setSpcUsers] = useState([]);
   const [spcUsersLoading, setSpcUsersLoading] = useState(false);
   const [spcUsersLoaded, setSpcUsersLoaded] = useState(false);
   const [revokingSpcIds, setRevokingSpcIds] = useState(new Set());
+  const [updatingSpcClusterIds, setUpdatingSpcClusterIds] = useState(new Set());
   const [studentBatchColumnGuide, setStudentBatchColumnGuide] = useState([]);
   const [studentBatchImportLoading, setStudentBatchImportLoading] = useState(false);
   const [studentBatchImportResult, setStudentBatchImportResult] = useState(null);
@@ -362,6 +371,15 @@ const AdminDashboard = () => {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, [activeMainTab]);
+
+  const spcClusterOptions = useMemo(() => {
+    const keys = hubClusterKeysForCollege(user?.collegeId);
+    const list = keys.length > 0 ? keys : ['cs', 'ec', 'me', 'chem'];
+    return list.map((key) => ({
+      value: key,
+      label: PLACEMENT_HUB_CLUSTER_LABELS[key] || key.toUpperCase(),
+    }));
+  }, [user?.collegeId]);
 
   const companyYearLabel = selectedCompanyYear === 'all' ? 'all years' : selectedCompanyYear;
   const resolveCompanyActionYear = (placementYear) => {
@@ -439,6 +457,13 @@ const AdminDashboard = () => {
     return () => window.clearTimeout(timeoutId);
   }, [adminToast]);
 
+  useEffect(() => {
+    const inferred = inferSpcClusterFromEmailAndUsn(spcForm.email, spcForm.usn);
+    if (!inferred) return;
+    if (!spcClusterOptions.some((opt) => opt.value === inferred)) return;
+    setSpcForm((prev) => (prev.cluster === inferred ? prev : { ...prev, cluster: inferred }));
+  }, [spcForm.email, spcForm.usn, spcClusterOptions]);
+
   const loadSpcUsers = useCallback(async () => {
     setSpcUsersLoading(true);
     try {
@@ -454,16 +479,21 @@ const AdminDashboard = () => {
     event.preventDefault();
     const email = String(spcForm.email || '').trim().toLowerCase();
     const usn = String(spcForm.usn || '').trim().toUpperCase();
+    const cluster = String(spcForm.cluster || '').trim().toLowerCase();
 
     if (!email || !usn) {
       setAdminToast({ type: 'error', message: 'Email and USN are required to assign SPC access.' });
       return;
     }
+    if (!cluster) {
+      setAdminToast({ type: 'error', message: 'Select a cluster for this SPC.' });
+      return;
+    }
 
     try {
       setAssigningSpc(true);
-      await adminAPI.assignSpc({ email, usn });
-      setSpcForm({ email: '', usn: '' });
+      await adminAPI.assignSpc({ email, usn, cluster });
+      setSpcForm({ email: '', usn: '', cluster: '' });
       setAdminToast({ type: 'success', message: `SPC role assigned successfully for ${email}.` });
       await loadSpcUsers();
     } catch (assignError) {
@@ -474,6 +504,40 @@ const AdminDashboard = () => {
       setAdminToast({ type: 'error', message: errorMessage });
     } finally {
       setAssigningSpc(false);
+    }
+  };
+
+  const handleChangeSpcCluster = async (spcUser, cluster) => {
+    const nextCluster = String(cluster || '').trim().toLowerCase();
+    if (!nextCluster || nextCluster === String(spcUser?.spcCluster || '')) return;
+
+    try {
+      setUpdatingSpcClusterIds((prev) => new Set(prev).add(String(spcUser._id)));
+      const { data } = await adminAPI.updateSpcCluster(spcUser._id, nextCluster);
+      const updated = data?.user;
+      setSpcUsers((prev) =>
+        prev.map((item) =>
+          String(item._id) === String(spcUser._id)
+            ? { ...item, spcCluster: updated?.spcCluster || nextCluster }
+            : item
+        )
+      );
+      setAdminToast({
+        type: 'success',
+        message: `Cluster updated for ${spcUser?.email || 'SPC'}.`,
+      });
+    } catch (changeError) {
+      const errorMessage =
+        changeError?.response?.data?.error ||
+        changeError?.response?.data?.message ||
+        'Failed to update SPC cluster.';
+      setAdminToast({ type: 'error', message: errorMessage });
+    } finally {
+      setUpdatingSpcClusterIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(spcUser._id));
+        return next;
+      });
     }
   };
 
@@ -1565,44 +1629,62 @@ const AdminDashboard = () => {
                   <div className="mb-5 text-center">
                     <h2 className="text-2xl font-semibold text-theme-accent">Assign SPC Access</h2>
                     <p className="mx-auto mt-1 max-w-2xl text-sm text-theme-secondary">
-                      Assign SPC access by validating the student email ID and USN, then manage all current SPC users from the same place.
+                      Assign SPC access by validating the student email ID and USN, choosing their cluster, then manage all current SPC users from the same place.
                     </p>
                   </div>
 
-                  <form onSubmit={handleAssignSpc} className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px_auto] md:items-end">
-                    <label className="block">
-                      <span className="mb-2 block text-sm font-medium text-theme-primary">Student Email ID</span>
-                      <input
-                        type="email"
-                        value={spcForm.email}
-                        onChange={(event) =>
-                          setSpcForm((prev) => ({ ...prev, email: event.target.value }))
-                        }
-                        placeholder="student@rvce.edu.in"
-                        className="w-full rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
-                      />
-                    </label>
+                  <form onSubmit={handleAssignSpc} className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px]">
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-medium text-theme-primary">Student Email ID</span>
+                        <input
+                          type="email"
+                          value={spcForm.email}
+                          onChange={(event) =>
+                            setSpcForm((prev) => ({ ...prev, email: event.target.value }))
+                          }
+                          placeholder="student@rvce.edu.in"
+                          className="w-full rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
+                        />
+                      </label>
 
-                    <label className="block">
-                      <span className="mb-2 block text-sm font-medium text-theme-primary">USN</span>
-                      <input
-                        type="text"
-                        value={spcForm.usn}
-                        onChange={(event) =>
-                          setSpcForm((prev) => ({ ...prev, usn: event.target.value.toUpperCase() }))
-                        }
-                        placeholder="1RV22CS001"
-                        className="w-full rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
-                      />
-                    </label>
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-medium text-theme-primary">USN</span>
+                        <input
+                          type="text"
+                          value={spcForm.usn}
+                          onChange={(event) =>
+                            setSpcForm((prev) => ({ ...prev, usn: event.target.value.toUpperCase() }))
+                          }
+                          placeholder="1RV22CS001"
+                          className="w-full rounded-lg border border-theme bg-theme-hero px-4 py-3 text-sm text-theme-primary outline-none focus:border-theme-accent"
+                        />
+                      </label>
+                    </div>
 
-                    <button
-                      type="submit"
-                      disabled={assigningSpc}
-                      className="rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {assigningSpc ? 'Assigning...' : 'Assign SPC'}
-                    </button>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+                      <label className="block min-w-0">
+                        <span className="mb-2 block text-sm font-medium text-theme-primary">Cluster</span>
+                        <ThemedSelect
+                          value={spcForm.cluster}
+                          options={spcClusterOptions}
+                          onChange={(cluster) =>
+                            setSpcForm((prev) => ({ ...prev, cluster: String(cluster || '') }))
+                          }
+                          placeholder="Select cluster"
+                          ariaLabel="SPC cluster"
+                          triggerClassName="py-3 bg-theme-hero"
+                        />
+                      </label>
+
+                      <button
+                        type="submit"
+                        disabled={assigningSpc}
+                        className="rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {assigningSpc ? 'Assigning...' : 'Assign SPC'}
+                      </button>
+                    </div>
                   </form>
                 </div>
 
@@ -1639,6 +1721,7 @@ const AdminDashboard = () => {
                           <tr className="text-left text-xs font-semibold uppercase tracking-wide text-theme-secondary">
                             <th className="px-4 py-3">Name</th>
                             <th className="px-4 py-3">Email</th>
+                            <th className="px-4 py-3">Cluster</th>
                             <th className="px-4 py-3">Assigned Role</th>
                             <th className="px-4 py-3">Created</th>
                             <th className="px-4 py-3 text-right">Actions</th>
@@ -1649,6 +1732,17 @@ const AdminDashboard = () => {
                             <tr key={spcUser._id} className="text-sm text-theme-primary">
                               <td className="px-4 py-3">{spcUser.username || '-'}</td>
                               <td className="px-4 py-3">{spcUser.email || '-'}</td>
+                              <td className="px-4 py-3 min-w-[14rem]">
+                                <ThemedSelect
+                                  value={spcUser.spcCluster || ''}
+                                  options={spcClusterOptions}
+                                  onChange={(cluster) => handleChangeSpcCluster(spcUser, cluster)}
+                                  placeholder="Select cluster"
+                                  ariaLabel={`Cluster for ${spcUser.email || 'SPC'}`}
+                                  disabled={updatingSpcClusterIds.has(String(spcUser._id))}
+                                  triggerClassName="py-2 bg-theme-hero"
+                                />
+                              </td>
                               <td className="px-4 py-3">
                                 <span className="inline-flex rounded-full bg-indigo-600/15 px-2.5 py-1 text-xs font-semibold text-indigo-400">
                                   {spcUser.role}
