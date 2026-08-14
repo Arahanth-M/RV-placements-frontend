@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { RVCE_PLACEMENT_EMAIL, RVITM_PLACEMENT_EMAIL } from "../utils/collegeScope.js";
 
 function Footer() {
   return (
@@ -57,11 +58,22 @@ function Footer() {
             </p>
             <div className="text-base text-theme-secondary leading-relaxed">
               <p>
-                Email: <a
-                href="mailto:placement@rvce.edu.in"
-                className="text-theme-accent hover:opacity-80 transition-opacity"
-              >
-                placement@rvce.edu.in </a>
+                RVCE:{" "}
+                <a
+                  href={`mailto:${RVCE_PLACEMENT_EMAIL}`}
+                  className="text-theme-accent hover:opacity-80 transition-opacity"
+                >
+                  {RVCE_PLACEMENT_EMAIL}
+                </a>
+              </p>
+              <p className="mt-2">
+                RVITM:{" "}
+                <a
+                  href={`mailto:${RVITM_PLACEMENT_EMAIL}`}
+                  className="text-theme-accent hover:opacity-80 transition-opacity"
+                >
+                  {RVITM_PLACEMENT_EMAIL}
+                </a>
               </p>
             </div>
           </div>

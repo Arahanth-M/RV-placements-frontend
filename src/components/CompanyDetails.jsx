@@ -17,6 +17,11 @@ import {
   PLACEMENT_CATEGORY_NO_VISIT_COPY,
   PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY,
 } from "../constants/placementTiers.js";
+import {
+  COLLEGE_ID_RVITM,
+  collegeIdFromUser,
+  normalizeCollegeId,
+} from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import BrandLogo from "./BrandLogo.jsx";
 
@@ -255,12 +260,45 @@ function DreamTierVisitEmptyPanel() {
   );
 }
 
+/**
+ * Sum placement got-in for RVITM rows only (`collegeId: "rvitm"`).
+ * Prefer branch stats when present; otherwise fall back to visit `totalGotIn`
+ * (already college-scoped for RVITM API responses).
+ * @param {Record<string, unknown>|null|undefined} company
+ * @returns {number}
+ */
+function rvitmPlacementGotInTotal(company) {
+  const rows = company?.placementGotInBranchStats;
+  if (Array.isArray(rows) && rows.length > 0) {
+    const hasCollegeTag = rows.some(
+      (row) => row && typeof row === "object" && "collegeId" in row
+    );
+    const scoped = hasCollegeTag
+      ? rows.filter(
+          (row) =>
+            row &&
+            typeof row === "object" &&
+            normalizeCollegeId(/** @type {{ collegeId?: unknown }} */ (row).collegeId) ===
+              COLLEGE_ID_RVITM
+        )
+      : rows;
+    return scoped.reduce((sum, row) => {
+      const n = Number(/** @type {{ gotIn?: unknown }} */ (row)?.gotIn);
+      return sum + (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
+    }, 0);
+  }
+  const n = Number(company?.totalGotIn);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
 function CompanyDetails() {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin } = useAuth();
+  const collegeId = collegeIdFromUser(user);
+  const isRvitmViewer = collegeId === COLLEGE_ID_RVITM;
   const canManageRecruitmentProcess =
     isAdmin || (user && String(user.role || "").toLowerCase() === "spc");
   const profileAvailabilityKey =
@@ -566,6 +604,29 @@ function CompanyDetails() {
     return () => window.removeEventListener(TOUR_PREPARE_EVENT, onTourPrepare);
   }, []);
 
+  /** RVITM: Stats + Recruitment Process stay out of the nav when rvitm got-in is 0. */
+  const hideRvitmEmptySelectionTabs =
+    isRvitmViewer &&
+    Boolean(company) &&
+    company.placementDreamTierVisitMissingForYear !== true &&
+    company.placementSummerInternshipVisitMissingForYear !== true &&
+    company.placementInternshipOnlyVisitMissingForYear !== true &&
+    !(
+      Boolean(placementClusterForApi) &&
+      Array.isArray(company.placementYearsAvailable) &&
+      !company.placementYearsAvailable.includes(placementYear)
+    ) &&
+    rvitmPlacementGotInTotal(company) === 0;
+
+  useEffect(() => {
+    if (
+      hideRvitmEmptySelectionTabs &&
+      (activeTab === "stats" || activeTab === "recruitment")
+    ) {
+      setActiveTab("about");
+    }
+  }, [hideRvitmEmptySelectionTabs, activeTab]);
+
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
     if (user?.betaAccess === false) return;
@@ -756,8 +817,12 @@ function CompanyDetails() {
   const companyNavTabs = [
     { id: "about", label: "About" },
     { id: "general", label: "Roles & Info" },
-    { id: "stats", label: "Stats" },
-    { id: "recruitment", label: "Recruitment Process" },
+    ...(!hideRvitmEmptySelectionTabs
+      ? [
+          { id: "stats", label: "Stats" },
+          { id: "recruitment", label: "Recruitment Process" },
+        ]
+      : []),
     { id: "oa", label: "OA Questions" },
     { id: "coding", label: "Coding" },
     { id: "interview", label: "Interview Experience" },
@@ -1165,6 +1230,7 @@ function CompanyDetails() {
               />
             ))}
           {activeTab === "stats" &&
+            !hideRvitmEmptySelectionTabs &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
             ) : (
@@ -1178,6 +1244,7 @@ function CompanyDetails() {
               />
             ))}
           {activeTab === "recruitment" &&
+            !hideRvitmEmptySelectionTabs &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
             ) : (

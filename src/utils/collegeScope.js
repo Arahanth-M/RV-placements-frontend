@@ -3,6 +3,9 @@
 export const COLLEGE_ID_RVCE = "rvce";
 export const COLLEGE_ID_RVITM = "rvitm";
 
+export const RVCE_PLACEMENT_EMAIL = "placement@rvce.edu.in";
+export const RVITM_PLACEMENT_EMAIL = "placement.rvitm@rvei.edu.in";
+
 const RVCE_EMAIL_SUFFIX = "@rvce.edu.in";
 const RVITM_EMAIL_SUFFIX = ".rvitm@rvei.edu.in";
 

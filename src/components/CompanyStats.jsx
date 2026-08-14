@@ -65,7 +65,7 @@ import {
 } from "../constants/placementYears.js";
 import { sortCompaniesByVisitDate } from "../utils/visitDateSort.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
-import { collegeIdFromUser } from "../utils/collegeScope.js";
+import { COLLEGE_ID_RVITM, collegeIdFromUser } from "../utils/collegeScope.js";
 
 /** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -310,6 +310,7 @@ function CompanyStats() {
       : clusterParam;
   const { user, isAdmin } = useAuth();
   const collegeId = collegeIdFromUser(user);
+  const isRvitmViewer = collegeId === COLLEGE_ID_RVITM;
   const allowedHubClusters = useMemo(
     () => new Set(hubClusterKeysForCollege(collegeId)),
     [collegeId]
@@ -394,11 +395,16 @@ function CompanyStats() {
     return sortCompaniesByVisitDate(companies, {
       defaultYear: visitSortYear,
       hub: visitSortHub,
+      prioritizeNonZeroGotIn: isRvitmViewer,
     });
-  }, [companies, visitSortYear, visitSortHub]);
+  }, [companies, visitSortYear, visitSortHub, isRvitmViewer]);
 
   const sortPoolForTier = (pool, hub) =>
-    sortCompaniesByVisitDate(pool, { defaultYear: visitSortYear, hub });
+    sortCompaniesByVisitDate(pool, {
+      defaultYear: visitSortYear,
+      hub,
+      prioritizeNonZeroGotIn: isRvitmViewer,
+    });
 
   const clusterScopedCompanies = useMemo(() => {
     if (isPlacementHubCluster(effectiveClusterParam)) {
@@ -1141,11 +1147,24 @@ function CompanyStats() {
   };
 
   /**
+   * Internship-only hub row with no FTE/dream-tier visit.
+   * RVITM scoped roles can be empty (RVCE stipend-only roles stripped), so
+   * {@link isInternshipOnlyCompany} is false and the card would otherwise land in Dream.
+   */
+  const isInternshipOnlyDreamExcluded = (company) => {
+    if (isInternshipOnlyCompany(company)) return true;
+    return (
+      company.placementInternshipOnlyForListingYear === true &&
+      company.placementHasDreamTierVisit !== true
+    );
+  };
+
+  /**
    * Dream / Open dream list membership: any year can supply a non-PPO on-campus FTE-style visit,
    * even when the hub’s primary row is a different year’s PPO.
    */
   const dreamTierListBase = (company) => {
-    if (isOffCampusCompany(company) || isPpoCompany(company) || isInternshipOnlyCompany(company)) {
+    if (isOffCampusCompany(company) || isPpoCompany(company) || isInternshipOnlyDreamExcluded(company)) {
       return false;
     }
     if (!isStrictClusterTiering && company.placementHasDreamTierVisit === true) {
