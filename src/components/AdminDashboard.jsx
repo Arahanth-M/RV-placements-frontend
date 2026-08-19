@@ -231,7 +231,7 @@ function AdminChartTooltip({ active, payload, label }) {
 
 function AdminChartKpi({ label, value }) {
   return (
-    <div className="min-w-[5.5rem] shrink-0 rounded-lg border border-theme bg-theme-hero px-3 py-2 text-right">
+    <div className="min-w-[5.5rem] flex-1 rounded-lg border border-theme bg-theme-hero px-3 py-2 text-right sm:flex-none sm:shrink-0">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-theme-muted">{label}</p>
       <p className="mt-0.5 text-lg font-bold tabular-nums text-theme-primary">{value}</p>
     </div>
@@ -243,9 +243,9 @@ function AdminChartHeader({ eyebrow, title, hint, subtitle, accentClass, childre
     <div className="flex flex-col gap-3 border-b border-theme/60 pb-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">{eyebrow}</p>
-        <div className="mt-1.5 flex items-center gap-2">
+        <div className="mt-1.5 flex min-w-0 items-center gap-2">
           <span className={`h-5 w-1 shrink-0 rounded-full ${accentClass}`} aria-hidden />
-          <h3 className="text-base font-semibold text-theme-primary">{title}</h3>
+          <h3 className="min-w-0 break-words text-base font-semibold text-theme-primary">{title}</h3>
           <InfoHint text={hint} />
         </div>
         {subtitle ? (
@@ -253,7 +253,9 @@ function AdminChartHeader({ eyebrow, title, hint, subtitle, accentClass, childre
         ) : null}
       </div>
       {children ? (
-        <div className="flex shrink-0 flex-row flex-nowrap items-stretch gap-2">{children}</div>
+        <div className="flex min-w-0 w-full flex-wrap items-stretch gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
+          {children}
+        </div>
       ) : null}
     </div>
   );
@@ -1446,7 +1448,7 @@ const AdminDashboard = () => {
                         <button
                           type="button"
                           onClick={() => setShowDauModal(true)}
-                          className="min-w-[5.5rem] shrink-0 self-stretch rounded-lg border border-emerald-500/40 bg-theme-hero px-3 py-2 text-left transition hover:border-emerald-500 hover:bg-emerald-500/10"
+                          className="w-full min-w-0 basis-full self-stretch rounded-lg border border-emerald-500/40 bg-theme-hero px-3 py-2 text-left transition hover:border-emerald-500 hover:bg-emerald-500/10 sm:w-auto sm:basis-auto sm:min-w-[9.5rem]"
                         >
                           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-theme-muted">
                             Details

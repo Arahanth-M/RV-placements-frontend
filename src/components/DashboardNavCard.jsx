@@ -52,19 +52,19 @@ export default function DashboardNavCard({
       role={role}
       aria-selected={ariaSelected}
       aria-current={isActive ? "page" : undefined}
-      className={`group flex flex-col gap-3.5 rounded-xl border p-5 sm:p-6 text-left shadow-sm transition-all border-l-[3px] ${accent} ${
+      className={`group flex min-w-0 w-full flex-col gap-3.5 overflow-hidden rounded-xl border p-5 sm:p-6 text-left shadow-sm transition-all border-l-[3px] ${accent} ${
         isActive
           ? "border-indigo-500 bg-indigo-600/10 ring-2 ring-indigo-500/35"
           : "border-theme bg-theme-card hover:bg-theme-hero/40"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <p className="min-w-0 flex-1 text-lg font-semibold text-theme-primary sm:text-xl">
+      <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
+        <p className="min-w-0 w-full break-words text-lg font-semibold text-theme-primary sm:flex-1 sm:text-xl">
           {title}
         </p>
         {showBadge ? (
           <span
-            className="inline-flex shrink-0 items-center rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-sm font-semibold text-red-500"
+            className="inline-flex max-w-full shrink-0 items-center rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-left text-sm font-semibold leading-snug text-red-500"
             title={`${badge} ${badgeLabel}`}
           >
             {badge} {badgeLabel}
