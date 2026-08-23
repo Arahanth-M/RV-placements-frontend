@@ -3,6 +3,12 @@ import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import BrandLogo from "../BrandLogo.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
+import {
+  ExperienceEmptyState,
+  ExperienceSectionHeader,
+  ExperienceStoryCard,
+} from "./ExperienceStoryCard.jsx";
+import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
 
 function InternshipTab({
   company,
@@ -54,141 +60,103 @@ function InternshipTab({
 
   // Normalize internship experience - handle both legacy string format and new JSON string format
   let internshipExperience = [];
+  const internDates = Array.isArray(company.internshipExperienceUpdatedAt)
+    ? company.internshipExperienceUpdatedAt
+    : [];
   if (Array.isArray(company.internshipExperience)) {
     internshipExperience = company.internshipExperience
-      .map((exp) => {
-        if (!exp || typeof exp !== "string") return null;
-
-        const trimmed = exp.trim();
-        if (trimmed.length === 0) return null;
-
-        // Try to parse as JSON (new format with metadata or our new submission payload format)
-        try {
-          const parsed = JSON.parse(trimmed);
-          
-          // Handle the format we use in our submissions: JSON.stringify({ experience: ... })
-          if (parsed && typeof parsed === "object" && parsed.experience) {
-            return {
-              content: parsed.experience.trim(),
-              isAnonymous: false,
-              submittedBy: null, // Submitter info is not natively saved here unless admin merges it
-            };
-          }
-
-          if (parsed && typeof parsed === "object" && parsed.content) {
-             // Handle the 'new metadata format' if it's there
-            return {
-              content: parsed.content.trim(),
-              isAnonymous: parsed.isAnonymous === true || parsed.isAnonymous === "true",
-              submittedBy: parsed.submittedBy || null,
-            };
-          }
-        } catch {
-          // Not JSON, treat as legacy string format
-        }
-
-        // Legacy string format - no submitter info
-        return {
-          content: trimmed,
-          isAnonymous: false,
-          submittedBy: null,
-        };
+      .map((exp, index) => {
+        if (!exp || (typeof exp !== "string" && typeof exp !== "object")) return null;
+        const parsed = parseExperienceStoredEntry(exp, internDates[index]);
+        if (!parsed.content) return null;
+        return parsed;
       })
       .filter((exp) => exp !== null);
   } else if (typeof company.internshipExperience === "string" && company.internshipExperience.trim().length > 0) {
-    // Legacy support: convert string to array
     internshipExperience = [
-      {
-        content: company.internshipExperience.trim(),
-        isAnonymous: false,
-        submittedBy: null,
-      },
+      parseExperienceStoredEntry(company.internshipExperience, internDates[0]),
     ];
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 text-slate-200">
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-6">
-        <h2 className="text-xl font-semibold mb-4 text-indigo-400 flex justify-between items-center">
-          Internship Experience
-          <button
-            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium"
-            onClick={() => setShowModal(true)}
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Add Internship Experience</span>
-          </button>
-        </h2>
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+      <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
+        <ExperienceSectionHeader
+          kicker="Experiences"
+          title="Internship Experience"
+          count={internshipExperience.length}
+          addLabel="Add Internship Experience"
+          onAdd={() => setShowModal(true)}
+        />
 
         {internshipExperience.length > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {internshipExperience.map((exp, index) => {
               const expContent = exp.content || exp;
               const isAnonymous = exp.isAnonymous === true || exp.isAnonymous === "true";
               const submittedBy = exp.submittedBy || null;
-              const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
 
               return (
-                <div key={index} className="bg-slate-800/60 rounded-lg p-4 border border-slate-700 flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="whitespace-pre-wrap break-words text-sm sm:text-base text-slate-300">
-                        {expContent}
-                      </p>
-                      {showSubmitter && (
-                        <p className="text-xs text-slate-400 mt-2 italic">
-                          Submitted by: {submittedBy.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <ExperienceStoryCard
+                  key={index}
+                  content={expContent}
+                  isAnonymous={isAnonymous}
+                  submittedBy={submittedBy}
+                />
               );
             })}
           </div>
         ) : (
-          <p className="text-slate-400">No internship experiences yet</p>
+          <ExperienceEmptyState
+            message="No internship experiences yet. Share what the internship was like so others can prepare."
+            actionLabel="Add Internship Experience"
+            onAction={() => setShowModal(true)}
+          />
         )}
       </div>
 
-      {/* Modal to add new internship experience */}
       {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
-                <BrandLogo />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+            <div className="border-b border-theme bg-theme-card px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                  <BrandLogo />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-theme-primary">Add Internship Experience</h3>
+                  <p className="mt-1 text-sm text-theme-secondary">
+                    Share the work, rounds, or day-to-day — stored as the same text as before.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-indigo-400">Add Internship Experience</h3>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <textarea
-                value={experienceText}
-                onChange={(e) => setExperienceText(e.target.value)}
-                placeholder="Share your internship experience..."
-                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-32"
-                required
-              />
-              <label className="flex items-start gap-3 rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2.5">
+            <form onSubmit={handleSubmit} className="space-y-5 px-6 py-5">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-theme-primary">Experience</label>
+                <textarea
+                  value={experienceText}
+                  onChange={(e) => setExperienceText(e.target.value)}
+                  placeholder="Share your internship experience..."
+                  className="w-full min-h-[170px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                  required
+                />
+              </div>
+              <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
                 <input
                   type="checkbox"
                   checked={submitAnonymously}
                   onChange={(e) => setSubmitAnonymously(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-500 bg-slate-800 text-indigo-500 focus:ring-indigo-500"
+                  className="mt-0.5 h-4 w-4 rounded border-theme text-theme-accent focus:ring-theme-accent"
                 />
-                <span className="text-xs sm:text-sm text-slate-300">
+                <span className="text-sm text-theme-secondary">
                   Submit anonymously (public readers won’t see your name).
                 </span>
               </label>
-              <div className="flex justify-end gap-2">
+              <div className="flex items-center justify-end gap-3">
                 <button
                   type="button"
-                  className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
+                  className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-nav"
                   onClick={() => {
                     setShowModal(false);
                     setSubmitAnonymously(false);
@@ -198,7 +166,7 @@ function InternshipTab({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 >
                   Submit
                 </button>

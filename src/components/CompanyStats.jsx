@@ -303,12 +303,13 @@ function CompanyStats() {
   const [searchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
-  const companyCacheScope = isPlacementHubCluster(clusterParam) ? clusterParam : "all";
+  const { user, isAdmin } = useAuth();
+  const [adminViewsRefreshKey, setAdminViewsRefreshKey] = useState(0);
+  const companyCacheScope = `${isPlacementHubCluster(clusterParam) ? clusterParam : "all"}:${isAdmin ? "admin" : "viewer"}`;
   const effectiveClusterParam =
     isPlacementCardsYear && placementTier
       ? clusterParam || PLACEMENT_CLUSTER_CS
       : clusterParam;
-  const { user, isAdmin } = useAuth();
   const collegeId = collegeIdFromUser(user);
   const isRvitmViewer = collegeId === COLLEGE_ID_RVITM;
   const allowedHubClusters = useMemo(
@@ -901,11 +902,14 @@ function CompanyStats() {
     let cancelled = false;
     if (isPlacementDetailVisitYear(selectedYear)) {
       localStorage.setItem('companystats_selectedYear', String(selectedYear));
-      const cachedCompanies = getCachedCompanies(selectedYear, companyCacheScope);
+      const isAdminViewsPoll = adminViewsRefreshKey > 0;
+      const cachedCompanies = isAdminViewsPoll
+        ? null
+        : getCachedCompanies(selectedYear, companyCacheScope);
       if (cachedCompanies) {
         setCompanies(cachedCompanies);
         setCompaniesFetchDone(true);
-      } else {
+      } else if (!isAdminViewsPoll) {
         setCompaniesFetchDone(false);
       }
       const isCategoryHub =
@@ -975,7 +979,16 @@ function CompanyStats() {
         localStorage.removeItem('companystats_selectedYear');
       }
     };
-  }, [selectedYear, location.pathname, placementTier, clusterParam, companyCacheScope]);
+  }, [selectedYear, location.pathname, placementTier, clusterParam, companyCacheScope, adminViewsRefreshKey]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const threeHoursMs = 3 * 60 * 60 * 1000;
+    const timer = setInterval(() => {
+      setAdminViewsRefreshKey((n) => n + 1);
+    }, threeHoursMs);
+    return () => clearInterval(timer);
+  }, [isAdmin]);
 
   useEffect(() => {
     let cancelled = false;

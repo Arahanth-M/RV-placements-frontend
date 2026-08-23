@@ -574,6 +574,11 @@ select.spc-field-control {
   border-color: var(--accent) !important;
 }
 
+[data-theme="dark"] .company-card.company-card--trending:hover {
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 28px rgba(251, 191, 36, 0.45);
+  border-color: #fbbf24 !important;
+}
+
 /* Focus area tags - dark mode */
 [data-theme="dark"] .company-card .tag {
   border-radius: 999px;
@@ -782,6 +787,11 @@ select.spc-field-control {
 
 [data-theme="light"] .company-card:hover {
   box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .company-card.company-card--trending:hover {
+  box-shadow: 0 14px 35px rgba(217, 119, 6, 0.16), 0 0 22px rgba(245, 158, 11, 0.28);
+  border-color: #d97706 !important;
 }
 
 /* Company header - light mode */
@@ -1373,6 +1383,30 @@ html, body, #root {
   .animate-slide-in-right {
     animation: slide-in-right 0.3s ease-out;
   }
+
+.digest-bottom-sweep {
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: digest-bottom-sweep 10s linear forwards;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+@keyframes digest-bottom-sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digest-bottom-sweep {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
 
 @keyframes shimmer {
   0% {

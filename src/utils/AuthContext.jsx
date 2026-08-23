@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { clearAllResumeDraftCaches } from './resumeDraftCache.js';
 import { authAPI } from './api';
 import { BASE_URL } from './constants';
+import { flushDauPresence } from './dauPresenceFlush';
 
 // Use a symbol to check if we're inside a provider
 const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
@@ -202,6 +203,10 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
+      await Promise.race([
+        flushDauPresence(),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
       await authAPI.logout();
       
       // Clear user-specific sessionStorage items

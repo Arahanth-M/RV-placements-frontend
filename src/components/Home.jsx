@@ -210,8 +210,8 @@ function Home() {
   const stats = [
     { value: 200, suffix: "+", label: "Companies Listed", duration: 1600 },
     { value: 200, suffix: "+", label: "Interview Experiences and Questions", duration: 1800 },
-    { value: 3, suffix: "+", label: "Years of Data", duration: 1000 },
-    { value: 5, suffix: "+", label: "Active Features", duration: 1000 },
+    { value: 5, suffix: "+", label: "Years of Data", duration: 1000 },
+    { value: 7, suffix: "+", label: "Active Features", duration: 1000 },
   ];
 
   return (

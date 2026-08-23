@@ -13,6 +13,8 @@ export function downloadDauExcel(rows) {
     Email: r.email || "",
     Role: r.role || "",
     "Last login (UTC)": r.lastLoginAt || "",
+    Activity: r.activity || (Array.isArray(r.actions) ? r.actions.join(", ") : ""),
+    "Time spent": r.activeLabel || "—",
     "User ID": r.userId || "",
   }));
 

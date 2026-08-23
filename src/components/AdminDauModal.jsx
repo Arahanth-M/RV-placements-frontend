@@ -1,7 +1,105 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FaDownload, FaTimes } from "react-icons/fa";
+import { FaChevronDown, FaDownload, FaTimes } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { downloadDauExcel } from "../utils/exportDauExcel";
+
+function activityCacheKey(dayKey, userId) {
+  return `${dayKey}:${userId}`;
+}
+
+function DauActivityDropdown({ dayKey, userId, cache, cacheRef, setCache }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const inflightRef = useRef(null);
+
+  const cached = cache[activityCacheKey(dayKey, userId)];
+  const actions = Array.isArray(cached) ? cached : null;
+
+  const load = useCallback(async () => {
+    const key = activityCacheKey(dayKey, userId);
+    if (Object.prototype.hasOwnProperty.call(cacheRef.current, key)) {
+      return;
+    }
+    if (inflightRef.current) {
+      await inflightRef.current;
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const request = adminAPI
+      .getDauDayUserActivity(dayKey, userId)
+      .then((res) => {
+        const list = Array.isArray(res?.data?.actions) ? res.data.actions : [];
+        setCache((prev) => {
+          const next = { ...prev, [key]: list };
+          cacheRef.current = next;
+          return next;
+        });
+      })
+      .catch((err) => {
+        setError(
+          err?.response?.data?.error || err?.message || "Failed to load activity."
+        );
+      })
+      .finally(() => {
+        inflightRef.current = null;
+        setLoading(false);
+      });
+    inflightRef.current = request;
+    await request;
+  }, [cacheRef, dayKey, setCache, userId]);
+
+  const toggle = async () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen) await load();
+  };
+
+  if (!userId) {
+    return <span className="text-theme-muted">—</span>;
+  }
+
+  return (
+    <div className="min-w-[7.5rem]">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-theme bg-theme-hero px-2 py-1 text-[11px] font-semibold text-theme-primary transition hover:border-emerald-500/50"
+      >
+        Details
+        <FaChevronDown
+          className={`h-2.5 w-2.5 text-theme-muted transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {open ? (
+        <div className="mt-2">
+          {loading && !actions ? (
+            <p className="text-[11px] text-theme-muted">Loading…</p>
+          ) : error ? (
+            <p className="text-[11px] text-red-500">{error}</p>
+          ) : actions && actions.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {actions.map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex max-w-[14rem] truncate rounded-md border border-theme bg-theme-hero px-1.5 py-0.5 text-[11px] font-medium text-theme-primary"
+                  title={label}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-theme-muted">No activity recorded</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function formatLogin(value) {
   if (!value) return "—";
@@ -40,10 +138,16 @@ export default function AdminDauModal({ open, onClose }) {
   const [selectedDay, setSelectedDay] = useState("");
   const [usersByDay, setUsersByDay] = useState({});
   const usersByDayRef = useRef({});
+  const [activityByUser, setActivityByUser] = useState({});
+  const activityByUserRef = useRef({});
 
   useEffect(() => {
     usersByDayRef.current = usersByDay;
   }, [usersByDay]);
+
+  useEffect(() => {
+    activityByUserRef.current = activityByUser;
+  }, [activityByUser]);
 
   const loadDayUsers = useCallback(async (dayKey) => {
     if (!dayKey) return;
@@ -84,6 +188,8 @@ export default function AdminDauModal({ open, onClose }) {
     setError("");
     setUsersByDay({});
     usersByDayRef.current = {};
+    setActivityByUser({});
+    activityByUserRef.current = {};
     setSelectedDay("");
     try {
       const res = await adminAPI.getDau({ days: 7 });
@@ -155,7 +261,7 @@ export default function AdminDauModal({ open, onClose }) {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-xl">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-theme px-4 py-3 sm:px-5">
           <div className="min-w-0">
             <h2
@@ -165,7 +271,8 @@ export default function AdminDauModal({ open, onClose }) {
               Daily active users
             </h2>
             <p className="mt-0.5 text-xs text-theme-secondary">
-              Click a day to see that day&apos;s users. Excel downloads the full
+              Click a day to see that day&apos;s users. Open Details on a row
+              to load that user&apos;s activity. Excel downloads the full
               stored history.
             </p>
           </div>
@@ -246,6 +353,8 @@ export default function AdminDauModal({ open, onClose }) {
                     <th className="px-3 py-2 font-semibold">Username</th>
                     <th className="px-3 py-2 font-semibold">Email</th>
                     <th className="px-3 py-2 font-semibold">Role</th>
+                    <th className="px-3 py-2 font-semibold">Activity today</th>
+                    <th className="px-3 py-2 font-semibold">Time spent</th>
                     <th className="px-3 py-2 font-semibold">Last login</th>
                   </tr>
                 </thead>
@@ -255,16 +364,28 @@ export default function AdminDauModal({ open, onClose }) {
                       key={`${selectedDay}-${row.userId || row.email}-${i}`}
                       className="text-theme-secondary"
                     >
-                      <td className="max-w-[10rem] truncate px-3 py-2 text-theme-primary">
+                      <td className="max-w-[10rem] truncate px-3 py-2 align-top text-theme-primary">
                         {row.username || "—"}
                       </td>
-                      <td className="max-w-[16rem] truncate px-3 py-2">
+                      <td className="max-w-[16rem] truncate px-3 py-2 align-top">
                         {row.email || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 capitalize">
+                      <td className="whitespace-nowrap px-3 py-2 align-top capitalize">
                         {row.role || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2">
+                      <td className="px-3 py-2 align-top">
+                        <DauActivityDropdown
+                          dayKey={selectedDay}
+                          userId={row.userId}
+                          cache={activityByUser}
+                          cacheRef={activityByUserRef}
+                          setCache={setActivityByUser}
+                        />
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 align-top">
+                        {row.activeLabel || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 align-top">
                         {formatLogin(row.lastLoginAt)}
                       </td>
                     </tr>

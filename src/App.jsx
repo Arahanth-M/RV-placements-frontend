@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import appStore from "./utils/appStore";
 import { AuthProvider } from "./utils/AuthContext";
 import { ThemeProvider } from "./utils/ThemeContext";
+import DauPresenceTracker from "./components/DauPresenceTracker";
 import { InterviewLockProvider, useInterviewLock } from "./utils/InterviewLockContext";
 import { ProductTourProvider } from "./context/ProductTourContext";
 import Header from "./components/Header";
@@ -234,6 +235,7 @@ function App() {
       <BrowserRouter basename="/">
         <ScrollToTop />
         <AuthProvider>
+          <DauPresenceTracker />
           <ThemeProvider>
             <InterviewLockProvider>
               <ProductTourProvider>

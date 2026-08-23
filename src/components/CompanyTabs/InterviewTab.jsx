@@ -94,6 +94,12 @@ import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
+import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
+import {
+  ExperienceEmptyState,
+  ExperienceSectionHeader,
+  ExperienceStoryCard,
+} from "./ExperienceStoryCard.jsx";
 
 function InterviewTab({
   company,
@@ -563,39 +569,21 @@ function InterviewTab({
 
   // Normalize interview process - handle both legacy string format and new JSON string format
   let interviewProcess = [];
+  const processDates = Array.isArray(company.interviewProcessUpdatedAt)
+    ? company.interviewProcessUpdatedAt
+    : [];
   if (Array.isArray(company.interviewProcess)) {
     interviewProcess = company.interviewProcess
-      .map(p => {
-        if (!p || typeof p !== 'string') return null;
-        
-        const trimmed = p.trim();
-        if (trimmed.length === 0) return null;
-        
-        // Try to parse as JSON (new format with metadata)
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === 'object' && parsed.content) {
-            return {
-              content: parsed.content.trim(),
-              isAnonymous: parsed.isAnonymous === true || parsed.isAnonymous === 'true',
-              submittedBy: parsed.submittedBy || null
-            };
-          }
-        } catch {
-          // Not JSON, treat as legacy string format
-        }
-        
-        // Legacy string format - no submitter info
-        return {
-          content: trimmed,
-          isAnonymous: false,
-          submittedBy: null
-        };
+      .map((p, index) => {
+        if (!p || (typeof p !== "string" && typeof p !== "object")) return null;
+        const parsed = parseExperienceStoredEntry(p, processDates[index]);
+        if (!parsed.content) return null;
+        return parsed;
       })
-      .filter(p => p !== null);
+      .filter((p) => p !== null);
   } else if (typeof company.interviewProcess === "string" && company.interviewProcess.trim().length > 0) {
     // Legacy support: convert string to array
-    interviewProcess = [{ content: company.interviewProcess.trim(), isAnonymous: false, submittedBy: null }];
+    interviewProcess = [parseExperienceStoredEntry(company.interviewProcess, processDates[0])];
   }
 
   return (
@@ -728,74 +716,62 @@ function InterviewTab({
         )}
       </div>
 
-      {/* Interview Process */}
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="shrink-0">Interview Process</span>
-          <button
-            type="button"
-            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
-            onClick={() => setShowAddProcessModal(true)}
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Add Interview Process</span>
-          </button>
-        </h2>
+      {/* Interview Process — display only; stored strings are unchanged */}
+      <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
+        <ExperienceSectionHeader
+          kicker="Experiences"
+          title="Interview Process"
+          count={interviewProcess.length}
+          addLabel="Add Interview Process"
+          onAdd={() => setShowAddProcessModal(true)}
+        />
 
         {interviewProcess.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {interviewProcess.map((process, index) => {
               const processContent = process.content || process;
-              const isAnonymous = process.isAnonymous === true || process.isAnonymous === 'true';
+              const isAnonymous = process.isAnonymous === true || process.isAnonymous === "true";
               const submittedBy = process.submittedBy || null;
-              const showSubmitter = !isAnonymous && submittedBy && submittedBy.name;
-              
+
               return (
-                <div key={index} className="bg-slate-800/60 rounded-lg p-3 sm:p-4 border border-slate-700 flex items-start justify-between gap-2 sm:gap-3">
-                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1 min-w-0">
-                    <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center font-semibold text-[10px] sm:text-xs">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="whitespace-pre-wrap break-words text-xs sm:text-base text-slate-300 leading-6 sm:leading-relaxed">
-                        {processContent}
-                      </p>
-                      {showSubmitter && (
-                        <p className="text-xs text-slate-400 mt-2 italic">
-                          Submitted by: {submittedBy.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleEditIP(index, processContent)}
-                        className="p-2 rounded-md text-amber-400 hover:bg-slate-700 transition-colors"
-                        title="Edit entry"
-                      >
-                        <FaEdit className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteIP(index)}
-                        disabled={actionLoading}
-                        className="p-2 rounded-md text-red-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        title="Delete entry"
-                      >
-                        <FaTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ExperienceStoryCard
+                  key={index}
+                  content={processContent}
+                  isAnonymous={isAnonymous}
+                  submittedBy={submittedBy}
+                  adminActions={
+                    isAdmin ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleEditIP(index, processContent)}
+                          className="rounded-md p-2 text-amber-400 transition-colors hover:bg-theme-nav"
+                          title="Edit entry"
+                        >
+                          <FaEdit className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteIP(index)}
+                          disabled={actionLoading}
+                          className="rounded-md p-2 text-red-400 transition-colors hover:bg-theme-nav disabled:opacity-50"
+                          title="Delete entry"
+                        >
+                          <FaTrash className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : null
+                  }
+                />
               );
             })}
           </div>
         ) : (
-          <p className="text-slate-400">No interview process info yet.</p>
+          <ExperienceEmptyState
+            message="No interview experiences yet. Share the rounds you faced so others can prepare."
+            actionLabel="Add Interview Process"
+            onAction={() => setShowAddProcessModal(true)}
+          />
         )}
       </div>
       </div>
@@ -950,20 +926,42 @@ function InterviewTab({
 
       {/* Edit Interview Process modal (admin) */}
       {editIPIndex !== null && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
-            <h3 className="text-lg font-semibold mb-4 text-amber-400">Edit Interview Process {editIPIndex + 1}</h3>
-            <form onSubmit={handleSaveEditIP} className="space-y-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+            <div className="border-b border-theme px-6 py-4">
+              <h3 className="text-xl font-semibold text-theme-primary">
+                Edit Interview Process {editIPIndex + 1}
+              </h3>
+              <p className="mt-1 text-sm text-theme-secondary">
+                Only this entry’s text is updated. Round headings are still stored as part of the same string.
+              </p>
+            </div>
+            <form onSubmit={handleSaveEditIP} className="space-y-5 px-6 py-5">
               <textarea
                 value={editIPContent}
                 onChange={(e) => setEditIPContent(e.target.value)}
                 placeholder="Content"
-                className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full min-h-[170px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
                 required
               />
-              <div className="flex justify-end gap-2">
-                <button type="button" className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700" onClick={() => { setEditIPIndex(null); setEditIPContent(""); }}>Cancel</button>
-                <button type="submit" disabled={actionLoading} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">{actionLoading ? "Saving…" : "Save"}</button>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-nav"
+                  onClick={() => {
+                    setEditIPIndex(null);
+                    setEditIPContent("");
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {actionLoading ? "Saving…" : "Save"}
+                </button>
               </div>
             </form>
           </div>

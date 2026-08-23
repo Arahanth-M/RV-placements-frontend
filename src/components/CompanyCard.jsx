@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus } from "react-icons/fa";
+import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus, FaEye, FaFire } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import {
@@ -15,6 +15,7 @@ import {
   normalizeTotalGotInByYear,
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
+import { formatExperienceMonth } from "../utils/parseExperienceStoredEntry.js";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -96,6 +97,9 @@ function CompanyCard({
     normalizeTotalGotInByYear(company, cardPlacementYear)
   );
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
+  const viewCount = Math.max(0, Number(company.views) || 0);
+  const lastUpdatedMonth = formatExperienceMonth(company.contentUpdatedAt || company.createdAt);
+  const isTrending = company.trending === true;
 
   // Update local state when company prop changes
   useEffect(() => {
@@ -345,11 +349,38 @@ function CompanyCard({
 
   return (
     <div
-      className="rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 border-theme-accent transition-[box-shadow,border-color] duration-300 hover:shadow-2xl"
+      className={`relative rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 transition-[box-shadow,border-color] duration-300 hover:shadow-2xl ${
+        isTrending
+          ? "company-card--trending border-amber-400/70"
+          : "border-theme-accent"
+      }`}
       data-testid="company-card"
     >
+      {(isTrending || lastUpdatedMonth) ? (
+        <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end gap-1">
+          {isTrending ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300"
+              title={
+                company.trendingReason === "admin"
+                  ? "Marked trending by admin for 24 hours"
+                  : "Views are rising quickly"
+              }
+            >
+              <FaFire className="h-3 w-3" aria-hidden />
+              Trending
+            </span>
+          ) : null}
+          {lastUpdatedMonth ? (
+            <p className="text-right text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
+              Last updated on: {lastUpdatedMonth}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Top Section: Header + Logo */}
-      <div className="company-header flex items-center gap-3 mb-4 flex-shrink-0">
+      <div className="company-header mb-4 flex flex-shrink-0 items-center gap-3 pr-[7.5rem] sm:pr-36">
         <div 
           className="company-logo w-14 h-14 sm:w-16 sm:h-16 rounded-xl shadow-sm border border-theme flex-shrink-0 bg-theme-card flex items-center justify-center overflow-hidden"
           data-testid="company-logo"
@@ -455,7 +486,7 @@ function CompanyCard({
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
         <div
-          className={`card-footer flex items-center gap-2 overflow-hidden ${
+          className={`card-footer flex flex-wrap items-center gap-2 overflow-hidden ${
             hidePlacementGotInCounts ? "justify-end" : "justify-between"
           }`}
         >
@@ -496,37 +527,57 @@ function CompanyCard({
             </div>
           ) : null}
 
-          <button
-            onClick={handleThumbsUp}
-            disabled={isUpdating || hasUpvoted || isCheckingStatus}
-            data-tour="company-card-helpful"
-            className={`helpful-btn ${hasUpvoted ? "helpful-btn--active" : ""} group relative inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all ${
-              hasUpvoted
-                ? "border-theme bg-theme-card-hover text-theme-secondary cursor-not-allowed opacity-90"
-                : isUpdating || isCheckingStatus
-                ? "border-theme bg-theme-card-hover text-theme-muted cursor-not-allowed"
-                : "border-theme bg-theme-input text-theme-primary hover:shadow-md hover:bg-theme-nav"
-            }`}
-            title={hasUpvoted ? "Already upvoted" : "Mark as helpful"}
-            aria-label={`Helpful votes: ${helpfulCount}`}
-          >
-            <span
-              className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-card ${
-                hasUpvoted ? "opacity-80" : ""
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isAdmin ? (
+              <span
+                className="inline-flex items-center gap-2 rounded-xl border border-theme bg-theme-input px-2.5 py-1.5 text-xs font-semibold text-theme-secondary"
+                title={`${viewCount.toLocaleString("en-IN")} profile views`}
+                aria-label={`${viewCount} views`}
+              >
+                <span
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-card"
+                  aria-hidden
+                >
+                  <FaEye className="h-3.5 w-3.5" />
+                </span>
+                <span>Views</span>
+                <span className="min-w-[28px] rounded-md border border-theme bg-theme-card px-2 py-0.5 text-center text-[11px] font-bold tabular-nums text-theme-primary">
+                  {viewCount.toLocaleString("en-IN")}
+                </span>
+              </span>
+            ) : null}
+            <button
+              onClick={handleThumbsUp}
+              disabled={isUpdating || hasUpvoted || isCheckingStatus}
+              data-tour="company-card-helpful"
+              className={`helpful-btn ${hasUpvoted ? "helpful-btn--active" : ""} group relative inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all ${
+                hasUpvoted
+                  ? "border-theme bg-theme-card-hover text-theme-secondary cursor-not-allowed opacity-90"
+                  : isUpdating || isCheckingStatus
+                  ? "border-theme bg-theme-card-hover text-theme-muted cursor-not-allowed"
+                  : "border-theme bg-theme-input text-theme-primary hover:shadow-md hover:bg-theme-nav"
               }`}
-              aria-hidden
+              title={hasUpvoted ? "Already upvoted" : "Mark as helpful"}
+              aria-label={`Helpful votes: ${helpfulCount}`}
             >
-              <FaThumbsUp className={`w-3.5 h-3.5 ${isUpdating ? "animate-bounce" : ""}`} />
-            </span>
-            <span className="text-theme-secondary">Helpful</span>
-            <span
-              className={`min-w-[28px] rounded-md px-2 py-0.5 text-center text-[11px] font-bold border border-theme bg-theme-card text-theme-primary ${
-                hasUpvoted ? "text-theme-secondary" : ""
-              }`}
-            >
-              {helpfulCount}
-            </span>
-          </button>
+              <span
+                className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-card ${
+                  hasUpvoted ? "opacity-80" : ""
+                }`}
+                aria-hidden
+              >
+                <FaThumbsUp className={`w-3.5 h-3.5 ${isUpdating ? "animate-bounce" : ""}`} />
+              </span>
+              <span className="text-theme-secondary">Helpful</span>
+              <span
+                className={`min-w-[28px] rounded-md px-2 py-0.5 text-center text-[11px] font-bold border border-theme bg-theme-card text-theme-primary ${
+                  hasUpvoted ? "text-theme-secondary" : ""
+                }`}
+              >
+                {helpfulCount}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import StudentRequestsTab from './StudentRequestsTab';
 import AdminGeneralStatsUpload from './AdminGeneralStatsUpload';
 import AdminSubmissionsTab from './AdminSubmissionsTab';
 import AdminUsageAnalyticsTab from './AdminUsageAnalyticsTab';
+import AdminTrendingCardsTab from './AdminTrendingCardsTab.jsx';
 import AdminDauModal from './AdminDauModal.jsx';
 import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
 import DashboardRefreshButton from './DashboardRefreshButton.jsx';
@@ -43,6 +44,7 @@ const ADMIN_MISC_TAB_KEYS = new Set([
   'add-next-batch',
   'placement-settings',
   'usage-analytics',
+  'trending-cards',
 ]);
 
 const ADMIN_HUB_POLL_MS = 60_000;
@@ -107,6 +109,14 @@ function buildAdminMiscNavTabs(stats) {
       cta: 'View usage',
       accent: 'border-l-cyan-500',
       ctaColor: 'text-cyan-600',
+    },
+    {
+      key: 'trending-cards',
+      title: 'Trending company cards',
+      description: 'Pin a company card as trending for 24 hours (Redis only, no Mongo writes).',
+      cta: 'Mark trending',
+      accent: 'border-l-orange-500',
+      ctaColor: 'text-orange-500',
     },
   ];
 }
@@ -2034,6 +2044,8 @@ const AdminDashboard = () => {
             )}
 
             {activeMainTab === 'usage-analytics' && <AdminUsageAnalyticsTab />}
+
+            {activeMainTab === 'trending-cards' && <AdminTrendingCardsTab />}
 
             {activeMainTab === 'general-stats-upload' && <AdminGeneralStatsUpload />}
 

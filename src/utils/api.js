@@ -464,12 +464,22 @@ export const adminAPI = {
     API.get('/api/admin/usage-analytics', {
       params: days != null ? { days } : undefined,
     }),
+  listTrendingCards: () => API.get('/api/admin/trending-cards'),
+  listTrendingCardVisits: (companyId) =>
+    API.get('/api/admin/trending-cards/visits', { params: { companyId } }),
+  pinTrendingCard: (visitId) => API.post('/api/admin/trending-cards', { visitId }),
+  unpinTrendingCard: (visitId) =>
+    API.delete(`/api/admin/trending-cards/${encodeURIComponent(visitId)}`),
   getDau: ({ days } = {}) =>
     API.get('/api/admin/dau', {
       params: days != null ? { days } : undefined,
     }),
   getDauDay: (dayKey) =>
     API.get(`/api/admin/dau/${encodeURIComponent(dayKey)}`),
+  getDauDayUserActivity: (dayKey, userId) =>
+    API.get(
+      `/api/admin/dau/${encodeURIComponent(dayKey)}/users/${encodeURIComponent(userId)}`
+    ),
   getDauExport: () => API.get('/api/admin/dau/export'),
   approveInterviewLimitRequest: (requestId) =>
     API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/approve`),
@@ -535,6 +545,10 @@ export const studentAPI = {
 
 export const submissionAPI = {
   getMine: () => API.get("/api/submissions/mine"),
+  getSinceLastLogin: (since) =>
+    API.get("/api/submissions/since-last-login", {
+      params: since ? { since } : {},
+    }),
   updateMine: (id, data) => API.put(`/api/submissions/${encodeURIComponent(String(id))}`, data),
   deleteMine: (id) => API.delete(`/api/submissions/${encodeURIComponent(String(id))}`),
 };

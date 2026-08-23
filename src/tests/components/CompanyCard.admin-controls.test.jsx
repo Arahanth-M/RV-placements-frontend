@@ -95,6 +95,28 @@ describe("CompanyCard admin got in controls", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows visit click count as views only for admins", async () => {
+    render(
+      <MemoryRouter>
+        <CompanyCard company={{ ...baseCompany, views: 1240 }} isAdmin />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByLabelText("1240 views")).toBeInTheDocument();
+    expect(screen.getByText("Views")).toBeInTheDocument();
+  });
+
+  it("hides views from students and SPCs", () => {
+    render(
+      <MemoryRouter>
+        <CompanyCard company={{ ...baseCompany, views: 1240 }} isAdmin={false} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText("Views")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("1240 views")).not.toBeInTheDocument();
+  });
+
   it("updates the got in count from the admin controls", async () => {
     const onStatsUpdated = vi.fn();
     mockAdjustCompanyTotalGotIn.mockResolvedValue({
