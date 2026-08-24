@@ -562,7 +562,7 @@ select.spc-field-control {
   border-radius: 16px;
   border: 1px solid var(--border) !important;
   padding: clamp(14px, 3vw, 22px);
-  transition: all 0.3s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
   max-width: 100%;
   min-width: 0;
@@ -775,11 +775,11 @@ select.spc-field-control {
 /* Company card - light mode */
 [data-theme="light"] .company-card {
   background: var(--bg-card) !important;
-  border-radius: var(--radius-lg) !important;
-  padding: clamp(14px, 3vw, calc(var(--space-4) + 2px)) !important;
+  border-radius: 16px !important;
+  padding: clamp(14px, 3vw, 22px) !important;
   border: 1px solid var(--border-light) !important;
   box-shadow: var(--shadow-soft);
-  transition: all 0.25s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
@@ -794,13 +794,8 @@ select.spc-field-control {
   border-color: #d97706 !important;
 }
 
-/* Company header - light mode */
-[data-theme="light"] .company-card .company-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
+/* Header geometry is shared with dark (Tailwind on the card) so the helpful
+   button does not shift when toggling theme. */
 
 /* Company logo + text sizing should remain identical across themes
    to avoid grid/card reflow while toggling theme. */
@@ -823,31 +818,21 @@ select.spc-field-control {
   line-height: inherit !important;
 }
 
-/* Tags - light mode */
+/* Tags - light mode (no extra margins — those reflow the card vs dark) */
 [data-theme="light"] .company-card .tag {
   display: inline-flex;
-  margin-right: var(--space-1);
-  margin-top: var(--space-1);
   border-radius: var(--radius-sm);
   border: 1px solid var(--primary);
   color: var(--primary);
   background: var(--primary-soft);
 }
 
-/* Card divider - light mode */
+/* Card divider - light mode (keep dark/Tailwind my-4 spacing) */
 [data-theme="light"] .company-card .card-divider {
   height: 1px;
   background: var(--border-light);
-  margin: var(--space-3) 0;
   border: none;
   padding: 0;
-}
-
-/* Card footer - light mode */
-[data-theme="light"] .company-card .card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
 /* Stats label - light mode */
@@ -877,6 +862,20 @@ select.spc-field-control {
 [data-theme="light"] .company-card .like-btn.helpful-btn--active {
   background: var(--green) !important;
   color: white !important;
+}
+
+/* Helpful button — same box model as dark; theme only changes colors */
+[data-theme="light"] .company-card .helpful-btn {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+[data-theme="light"] .company-card .helpful-btn.helpful-btn--active,
+[data-theme="light"] .company-card .helpful-btn--active {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-secondary) !important;
+  border: 1px solid var(--border) !important;
 }
 
 /* Stats button in card - light mode */
@@ -1037,10 +1036,22 @@ select.spc-field-control {
   box-sizing: border-box;
 }
 
-/* Keep footer controls wrapped inside card bounds on smaller widths/content-heavy cards */
+/* Footer layout is identical in both themes so Helpful stays bottom-right. */
 .company-card .card-footer {
-  flex-wrap: wrap;
-  row-gap: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.company-card .card-footer-actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.company-card .helpful-btn {
+  flex-shrink: 0;
 }
 
 .company-card .stats-label {

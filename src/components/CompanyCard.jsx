@@ -356,31 +356,28 @@ function CompanyCard({
       }`}
       data-testid="company-card"
     >
-      {(isTrending || lastUpdatedMonth) ? (
-        <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end gap-1">
-          {isTrending ? (
-            <span
-              className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300"
-              title={
-                company.trendingReason === "admin"
-                  ? "Marked trending by admin for 24 hours"
-                  : "Views are rising quickly"
-              }
-            >
-              <FaFire className="h-3 w-3" aria-hidden />
-              Trending
-            </span>
-          ) : null}
-          {lastUpdatedMonth ? (
-            <p className="text-right text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
-              Last updated on: {lastUpdatedMonth}
-            </p>
-          ) : null}
+      {isTrending ? (
+        <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end">
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300"
+            title={
+              company.trendingReason === "admin"
+                ? "Marked trending by admin for 24 hours"
+                : "Views are rising quickly"
+            }
+          >
+            <FaFire className="h-3 w-3" aria-hidden />
+            Trending
+          </span>
         </div>
       ) : null}
 
       {/* Top Section: Header + Logo */}
-      <div className="company-header mb-4 flex flex-shrink-0 items-center gap-3 pr-[7.5rem] sm:pr-36">
+      <div
+        className={`company-header mb-4 flex flex-shrink-0 items-center gap-3 ${
+          isTrending ? "pr-24" : ""
+        }`}
+      >
         <div 
           className="company-logo w-14 h-14 sm:w-16 sm:h-16 rounded-xl shadow-sm border border-theme flex-shrink-0 bg-theme-card flex items-center justify-center overflow-hidden"
           data-testid="company-logo"
@@ -485,49 +482,52 @@ function CompanyCard({
 
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
-        <div
-          className={`card-footer flex flex-wrap items-center gap-2 overflow-hidden ${
-            hidePlacementGotInCounts ? "justify-end" : "justify-between"
-          }`}
-        >
-          {!hidePlacementGotInCounts ? (
-            <div className="flex items-center gap-2 shrink-0 min-w-0">
-              <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
-                <span className="block">Got in</span>
-                {GOT_IN_DISPLAY_YEARS.map((y) => (
-                  <span key={y} className="block text-theme-primary tabular-nums">
-                    {y}: {totalGotInByYear[y] ?? 0}
-                  </span>
-                ))}
-              </div>
-              {isAdmin && (
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    onClick={(e) => handleAdjustTotalGotIn(e, -1)}
-                    disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Decrease got in count"
-                    title="Decrease got in count"
-                  >
-                    <FaMinus className="h-3 w-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleAdjustTotalGotIn(e, 1)}
-                    disabled={isUpdatingTotalGotIn}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
-                    aria-label="Increase got in count"
-                    title="Increase got in count"
-                  >
-                    <FaPlus className="h-3 w-3" />
-                  </button>
+        <div className="card-footer flex items-end justify-between gap-2 overflow-hidden">
+          <div className="card-footer-left flex min-w-0 flex-1 flex-col justify-end gap-1">
+            {!hidePlacementGotInCounts ? (
+              <div className="flex items-center gap-2 shrink-0 min-w-0">
+                <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
+                  <span className="block">Got in</span>
+                  {GOT_IN_DISPLAY_YEARS.map((y) => (
+                    <span key={y} className="block text-theme-primary tabular-nums">
+                      {y}: {totalGotInByYear[y] ?? 0}
+                    </span>
+                  ))}
                 </div>
-              )}
-            </div>
-          ) : null}
+                {isAdmin && (
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={(e) => handleAdjustTotalGotIn(e, -1)}
+                      disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Decrease got in count"
+                      title="Decrease got in count"
+                    >
+                      <FaMinus className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleAdjustTotalGotIn(e, 1)}
+                      disabled={isUpdatingTotalGotIn}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Increase got in count"
+                      title="Increase got in count"
+                    >
+                      <FaPlus className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            {lastUpdatedMonth ? (
+              <p className="card-last-updated min-w-0 text-left text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
+                Last updated on: {lastUpdatedMonth}
+              </p>
+            ) : null}
+          </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="card-footer-actions ml-auto flex shrink-0 items-center justify-end gap-2">
             {isAdmin ? (
               <span
                 className="inline-flex items-center gap-2 rounded-xl border border-theme bg-theme-input px-2.5 py-1.5 text-xs font-semibold text-theme-secondary"
@@ -550,7 +550,7 @@ function CompanyCard({
               onClick={handleThumbsUp}
               disabled={isUpdating || hasUpvoted || isCheckingStatus}
               data-tour="company-card-helpful"
-              className={`helpful-btn ${hasUpvoted ? "helpful-btn--active" : ""} group relative inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-all ${
+              className={`helpful-btn ${hasUpvoted ? "helpful-btn--active" : ""} group relative inline-flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition-[box-shadow,background-color,border-color,color] ${
                 hasUpvoted
                   ? "border-theme bg-theme-card-hover text-theme-secondary cursor-not-allowed opacity-90"
                   : isUpdating || isCheckingStatus
