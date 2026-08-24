@@ -43,6 +43,7 @@ import {
   PLACEMENT_DETAIL_VISIT_YEARS,
   isPlacementDetailVisitYear,
 } from "../constants/placementYears.js";
+import { companyHasInternshipExperience } from "../utils/parseExperienceStoredEntry.js";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -627,6 +628,14 @@ function CompanyDetails() {
     }
   }, [hideRvitmEmptySelectionTabs, activeTab]);
 
+  useEffect(() => {
+    if (placementYearLoading) return;
+    if (activeTab !== "internship") return;
+    if (!companyHasInternshipExperience(company)) {
+      setActiveTab("about");
+    }
+  }, [company, activeTab, placementYearLoading]);
+
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
     if (user?.betaAccess === false) return;
@@ -753,6 +762,8 @@ function CompanyDetails() {
       );
     });
 
+  const hasInternshipExperience = companyHasInternshipExperience(company);
+
   const tierCtxEffective = readPlacementListContext(location, id);
   const hideDreamTierVisitDetails =
     company.placementDreamTierVisitMissingForYear === true &&
@@ -826,7 +837,9 @@ function CompanyDetails() {
     { id: "oa", label: "OA Questions" },
     { id: "coding", label: "Coding" },
     { id: "interview", label: "Interview Experience" },
-    { id: "internship", label: "Internship Experience" },
+    ...(hasInternshipExperience
+      ? [{ id: "internship", label: "Internship Experience" }]
+      : []),
     { id: "mustdo", label: "Must Do Topics" },
   ];
   const optionalCompanyNavTabs = [];
@@ -1293,6 +1306,7 @@ function CompanyDetails() {
               />
             ))}
           {activeTab === "internship" &&
+            hasInternshipExperience &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
             ) : (

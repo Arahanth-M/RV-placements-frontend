@@ -1,5 +1,7 @@
 import {
+  companyHasInternshipExperience,
   formatExperienceMonth,
+  listInternshipExperienceEntries,
   parseExperienceStoredEntry,
 } from "../../utils/parseExperienceStoredEntry.js";
 
@@ -41,5 +43,30 @@ describe("formatExperienceMonth", () => {
   test("returns null for invalid dates", () => {
     expect(formatExperienceMonth(null)).toBeNull();
     expect(formatExperienceMonth("not-a-date")).toBeNull();
+  });
+});
+
+describe("listInternshipExperienceEntries", () => {
+  test("keeps entries with content and drops empty ones", () => {
+    const entries = listInternshipExperienceEntries({
+      internshipExperience: [
+        JSON.stringify({ experience: "Shipped a dashboard" }),
+        "   ",
+        { experience: "" },
+      ],
+    });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].content).toBe("Shipped a dashboard");
+  });
+
+  test("companyHasInternshipExperience is false when nothing usable is stored", () => {
+    expect(companyHasInternshipExperience({ internshipExperience: [] })).toBe(false);
+    expect(companyHasInternshipExperience({ internshipExperience: ["  "] })).toBe(false);
+    expect(companyHasInternshipExperience(null)).toBe(false);
+    expect(
+      companyHasInternshipExperience({
+        internshipExperience: JSON.stringify({ experience: "Interned on payments" }),
+      })
+    ).toBe(true);
   });
 });

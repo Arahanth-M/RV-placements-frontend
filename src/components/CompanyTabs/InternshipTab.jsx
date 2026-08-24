@@ -8,7 +8,7 @@ import {
   ExperienceSectionHeader,
   ExperienceStoryCard,
 } from "./ExperienceStoryCard.jsx";
-import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
+import { listInternshipExperienceEntries } from "../../utils/parseExperienceStoredEntry.js";
 
 function InternshipTab({
   company,
@@ -58,25 +58,7 @@ function InternshipTab({
     }
   };
 
-  // Normalize internship experience - handle both legacy string format and new JSON string format
-  let internshipExperience = [];
-  const internDates = Array.isArray(company.internshipExperienceUpdatedAt)
-    ? company.internshipExperienceUpdatedAt
-    : [];
-  if (Array.isArray(company.internshipExperience)) {
-    internshipExperience = company.internshipExperience
-      .map((exp, index) => {
-        if (!exp || (typeof exp !== "string" && typeof exp !== "object")) return null;
-        const parsed = parseExperienceStoredEntry(exp, internDates[index]);
-        if (!parsed.content) return null;
-        return parsed;
-      })
-      .filter((exp) => exp !== null);
-  } else if (typeof company.internshipExperience === "string" && company.internshipExperience.trim().length > 0) {
-    internshipExperience = [
-      parseExperienceStoredEntry(company.internshipExperience, internDates[0]),
-    ];
-  }
+  const internshipExperience = listInternshipExperienceEntries(company);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
