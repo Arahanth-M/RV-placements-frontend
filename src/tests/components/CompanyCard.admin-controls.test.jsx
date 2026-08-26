@@ -106,6 +106,34 @@ describe("CompanyCard admin got in controls", () => {
     expect(screen.getByText("Views")).toBeInTheDocument();
   });
 
+  it("places last updated above views on the left of the card", async () => {
+    render(
+      <MemoryRouter>
+        <CompanyCard
+          company={{
+            ...baseCompany,
+            views: 1240,
+            contentUpdatedAt: "2026-08-15T00:00:00.000Z",
+          }}
+          isAdmin
+          hidePlacementGotInCounts
+        />
+      </MemoryRouter>
+    );
+
+    const views = await screen.findByLabelText("1240 views");
+    const lastUpdated = screen.getByText(/Last updated on:/i);
+    const left = lastUpdated.closest(".card-footer-left");
+
+    expect(left).toBeTruthy();
+    expect(left).toContainElement(views);
+    expect(left).toContainElement(lastUpdated);
+    expect(
+      lastUpdated.compareDocumentPosition(views) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(views.closest(".card-footer-actions")).toBeNull();
+  });
+
   it("hides views from students and SPCs", () => {
     render(
       <MemoryRouter>
