@@ -80,6 +80,7 @@ function GeneralTab({
 }) {
   const { user } = useAuth();
   const isRvitmViewer = collegeIdFromUser(user) === COLLEGE_ID_RVITM;
+  const canEditRolesAndCtc = isAdmin && !isRvitmViewer;
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -610,7 +611,7 @@ function GeneralTab({
           <h2 className="text-xl font-semibold text-indigo-400">
             Roles Offered
           </h2>
-          {isAdmin && (
+          {canEditRolesAndCtc && (
             <button
               type="button"
               onClick={() => setIsEditingRoles((prev) => !prev)}

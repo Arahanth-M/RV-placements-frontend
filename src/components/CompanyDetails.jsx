@@ -21,6 +21,7 @@ import {
   COLLEGE_ID_RVITM,
   collegeIdFromUser,
   normalizeCollegeId,
+  adminMayMutateSharedCompanyContent,
 } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import BrandLogo from "./BrandLogo.jsx";
@@ -99,8 +100,10 @@ function companyShellWhileYearSwitch(prev) {
     interview_questions: [],
     interviewProcess: [],
     internshipExperience: [],
-    must_do_topics: [],
-    Must_Do_Topics: [],
+    // Coding + Must Do are not year-scoped; keep them while year-specific visit fields reload.
+    prev_coding_ques: prev.prev_coding_ques,
+    must_do_topics: prev.must_do_topics,
+    Must_Do_Topics: prev.Must_Do_Topics,
     mcqQuestions: [],
     recruitment_process: undefined,
     totalGotIn: 0,
@@ -300,6 +303,7 @@ function CompanyDetails() {
   const { user, isAdmin } = useAuth();
   const collegeId = collegeIdFromUser(user);
   const isRvitmViewer = collegeId === COLLEGE_ID_RVITM;
+  const canEditSharedCompanyContent = adminMayMutateSharedCompanyContent(user, isAdmin);
   const canManageRecruitmentProcess =
     isAdmin || (user && String(user.role || "").toLowerCase() === "spc");
   const profileAvailabilityKey =
@@ -1277,7 +1281,7 @@ function CompanyDetails() {
             ) : (
               <OATab
                 company={company}
-                isAdmin={isAdmin}
+                isAdmin={canEditSharedCompanyContent}
                 onCompanyUpdate={handleRefresh}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
@@ -1285,19 +1289,15 @@ function CompanyDetails() {
                 placementCluster={placementClusterForApi}
               />
             ))}
-          {activeTab === "coding" &&
-            (hideTierContextVisitDetails ? (
-              <DreamTierVisitEmptyPanel />
-            ) : (
-              <CodingTab company={company} />
-            ))}
+          {/* Coding is company-static; Must Do is cluster-wide — not the selected year's visit. */}
+          {activeTab === "coding" && <CodingTab company={company} />}
           {activeTab === "interview" &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
             ) : (
               <InterviewTab
                 company={company}
-                isAdmin={isAdmin}
+                isAdmin={canEditSharedCompanyContent}
                 onCompanyUpdate={handleRefresh}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
@@ -1327,20 +1327,17 @@ function CompanyDetails() {
               }}
             />
           )}
-          {activeTab === "mustdo" &&
-            (hideTierContextVisitDetails ? (
-              <DreamTierVisitEmptyPanel />
-            ) : (
-              <MustDoTab
-                company={company}
-                isAdmin={isAdmin}
-                onCompanyUpdate={handleRefresh}
-                placementYear={placementYear}
-                placementListContext={placementContextForApi}
-                placementCompanyVisitId={company?.placementCompanyVisitId}
-                placementCluster={placementClusterForApi}
-              />
-            ))}
+          {activeTab === "mustdo" && (
+            <MustDoTab
+              company={company}
+              isAdmin={isAdmin}
+              onCompanyUpdate={handleRefresh}
+              placementYear={placementYear}
+              placementListContext={placementContextForApi}
+              placementCompanyVisitId={company?.placementCompanyVisitId}
+              placementCluster={placementClusterForApi}
+            />
+          )}
           {activeTab === "offcampus" &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />

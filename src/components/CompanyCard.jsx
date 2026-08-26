@@ -482,50 +482,58 @@ function CompanyCard({
 
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
+        {isAdmin && lastUpdatedMonth ? (
+          <p className="card-last-updated mb-2 whitespace-nowrap text-left text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
+            Last updated on: {lastUpdatedMonth}
+          </p>
+        ) : null}
+
         <div className="card-footer flex items-end justify-between gap-2 overflow-hidden">
-          <div className="card-footer-left flex min-w-0 flex-1 flex-col justify-end gap-1">
-            {!hidePlacementGotInCounts ? (
-              <div className="flex items-center gap-2 shrink-0 min-w-0">
-                <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
-                  <span className="block">Got in</span>
-                  {GOT_IN_DISPLAY_YEARS.map((y) => (
-                    <span key={y} className="block text-theme-primary tabular-nums">
-                      {y}: {totalGotInByYear[y] ?? 0}
-                    </span>
-                  ))}
-                </div>
-                {isAdmin && (
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={(e) => handleAdjustTotalGotIn(e, -1)}
-                      disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Decrease got in count"
-                      title="Decrease got in count"
-                    >
-                      <FaMinus className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => handleAdjustTotalGotIn(e, 1)}
-                      disabled={isUpdatingTotalGotIn}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Increase got in count"
-                      title="Increase got in count"
-                    >
-                      <FaPlus className="h-3 w-3" />
-                    </button>
+          {!hidePlacementGotInCounts || (!isAdmin && lastUpdatedMonth) ? (
+            <div className="card-footer-left flex min-w-0 flex-1 flex-col justify-end gap-1">
+              {!hidePlacementGotInCounts ? (
+                <div className="flex items-center gap-2 shrink-0 min-w-0">
+                  <div className="text-xs sm:text-sm font-semibold text-theme-secondary min-w-0">
+                    <span className="block">Got in</span>
+                    {GOT_IN_DISPLAY_YEARS.map((y) => (
+                      <span key={y} className="block text-theme-primary tabular-nums">
+                        {y}: {totalGotInByYear[y] ?? 0}
+                      </span>
+                    ))}
                   </div>
-                )}
-              </div>
-            ) : null}
-            {lastUpdatedMonth ? (
-              <p className="card-last-updated min-w-0 text-left text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
-                Last updated on: {lastUpdatedMonth}
-              </p>
-            ) : null}
-          </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => handleAdjustTotalGotIn(e, -1)}
+                        disabled={isUpdatingTotalGotIn || adminYearGotIn <= 0}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Decrease got in count"
+                        title="Decrease got in count"
+                      >
+                        <FaMinus className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleAdjustTotalGotIn(e, 1)}
+                        disabled={isUpdatingTotalGotIn}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-theme bg-theme-input text-theme-primary transition-colors hover:bg-theme-nav disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Increase got in count"
+                        title="Increase got in count"
+                      >
+                        <FaPlus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              {!isAdmin && lastUpdatedMonth ? (
+                <p className="card-last-updated min-w-0 text-left text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
+                  Last updated on: {lastUpdatedMonth}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="card-footer-actions ml-auto flex shrink-0 items-center justify-end gap-2">
             {isAdmin ? (

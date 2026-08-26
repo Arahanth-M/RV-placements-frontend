@@ -8,6 +8,7 @@ import {
   PLACEMENT_HUB_CLUSTER_LABELS,
 } from '../constants/placementTiers.js';
 import { inferSpcClusterFromEmailAndUsn } from '../utils/spcCluster.js';
+import { COLLEGE_ID_RVITM, collegeIdFromUser } from '../utils/collegeScope.js';
 import StudentPlacementStatsTab from './StudentPlacementStatsTab';
 import PlacementHubSettingsTab from './PlacementHubSettingsTab';
 import StudentRequestsTab from './StudentRequestsTab';
@@ -282,6 +283,7 @@ function AdminChartEmpty({ message }) {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const isRvitmAdmin = collegeIdFromUser(user) === COLLEGE_ID_RVITM;
   const [searchParams, setSearchParams] = useSearchParams();
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -349,6 +351,9 @@ const AdminDashboard = () => {
         setSearchParams({}, { replace: true });
         return;
       }
+      if (isRvitmAdmin && tabKey === 'companies') {
+        return;
+      }
       if (ADMIN_HUB_TAB_KEYS.has(tabKey)) {
         setActiveMainTab(tabKey);
         setSearchParams({ tab: tabKey }, { replace: true });
@@ -361,13 +366,18 @@ const AdminDashboard = () => {
         }
       }
     },
-    [searchParams, setSearchParams]
+    [searchParams, setSearchParams, isRvitmAdmin]
   );
 
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (!tab) {
       setActiveMainTab(null);
+      return;
+    }
+    if (isRvitmAdmin && tab === 'companies') {
+      setActiveMainTab(null);
+      setSearchParams({}, { replace: true });
       return;
     }
     if (!ADMIN_HUB_TAB_KEYS.has(tab)) return;
@@ -377,7 +387,7 @@ const AdminDashboard = () => {
       }
       return tab;
     });
-  }, [searchParams]);
+  }, [searchParams, isRvitmAdmin, setSearchParams]);
 
   // Tab / hub swaps often keep the same pathname, so App ScrollToTop does not run.
   useLayoutEffect(() => {
@@ -1122,10 +1132,11 @@ const AdminDashboard = () => {
     });
   };
 
-  const adminPrimaryNavTabs = useMemo(
-    () => buildAdminPrimaryNavTabs(stats),
-    [stats.pendingCompanies, stats.pendingSubmissions]
-  );
+  const adminPrimaryNavTabs = useMemo(() => {
+    const tabs = buildAdminPrimaryNavTabs(stats);
+    if (!isRvitmAdmin) return tabs;
+    return tabs.filter((tab) => tab.key !== 'companies');
+  }, [stats.pendingCompanies, stats.pendingSubmissions, isRvitmAdmin]);
 
   const adminMiscNavTabs = useMemo(
     () => buildAdminMiscNavTabs(stats),

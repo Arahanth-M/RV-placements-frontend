@@ -232,7 +232,25 @@ export const companyAPI = {
   async prefetchCompany(id, options = {}) {
     if (!id) return;
     try {
-      await companyAPI.getCompany(id, options);
+      let year = options.year != null ? Number(options.year) : DEFAULT_PLACEMENT_DETAIL_YEAR;
+      if (!Number.isFinite(year)) year = DEFAULT_PLACEMENT_DETAIL_YEAR;
+      const ctxRaw =
+        typeof options.placementContext === 'string' ? options.placementContext.trim() : '';
+      const visitIdRaw =
+        typeof options.placementCompanyVisitId === 'string'
+          ? options.placementCompanyVisitId.trim()
+          : '';
+      const clusterRaw =
+        typeof options.placementCluster === 'string' ? options.placementCluster.trim() : '';
+      await API.get(`/api/companies/${id}`, {
+        params: {
+          year,
+          prefetch: 1,
+          ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+          ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
+          ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
+        },
+      });
     } catch {
       // Best-effort prefetch; navigation path handles errors.
     }

@@ -2181,12 +2181,26 @@ function CompanyStats() {
                 const listingYear = isPlacementDetailVisitYear(selectedYear)
                   ? selectedYear
                   : null;
-                detailDefaultYear =
-                  listingYear !== null
-                    ? listingYear
-                    : isPlacementDetailVisitYear(c.placementSummerDetailYear)
-                      ? c.placementSummerDetailYear
-                      : undefined;
+                const summerDetailY = isPlacementDetailVisitYear(
+                  c.placementSummerDetailYear
+                )
+                  ? c.placementSummerDetailYear
+                  : null;
+                // Hub lists companies with a summer visit in any year. Open the
+                // year that actually has the PPO row (e.g. 2027) instead of the
+                // hub filter year (often 2026) when that year has no summer visit.
+                if (
+                  listingYear !== null &&
+                  c.placementSummerStrictVisitForListingYear === false &&
+                  summerDetailY !== null
+                ) {
+                  detailDefaultYear = summerDetailY;
+                } else {
+                  detailDefaultYear =
+                    listingYear !== null
+                      ? listingYear
+                      : summerDetailY ?? undefined;
+                }
               } else if (placementTier === PLACEMENT_TIER_INTERNSHIP_ONLY) {
                 const listingYear = isPlacementDetailVisitYear(selectedYear)
                   ? selectedYear

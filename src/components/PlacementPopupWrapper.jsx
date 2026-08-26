@@ -299,7 +299,13 @@ const PlacementPopupWrapper = () => {
   if (isContentUpdates) {
     return (
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[60] flex items-end justify-center p-3 sm:items-center sm:p-4"
+        style={{
+          paddingTop: "max(0.75rem, env(safe-area-inset-top, 0px))",
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))",
+          paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
+          paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="content-digest-title"
@@ -310,34 +316,34 @@ const PlacementPopupWrapper = () => {
           aria-label="Close updates"
           onClick={handleDismiss}
         />
-        <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-2xl border border-theme bg-theme-card text-theme-primary shadow-2xl">
-          <div className="p-6 pb-7 sm:p-7 sm:pb-8">
-            <div className="flex items-start justify-between gap-3">
+        <div className="relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card text-theme-primary shadow-2xl max-h-[min(92dvh,40rem)]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 pb-8 sm:p-7 sm:pb-8">
+            <div className="flex shrink-0 items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-theme-accent">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-theme-accent sm:text-xs">
                   Fresh on the platform
                 </p>
                 <h3
                   id="content-digest-title"
-                  className="mt-1 text-2xl font-black tracking-tight text-theme-primary sm:text-3xl"
+                  className="mt-1 text-xl font-black tracking-tight text-theme-primary sm:text-3xl"
                 >
                   Since your last visit
                 </h3>
-                <p className="mt-2 text-base font-medium leading-relaxed text-theme-secondary sm:text-lg">
+                <p className="mt-2 text-sm font-medium leading-relaxed text-theme-secondary sm:text-lg">
                   New material is waiting for you:
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleDismiss}
-                className="rounded-md p-1.5 text-theme-muted transition hover:bg-theme-nav hover:text-theme-primary"
+                className="rounded-md p-2 text-theme-muted transition hover:bg-theme-nav hover:text-theme-primary sm:p-1.5"
                 aria-label="Close"
               >
                 <FaTimes className="h-5 w-5" />
               </button>
             </div>
 
-            <ul className="mt-5 max-h-72 space-y-2.5 overflow-y-auto pr-1">
+            <ul className="mt-4 min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain pr-1 max-h-[min(48dvh,18rem)] sm:max-h-none">
               {digestCompanies.map((item) => {
                 const year = Number(item.year);
                 const hasYear = Number.isInteger(year) && year > 0;
@@ -347,7 +353,7 @@ const PlacementPopupWrapper = () => {
                 return (
                   <li
                     key={`${item.companyId}-${item.year || 'na'}`}
-                    className="rounded-xl border border-theme bg-theme-hero px-4 py-3.5"
+                    className="rounded-xl border border-theme bg-theme-hero px-3 py-3 sm:px-4 sm:py-3.5"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
@@ -356,17 +362,17 @@ const PlacementPopupWrapper = () => {
                           setShowPopup(false);
                           setPopupVariant(null);
                         }}
-                        className="min-w-0 text-lg font-extrabold leading-snug text-theme-accent hover:underline sm:text-xl"
+                        className="min-w-0 text-base font-extrabold leading-snug text-theme-accent hover:underline sm:text-xl"
                       >
                         {item.companyName || 'Company'}
                       </Link>
                       {hasYear ? (
-                        <span className="shrink-0 rounded-full border border-theme bg-theme-card px-2.5 py-0.5 text-sm font-bold text-theme-secondary">
+                        <span className="shrink-0 rounded-full border border-theme bg-theme-card px-2.5 py-0.5 text-xs font-bold text-theme-secondary sm:text-sm">
                           {year}
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1.5 text-base font-medium leading-relaxed text-theme-secondary">
+                    <p className="mt-1.5 text-sm font-medium leading-relaxed text-theme-secondary sm:text-base">
                       {item.summary}
                     </p>
                   </li>
@@ -374,15 +380,15 @@ const PlacementPopupWrapper = () => {
               })}
             </ul>
             {digestTruncated ? (
-              <p className="mt-3 text-sm text-theme-muted">
+              <p className="mt-3 shrink-0 text-xs text-theme-muted sm:text-sm">
                 Showing the latest companies. Check Company Stats for everything else.
               </p>
             ) : null}
-            <div className="mt-6 flex justify-end">
+            <div className="mt-4 flex shrink-0 justify-end sm:mt-6">
               <button
                 type="button"
                 onClick={handleDismiss}
-                className="rounded-xl border border-theme bg-theme-hero px-5 py-2.5 text-base font-bold text-theme-primary transition-colors hover:bg-theme-nav"
+                className="min-h-11 w-full rounded-xl border border-theme bg-theme-hero px-5 py-2.5 text-base font-bold text-theme-primary transition-colors hover:bg-theme-nav sm:min-h-0 sm:w-auto"
               >
                 Close
               </button>

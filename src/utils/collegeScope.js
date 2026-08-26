@@ -52,6 +52,15 @@ export function collegeIdFromUser(user) {
 }
 
 /**
+ * RVITM admins can view company pages but cannot edit shared content
+ * (roles/CTC, OA, interview Qs/experiences) or approve/reject companies.
+ */
+export function adminMayMutateSharedCompanyContent(user, isAdmin = false) {
+  if (!isAdmin) return false;
+  return collegeIdFromUser(user) !== COLLEGE_ID_RVITM;
+}
+
+/**
  * @param {unknown} role
  * @returns {boolean}
  */
