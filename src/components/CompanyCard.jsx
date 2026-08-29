@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus, FaEye, FaFire } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
+import { adminMayMutateSharedCompanyContent } from "../utils/collegeScope.js";
 import {
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_OPEN_DREAM,
@@ -78,6 +79,7 @@ function CompanyCard({
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const canEditProgramGotIn = adminMayMutateSharedCompanyContent(user, isAdmin);
   const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
   const [hasUpvoted, setHasUpvoted] = useState(helpfulStatus?.hasUpvoted === true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -303,7 +305,7 @@ function CompanyCard({
 
   const handleAdjustTotalGotIn = async (e, delta) => {
     e.stopPropagation();
-    if (!isAdmin || isUpdatingTotalGotIn) return;
+    if (!canEditProgramGotIn || isUpdatingTotalGotIn) return;
 
     try {
       setIsUpdatingTotalGotIn(true);
@@ -495,7 +497,7 @@ function CompanyCard({
                       </span>
                     ))}
                   </div>
-                  {isAdmin && (
+                  {canEditProgramGotIn && (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"

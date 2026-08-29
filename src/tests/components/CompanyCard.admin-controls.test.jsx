@@ -16,11 +16,13 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
+const mockAuth = {
+  user: { userId: "admin-user", email: "admin@example.com", collegeId: "rvce" },
+  isAdmin: true,
+};
+
 vi.mock("../../utils/AuthContext", () => ({
-  useAuth: () => ({
-    user: { userId: "admin-user", email: "admin@example.com" },
-    isAdmin: true,
-  }),
+  useAuth: () => mockAuth,
 }));
 
 vi.mock("../../utils/api", () => ({
@@ -65,6 +67,12 @@ describe("CompanyCard admin got in controls", () => {
     mockGetHelpfulStatus.mockResolvedValue({
       data: { hasUpvoted: false, helpfulCount: 0 },
     });
+    mockAuth.user = {
+      userId: "admin-user",
+      email: "admin@example.com",
+      collegeId: "rvce",
+    };
+    mockAuth.isAdmin = true;
   });
 
   it("shows increment and decrement controls only for admins", async () => {
@@ -93,6 +101,28 @@ describe("CompanyCard admin got in controls", () => {
     expect(
       screen.queryByRole("button", { name: /decrease got in count/i })
     ).not.toBeInTheDocument();
+  });
+
+  it("hides got in controls for RVITM admins", async () => {
+    mockAuth.user = {
+      userId: "rvitm-admin",
+      email: "placement.rvitm@rvei.edu.in",
+      collegeId: "rvitm",
+    };
+
+    render(
+      <MemoryRouter>
+        <CompanyCard company={baseCompany} isAdmin />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /increase got in count/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /decrease got in count/i })
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText(/2026:/)).toBeInTheDocument();
   });
 
   it("shows visit click count as views only for admins", async () => {

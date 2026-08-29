@@ -81,6 +81,7 @@ function GeneralTab({
   const { user } = useAuth();
   const isRvitmViewer = collegeIdFromUser(user) === COLLEGE_ID_RVITM;
   const canEditRolesAndCtc = isAdmin && !isRvitmViewer;
+  const canEditEligibilityDetails = canEditRolesAndCtc;
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -254,7 +255,7 @@ function GeneralTab({
               Eligibility details
             </h2>
           </div>
-          {isAdmin && (
+          {canEditEligibilityDetails && (
             <button
               type="button"
               onClick={() => {

@@ -12,6 +12,8 @@ import {
   PLACEMENT_TIER_OPEN_DREAM,
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../../constants/placementTiers.js";
+import { useAuth } from "../../utils/AuthContext";
+import { adminMayMutateSharedCompanyContent } from "../../utils/collegeScope.js";
 
 import {
   CHEM_BRANCH_CODES,
@@ -76,6 +78,8 @@ function StatsTab({
   placementListContext,
   placementCluster,
 }) {
+  const { user } = useAuth();
+  const canEditProgramGotIn = adminMayMutateSharedCompanyContent(user, isAdmin);
   const normalizedPlacementCluster = String(placementCluster || "")
     .trim()
     .toLowerCase();
@@ -231,7 +235,7 @@ function StatsTab({
 
   const handleAdjustTotalGotIn = useCallback(
     async (delta) => {
-      if (!isAdmin || isUpdatingTotalGotIn || !company?._id) return;
+      if (!canEditProgramGotIn || isUpdatingTotalGotIn || !company?._id) return;
       try {
         setIsUpdatingTotalGotIn(true);
         const response = await adminAPI.adjustCompanyTotalGotIn(company._id, delta, {
@@ -267,7 +271,7 @@ function StatsTab({
       adminGotInYear,
       company?._id,
       company?.placementCompanyVisitId,
-      isAdmin,
+      canEditProgramGotIn,
       isUpdatingTotalGotIn,
       onStatsUpdated,
       placementListContext,
@@ -283,7 +287,7 @@ function StatsTab({
           <h2 className="text-xl font-semibold text-theme-accent">
             Placed in by program ({adminGotInYear})
           </h2>
-          {isAdmin && placementHubHint ? (
+          {canEditProgramGotIn && placementHubHint ? (
             <p className="mt-1 text-xs text-theme-muted">
               Editing counts for the <span className="font-medium text-theme-secondary">{placementHubHint}</span>{" "}
               visit slot (same hub as the URL). Switch Dream / Open dream in the address bar to edit the other slot.
@@ -299,7 +303,7 @@ function StatsTab({
               {visitTotalSelectedYear}
             </div>
           </div>
-          {isAdmin ? (
+          {canEditProgramGotIn ? (
             <div className="flex items-center gap-1 border-l border-theme pl-4">
               <button
                 type="button"
@@ -350,7 +354,7 @@ function StatsTab({
                   <tr key={bc} className="hover:bg-theme-nav/50 transition-colors">
                     <td className="px-2 py-2 font-medium text-theme-primary uppercase">{bc}</td>
                     <td className="px-2 py-2 text-right text-theme-primary tabular-nums whitespace-nowrap">
-                      {isEditingPlacementGotIn && isAdmin ? (
+                      {isEditingPlacementGotIn && canEditProgramGotIn ? (
                         <input
                           type="number"
                           min={0}
@@ -374,7 +378,7 @@ function StatsTab({
           </table>
         </div>
       )}
-      {isAdmin ? (
+      {canEditProgramGotIn ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-theme pt-4">
           <p className="text-xs text-theme-muted max-w-xl">
             Program totals should match the story you publish; saving also sets{" "}
@@ -442,6 +446,7 @@ function StatsTab({
       draftPlacementRows,
       handleAdjustTotalGotIn,
       isAdmin,
+      canEditProgramGotIn,
       isEditingPlacementGotIn,
       isUpdatingTotalGotIn,
       onStatsUpdated,
