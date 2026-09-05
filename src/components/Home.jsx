@@ -71,12 +71,12 @@ function StatPill({ value, suffix, label, duration }) {
   return (
     <div
       ref={ref}
-      className="flex min-w-0 flex-1 flex-col items-center px-2 sm:px-3 py-3 sm:py-4 rounded-2xl bg-theme-card border border-theme-accent/20"
+      className="flex h-full min-w-0 flex-col items-center justify-center px-2.5 sm:px-3 py-3 sm:py-4 rounded-2xl bg-theme-card border border-theme-accent/20 last:col-span-2 sm:last:col-span-1"
     >
       <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-theme-accent tabular-nums">
         {count}{suffix}
       </span>
-      <span className="text-[10px] sm:text-xs lg:text-sm text-theme-secondary mt-1 text-center leading-snug">
+      <span className="text-xs sm:text-xs lg:text-sm text-theme-secondary mt-1 text-center leading-snug break-words">
         {label}
       </span>
     </div>
@@ -310,8 +310,8 @@ function Home() {
 </div>
   
       {/* ── STATS STRIP ── */}
-      <div className="bg-theme-card border-y border-theme py-8 px-3 sm:px-4">
-        <div className="max-w-7xl mx-auto flex flex-nowrap items-stretch justify-center gap-2 sm:gap-3">
+      <div className="bg-theme-card border-y border-theme py-6 sm:py-8 px-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-3">
           {stats.map((s) => (
             <StatPill key={s.label} {...s} />
           ))}
