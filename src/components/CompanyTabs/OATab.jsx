@@ -278,6 +278,10 @@ import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 
+function questionTextIsPresent(value) {
+  return String(value ?? "").trim().length > 0;
+}
+
 function OATab({
   company,
   isAdmin,
@@ -639,9 +643,14 @@ function OATab({
           </button>
         </h2>
 
-        {parsedQuestions.length > 0 ? (
+        {parsedQuestions.some(questionTextIsPresent) ? (
           <div className="space-y-3 sm:space-y-4">
-            {parsedQuestions.map((q, index) => (
+            {parsedQuestions.map((q, index) => {
+              if (!questionTextIsPresent(q)) return null;
+              const displayNumber = parsedQuestions
+                .slice(0, index + 1)
+                .filter(questionTextIsPresent).length;
+              return (
               <div
                 key={index}
                 className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
@@ -651,7 +660,7 @@ function OATab({
                     onClick={() => toggleQuestionAccordion(index)}
                     className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate min-w-0">Question {index + 1}</span>
+                    <span className="truncate min-w-0">Question {displayNumber}</span>
                     <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openQuestionIndex === index ? "−" : "+"}
                     </span>
@@ -681,7 +690,7 @@ function OATab({
 
                 {openQuestionIndex === index && (
                   <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
-                    <p className="min-w-0">{q || `Question ${index + 1}`}</p>
+                    <p className="min-w-0">{q}</p>
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
@@ -732,7 +741,8 @@ function OATab({
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-slate-400">No online assessment questions yet.</p>

@@ -17,6 +17,7 @@ import AdminSubmissionsTab from './AdminSubmissionsTab';
 import AdminUsageAnalyticsTab from './AdminUsageAnalyticsTab';
 import AdminTrendingCardsTab from './AdminTrendingCardsTab.jsx';
 import AdminDauModal from './AdminDauModal.jsx';
+import AdminBlockedLoginsModal from './AdminBlockedLoginsModal.jsx';
 import DashboardNavCard, { DashboardNavGrid } from './DashboardNavCard.jsx';
 import DashboardRefreshButton from './DashboardRefreshButton.jsx';
 import ThemedSelect from './ThemedSelect.jsx';
@@ -313,6 +314,11 @@ const AdminDashboard = () => {
   const [rejectingCompanyIds, setRejectingCompanyIds] = useState(new Set());
   const [showEventForm, setShowEventForm] = useState(false);
   const [showDauModal, setShowDauModal] = useState(false);
+  const [showBlockedLoginsModal, setShowBlockedLoginsModal] = useState(false);
+  const [blockedLoginStats, setBlockedLoginStats] = useState({
+    attemptCount: 0,
+    uniqueEmails: 0,
+  });
   const [editingEvent, setEditingEvent] = useState(null);
   const [eventForm, setEventForm] = useState({
     type: '',
@@ -438,10 +444,23 @@ const AdminDashboard = () => {
     });
   }, [selectedCompanyYear]);
 
+  const refreshBlockedLoginStats = useCallback(async () => {
+    try {
+      const res = await adminAPI.getBlockedLogins({ days: 30 });
+      setBlockedLoginStats({
+        attemptCount: Number(res?.data?.attemptCount) || 0,
+        uniqueEmails: Number(res?.data?.uniqueEmails) || 0,
+      });
+    } catch (err) {
+      console.error('Failed to load blocked sign-ins:', err);
+    }
+  }, []);
+
   const refreshAdminStats = useCallback(async () => {
     const statsRes = await getAdminStats();
     setStats(statsRes.data);
-  }, []);
+    await refreshBlockedLoginStats();
+  }, [refreshBlockedLoginStats]);
 
   const refreshCompaniesView = useCallback(async () => {
     await refreshAdminStats();
@@ -598,6 +617,7 @@ const AdminDashboard = () => {
         setError(null);
         const statsRes = await getAdminStats();
         setStats(statsRes.data);
+        await refreshBlockedLoginStats();
       } catch (err) {
         console.error('Error loading admin stats:', err);
         setError('Failed to load dashboard. Please try again.');
@@ -1341,6 +1361,17 @@ const AdminDashboard = () => {
                           value: stats.dailySubmissions ?? 0,
                           description: 'All submissions created by users today across every company.',
                         },
+                        {
+                          label: 'Blocked sign-ins',
+                          value: blockedLoginStats.attemptCount ?? 0,
+                          sublabel:
+                            blockedLoginStats.uniqueEmails > 0
+                              ? `${blockedLoginStats.uniqueEmails} unique emails`
+                              : '',
+                          description:
+                            'People who tried to sign in without an RVCE or RVITM email in the last 30 days. They did not get an account.',
+                          onOpen: () => setShowBlockedLoginsModal(true),
+                        },
                       ].map((card) => (
                         <div
                           key={card.label}
@@ -1351,6 +1382,18 @@ const AdminDashboard = () => {
                             <InfoHint text={card.description} />
                           </div>
                           <p className="mt-2 text-2xl font-bold text-theme-primary">{card.value}</p>
+                          {card.sublabel ? (
+                            <p className="mt-1 text-xs text-theme-muted">{card.sublabel}</p>
+                          ) : null}
+                          {card.onOpen ? (
+                            <button
+                              type="button"
+                              onClick={card.onOpen}
+                              className="mt-3 text-xs font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
+                            >
+                              View details
+                            </button>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -2530,6 +2573,10 @@ const AdminDashboard = () => {
       </div>
 
       <AdminDauModal open={showDauModal} onClose={() => setShowDauModal(false)} />
+      <AdminBlockedLoginsModal
+        open={showBlockedLoginsModal}
+        onClose={() => setShowBlockedLoginsModal(false)}
+      />
     </div>
   );
 };

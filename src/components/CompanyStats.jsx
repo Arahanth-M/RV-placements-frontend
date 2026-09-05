@@ -22,7 +22,9 @@ import {
   FaCalendarAlt,
   FaRegStar,
   FaMedal,
+  FaChevronDown,
   FaChevronRight,
+  FaChevronUp,
   FaLaptopCode,
   FaBolt,
   FaCogs,
@@ -191,6 +193,54 @@ function clampCgpaFilterInput(raw) {
   if (n > 10) return "10";
   if (n < 0) return "0";
   return s;
+}
+
+const CGPA_FILTER_STEP = 0.01;
+
+function stepCgpaFilterValue(raw, delta) {
+  const current = raw === "" || raw == null ? 0 : Number(raw);
+  const n = Number.isFinite(current) ? current : 0;
+  const next = Math.round((n + delta) * 100) / 100;
+  return clampCgpaFilterInput(String(next));
+}
+
+function CgpaFilterInput({ value, onValueChange, ...inputProps }) {
+  return (
+    <div className="cgpa-filter-field relative w-full shrink-0 sm:w-40">
+      <input
+        type="number"
+        inputMode="decimal"
+        min="0"
+        max="10"
+        step={CGPA_FILTER_STEP}
+        placeholder="My CGPA"
+        title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
+        value={value}
+        onChange={(e) => onValueChange(clampCgpaFilterInput(e.target.value))}
+        className="cgpa-filter-input w-full px-3 py-2 pr-11 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
+        aria-label="Filter by my CGPA"
+        {...inputProps}
+      />
+      <div className="cgpa-filter-stepper">
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Increase CGPA"
+          onClick={() => onValueChange(stepCgpaFilterValue(value, CGPA_FILTER_STEP))}
+        >
+          <FaChevronUp aria-hidden />
+        </button>
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Decrease CGPA"
+          onClick={() => onValueChange(stepCgpaFilterValue(value, -CGPA_FILTER_STEP))}
+        >
+          <FaChevronDown aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -1855,21 +1905,12 @@ function CompanyStats() {
                   }}
                   className="search-bar w-full flex-1 px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
                 />
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max="10"
-                  step="0.01"
-                  placeholder="My CGPA"
-                  title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
+                <CgpaFilterInput
                   value={cgpaFilter}
-                  onChange={(e) => {
-                    setCgpaFilter(clampCgpaFilterInput(e.target.value));
+                  onValueChange={(next) => {
+                    setCgpaFilter(next);
                     setClusterBranchPage(1);
                   }}
-                  className="w-full sm:w-28 px-3 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
-                  aria-label="Filter by my CGPA"
                 />
                 <button
                   type="button"
@@ -2143,22 +2184,13 @@ function CompanyStats() {
             data-tour="company-stats-2026-search"
             className="search-bar w-full flex-1 px-4 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
           />
-          <input
-            type="number"
-            inputMode="decimal"
-            min="0"
-            max="10"
-            step="0.01"
-            placeholder="My CGPA"
-            title="Show companies whose CGPA cutoff is at most your CGPA (companies without a cutoff stay visible)"
+          <CgpaFilterInput
             value={cgpaFilter}
-            onChange={(e) => {
-              setCgpaFilter(clampCgpaFilterInput(e.target.value));
+            onValueChange={(next) => {
+              setCgpaFilter(next);
               resetListPages();
             }}
             data-tour="company-stats-cgpa-filter"
-            className="w-full sm:w-28 px-3 py-2 sm:py-3 border border-theme-input rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-theme-accent transition duration-200 text-sm sm:text-base bg-theme-input text-theme-primary placeholder-theme-muted"
-            aria-label="Filter by my CGPA"
           />
         </div>
       </div>

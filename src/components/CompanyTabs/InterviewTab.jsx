@@ -101,6 +101,10 @@ import {
   ExperienceStoryCard,
 } from "./ExperienceStoryCard.jsx";
 
+function questionTextIsPresent(value) {
+  return String(value ?? "").trim().length > 0;
+}
+
 function InterviewTab({
   company,
   isAdmin,
@@ -606,9 +610,14 @@ function InterviewTab({
           </button>
         </h2>
 
-        {interviewQuestions.length > 0 ? (
+        {interviewQuestions.some(questionTextIsPresent) ? (
           <div className="space-y-3 sm:space-y-4">
-            {interviewQuestions.map((q, index) => (
+            {interviewQuestions.map((q, index) => {
+              if (!questionTextIsPresent(q)) return null;
+              const displayNumber = interviewQuestions
+                .slice(0, index + 1)
+                .filter(questionTextIsPresent).length;
+              return (
               <div
                 key={index}
                 ref={(el) => {
@@ -624,7 +633,7 @@ function InterviewTab({
                     onClick={() => handleQuestionToggle(index)}
                     className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate min-w-0">Question {index + 1}</span>
+                    <span className="truncate min-w-0">Question {displayNumber}</span>
                     <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openIndexQ === index ? "−" : "+"}
                     </span>
@@ -654,7 +663,7 @@ function InterviewTab({
 
                 {openIndexQ === index && (
                   <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
-                    <p className="min-w-0">{q || `Question ${index + 1}`}</p>
+                    <p className="min-w-0">{q}</p>
 
                     {/* Solution Accordion */}
                     {solutions[index] && solutions[index].trim().length > 0 ? (
@@ -709,7 +718,8 @@ function InterviewTab({
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-slate-400">No interview questions yet.</p>

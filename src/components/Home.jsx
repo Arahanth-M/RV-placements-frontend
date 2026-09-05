@@ -69,11 +69,16 @@ function RevealCard({ children, delay = 0, className = "" }) {
 function StatPill({ value, suffix, label, duration }) {
   const { count, ref } = useCountUp(value, duration);
   return (
-    <div ref={ref} className="flex flex-col items-center px-6 py-4 rounded-2xl bg-theme-card border border-theme-accent/20">
-      <span className="text-3xl sm:text-4xl font-extrabold text-theme-accent">
+    <div
+      ref={ref}
+      className="flex min-w-0 flex-1 flex-col items-center px-2 sm:px-3 py-3 sm:py-4 rounded-2xl bg-theme-card border border-theme-accent/20"
+    >
+      <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-theme-accent tabular-nums">
         {count}{suffix}
       </span>
-      <span className="text-xs sm:text-sm text-theme-secondary mt-1 text-center">{label}</span>
+      <span className="text-[10px] sm:text-xs lg:text-sm text-theme-secondary mt-1 text-center leading-snug">
+        {label}
+      </span>
     </div>
   );
 }
@@ -208,6 +213,9 @@ function Home() {
   ];
 
   const stats = [
+    { value: 35, suffix: "k+", label: "Platform Visits", duration: 1600 },
+    { value: 1400, suffix: "+", label: "Registered Users", duration: 1600 },
+    { value: 150, suffix: "+", label: "Average Daily Active Users", duration: 1400 },
     { value: 200, suffix: "+", label: "Companies Listed", duration: 1600 },
     { value: 200, suffix: "+", label: "Interview Experiences and Questions", duration: 1800 },
     { value: 5, suffix: "+", label: "Years of Data", duration: 1000 },
@@ -302,10 +310,10 @@ function Home() {
 </div>
   
       {/* ── STATS STRIP ── */}
-      <div className="bg-theme-card border-y border-theme py-8 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {stats.map((s, i) => (
-            <StatPill key={i} {...s} />
+      <div className="bg-theme-card border-y border-theme py-8 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto flex flex-nowrap items-stretch justify-center gap-2 sm:gap-3">
+          {stats.map((s) => (
+            <StatPill key={s.label} {...s} />
           ))}
         </div>
       </div>

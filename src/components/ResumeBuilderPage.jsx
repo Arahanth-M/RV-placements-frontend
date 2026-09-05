@@ -1,6 +1,6 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaPlus, FaTrash, FaFileDownload, FaSave, FaChevronDown } from "react-icons/fa";
+import { FaPlus, FaTrash, FaFileDownload, FaSave, FaChevronDown, FaChartBar } from "react-icons/fa";
 import { resumeAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import {
@@ -15,6 +15,7 @@ import {
 import StandardClassic from "./resume/templates/StandardClassic";
 import IIITVLatexStyle from "./resume/templates/IIITVLatexStyle";
 import AnalyzePanel from "./resume/AnalyzePanel";
+import ResumeUploadAts from "./resume/ResumeUploadAts";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -220,6 +221,12 @@ export default function ResumeBuilderPage() {
   const [analysisError, setAnalysisError] = useState(null);
   const [previousAnalysis, setPreviousAnalysis] = useState(null);
   const [scoreHistory, setScoreHistory] = useState([]);
+  const [builderTab, setBuilderTab] = useState("builder");
+  const [uploadAnalysis, setUploadAnalysis] = useState(null);
+  const [uploadAnalysisError, setUploadAnalysisError] = useState(null);
+  const [uploadQuota, setUploadQuota] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [isUploadingAts, setIsUploadingAts] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const previewRef = useRef(null);
@@ -261,6 +268,10 @@ export default function ResumeBuilderPage() {
     document.addEventListener("click", onDocumentClick);
     return () => document.removeEventListener("click", onDocumentClick);
   }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [builderTab]);
 
   useEffect(() => {
     // Load last ATS analysis for simple "progress over time" deltas.
@@ -408,6 +419,13 @@ export default function ResumeBuilderPage() {
       }
     }
     loadDraft();
+    resumeAPI
+      .getUploadAtsQuota()
+      .then((res) => {
+        if (!isMounted) return;
+        if (res?.data?.quota) setUploadQuota(res.data.quota);
+      })
+      .catch(() => {});
     return () => {
       isMounted = false;
     };
@@ -732,6 +750,44 @@ export default function ResumeBuilderPage() {
     }
   }, [draft, skillsInput, ownerEmail]);
 
+  const runUploadAnalysis = useCallback(async () => {
+    if (!uploadFile || isHydratingRef.current || analyzeInFlightRef.current) return null;
+    analyzeInFlightRef.current = true;
+    setIsUploadingAts(true);
+    setUploadAnalysisError(null);
+    try {
+      const res = await resumeAPI.analyzeUpload(uploadFile);
+      const nextAnalysis = res?.data?.analysis ?? null;
+      if (res?.data?.quota) setUploadQuota(res.data.quota);
+      setUploadAnalysis(nextAnalysis);
+      setStatusText("Uploaded resume scored");
+      setUploadFile(null);
+      return nextAnalysis;
+    } catch (error) {
+      const quota = error?.response?.data?.quota;
+      if (quota) setUploadQuota(quota);
+      const status = error?.response?.status;
+      if (status === 429) {
+        setUploadAnalysisError(
+          error?.response?.data?.error ||
+            "You can score 3 uploaded resumes per day. Try again tomorrow."
+        );
+        setStatusText("Daily upload limit reached");
+        return null;
+      }
+      setUploadAnalysisError(
+        error?.response?.data?.error ||
+          error?.message ||
+          "Could not score the uploaded resume."
+      );
+      setStatusText("Upload ATS analysis failed");
+      return null;
+    } finally {
+      analyzeInFlightRef.current = false;
+      setIsUploadingAts(false);
+    }
+  }, [uploadFile]);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-theme-primary">Loading resume builder...</div>;
   }
@@ -745,11 +801,19 @@ export default function ResumeBuilderPage() {
         </PageBackNavRow>
 
         <div data-tour="resume-hero">
-        <PageHeroHeader subtitle="Your draft saves automatically while you are logged in. Export Word when you are ready.">
-          Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
-        </PageHeroHeader>
+        {builderTab === "score" ? (
+          <PageHeroHeader>
+            Score your <em style={{ color: "#818CF8", fontStyle: "italic" }}>resume</em>
+          </PageHeroHeader>
+        ) : (
+          <PageHeroHeader subtitle="Your draft saves automatically while you are logged in. Export Word when you are ready.">
+            Resume <em style={{ color: "#818CF8", fontStyle: "italic" }}>Builder</em>
+          </PageHeroHeader>
+        )}
         </div>
 
+        {builderTab === "builder" ? (
+        <>
         <div
           className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-6"
           data-tour="resume-toolbar"
@@ -790,6 +854,15 @@ export default function ResumeBuilderPage() {
             >
               {isAnalyzing ? "Analyzing..." : "Run ATS Analysis"}
             </button>
+            <button
+              type="button"
+              data-tour="resume-score-resume"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-theme-primary"
+              onClick={() => setBuilderTab("score")}
+            >
+              <FaChartBar className="h-3.5 w-3.5" aria-hidden />
+              Score your resume
+            </button>
           </div>
         </div>
 
@@ -815,19 +888,7 @@ export default function ResumeBuilderPage() {
             previousAnalysis={previousAnalysis}
             scoreHistory={scoreHistory}
           />
-        ) : (
-          <section
-            data-tour="resume-ats-score"
-            className="mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
-          >
-            <h2 className="text-lg font-semibold text-theme-primary">ATS Analysis</h2>
-            <p className="mt-1 text-sm text-theme-secondary">
-              Your Overall ATS Score rates how recruiter-friendly your resume is which includes completeness,
-              structure, impact, and professionalism. Tap "Run ATS Analysis" above to generate your
-              score, circular gauge, and improvement checklist.
-            </p>
-          </section>
-        )}
+        ) : null}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="space-y-4" data-tour="resume-editor">
@@ -950,6 +1011,75 @@ export default function ResumeBuilderPage() {
             </div>
           </div>
         </div>
+        </>
+        ) : (
+        <>
+        <div
+          className="mb-4 flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl"
+          role="tablist"
+          aria-label="Resume builder sections"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={false}
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-theme-secondary transition-colors hover:text-theme-primary hover:bg-theme-nav"
+            onClick={() => setBuilderTab("builder")}
+          >
+            Builder
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold bg-theme-hero text-theme-accent shadow-sm"
+          >
+            <FaChartBar className="h-3.5 w-3.5" aria-hidden />
+            Score your resume
+          </button>
+        </div>
+
+        {uploadAnalysisError && !isUploadingAts ? (
+          <div className="mb-4 rounded-xl border border-rose-300/60 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
+            {uploadAnalysisError}
+          </div>
+        ) : null}
+
+        {uploadAnalysis ? (
+          <>
+            <div className="mb-4 flex justify-end">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-theme text-sm font-semibold text-theme-primary"
+                onClick={() => {
+                  setUploadAnalysis(null);
+                  setUploadAnalysisError(null);
+                  setUploadFile(null);
+                }}
+              >
+                Score another resume
+              </button>
+            </div>
+            <AnalyzePanel
+              analysis={uploadAnalysis}
+              isAnalyzing={isUploadingAts}
+              sourceLabel="ATS score and improvement areas for the resume you uploaded."
+            />
+          </>
+        ) : (
+          <div className="mx-auto max-w-3xl">
+            <ResumeUploadAts
+              quota={uploadQuota}
+              isUploading={isUploadingAts}
+              fileName={uploadFile?.name || ""}
+              disabled={isSaving || isExporting}
+              onFileChosen={setUploadFile}
+              onScore={runUploadAnalysis}
+            />
+          </div>
+        )}
+        </>
+        )}
       </div>
     </div>
   );

@@ -1476,6 +1476,69 @@ html, body, #root {
   font-size: 0.95rem;
 }
 
+/* Replace the native number spinner (Safari’s white pill) with a themed stepper. */
+.cgpa-filter-input {
+  -moz-appearance: textfield;
+  color-scheme: light;
+}
+
+.cgpa-filter-input::-webkit-inner-spin-button,
+.cgpa-filter-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+  margin: 0;
+}
+
+[data-theme="dark"] .cgpa-filter-input {
+  color-scheme: dark;
+}
+
+.cgpa-filter-stepper {
+  position: absolute;
+  top: 50%;
+  right: 0.4rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 1.125rem;
+  height: calc(100% - 0.75rem);
+  max-height: 2.35rem;
+  transform: translateY(-50%);
+  overflow: hidden;
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  background: var(--bg-card-hover);
+}
+
+.cgpa-filter-stepper button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 0;
+}
+
+.cgpa-filter-stepper button + button {
+  border-top: 1px solid var(--border);
+}
+
+.cgpa-filter-stepper button:hover {
+  background: var(--nav-hover);
+  color: var(--text-primary);
+}
+
+.cgpa-filter-stepper svg {
+  width: 0.45rem;
+  height: 0.45rem;
+}
+
 .filter-dropdown {
   width: 100%;
   min-height: 44px;

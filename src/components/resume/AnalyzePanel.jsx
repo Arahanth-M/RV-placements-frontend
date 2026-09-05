@@ -92,7 +92,14 @@ function BreakdownCard({ label, score }) {
   );
 }
 
-function AnalyzePanel({ analysis, isAnalyzing, onTipAction, previousAnalysis, scoreHistory }) {
+function AnalyzePanel({
+  analysis,
+  isAnalyzing,
+  onTipAction,
+  previousAnalysis,
+  scoreHistory,
+  sourceLabel,
+}) {
   const breakdown = useMemo(() => {
     const b = analysis?.breakdown || {};
     return [
@@ -149,7 +156,9 @@ function AnalyzePanel({ analysis, isAnalyzing, onTipAction, previousAnalysis, sc
     >
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-theme-primary">ATS Analysis</h2>
-        <p className="text-sm text-theme-secondary">Resume readiness score and improvement areas.</p>
+        <p className="text-sm text-theme-secondary">
+          {sourceLabel || "Resume readiness score and improvement areas."}
+        </p>
       </div>
 
       <div className="space-y-5">
@@ -220,11 +229,11 @@ function AnalyzePanel({ analysis, isAnalyzing, onTipAction, previousAnalysis, sc
                     ) : (
                       <span />
                     )}
-                    {tip.action || tip.section ? (
+                    {onTipAction && (tip.action || tip.section) ? (
                       <button
                         type="button"
                         className="text-xs font-medium text-theme-accent hover:underline"
-                        onClick={() => onTipAction?.(tip)}
+                        onClick={() => onTipAction(tip)}
                       >
                         {tip.action || "Fix this"}
                       </button>

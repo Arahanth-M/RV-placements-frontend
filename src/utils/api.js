@@ -91,6 +91,12 @@ export const authAPI = {
   getCurrentUser: () => API.get('/api/auth/current_user'),
   logout: () => API.get('/api/auth/logout'),
   isAdmin: () => API.get('/api/auth/is_admin'),
+  submitBlockedLoginInterest: ({ token, collegeName, wantsPlatformAtCollege }) =>
+    API.post('/api/auth/blocked-login-interest', {
+      token,
+      collegeName,
+      wantsPlatformAtCollege,
+    }),
 };
 
 export const companyAPI = {
@@ -156,6 +162,8 @@ export const companyAPI = {
     }
     return companyNamesPromise;
   },
+
+  getHomeStats: () => API.get("/api/companies/home-stats"),
 
   /** Year-aware category tiles: small counts + 5 logo rows per bucket. */
   getPreviewLogos: (options = {}) => {
@@ -499,6 +507,10 @@ export const adminAPI = {
       `/api/admin/dau/${encodeURIComponent(dayKey)}/users/${encodeURIComponent(userId)}`
     ),
   getDauExport: () => API.get('/api/admin/dau/export'),
+  getBlockedLogins: ({ days } = {}) =>
+    API.get('/api/admin/blocked-logins', {
+      params: days != null ? { days } : undefined,
+    }),
   approveInterviewLimitRequest: (requestId) =>
     API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/approve`),
   dismissInterviewLimitRequest: (requestId) =>
@@ -577,6 +589,12 @@ export const resumeAPI = {
   exportDocx: (payload) =>
     API.post("/api/resume/export/docx", { payload }, { responseType: "blob" }),
   analyze: ({ payload }) => API.post("/api/resume/analyze", { payload }),
+  getUploadAtsQuota: () => API.get("/api/resume/analyze-upload/quota"),
+  analyzeUpload: (resumeFile) => {
+    const formData = new FormData();
+    formData.append("resume", resumeFile);
+    return API.post("/api/resume/analyze-upload", formData, { timeout: 60000 });
+  },
 };
 
 export const prepPathAPI = {

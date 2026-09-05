@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
+import BlockedLoginInterestForm from './BlockedLoginInterestForm';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
 const LOGIN_PROFILE_STATUS_KEY = "loginProfileStatus";
@@ -18,6 +19,7 @@ const AuthCallback = () => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [accessDeniedMessage, setAccessDeniedMessage] = useState("");
   const [loginError, setLoginError] = useState(null);
+  const [blockedIntentToken, setBlockedIntentToken] = useState("");
   const handledRef = useRef(false);
 
   useEffect(() => {
@@ -75,6 +77,14 @@ const AuthCallback = () => {
       } else if (urlParams.get('login') === 'failed') {
         const reason = urlParams.get('reason');
         if (reason === 'domain') {
+          const intent = urlParams.get('blocked_intent') || "";
+          setBlockedIntentToken(intent);
+          if (intent) {
+            urlParams.delete('blocked_intent');
+            const nextQuery = urlParams.toString();
+            const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+            window.history.replaceState({}, "", nextUrl);
+          }
           setLoginError({
             title: "Login restricted",
             message:
@@ -211,15 +221,22 @@ const AuthCallback = () => {
         <div className="max-w-md w-full bg-theme-card border border-theme rounded-3xl p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold text-theme-primary mb-3">{loginError.title}</h2>
           <p className="text-sm text-theme-secondary">{loginError.message}</p>
-          <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              onClick={() => navigate("/", { replace: true })}
-              className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Back to sign in
-            </button>
-          </div>
+          {blockedIntentToken ? (
+            <BlockedLoginInterestForm
+              token={blockedIntentToken}
+              onSkip={() => navigate("/", { replace: true })}
+            />
+          ) : (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() => navigate("/", { replace: true })}
+                className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Back to sign in
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
