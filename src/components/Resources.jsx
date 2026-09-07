@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { resourceCategories, iconMap } from '../data/resourcesData';
 import { Link, useNavigate } from 'react-router-dom';
+import { PATH_COMPANY_STATS } from '../constants/placementTiers.js';
+import { TENANT_BASE } from '../constants/tenant.js';
 import {
   PageBackButton,
   PageBackNavRow,
@@ -81,7 +83,7 @@ const Resources = () => {
   const isFiltering  = search.trim() !== '' || typeFilter !== 'All';
 
   const navigate = useNavigate();
-  const handleBack = () => navigate('/');
+  const handleBack = () => navigate(TENANT_BASE);
 
   const highlight = (text) => {
     const q = search.trim();
@@ -462,7 +464,7 @@ const Resources = () => {
             Begin your journey with these carefully curated resources and boost your placement preparation
           </p>
           <Link
-            to="/companystats"
+            to={PATH_COMPANY_STATS}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               background: '#4F46E5', color: '#fff',

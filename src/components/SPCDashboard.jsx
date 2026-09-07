@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { tenantPath } from "../constants/tenant.js";
 import { spcAPI, adminAPI } from "../utils/api";
 import {
   PageBackButton,
@@ -762,8 +763,8 @@ export default function SPCDashboard() {
 
   // Navigation handler for action cards
   const handleDashboardNavigate = (key) => {
-    if (key === "add") navigate("/spc/form");
-    else if (key === "conversion") navigate("/spc/conversion-details");
+    if (key === "add") navigate(tenantPath("/spc/form"));
+    else if (key === "conversion") navigate(tenantPath("/spc/conversion-details"));
     else if (key === "submissions") setSearchParams({ view: "submissions" });
     else if (key === "mod") {
       setModMeta((m) => ({ ...m, page: 1 }));

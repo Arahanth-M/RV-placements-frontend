@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { tenantPath } from "../constants/tenant.js";
 import { FaExternalLinkAlt, FaMicrophone, FaPaperPlane, FaUserCheck } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 
@@ -219,7 +220,7 @@ export default function StudentRequestsTab() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <Link
-                      to={`/companies/${row.companyId}`}
+                      to={tenantPath(`/companies/${row.companyId}`)}
                       className="inline-flex items-center gap-2 text-base font-semibold text-theme-accent hover:underline"
                     >
                       {row.companyName}

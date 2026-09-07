@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { tenantPath } from '../constants/tenant.js';
 import { FaTimes, FaRoute } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
 import { useProductTour } from '../context/ProductTourContext';
@@ -143,7 +144,7 @@ const PlacementPopupWrapper = () => {
   }, [userKey]);
 
   useEffect(() => {
-    if (location.pathname === '/auth/callback') return;
+    if (location.pathname === tenantPath('/auth/callback')) return;
     setShowPopup(false);
     setPopupVariant(null);
     welcomeVisibleRef.current = false;
@@ -151,7 +152,7 @@ const PlacementPopupWrapper = () => {
   }, [location.pathname, tryRevealDigest]);
 
   useEffect(() => {
-    if (location.pathname === '/auth/callback') return;
+    if (location.pathname === tenantPath('/auth/callback')) return;
     if (!user || !userKey) return;
     if (isAdmin) return;
     if (user?.betaAccess === false) return;
@@ -184,7 +185,7 @@ const PlacementPopupWrapper = () => {
     const delayIdRef = { current: 0 };
 
     const loadDigest = async () => {
-      if (location.pathname === '/auth/callback') return;
+      if (location.pathname === tenantPath('/auth/callback')) return;
       if (!user || !userKey) return;
       if (isAdmin) return;
       if (user?.betaAccess === false) return;
@@ -348,8 +349,8 @@ const PlacementPopupWrapper = () => {
                 const year = Number(item.year);
                 const hasYear = Number.isInteger(year) && year > 0;
                 const to = hasYear
-                  ? `/companies/${item.companyId}?year=${year}`
-                  : `/companies/${item.companyId}`;
+                  ? tenantPath(`/companies/${item.companyId}?year=${year}`)
+                  : tenantPath(`/companies/${item.companyId}`);
                 return (
                   <li
                     key={`${item.companyId}-${item.year || 'na'}`}

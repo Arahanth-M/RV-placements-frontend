@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { tenantPath } from "../constants/tenant.js";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import { spcAPI } from "../utils/api";
 import {
@@ -256,7 +257,7 @@ export default function SPCPlacementForm() {
     <div className={`spc-placement-form min-h-screen ${pageShellOuterClass}`}>
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate("/spc-dashboard")} label="Back to Dashboard" />
+          <PageBackButton onClick={() => navigate(tenantPath("/spc-dashboard"))} label="Back to Dashboard" />
         </PageBackNavRow>
 
         <div className="mx-auto w-full max-w-2xl">
@@ -466,7 +467,7 @@ export default function SPCPlacementForm() {
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => navigate("/spc-dashboard")}
+                onClick={() => navigate(tenantPath("/spc-dashboard"))}
                 className="h-11 rounded-xl border border-theme px-5 text-sm font-semibold text-theme-primary transition-colors hover:bg-theme-nav"
               >
                 Cancel

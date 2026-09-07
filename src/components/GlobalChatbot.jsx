@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
-import { isPlacementTierParam } from '../constants/placementTiers.js';
+import { isPlacementTierParam, PATH_COMPANY_STATS } from '../constants/placementTiers.js';
 import { PLACEMENT_DETAIL_VISIT_YEARS } from '../constants/placementYears.js';
 
 const PLACEMENT_HUB_YEAR_STRINGS = PLACEMENT_DETAIL_VISIT_YEARS.map(String);
@@ -79,7 +79,7 @@ const GlobalChatbot = () => {
       const params = new URLSearchParams(location.search);
       const tier = params.get('tier');
       const isTierCompanyList =
-        location.pathname === '/companystats' && isPlacementTierParam(tier);
+        location.pathname === PATH_COMPANY_STATS && isPlacementTierParam(tier);
       const shouldShow =
         isTierCompanyList &&
         PLACEMENT_HUB_YEAR_STRINGS.includes(selectedYear);

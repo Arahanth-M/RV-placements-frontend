@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { TENANT_BASE, tenantPath } from "../constants/tenant.js";
 import { interviewAPI } from "../utils/api";
 import InterviewSlotBookModal from "./InterviewSlotBookModal";
 import InterviewSlotsCalendar, {
@@ -193,7 +194,7 @@ function InterviewSlotsPage() {
       <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate("/")} label="Back" />
+          <PageBackButton onClick={() => navigate(TENANT_BASE)} label="Back" />
         </PageBackNavRow>
 
         <div className="mx-auto max-w-5xl">
@@ -298,7 +299,7 @@ function InterviewSlotsPage() {
                             {activeNow ? (
                               <button
                                 type="button"
-                                onClick={() => navigate("/companystats")}
+                                onClick={() => navigate(tenantPath("/category"))}
                                 className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
                               >
                                 Start interview

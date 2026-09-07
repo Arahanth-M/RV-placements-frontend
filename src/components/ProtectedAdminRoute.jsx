@@ -1,5 +1,6 @@
 import { useAuth } from '../utils/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { TENANT_BASE } from '../constants/tenant.js';
 import { useEffect } from 'react';
 import Login from './Login';
 
@@ -9,7 +10,7 @@ const ProtectedAdminRoute = ({ children }) => {
 
   useEffect(() => {
     if (!loading && user && !isAdmin) {
-      navigate('/', { replace: true });
+      navigate(TENANT_BASE, { replace: true });
     }
   }, [user, isAdmin, loading, navigate]);
 

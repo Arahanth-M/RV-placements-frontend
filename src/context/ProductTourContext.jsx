@@ -16,13 +16,17 @@ import { markTourCompleted } from "../utils/tourStorage";
 import { companyAPI } from "../utils/api";
 import { RESUME_BUILDER_ENABLED } from "../utils/constants";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../constants/placementYears.js";
+import { PATH_COMPANY_STATS } from "../constants/placementTiers.js";
+import { TENANT_BASE, tenantPath } from "../constants/tenant.js";
 import { dispatchTourPrepare } from "../utils/productTourEvents";
 
 const TOUR_EXAMPLE_COMPANY_NAME = "wells fargo";
 const TOUR_PPO_COMPANY_NAME = "deutsche";
 /** Fixed Microsoft company page for coding tour (summer internship PPO, CS 2026). */
 const TOUR_MICROSOFT_COMPANY_ID = "69edb0e91dafb58cccd88dc4";
-const TOUR_MICROSOFT_COMPANY_PATH = `/companies/${TOUR_MICROSOFT_COMPANY_ID}?year=2026&placementContext=summer_internship&placementCluster=cs`;
+const TOUR_MICROSOFT_COMPANY_PATH = tenantPath(
+  `/companies/${TOUR_MICROSOFT_COMPANY_ID}?year=2026&placementContext=summer_internship&placementCluster=cs`
+);
 const TOUR_PPO_INTERNSHIP_YEAR = 2026;
 
 const COMPANY_TOUR_PREPARES = new Set([
@@ -68,7 +72,9 @@ async function resolveMicrosoftInternshipPpoPath() {
       list.find(isPpoExample);
     if (!ppoCompany) return null;
     const cid = ppoCompany._id || ppoCompany.id;
-    return `/companies/${cid}?year=${TOUR_PPO_INTERNSHIP_YEAR}&placementContext=summer_internship&placementCluster=cs`;
+    return tenantPath(
+      `/companies/${cid}?year=${TOUR_PPO_INTERNSHIP_YEAR}&placementContext=summer_internship&placementCluster=cs`
+    );
   } catch {
     return null;
   }
@@ -89,7 +95,9 @@ async function resolvePhonePeCompanyPath(preferredYear = DEFAULT_PLACEMENT_DETAI
     const target = dreamExample || list.find((c) => c?._id || c?.id);
     if (!target) return null;
     const cid = target._id || target.id;
-    return `/companies/${cid}?year=${preferredYear}&placementContext=dream&placementCluster=cs`;
+    return tenantPath(
+      `/companies/${cid}?year=${preferredYear}&placementContext=dream&placementCluster=cs`
+    );
   } catch {
     return null;
   }
@@ -189,7 +197,7 @@ async function openPhonePeCompanyForTour(preferredYear = DEFAULT_PLACEMENT_DETAI
 }
 
 function isOnCompanyDetailsPage() {
-  return /^\/companies\/[^/]+/.test(window.location.pathname);
+  return window.location.pathname.startsWith(`${TENANT_BASE}/companies/`);
 }
 
 async function waitForCompanyDetailsReady(timeoutMs = 12000) {
@@ -649,7 +657,7 @@ export function ProductTourProvider({ children }) {
             clearCompanyStatsYearPersistence(user?.userId || user?._id);
           }
           // CompanyStats tour listener only runs when that route is mounted.
-          navigate("/companystats");
+          navigate(PATH_COMPANY_STATS);
           resetTourViewport();
           await new Promise((r) => setTimeout(r, 180));
           dispatchTourPrepare(step.id);

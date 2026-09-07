@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaBell, FaTimes, FaSync } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { tenantPath } from "../constants/tenant.js";
 import { notificationAPI } from "../utils/api";
 import { BASE_URL } from "../utils/constants";
 import { useAuth } from "../utils/AuthContext";
@@ -196,13 +197,13 @@ function NotificationBell() {
       handleMarkAsSeen(notification._id);
     }
     if (notification.companyId) {
-      navigate(`/companies/${notification.companyId}`);
+      navigate(tenantPath(`/companies/${notification.companyId}`));
       setShowDropdown(false);
       return;
     }
     const eventId = notification.payload?.eventId;
     if (notification.type === "EVENT_CREATED" || eventId) {
-      navigate("/events");
+      navigate(tenantPath("/events"));
       setShowDropdown(false);
     }
   };

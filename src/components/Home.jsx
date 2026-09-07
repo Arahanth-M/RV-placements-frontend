@@ -1,5 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { PATH_COMPANY_STATS } from "../constants/placementTiers.js";
+import { tenantPath } from "../constants/tenant.js";
 import { companyAPI } from "../utils/api";
 import { normalizeCompanyNameKey } from "../utils/companyLogoDomains";
 import { useAuth } from "../utils/AuthContext";
@@ -268,13 +270,13 @@ function Home() {
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <Link
-                  to="/companystats"
+                  to={PATH_COMPANY_STATS}
                   className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
                 >
                   Explore Companies →
                 </Link>
                 <Link
-                  to="/general-stats"
+                  to={tenantPath("/general-stats")}
                   className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
                 >
                   General Stats →
@@ -455,7 +457,7 @@ function Home() {
                   return (
                     <Link
                       key={`${String(id)}-${idx}`}
-                      to={`/companies/${id}`}
+                      to={tenantPath(`/companies/${id}`)}
                       className={tileClass}
                       aria-label={`View ${company.name || "company"} details and interviews`}
                     >

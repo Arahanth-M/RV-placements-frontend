@@ -27,6 +27,8 @@ import {
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
+import { PATH_COMPANY_CATEGORY, PATH_COMPANY_STATS } from "../constants/placementTiers.js";
+import { TENANT_BASE, tenantPath, isTenantPrefixPath } from "../constants/tenant.js";
 import NotificationBell from "./NotificationBell";
 import NotificationSubscribeButton from "./NotificationSubscribeButton";
 import BrandLogo from "./BrandLogo.jsx";
@@ -34,37 +36,37 @@ import { useProductTour } from "../context/ProductTourContext";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
 const primaryLinks = [
-  { label: "Home", path: "/" },
-  { label: "Events", path: "/events" },
-  { label: "Contact", path: "/contact" },
+  { label: "Home", path: TENANT_BASE },
+  { label: "Events", path: tenantPath("/events") },
+  { label: "Contact", path: tenantPath("/contact") },
 ];
 
 const spcCornerLinks = [
-  { label: "SPC Dashboard", path: "/spc-dashboard", icon: FaTachometerAlt },
-  { label: "Add Placement Data", path: "/spc/form", icon: FaFileAlt },
-  { label: "Update conversion details", path: "/spc/conversion-details", icon: FaClipboardList },
-  {label: "view details added", path: "spc-dashboard?view=submissions", icon: FaFileAlt },
-  { label: "Approve Students Submissions", path: "/spc-dashboard?view=student-contributions", icon: FaExclamationCircle },
+  { label: "SPC Dashboard", path: tenantPath("/spc-dashboard"), icon: FaTachometerAlt },
+  { label: "Add Placement Data", path: tenantPath("/spc/form"), icon: FaFileAlt },
+  { label: "Update conversion details", path: tenantPath("/spc/conversion-details"), icon: FaClipboardList },
+  {label: "view details added", path: tenantPath("/spc-dashboard?view=submissions"), icon: FaFileAlt },
+  { label: "Approve Students Submissions", path: tenantPath("/spc-dashboard?view=student-contributions"), icon: FaExclamationCircle },
 ];
 
 const adminCornerLinks = [
-  { label: "Admin Dashboard", path: "/admin/dashboard", icon: FaTachometerAlt },
-  { label: "Stats of the platform", path: "/admin/dashboard?tab=stats", icon: FaChartBar, tab: "stats" },
-  { label: "Upload an event/Announcement", path: "/admin/dashboard?tab=events", icon: FaCalendarAlt, tab: "events" },
-  { label: "Approve/Reject a company", path: "/admin/dashboard?tab=companies", icon: FaBuilding, tab: "companies" },
-  { label: "Student Placement Stats", path: "/admin/dashboard?tab=student-placement-stats", icon: FaGraduationCap, tab: "student-placement-stats" },
-  { label: "Miscellaneous Features", path: "/admin/dashboard?tab=miscellaneous", icon: FaBriefcase, tab: "miscellaneous" },
+  { label: "Admin Dashboard", path: tenantPath("/admin/dashboard"), icon: FaTachometerAlt },
+  { label: "Stats of the platform", path: tenantPath("/admin/dashboard?tab=stats"), icon: FaChartBar, tab: "stats" },
+  { label: "Upload an event/Announcement", path: tenantPath("/admin/dashboard?tab=events"), icon: FaCalendarAlt, tab: "events" },
+  { label: "Approve/Reject a company", path: tenantPath("/admin/dashboard?tab=companies"), icon: FaBuilding, tab: "companies" },
+  { label: "Student Placement Stats", path: tenantPath("/admin/dashboard?tab=student-placement-stats"), icon: FaGraduationCap, tab: "student-placement-stats" },
+  { label: "Miscellaneous Features", path: tenantPath("/admin/dashboard?tab=miscellaneous"), icon: FaBriefcase, tab: "miscellaneous" },
 ];
 
 const studentCornerLinksBase = [
-  { label: "Company Stats", path: "/companystats", icon: FaChartBar },
-  { label: "AI Interviews", path: "/interviews", icon: FaComments },
-  { label: "Interview slots", path: "/interview-slots", icon: FaCalendarAlt },
-  { label: "PrepPath", path: "/prep-path", icon: FaMapMarkedAlt },
-  { label: "Resources", path: "/resources", icon: FaBook },
-  ...(RESUME_BUILDER_ENABLED ? [{ label: "Resume Builder", path: "/resume-builder", icon: FaFileAlt }] : []),
-  { label: "Leaderboard", path: "/leaderboard", icon: FaTrophy },
-  { label: "User Manual", path: "/user-manual", icon: FaBookOpen },
+  { label: "Company Stats", path: PATH_COMPANY_STATS, icon: FaChartBar },
+  { label: "AI Interviews", path: tenantPath("/interviews"), icon: FaComments },
+  { label: "Interview slots", path: tenantPath("/interview-slots"), icon: FaCalendarAlt },
+  { label: "PrepPath", path: tenantPath("/prep-path"), icon: FaMapMarkedAlt },
+  { label: "Resources", path: tenantPath("/resources"), icon: FaBook },
+  ...(RESUME_BUILDER_ENABLED ? [{ label: "Resume Builder", path: tenantPath("/resume-builder"), icon: FaFileAlt }] : []),
+  { label: "Leaderboard", path: tenantPath("/leaderboard"), icon: FaTrophy },
+  { label: "User Manual", path: tenantPath("/user-manual"), icon: FaBookOpen },
 ];
 
 /** Shown in header chip; admins usually have no studentData — use username or email local-part. */
@@ -163,21 +165,24 @@ const Header = () => {
   }, []);
 
   const isPathActive = (path) => {
-    if (path === "/companystats") {
+    const [pathname] = String(path || "").split("?");
+    if (pathname === PATH_COMPANY_STATS || pathname === PATH_COMPANY_CATEGORY) {
       return (
-        location.pathname === path ||
-        location.pathname === "/category" ||
-        location.pathname.startsWith("/companies")
+        location.pathname === PATH_COMPANY_STATS ||
+        location.pathname === PATH_COMPANY_CATEGORY ||
+        isTenantPrefixPath(location.pathname, "/companies")
       );
     }
-    if (path.startsWith("/admin/dashboard")) {
-      const [pathname, query = ""] = path.split("?");
+    if (pathname.startsWith(tenantPath("/admin/dashboard"))) {
+      const query = String(path || "").includes("?")
+        ? String(path).slice(String(path).indexOf("?") + 1)
+        : "";
       if (location.pathname !== pathname) return false;
       const tab = new URLSearchParams(query).get("tab");
       const currentTab = new URLSearchParams(location.search).get("tab");
       return tab === currentTab;
     }
-    return location.pathname === path;
+    return location.pathname === pathname;
   };
 
   const headerDisplayName = user ? accountDisplayName(user, studentData) : "";
@@ -192,7 +197,7 @@ const Header = () => {
   const shouldHideAiInterviews = shouldHideViewProfile;
   const studentCornerLinks = shouldHideAiInterviews
     ? studentCornerLinksBase.filter(
-        (l) => l.path !== "/interviews" && l.path !== "/interview-slots"
+        (l) => l.path !== tenantPath("/interviews") && l.path !== tenantPath("/interview-slots")
       )
     : studentCornerLinksBase;
 
@@ -200,13 +205,14 @@ const Header = () => {
   const isSpcUser = user?.role === "spc";
   const isSpcCornerActive =
     isSpcUser &&
-    (location.pathname === "/spc-dashboard" || location.pathname.startsWith("/spc/"));
+    (location.pathname === tenantPath("/spc-dashboard") ||
+      isTenantPrefixPath(location.pathname, "/spc"));
   /** Tighter desktop nav only when extra role controls crowd the bar (SPC / admin). */
   const condensedHeader = Boolean(user && (isAdmin || isSpcUser));
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    navigate(TENANT_BASE);
     setMobileAccountMenuOpen(false);
     setDesktopAccountMenuOpen(false);
     setMobileNavOpen(false);
@@ -421,14 +427,14 @@ const Header = () => {
                 </div>
                 {!shouldHideViewProfile ? (
                   <button
-                    onClick={() => { setAccountMenuOpen(false); navigate("/profile"); }}
+                    onClick={() => { setAccountMenuOpen(false); navigate(tenantPath("/profile")); }}
                     className={dropdownItemClass}
                   >
                     View Profile
                   </button>
                 ) : null}
                 <button
-                  onClick={() => { setAccountMenuOpen(false); navigate("/my-submissions"); }}
+                  onClick={() => { setAccountMenuOpen(false); navigate(tenantPath("/my-submissions")); }}
                   className={dropdownItemClass}
                 >
                   My Submissions
@@ -476,16 +482,16 @@ const Header = () => {
       <header className="flex w-full min-w-0 items-center overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 pl-2 pr-1.5 py-2 sm:gap-2.5 sm:pl-5 sm:pr-3 sm:py-2.5">
           <Link
-            to="/"
+            to={TENANT_BASE}
             className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-theme bg-white px-1.5 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-12 sm:w-[4.5rem] sm:px-2"
             title="RVCE Placement — Home"
           >
             <BrandLogo alt="" />
           </Link>
           <Link
-            to="/feedback"
+            to={tenantPath("/feedback")}
             className={`${headerChipBase} ${
-              isPathActive("/feedback") ? headerChipActive : headerChipIdle
+              isPathActive(tenantPath("/feedback")) ? headerChipActive : headerChipIdle
             } w-10 px-0 sm:w-auto sm:px-3.5`}
             title="Open feedback form"
             aria-label="Open feedback form"
@@ -652,20 +658,20 @@ const Header = () => {
                   onClick={() => setAdminMenuOpen((prev) => !prev)}
                   aria-label="Admin"
                   className={`${headerChipBase} ${headerChipPad} ${
-                    location.pathname.startsWith("/admin")
+                    location.pathname.startsWith(tenantPath("/admin"))
                       ? headerChipActive
                       : adminMenuOpen
                         ? headerChipOpen
                         : headerChipIdle
                   }`}
                 >
-                  <FaUserShield className={`h-3.5 w-3.5 shrink-0 ${location.pathname.startsWith("/admin") ? "text-white" : ""}`} />
+                  <FaUserShield className={`h-3.5 w-3.5 shrink-0 ${location.pathname.startsWith(tenantPath("/admin")) ? "text-white" : ""}`} />
                   <span>Admin</span>
                   {hasPendingItems && (
                     <FaExclamationCircle className="h-3.5 w-3.5 text-red-400 animate-pulse" title="Pending items" />
                   )}
                   <FaChevronDown
-                    className={`h-3 w-3 transition ${adminMenuOpen ? "rotate-180" : ""} ${location.pathname.startsWith("/admin") ? "text-white/90" : ""}`}
+                    className={`h-3 w-3 transition ${adminMenuOpen ? "rotate-180" : ""} ${location.pathname.startsWith(tenantPath("/admin")) ? "text-white/90" : ""}`}
                   />
                 </button>
 
@@ -855,7 +861,7 @@ const Header = () => {
                 type="button"
                 onClick={() => setMobileAdminCornerOpen((prev) => !prev)}
                 className={`flex w-full items-center justify-between px-4 py-3.5 text-[15px] font-semibold transition-colors ${
-                  location.pathname.startsWith("/admin")
+                  location.pathname.startsWith(tenantPath("/admin"))
                     ? "text-theme-accent bg-theme-accent/10"
                     : "text-theme-primary hover:bg-theme-hero"
                 }`}

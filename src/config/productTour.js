@@ -2,6 +2,7 @@ import {
   PATH_COMPANY_CATEGORY,
   PLACEMENT_CLUSTER_CS,
 } from "../constants/placementTiers.js";
+import { tenantPath } from "../constants/tenant.js";
 
 const TOUR_EXAMPLE_COMPANY = "Wells Fargo";
 const TOUR_PPO_EXAMPLE_COMPANY = "Deutsche Bank";
@@ -743,5 +744,5 @@ export function getStudentTourSteps({
       return false;
     }
     return true;
-  });
+  }).map((step) => ({ ...step, route: tenantPath(step.route) }));
 }

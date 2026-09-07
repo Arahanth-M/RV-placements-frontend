@@ -8,6 +8,7 @@ import {
   CompanyInterviewReadinessCard,
 } from "./InterviewHistoryAnswer";
 import { useNavigate } from "react-router-dom";
+import { TENANT_BASE } from "../constants/tenant.js";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -224,7 +225,7 @@ function AIInterviews() {
   const navigate = useNavigate();
   
   const handleBack = () => {
-    navigate('/');
+    navigate(TENANT_BASE);
   };
 
   return (

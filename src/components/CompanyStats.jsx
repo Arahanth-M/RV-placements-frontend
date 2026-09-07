@@ -68,6 +68,7 @@ import {
 import { sortCompaniesByVisitDate } from "../utils/visitDateSort.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import { COLLEGE_ID_RVITM, collegeIdFromUser } from "../utils/collegeScope.js";
+import { TENANT_BASE } from "../constants/tenant.js";
 
 /** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -411,7 +412,7 @@ function CompanyStats() {
   };
 
   const handleBack = () => {
-    navigate('/');
+    navigate(TENANT_BASE);
   };  
 
   const openPlacementTierList = useCallback((tier) => {

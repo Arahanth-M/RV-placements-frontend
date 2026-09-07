@@ -10,13 +10,14 @@ import {
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 import { RVCE_PLACEMENT_EMAIL, RVITM_PLACEMENT_EMAIL } from "../utils/collegeScope.js";
+import { TENANT_BASE } from "../constants/tenant.js";
 
 
 
 function Contact() {
   const navigate = useNavigate();
   const handleBack = () => {
-  navigate('/');
+  navigate(TENANT_BASE);
 };
 
   return (

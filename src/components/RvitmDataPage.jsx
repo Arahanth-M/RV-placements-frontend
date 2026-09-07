@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { tenantPath } from "../constants/tenant.js";
 import { adminAPI } from "../utils/api";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
@@ -66,6 +67,7 @@ function parseCtcJson(raw, companyName) {
 }
 
 export default function RvitmDataPage() {
+  const navigate = useNavigate();
   const [year, setYear] = useState(String(DEFAULT_PLACEMENT_DETAIL_YEAR));
   const [statusFilter, setStatusFilter] = useState("pending");
   const [items, setItems] = useState([]);
@@ -240,9 +242,9 @@ export default function RvitmDataPage() {
 
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton to="/" />
+          <PageBackButton onClick={() => navigate(tenantPath("/admin/dashboard"))} />
           <Link
-            to="/admin/dashboard"
+            to={tenantPath("/admin/dashboard")}
             className="text-sm text-slate-400 hover:text-indigo-300 transition-colors"
           >
             Admin dashboard

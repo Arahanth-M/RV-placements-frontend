@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { TENANT_BASE } from '../constants/tenant.js';
 import { eventAPI } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
 import { FaCalendarAlt, FaCheck, FaExternalLinkAlt, FaSearch, FaTimes } from 'react-icons/fa';
@@ -98,7 +99,7 @@ const Events = () => {
     }
   };
 
-  const handleBack = () => navigate('/');
+  const handleBack = () => navigate(TENANT_BASE);
 
   /* ── formatting ── */
   const formatDate = (dateString) =>

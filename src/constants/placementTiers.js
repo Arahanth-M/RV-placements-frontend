@@ -4,8 +4,10 @@ export const PLACEMENT_TIER_INTERNSHIP_ONLY = "internship_only";
 export const PLACEMENT_TIER_SUMMER_INTERNSHIP = "summer_internship";
 export const PLACEMENT_TIER_OFF_CAMPUS = "off_campus";
 
-export const PATH_COMPANY_CATEGORY = "/category";
-export const PATH_COMPANY_STATS = "/companystats";
+import { tenantPath } from "./tenant.js";
+
+export const PATH_COMPANY_CATEGORY = tenantPath("/category");
+export const PATH_COMPANY_STATS = tenantPath("/companystats");
 
 /** 2026 hub: department cluster before category (Dream / Open dream / …). */
 export const PLACEMENT_CLUSTER_CS = "cs";

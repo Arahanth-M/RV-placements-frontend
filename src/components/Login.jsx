@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { tenantPath, toTenantAppPath } from "../constants/tenant.js";
 
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 const LOGIN_INTENT_KEY = "loginIntent";
@@ -48,12 +49,11 @@ const Login = () => {
   useEffect(() => {
     if (user) {
       if (isAdmin) {
-        navigate("/admin/dashboard", { replace: true });
+        navigate(tenantPath("/admin/dashboard"), { replace: true });
         return;
       }
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
-      const safeRedirect =
-        storedRedirect && storedRedirect.startsWith("/") ? storedRedirect : "/";
+      const safeRedirect = toTenantAppPath(storedRedirect);
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
       navigate(safeRedirect, { replace: true });
     }

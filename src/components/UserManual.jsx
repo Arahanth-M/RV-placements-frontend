@@ -1,6 +1,7 @@
 import React from "react";
 import { FaBookOpen, FaRoute } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { TENANT_BASE } from "../constants/tenant.js";
 import { useProductTour } from "../context/ProductTourContext";
 import {
   PageBackButton,
@@ -17,7 +18,7 @@ function UserManual() {
     <div className={`content-cards-page-theme min-h-screen ${pageShellOuterClass}`}>
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate("/")} label="Back" />
+          <PageBackButton onClick={() => navigate(TENANT_BASE)} label="Back" />
         </PageBackNavRow>
 
         <div className="mx-auto w-full max-w-3xl">

@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import { Provider } from "react-redux";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import appStore from "./utils/appStore";
 import { AuthProvider } from "./utils/AuthContext";
 import { ThemeProvider } from "./utils/ThemeContext";
@@ -40,7 +40,9 @@ import SPCDashboard from "./components/SPCDashboard";
 import SPCPlacementForm from "./components/SPCPlacementForm";
 import SPCConversionForm from "./components/SPCConversionForm";
 import GeneralStatsPage from "./components/GeneralStats/GeneralStatsPage";
+import PlatformLanding from "./components/PlatformLanding";
 import { RESUME_BUILDER_ENABLED } from "./utils/constants";
+import { TENANT_BASE, isTenantAppPath } from "./constants/tenant.js";
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
 function ScrollToTop() {
@@ -63,169 +65,193 @@ function AppShell() {
           isInterviewLocked ? "pt-0" : "pt-3 sm:pt-5"
         }`}
       >
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/companystats" element={<CompanyStats />} />
-          <Route path="/category" element={<CompanyStats />} />
-          <Route path="/general-stats" element={<GeneralStatsPage />} />
-          <Route
-            path="/leaderboard"
-            element={
-              <ProtectedRoute>
-                <Leaderboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/feedback" element={<Feedback />} />
-          <Route path="/user-manual" element={<UserManual />} />
-          <Route
-            path="/companies/:id"
-            element={
-              <ProtectedRoute>
-                <CompanyDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/resources"
-            element={
-              <ProtectedRoute>
-                <Resources />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interviews"
-            element={
-              <ProtectedRoute>
-                <AIInterviews />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interview-slots"
-            element={
-              <ProtectedRoute>
-                <InterviewSlotsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/prep-path"
-            element={
-              <ProtectedRoute>
-                <PrepPathPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/events"
-            element={
-              <ProtectedRoute>
-                <Events />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/dashboard"
-            element={
-              <ProtectedAdminRoute>
-                <AdminDashboard />
-              </ProtectedAdminRoute>
-            }
-          />
-          <Route
-            path="/admin/jd-import"
-            element={
-              <ProtectedAdminRoute>
-                <JdImportPage />
-              </ProtectedAdminRoute>
-            }
-          />
-          <Route
-            path="/admin/min-cgpa"
-            element={
-              <ProtectedAdminRoute>
-                <MinCgpaGapsPage />
-              </ProtectedAdminRoute>
-            }
-          />
-          <Route
-            path="/admin/rvitm-data"
-            element={
-              <ProtectedAdminRoute>
-                <RvitmDataPage />
-              </ProtectedAdminRoute>
-            }
-          />
-          <Route
-            path="/spc-dashboard"
-            element={
-              <ProtectedSpcRoute>
-                <SPCDashboard />
-              </ProtectedSpcRoute>
-            }
-          />
-          <Route
-            path="/spc/form"
-            element={
-              <ProtectedSpcRoute>
-                <SPCPlacementForm />
-              </ProtectedSpcRoute>
-            }
-          />
-          <Route
-            path="/spc/conversion-details"
-            element={
-              <ProtectedSpcRoute>
-                <SPCConversionForm />
-              </ProtectedSpcRoute>
-            }
-          />
-          <Route path="/team" element={<Developers />} />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <StudentProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/my-submissions"
-            element={
-              <ProtectedRoute>
-                <MySubmissionsPage />
-              </ProtectedRoute>
-            }
-          />
-          {RESUME_BUILDER_ENABLED ? (
-            <Route
-              path="/resume-builder"
-              element={
-                <ProtectedRoute>
-                  <ResumeBuilderPage />
-                </ProtectedRoute>
-              }
-            />
-          ) : null}
-        </Routes>
+        <Outlet />
       </main>
 
       {!isInterviewLocked && <Footer />}
       {!isInterviewLocked && <PlacementPopupWrapper />}
     </div>
+  );
+}
+
+function TenantRoutes() {
+  return (
+    <Route path={TENANT_BASE} element={<AppShell />}>
+      <Route index element={<Home />} />
+      <Route path="auth/callback" element={<AuthCallback />} />
+      <Route path="companystats" element={<CompanyStats />} />
+      <Route path="category" element={<CompanyStats />} />
+      <Route path="general-stats" element={<GeneralStatsPage />} />
+      <Route
+        path="leaderboard"
+        element={
+          <ProtectedRoute>
+            <Leaderboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="feedback" element={<Feedback />} />
+      <Route path="user-manual" element={<UserManual />} />
+      <Route
+        path="companies/:id"
+        element={
+          <ProtectedRoute>
+            <CompanyDetails />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="contact" element={<Contact />} />
+      <Route path="login" element={<Login />} />
+      <Route
+        path="resources"
+        element={
+          <ProtectedRoute>
+            <Resources />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="interviews"
+        element={
+          <ProtectedRoute>
+            <AIInterviews />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="interview-slots"
+        element={
+          <ProtectedRoute>
+            <InterviewSlotsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="prep-path"
+        element={
+          <ProtectedRoute>
+            <PrepPathPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="events"
+        element={
+          <ProtectedRoute>
+            <Events />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="analytics"
+        element={
+          <ProtectedRoute>
+            <Analytics />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="admin/dashboard"
+        element={
+          <ProtectedAdminRoute>
+            <AdminDashboard />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="admin/jd-import"
+        element={
+          <ProtectedAdminRoute>
+            <JdImportPage />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="admin/min-cgpa"
+        element={
+          <ProtectedAdminRoute>
+            <MinCgpaGapsPage />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="admin/rvitm-data"
+        element={
+          <ProtectedAdminRoute>
+            <RvitmDataPage />
+          </ProtectedAdminRoute>
+        }
+      />
+      <Route
+        path="spc-dashboard"
+        element={
+          <ProtectedSpcRoute>
+            <SPCDashboard />
+          </ProtectedSpcRoute>
+        }
+      />
+      <Route
+        path="spc/form"
+        element={
+          <ProtectedSpcRoute>
+            <SPCPlacementForm />
+          </ProtectedSpcRoute>
+        }
+      />
+      <Route
+        path="spc/conversion-details"
+        element={
+          <ProtectedSpcRoute>
+            <SPCConversionForm />
+          </ProtectedSpcRoute>
+        }
+      />
+      <Route path="team" element={<Developers />} />
+      <Route
+        path="profile"
+        element={
+          <ProtectedRoute>
+            <StudentProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="my-submissions"
+        element={
+          <ProtectedRoute>
+            <MySubmissionsPage />
+          </ProtectedRoute>
+        }
+      />
+      {RESUME_BUILDER_ENABLED ? (
+        <Route
+          path="resume-builder"
+          element={
+            <ProtectedRoute>
+              <ResumeBuilderPage />
+            </ProtectedRoute>
+          }
+        />
+      ) : null}
+    </Route>
+  );
+}
+
+/** Old bookmarks like /category → /rvce/category. Does not touch / or /rvce/*. */
+function LegacyTenantRedirect() {
+  const location = useLocation();
+  if (
+    location.pathname === "/" ||
+    isTenantAppPath(location.pathname) ||
+    location.pathname.startsWith("/api")
+  ) {
+    return null;
+  }
+  return (
+    <Navigate
+      to={`${TENANT_BASE}${location.pathname}${location.search}${location.hash}`}
+      replace
+    />
   );
 }
 
@@ -239,7 +265,11 @@ function App() {
           <ThemeProvider>
             <InterviewLockProvider>
               <ProductTourProvider>
-                <AppShell />
+                <Routes>
+                  <Route path="/" element={<PlatformLanding />} />
+                  {TenantRoutes()}
+                  <Route path="*" element={<LegacyTenantRedirect />} />
+                </Routes>
               </ProductTourProvider>
             </InterviewLockProvider>
           </ThemeProvider>

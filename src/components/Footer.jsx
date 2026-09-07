@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { RVCE_PLACEMENT_EMAIL, RVITM_PLACEMENT_EMAIL } from "../utils/collegeScope.js";
+import { TENANT_BASE, tenantPath } from "../constants/tenant.js";
 
 function Footer() {
   return (
@@ -31,11 +32,11 @@ function Footer() {
           </p>
           <ul className="flex flex-col gap-3.5 items-center">
             {[
-              { label: "Home", to: "/" },
-              { label: "Company Stats", to: "/companystats" },
-              { label: "Contact Us", to: "/contact" },
-              { label: "Feedback", to: "/feedback" },
-              { label: "Developers", to: "/team" },
+              { label: "Home", to: TENANT_BASE },
+              { label: "Company Stats", to: tenantPath("/companystats") },
+              { label: "Contact Us", to: tenantPath("/contact") },
+              { label: "Feedback", to: tenantPath("/feedback") },
+              { label: "Developers", to: tenantPath("/team") },
             ].map(({ label, to }) => (
             <li key={to}>
               <Link

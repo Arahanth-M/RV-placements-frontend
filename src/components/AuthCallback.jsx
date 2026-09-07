@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { tenantPath, toTenantAppPath, TENANT_BASE } from '../constants/tenant.js';
 import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
 import BlockedLoginInterestForm from './BlockedLoginInterestForm';
@@ -66,12 +67,12 @@ const AuthCallback = () => {
             await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag, loginIntent);
           } else {
             console.error('No user data received after authentication');
-            navigate('/', { replace: true });
+            navigate(TENANT_BASE, { replace: true });
             setIsProcessing(false);
           }
         } catch (err) {
           console.error("Failed to fetch user after authentication", err);
-          navigate('/', { replace: true });
+          navigate(TENANT_BASE, { replace: true });
           setIsProcessing(false);
         }
       } else if (urlParams.get('login') === 'failed') {
@@ -116,7 +117,7 @@ const AuthCallback = () => {
         setIsProcessing(false);
       } else {
         console.log('Authentication callback invalid');
-        navigate('/', { replace: true });
+        navigate(TENANT_BASE, { replace: true });
         setIsProcessing(false);
       }
     };
@@ -181,14 +182,13 @@ const AuthCallback = () => {
     }
 
     if (admin) {
-      window.location.replace('/admin/dashboard');
+      window.location.replace(tenantPath("/admin/dashboard"));
     } else if (loginIntent === LOGIN_INTENT_SPC) {
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      window.location.replace('/spc-dashboard');
+      window.location.replace(tenantPath("/spc-dashboard"));
     } else {
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
-      const safeRedirect =
-        storedRedirect && storedRedirect.startsWith("/") ? storedRedirect : "/";
+      const safeRedirect = toTenantAppPath(storedRedirect);
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
       window.location.replace(safeRedirect);
     }
@@ -204,7 +204,7 @@ const AuthCallback = () => {
           <div className="mt-6 flex justify-center">
             <button
               type="button"
-              onClick={() => navigate("/", { replace: true })}
+              onClick={() => navigate(TENANT_BASE, { replace: true })}
               className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Back to Home Page
@@ -224,13 +224,13 @@ const AuthCallback = () => {
           {blockedIntentToken ? (
             <BlockedLoginInterestForm
               token={blockedIntentToken}
-              onSkip={() => navigate("/", { replace: true })}
+              onSkip={() => navigate(TENANT_BASE, { replace: true })}
             />
           ) : (
             <div className="mt-6 flex justify-center">
               <button
                 type="button"
-                onClick={() => navigate("/", { replace: true })}
+                onClick={() => navigate(TENANT_BASE, { replace: true })}
                 className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
               >
                 Back to sign in

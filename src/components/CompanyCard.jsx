@@ -9,6 +9,7 @@ import {
   PLACEMENT_TIER_OPEN_DREAM,
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../constants/placementTiers.js";
+import { tenantPath } from "../constants/tenant.js";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
@@ -154,7 +155,7 @@ function CompanyCard({
       params.set("placementCluster", placementCluster.trim().toLowerCase());
     }
     const q = params.toString();
-    return q ? `/companies/${cid}?${q}` : `/companies/${cid}`;
+    return q ? tenantPath(`/companies/${cid}?${q}`) : tenantPath(`/companies/${cid}`);
   })();
 
   const handleCardClick = () => {

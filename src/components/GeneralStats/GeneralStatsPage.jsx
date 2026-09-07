@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { TENANT_BASE } from "../../constants/tenant.js";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -119,7 +120,7 @@ export default function GeneralStatsPage() {
       <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate("/")} label="Back" />
+          <PageBackButton onClick={() => navigate(TENANT_BASE)} label="Back" />
         </PageBackNavRow>
 
         <PageHeroHeader>

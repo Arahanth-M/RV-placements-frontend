@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { tenantPath } from "../constants/tenant.js";
 import { adminAPI } from "../utils/api";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
@@ -476,7 +477,7 @@ export default function JdImportPage() {
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
             1) Read the PDF → 2) pick fields and Save as → 3) extract → 4) save.
             Skills / work only (no CTC). Open via{" "}
-            <code className="text-slate-300">/admin/jd-import</code>.
+            <code className="text-slate-300">/rvce/admin/jd-import</code>.
           </p>
         </div>
 
@@ -669,7 +670,7 @@ export default function JdImportPage() {
             </button>
             {selectedCompany?.id ? (
               <Link
-                to={`/companies/${selectedCompany.id}?year=${year}`}
+                to={tenantPath(`/companies/${selectedCompany.id}?year=${year}`)}
                 className="text-sm text-indigo-300 hover:text-indigo-200"
               >
                 Open company page

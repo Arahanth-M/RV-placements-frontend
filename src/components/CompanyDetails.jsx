@@ -5,6 +5,8 @@ import { useAuth } from "../utils/AuthContext";
 import { useInterviewLock } from "../utils/InterviewLockContext";
 import { companyAPI } from "../utils/api";
 import {
+  PATH_COMPANY_CATEGORY,
+  PATH_COMPANY_STATS,
   companystatsTierListUrl,
   isPlacementTierParam,
   normalizeClusterParam,
@@ -17,6 +19,7 @@ import {
   PLACEMENT_CATEGORY_NO_VISIT_COPY,
   PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY,
 } from "../constants/placementTiers.js";
+import { tenantPath, toTenantAppPath } from "../constants/tenant.js";
 import {
   COLLEGE_ID_RVITM,
   collegeIdFromUser,
@@ -532,7 +535,7 @@ function CompanyDetails() {
     if (!isCsClusterForInterview) return;
     if (openTabFromNav !== "aiinterview") return;
     setActiveTab("aiinterview");
-    navigate(`/companies/${id}`, { replace: true, state: {} });
+    navigate(tenantPath(`/companies/${id}`), { replace: true, state: {} });
   }, [company, id, openTabFromNav, navigate, isCsClusterForInterview]);
 
   useEffect(() => {
@@ -873,10 +876,12 @@ function CompanyDetails() {
       const storedReturnPath = getSessionValue(COMPANY_DETAILS_RETURN_PATH_KEY);
       if (
         storedReturnPath &&
-        (storedReturnPath.startsWith("/companystats") ||
+        (storedReturnPath.startsWith(PATH_COMPANY_STATS) ||
+          storedReturnPath.startsWith(PATH_COMPANY_CATEGORY) ||
+          storedReturnPath.startsWith("/companystats") ||
           storedReturnPath.startsWith("/category"))
       ) {
-        navigate(storedReturnPath, { replace: true });
+        navigate(toTenantAppPath(storedReturnPath), { replace: true });
         return;
       }
       const storedTier = getSessionValue("companystats_placement_tier");
@@ -890,7 +895,7 @@ function CompanyDetails() {
         const parsedYear = parseInt(storedYear, 10);
         if (!Number.isNaN(parsedYear)) yearToRestore = parsedYear;
       }
-      navigate("/companystats", { state: { selectedYear: yearToRestore } });
+      navigate(PATH_COMPANY_STATS, { state: { selectedYear: yearToRestore } });
     } else {
       navigate(-1);
     }
@@ -967,7 +972,7 @@ function CompanyDetails() {
 
     const pCluster = readPlacementClusterFromLocation(location);
     if (pCluster) params.set("placementCluster", pCluster);
-    navigate(`/companies/${id}?${params.toString()}`, {
+    navigate(tenantPath(`/companies/${id}?${params.toString()}`), {
       replace: true,
       state: location.state ?? {},
     });

@@ -3,6 +3,7 @@ import { leaderboardAPI } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
 import { FaUser, FaRedo, FaSearch, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { TENANT_BASE } from '../constants/tenant.js';
 import {
   PageBackButton,
   PageBackNavRow,
@@ -272,7 +273,7 @@ const Leaderboard = () => {
   };
 
   const navigate = useNavigate();
-  const handleBack = () => navigate('/');
+  const handleBack = () => navigate(TENANT_BASE);
 
   const panelStyle = {
     background: 'var(--bg-card)',

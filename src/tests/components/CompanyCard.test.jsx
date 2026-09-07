@@ -101,7 +101,7 @@ describe('CompanyCard Component', () => {
     const card = screen.getByTestId('company-card')
     fireEvent.click(card)
 
-    expect(mockNavigate).toHaveBeenCalledWith(`/companies/${mockCompany._id}`)
+    expect(mockNavigate.mock.calls[0][0]).toBe(`/rvce/companies/${mockCompany._id}`)
   })
 
   it('handles companies with multiple words in name', () => {
