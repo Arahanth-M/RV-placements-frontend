@@ -13,6 +13,55 @@ const RVITM_EMAIL_SUFFIX = ".rvitm@rvei.edu.in";
 const TEST_RVITM_EMAILS = new Set(["arahanthmahaveer76@gmail.com","akshathaanilkumar@gmail.com"]);
 
 /**
+ * True when email is an RVCE institutional address (`*@rvce.edu.in`).
+ * @param {unknown} email
+ * @returns {boolean}
+ */
+export function isRvceEmail(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase()
+    .endsWith(RVCE_EMAIL_SUFFIX);
+}
+
+/**
+ * RVCE tenant (`/rvce`) is only for signed-in `@rvce.edu.in` accounts.
+ * @param {{ email?: unknown }|null|undefined} user
+ * @returns {boolean}
+ */
+export function canAccessRvceTenant(user) {
+  return Boolean(user && isRvceEmail(user.email));
+}
+
+/**
+ * Institutions that currently have a dedicated campus shell (today: RVCE only).
+ * Everyone else lands on `/general` after login.
+ * @param {{ email?: unknown }|null|undefined} user
+ * @returns {boolean}
+ */
+export function isOnboardedInstitutionUser(user) {
+  return canAccessRvceTenant(user);
+}
+
+/**
+ * General product shell for signed-in students outside an onboarded campus tenant.
+ * @param {{ email?: unknown }|null|undefined} user
+ * @returns {boolean}
+ */
+export function canAccessGeneralTenant(user) {
+  return Boolean(user && !isOnboardedInstitutionUser(user));
+}
+
+/**
+ * @param {{ email?: unknown }|null|undefined} user
+ * @returns {"/rvce"|"/general"|null}
+ */
+export function getAppHomePathForUser(user) {
+  if (!user) return null;
+  return isOnboardedInstitutionUser(user) ? "/rvce" : "/general";
+}
+
+/**
  * @param {unknown} raw
  * @returns {string}
  */

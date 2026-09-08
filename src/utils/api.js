@@ -97,6 +97,14 @@ export const authAPI = {
       collegeName,
       wantsPlatformAtCollege,
     }),
+  submitCollegeEnrollmentInterest: ({ collegeName, email, contactName }) =>
+    API.post('/api/auth/college-enrollment-interest', {
+      collegeName,
+      email,
+      contactName,
+    }),
+  submitCollegeOnboarding: (payload) =>
+    API.post('/api/auth/college-onboarding', payload),
 };
 
 export const companyAPI = {

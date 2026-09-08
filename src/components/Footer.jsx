@@ -1,9 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { RVCE_PLACEMENT_EMAIL, RVITM_PLACEMENT_EMAIL } from "../utils/collegeScope.js";
-import { TENANT_BASE, tenantPath } from "../constants/tenant.js";
+import { TENANT_BASE } from "../constants/tenant.js";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
 
 function Footer() {
+  const { base, appPath, isGeneral } = useTenantShell();
+  const homePath = base || TENANT_BASE;
+
   return (
     <footer className="bg-theme-sidebar border-t border-theme text-theme-secondary py-12 mt-6">
       <div className="container mx-auto px-8">
@@ -16,9 +20,6 @@ function Footer() {
             <h2 className="text-2xl font-serif text-theme-primary tracking-tight">
               lastminute<span className="italic text-theme-accent">placementprep</span>
             </h2>
-            {/* <p className="mt-1 text-sm font-medium text-theme-secondary/80">
-              A product of Devomation AI
-            </p> */}
             <p className="mt-4 text-base text-theme-secondary leading-relaxed max-w-xs">
               Your ultimate placement preparation platform with company insights,
               interview experiences, and premium resources.
@@ -32,11 +33,11 @@ function Footer() {
           </p>
           <ul className="flex flex-col gap-3.5 items-center">
             {[
-              { label: "Home", to: TENANT_BASE },
-              { label: "Company Stats", to: tenantPath("/companystats") },
-              { label: "Contact Us", to: tenantPath("/contact") },
-              { label: "Feedback", to: tenantPath("/feedback") },
-              { label: "Developers", to: tenantPath("/team") },
+              { label: "Home", to: homePath },
+              { label: "Company Stats", to: appPath("/companystats") },
+              { label: "Contact Us", to: appPath("/contact") },
+              { label: "Feedback", to: appPath("/feedback") },
+              { label: "Developers", to: appPath("/team") },
             ].map(({ label, to }) => (
             <li key={to}>
               <Link
@@ -58,43 +59,42 @@ function Footer() {
               Contact
             </p>
             <div className="text-base text-theme-secondary leading-relaxed">
-              <p>
-                RVCE:{" "}
-                <a
-                  href={`mailto:${RVCE_PLACEMENT_EMAIL}`}
-                  className="text-theme-accent hover:opacity-80 transition-opacity"
-                >
-                  {RVCE_PLACEMENT_EMAIL}
-                </a>
-              </p>
-              <p className="mt-2">
-                RVITM:{" "}
-                <a
-                  href={`mailto:${RVITM_PLACEMENT_EMAIL}`}
-                  className="text-theme-accent hover:opacity-80 transition-opacity"
-                >
-                  {RVITM_PLACEMENT_EMAIL}
-                </a>
-              </p>
+              {isGeneral ? (
+                <p>
+                  Want this on your campus?{" "}
+                  <Link to="/onboard" className="text-theme-accent hover:opacity-80 transition-opacity">
+                    Enrol your college
+                  </Link>
+                </p>
+              ) : (
+                <>
+                  <p>
+                    RVCE:{" "}
+                    <a
+                      href={`mailto:${RVCE_PLACEMENT_EMAIL}`}
+                      className="text-theme-accent hover:opacity-80 transition-opacity"
+                    >
+                      {RVCE_PLACEMENT_EMAIL}
+                    </a>
+                  </p>
+                  <p className="mt-2">
+                    RVITM:{" "}
+                    <a
+                      href={`mailto:${RVITM_PLACEMENT_EMAIL}`}
+                      className="text-theme-accent hover:opacity-80 transition-opacity"
+                    >
+                      {RVITM_PLACEMENT_EMAIL}
+                    </a>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Bottom bar — product + legal entity (industry-standard attribution) */}
-        <div className="flex flex-col gap-3 pt-7 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-theme-secondary/70">
-            <span className="font-medium text-theme-secondary">Last Minute Placement Prep</span>
-            <span className="text-theme-secondary/50" aria-hidden>
-              {" "}
-              ·{" "}
-            </span>
-            {/* <span className="text-theme-secondary/60">A product of Devomation AI</span> */}
-          </p>
-          <p className="text-sm text-theme-secondary/60">
-            © {new Date().getFullYear()} All rights reserved.
-          </p>
+        <div className="pt-8 text-center text-sm text-theme-secondary">
+          © {new Date().getFullYear()} lastminuteplacementprep. All rights reserved.
         </div>
-
       </div>
     </footer>
   );

@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PATH_COMPANY_STATS } from "../constants/placementTiers.js";
-import { tenantPath } from "../constants/tenant.js";
+import { TENANT_BASE } from "../constants/tenant.js";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { companyAPI } from "../utils/api";
 import { normalizeCompanyNameKey } from "../utils/companyLogoDomains";
 import { useAuth } from "../utils/AuthContext";
@@ -75,10 +76,10 @@ function StatPill({ value, suffix, label, duration }) {
       ref={ref}
       className="flex h-full min-w-0 flex-col items-center justify-center px-2.5 sm:px-3 py-3 sm:py-4 rounded-2xl bg-theme-card border border-theme-accent/20 last:col-span-2 sm:last:col-span-1"
     >
-      <span className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-theme-accent tabular-nums">
+      <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-theme-accent tabular-nums">
         {count}{suffix}
       </span>
-      <span className="text-xs sm:text-xs lg:text-sm text-theme-secondary mt-1 text-center leading-snug break-words">
+      <span className="text-xs sm:text-xs lg:text-sm text-theme-secondary mt-1 text-center leading-snug break-words font-normal">
         {label}
       </span>
     </div>
@@ -89,12 +90,12 @@ function StatPill({ value, suffix, label, duration }) {
 function SectionIntro({ kicker, title, titleAccent, subtitle, id }) {
   return (
     <div className="mx-auto max-w-3xl text-center mb-12 sm:mb-16 md:mb-20">
-      <span className="inline-flex items-center justify-center rounded-full border border-theme-accent/35 bg-theme-accent/10 px-5 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-[0.22em] text-theme-accent mb-6 shadow-sm">
+      <span className="inline-flex items-center justify-center rounded-full border border-theme-accent/35 bg-theme-accent/10 px-5 py-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.22em] text-theme-accent mb-6 shadow-sm">
         {kicker}
       </span>
       <h2
         id={id}
-        className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-extrabold text-theme-primary tracking-tight leading-[1.12]"
+        className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] font-bold text-theme-primary tracking-tight leading-[1.12]"
       >
         {title}
         {titleAccent ? (
@@ -134,6 +135,9 @@ function dedupeCompaniesForMarquee(companies) {
 
 function Home() {
   const { user } = useAuth();
+  const { appPath, base } = useTenantShell();
+  const companyStatsPath =
+    base === TENANT_BASE ? PATH_COMPANY_STATS : appPath("/companystats");
   const images = useMemo(() => [aeroplane, entrance, building], []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [companyLogos, setCompanyLogos] = useState([]);
@@ -261,22 +265,22 @@ function Home() {
             {/* Left */}
             <div className="flex-1 text-center lg:text-left" data-tour="home-hero">
              
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-theme-primary mb-5 leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-theme-primary mb-5 leading-tight">
                Welcome to RV{" "}
                 <span className="text-theme-accent">Placement Dashboard</span>{" "}
               </h1>
-              <p className="text-base sm:text-lg md:text-xl text-theme-secondary leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8">
+              <p className="text-base sm:text-lg md:text-xl text-theme-secondary leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8 font-normal">
                 Your all-in-one placement companion at RV. Access company insights, real interview experiences, curated resources and AI-powered mock interviews to prepare smarter.
               </p>
               <div className="flex flex-wrap gap-3 justify-center lg:justify-start">
                 <Link
-                  to={PATH_COMPANY_STATS}
+                  to={companyStatsPath}
                   className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
                 >
                   Explore Companies →
                 </Link>
                 <Link
-                  to={tenantPath("/general-stats")}
+                  to={appPath("/general-stats")}
                   className="px-6 py-3 rounded-xl border border-theme-accent/40 bg-theme-hero text-theme-accent font-semibold text-sm sm:text-base hover:opacity-90 transition-opacity shadow-lg"
                 >
                   General Stats →
@@ -366,7 +370,7 @@ function Home() {
                     }}
                   />
                   <div className="relative pl-5 sm:pl-6">
-                    <p className="text-lg sm:text-xl text-theme-primary leading-relaxed font-medium">
+                    <p className="text-lg sm:text-xl text-theme-primary leading-relaxed font-normal">
                       {point.text}
                     </p>
                   </div>
@@ -457,7 +461,7 @@ function Home() {
                   return (
                     <Link
                       key={`${String(id)}-${idx}`}
-                      to={tenantPath(`/companies/${id}`)}
+                      to={appPath(`/companies/${id}`)}
                       className={tileClass}
                       aria-label={`View ${company.name || "company"} details and interviews`}
                     >
@@ -511,7 +515,7 @@ function Home() {
 
       {/* ── EDUCATIONAL DISCLAIMER MARQUEE ── */}
       <div className="overflow-hidden border-y border-theme bg-theme-card py-3">
-        <div className="animate-marquee-full whitespace-nowrap text-sm font-semibold text-theme-secondary">
+        <div className="animate-marquee-full whitespace-nowrap text-sm font-medium text-theme-secondary">
           <span className="inline-block px-6">
             This platform is intended strictly for educational and placement preparation purposes only.
           </span>

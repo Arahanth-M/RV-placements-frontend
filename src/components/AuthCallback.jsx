@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tenantPath, toTenantAppPath, TENANT_BASE } from '../constants/tenant.js';
+import { tenantPath, toPostLoginAppPath, TENANT_BASE, GENERAL_BASE } from '../constants/tenant.js';
 import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
+import { canAccessRvceTenant } from '../utils/collegeScope.js';
 import BlockedLoginInterestForm from './BlockedLoginInterestForm';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
@@ -16,7 +17,7 @@ const LOGIN_INTENT_SPC = "spc";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const { refreshUser, setStudentData } = useAuth(); 
+  const { refreshUser, setStudentData, logout } = useAuth(); 
   const [isProcessing, setIsProcessing] = useState(true);
   const [accessDeniedMessage, setAccessDeniedMessage] = useState("");
   const [loginError, setLoginError] = useState(null);
@@ -38,9 +39,26 @@ const AuthCallback = () => {
           const fetchedUserData = await refreshUser();
           
           if (fetchedUserData) {
+            const useGeneral = !canAccessRvceTenant(fetchedUserData);
+
             const loginIntent = sessionStorage.getItem(LOGIN_INTENT_KEY);
             const signupFlag = urlParams.get('signup') === 'success';
             const adminFlag = urlParams.get('admin') === 'true';
+
+            if (useGeneral && (loginIntent === LOGIN_INTENT_SPC || adminFlag)) {
+              try {
+                await logout();
+              } catch {
+                /* still show denial UI */
+              }
+              setAccessDeniedMessage(
+                adminFlag
+                  ? "Admin access requires an onboarded campus account."
+                  : "SPC access is only available on onboarded campus dashboards."
+              );
+              setIsProcessing(false);
+              return;
+            }
 
             if (loginIntent === LOGIN_INTENT_SPC) {
               const currentUserResponse = await authAPI.getCurrentUser();
@@ -89,7 +107,7 @@ const AuthCallback = () => {
           setLoginError({
             title: "Login restricted",
             message:
-              "Only official college email IDs ending with @rvce.edu.in or .rvitm@rvei.edu.in are allowed to sign in.",
+              "Admin sign-in requires an official college email. Students can sign in from the home page to use the general platform.",
           });
         } else if (reason === 'not_allowed') {
           setLoginError({
@@ -100,7 +118,7 @@ const AuthCallback = () => {
           setLoginError({
             title: "Login restricted",
             message:
-              "Only official college email IDs ending with @rvce.edu.in or .rvitm@rvei.edu.in are allowed to sign in.",
+              "Admin sign-in requires an official college email. Students can sign in from the home page to use the general platform.",
           });
         } else if (reason === 'not_admin') {
           setLoginError({
@@ -123,7 +141,7 @@ const AuthCallback = () => {
     };
 
     handleCallback();
-  }, [navigate, refreshUser]);
+  }, [navigate, refreshUser, logout]);
 
   // Strictly email-based profile fetch — no name matching
   const fetchStudentProfileByEmail = async (user, signup, admin, loginIntent) => {
@@ -162,6 +180,7 @@ const AuthCallback = () => {
 
   const handleLoginComplete = (user, signup, admin, loginIntent, hasStudentProfile) => {
     const userId = user?.userId || user?._id;
+    const useGeneral = !canAccessRvceTenant(user);
     sessionStorage.removeItem(LOGIN_INTENT_KEY);
     if (admin) {
       sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
@@ -188,9 +207,9 @@ const AuthCallback = () => {
       window.location.replace(tenantPath("/spc-dashboard"));
     } else {
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
-      const safeRedirect = toTenantAppPath(storedRedirect);
+      const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral });
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      window.location.replace(safeRedirect);
+      window.location.replace(safeRedirect || (useGeneral ? GENERAL_BASE : TENANT_BASE));
     }
     setIsProcessing(false);
   };
@@ -204,7 +223,7 @@ const AuthCallback = () => {
           <div className="mt-6 flex justify-center">
             <button
               type="button"
-              onClick={() => navigate(TENANT_BASE, { replace: true })}
+              onClick={() => navigate("/", { replace: true })}
               className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
               Back to Home Page

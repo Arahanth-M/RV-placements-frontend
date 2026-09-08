@@ -20,6 +20,7 @@
 /* Base font - applied in both themes */
 body {
   font-family: 'Inter', sans-serif;
+  font-weight: 400;
 }
 
 /* ========== Theme: Light / Dark (data-theme on <html>) ========== */
@@ -1377,6 +1378,150 @@ html, body, #root {
 
   .animate-marquee-full:hover {
     animation-play-state: paused;
+  }
+
+  @keyframes marquee-reverse {
+    0% {
+      transform: translateX(-50%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-marquee-reverse {
+    animation: marquee-reverse 32s linear infinite;
+    display: flex;
+  }
+
+  .animate-marquee-reverse:hover {
+    animation-play-state: paused;
+  }
+
+  .landing-marquee-track:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes landing-brand-shine {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .landing-brand-gradient {
+    background-image: linear-gradient(
+      100deg,
+      #ffffff 0%,
+      var(--accent) 28%,
+      #ffffff 50%,
+      var(--accent) 72%,
+      #ffffff 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: landing-brand-shine 4s ease-in-out infinite;
+  }
+
+  /* Light hero: white washes out — stay in theme purple / deep indigo only */
+  [data-theme="light"] .landing-brand-gradient {
+    background-image: linear-gradient(
+      100deg,
+      #312e81 0%,
+      var(--accent) 32%,
+      var(--accent-secondary) 50%,
+      var(--accent) 68%,
+      #312e81 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  .challenge-flip {
+    perspective: 1400px;
+    height: 22.5rem;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .challenge-flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-style: preserve-3d;
+  }
+
+  .challenge-flip.is-flipped .challenge-flip-inner {
+    transform: rotateY(180deg);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .challenge-flip:hover .challenge-flip-inner {
+      transform: rotateY(180deg);
+    }
+  }
+
+  .challenge-flip-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  .challenge-flip-back {
+    transform: rotateY(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee,
+    .animate-marquee-reverse,
+    .animate-marquee-full,
+    .landing-marquee-track {
+      animation: none !important;
+      transform: none;
+    }
+
+    .landing-brand-gradient {
+      animation: none;
+      background-image: none;
+      color: var(--accent);
+      -webkit-background-clip: unset;
+      background-clip: unset;
+    }
+
+    .challenge-flip-inner {
+      transition: none;
+    }
+
+    .challenge-flip.is-flipped .challenge-flip-inner,
+    .challenge-flip:hover .challenge-flip-inner {
+      transform: none;
+    }
+
+    .challenge-flip:not(.is-flipped) .challenge-flip-back {
+      display: none;
+    }
+
+    .challenge-flip.is-flipped .challenge-flip-front {
+      display: none;
+    }
+
+    .challenge-flip.is-flipped .challenge-flip-back {
+      position: relative;
+      transform: none;
+    }
   }
 
   /* Slide in from right animation for popup */

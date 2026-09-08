@@ -35,13 +35,9 @@ const PAGE_HERO_SUBTITLE_STYLE = {
   margin: "0 auto",
 };
 
-/** DM Serif Display import for page hero headings. */
+/** DM Serif Display is loaded from index.html — keep this for call-site compatibility. */
 export function PageHeroFontStyles() {
-  return (
-    <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
-    `}</style>
-  );
+  return null;
 }
 
 /** Shared "Placement prep" hero block — compact spacing and title size. */

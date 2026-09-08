@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { tenantPath, toTenantAppPath } from "../constants/tenant.js";
+import { tenantPath, toPostLoginAppPath, GENERAL_BASE } from "../constants/tenant.js";
+import { canAccessRvceTenant } from "../utils/collegeScope.js";
 
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 const LOGIN_INTENT_KEY = "loginIntent";
@@ -47,16 +48,19 @@ const Login = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      if (isAdmin) {
-        navigate(tenantPath("/admin/dashboard"), { replace: true });
-        return;
-      }
-      const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
-      const safeRedirect = toTenantAppPath(storedRedirect);
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      navigate(safeRedirect, { replace: true });
+    if (!user) return;
+    if (!canAccessRvceTenant(user)) {
+      navigate(GENERAL_BASE, { replace: true });
+      return;
     }
+    if (isAdmin) {
+      navigate(tenantPath("/admin/dashboard"), { replace: true });
+      return;
+    }
+    const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+    const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral: false });
+    sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+    navigate(safeRedirect, { replace: true });
   }, [user, isAdmin, navigate]);
 
   return (
@@ -65,7 +69,8 @@ const Login = () => {
         <div>
           <h2 className="mt-2 text-center text-3xl font-extrabold text-theme-primary">Please sign in to access this content</h2>
           <p className="mt-3 text-center text-sm text-theme-secondary">
-            Use your <strong className="text-theme-accent">RVCE mail ID</strong> to sign in.
+            Use your <strong className="text-theme-accent">@rvce.edu.in</strong> email to access the RVCE dashboard.
+            Other students can sign in from the home page to use the general platform.
           </p>
         </div>
 
@@ -96,10 +101,10 @@ const Login = () => {
             <button
               type="button"
               onClick={() => handleGoogleSignIn({ spc: true })}
-              className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-theme text-sm font-medium rounded-xl text-theme-primary bg-theme-card hover:bg-theme-nav focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
+              className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-theme text-sm font-medium rounded-xl text-theme-primary bg-theme-hero hover:bg-theme-card focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
             >
               <GoogleIcon />
-              Login as SPC
+              Sign in as SPC
             </button>
           )}
         </div>
