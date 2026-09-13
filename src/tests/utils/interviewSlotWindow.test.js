@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   bookingsFromSlotStatus,
+  canStartDsaWithoutPrebook,
   findActiveBookingClient,
   isBookingActiveNow,
   msUntilNextSlotBoundary,
+  shouldShowDsaHourFullBanner,
 } from "../interviewSlotWindow.js";
 
 describe("interviewSlotWindow", () => {
@@ -43,5 +45,57 @@ describe("interviewSlotWindow", () => {
         upcomingBookings: [{ ...booking, label: "other" }],
       })
     ).toHaveLength(2);
+  });
+
+  it("msUntilNextSlotBoundary wakes at current hour end without a booking", () => {
+    const status = {
+      currentHour: {
+        slotStart: "2026-08-02T09:30:00.000Z",
+        slotEnd: "2026-08-02T10:30:00.000Z",
+      },
+    };
+    const inside = Date.parse("2026-08-02T10:00:00.000Z");
+    expect(msUntilNextSlotBoundary(status, inside)).toBe(30 * 60 * 1000);
+  });
+
+  it("canStartDsaWithoutPrebook allows start when the hour is not full", () => {
+    expect(
+      canStartDsaWithoutPrebook({
+        requiresSlot: true,
+        hasActiveBookingNow: false,
+        currentHourIsFull: false,
+      })
+    ).toBe(true);
+    expect(
+      shouldShowDsaHourFullBanner({
+        requiresSlot: true,
+        hasActiveBookingNow: false,
+        currentHourIsFull: false,
+      })
+    ).toBe(false);
+  });
+
+  it("shouldShowDsaHourFullBanner only when 5/5 and user has no active hour", () => {
+    expect(
+      shouldShowDsaHourFullBanner({
+        requiresSlot: true,
+        hasActiveBookingNow: false,
+        currentHourIsFull: true,
+      })
+    ).toBe(true);
+    expect(
+      canStartDsaWithoutPrebook({
+        requiresSlot: true,
+        hasActiveBookingNow: false,
+        currentHourIsFull: true,
+      })
+    ).toBe(false);
+    expect(
+      canStartDsaWithoutPrebook({
+        requiresSlot: true,
+        hasActiveBookingNow: true,
+        currentHourIsFull: true,
+      })
+    ).toBe(true);
   });
 });

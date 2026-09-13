@@ -70,8 +70,39 @@ export function msUntilNextSlotBoundary(status, nowMs = Date.now(), maxMs = 60 *
       soonest = soonest == null ? end : Math.min(soonest, end);
     }
   }
+  const hour = status && typeof status === "object" ? status.currentHour : null;
+  if (hour && typeof hour === "object") {
+    const end = new Date(hour.slotEnd).getTime();
+    if (Number.isFinite(end) && end > nowMs) {
+      soonest = soonest == null ? end : Math.min(soonest, end);
+    }
+  }
+
   if (soonest == null) return null;
   const delta = soonest - nowMs;
   if (delta <= 0) return 0;
   return Math.min(delta, maxMs);
+}
+
+/**
+ * DSA Start is allowed without a pre-booked slot when the current IST hour still has capacity.
+ * Auto-booking happens on the server at start time.
+ */
+export function canStartDsaWithoutPrebook({
+  requiresSlot,
+  hasActiveBookingNow,
+  currentHourIsFull,
+} = {}) {
+  if (!requiresSlot) return true;
+  if (hasActiveBookingNow) return true;
+  return !currentHourIsFull;
+}
+
+/** Show "this hour is 5/5 — book another slot" only when the current hour is full. */
+export function shouldShowDsaHourFullBanner({
+  requiresSlot,
+  hasActiveBookingNow,
+  currentHourIsFull,
+} = {}) {
+  return Boolean(requiresSlot && currentHourIsFull && !hasActiveBookingNow);
 }

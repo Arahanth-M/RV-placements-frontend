@@ -5,6 +5,11 @@ import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
 import { canAccessRvceTenant } from '../utils/collegeScope.js';
 import BlockedLoginInterestForm from './BlockedLoginInterestForm';
+import {
+  LOGIN_INTENT_KEY,
+  LOGIN_INTENT_SPC,
+  LOGIN_INTENT_CAMPUS,
+} from '../utils/loginIntent.js';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
 const LOGIN_PROFILE_STATUS_KEY = "loginProfileStatus";
@@ -12,8 +17,6 @@ const LOGIN_PROFILE_STATUS_HAS_PROFILE = "has_profile";
 const LOGIN_PROFILE_STATUS_NO_PROFILE = "no_profile";
 const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
-const LOGIN_INTENT_KEY = "loginIntent";
-const LOGIN_INTENT_SPC = "spc";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -205,6 +208,9 @@ const AuthCallback = () => {
     } else if (loginIntent === LOGIN_INTENT_SPC) {
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
       window.location.replace(tenantPath("/spc-dashboard"));
+    } else if (loginIntent === LOGIN_INTENT_CAMPUS && useGeneral) {
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      window.location.replace(`${GENERAL_BASE}?reason=campus_not_onboarded`);
     } else {
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
       const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral });

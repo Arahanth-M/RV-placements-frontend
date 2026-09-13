@@ -28,6 +28,8 @@ import { useTheme } from "../utils/ThemeContext";
 import { canAccessRvceTenant, getAppHomePathForUser } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import { PageHeroFontStyles } from "./PageBackNav.jsx";
+import PlatformFooter from "./PlatformFooter.jsx";
+import PlatformLoginMenu from "./PlatformLoginMenu.jsx";
 
 const MotionDiv = motion.div;
 const MotionP = motion.p;
@@ -285,9 +287,6 @@ function ChallengeFlipCard({ point }) {
             <p className="text-base sm:text-lg text-theme-secondary leading-relaxed flex-1">
               {point.text}
             </p>
-            <p className="mt-5 text-sm font-semibold text-theme-accent">
-              Flip to see how we fix this →
-            </p>
           </div>
         </div>
 
@@ -309,9 +308,6 @@ function ChallengeFlipCard({ point }) {
               </li>
             ))}
           </ul>
-          <p className="mt-5 text-sm font-semibold text-white/85">
-            Flip back ←
-          </p>
         </div>
       </div>
     </button>
@@ -511,7 +507,7 @@ function HeroHighlightRotator() {
   );
 }
 
-function LandingHero({ user, onSignIn, embedded = false }) {
+function LandingHero({ user, embedded = false }) {
   const reduceMotion = useReducedMotion();
   const canEnterRvce = canAccessRvceTenant(user);
   const appHome = getAppHomePathForUser(user);
@@ -597,9 +593,11 @@ function LandingHero({ user, onSignIn, embedded = false }) {
                     {canEnterRvce ? "Enter campus dashboard" : "Open general dashboard"}
                   </Link>
                 ) : (
-                  <button type="button" onClick={onSignIn} className={heroBtnClass}>
-                    Sign in to get started
-                  </button>
+                  <PlatformLoginMenu
+                    align="center"
+                    triggerLabel="Login"
+                    triggerClassName={`${heroBtnClass} gap-2`}
+                  />
                 )}
                 <a href="#solutions" className={heroBtnClass}>
                   See what you get
@@ -619,7 +617,7 @@ function LandingHero({ user, onSignIn, embedded = false }) {
   );
 }
 
-function LandingHeader({ user, loading, onSignIn }) {
+function LandingHeader({ user, loading }) {
   const { theme, toggleTheme } = useTheme();
   const canEnterRvce = canAccessRvceTenant(user);
   const appHome = getAppHomePathForUser(user);
@@ -667,14 +665,11 @@ function LandingHeader({ user, loading, onSignIn }) {
               {canEnterRvce ? "Dashboard" : "General"}
             </Link>
           ) : (
-            <button
-              type="button"
-              onClick={onSignIn}
+            <PlatformLoginMenu
+              align="right"
               disabled={loading}
-              className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-70"
-            >
-              Sign in
-            </button>
+              triggerClassName="inline-flex items-center gap-2 rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-70"
+            />
           )}
         </div>
       </div>
@@ -684,24 +679,24 @@ function LandingHeader({ user, loading, onSignIn }) {
 
 /** Public product home. College dashboard lives under /rvce; /general reuses this page embedded. */
 export default function PlatformLanding({ embedded = false }) {
-  const { user, login, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [companyLogos, setCompanyLogos] = useState(FALLBACK_COMPANIES);
   const [stats, setStats] = useState(FALLBACK_STATS);
+  const noticeReason = searchParams.get("reason");
   const showRvceEmailNotice =
-    !embedded && searchParams.get("reason") === "rvce_email_required";
-
-  const goSignIn = () => login(false);
+    !embedded && noticeReason === "rvce_email_required";
+  const showCampusNotOnboardedNotice = noticeReason === "campus_not_onboarded";
 
   useEffect(() => {
-    if (!showRvceEmailNotice) return undefined;
+    if (!showRvceEmailNotice && !showCampusNotOnboardedNotice) return undefined;
     const t = setTimeout(() => {
       const next = new URLSearchParams(searchParams);
       next.delete("reason");
       setSearchParams(next, { replace: true });
     }, 8000);
     return () => clearTimeout(t);
-  }, [showRvceEmailNotice, searchParams, setSearchParams]);
+  }, [showRvceEmailNotice, showCampusNotOnboardedNotice, searchParams, setSearchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -774,7 +769,7 @@ export default function PlatformLanding({ embedded = false }) {
     >
       <PageHeroFontStyles />
       {!embedded ? (
-        <LandingHeader user={user} loading={loading} onSignIn={goSignIn} />
+        <LandingHeader user={user} loading={loading} />
       ) : null}
       {showRvceEmailNotice ? (
         <div className="border-b border-theme-accent/30 bg-theme-accent/10 px-4 py-3 text-center text-sm text-theme-primary">
@@ -798,9 +793,24 @@ export default function PlatformLanding({ embedded = false }) {
           .
         </div>
       ) : null}
+      {showCampusNotOnboardedNotice ? (
+        <div className="border-b border-theme-accent/30 bg-theme-accent/10 px-4 py-3 text-center text-sm text-theme-primary">
+          Your college isn&apos;t onboarded yet. You&apos;re in the{" "}
+          <strong className="text-theme-accent">general dashboard</strong>
+          {" — "}
+          or{" "}
+          <Link
+            to="/onboard"
+            className="font-semibold text-theme-accent underline-offset-2 hover:underline"
+          >
+            enrol your college
+          </Link>
+          .
+        </div>
+      ) : null}
 
       <main className="flex-1">
-        <LandingHero user={user} onSignIn={goSignIn} embedded={embedded} />
+        <LandingHero user={user} embedded={embedded} />
 
         {/* ── CHALLENGES ── */}
         <section
@@ -819,7 +829,7 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="Student"
               titleAccent="Challenges"
-              subtitle="Most students don’t fail from lack of effort — they fail from missing context, structure, practice, and timing. Flip a card to see how we fix each one."
+              subtitle="Most students don’t fail from lack of effort — they fail from missing context, structure, practice, and timing. Hover a card to see how we fix each one."
               id="landing-challenges-heading"
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -859,12 +869,9 @@ export default function PlatformLanding({ embedded = false }) {
                         }}
                       />
                       <div className="flex flex-1 flex-col p-5 sm:p-6">
-                        <div className="mb-3 flex items-center gap-3">
+                        <div className="mb-3">
                           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-theme-accent/25 bg-theme-accent/10 text-theme-accent">
                             <Icon className="h-4 w-4" />
-                          </span>
-                          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-theme-accent">
-                            {String(idx + 1).padStart(2, "0")}
                           </span>
                         </div>
                         <h3 className="mb-2 text-xl font-bold text-theme-primary transition-colors group-hover:text-theme-accent sm:text-2xl" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -993,16 +1000,7 @@ export default function PlatformLanding({ embedded = false }) {
         </section>
       </main>
 
-      {!embedded ? (
-        <footer className="border-t border-theme bg-theme-sidebar py-8 px-6 text-theme-secondary">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-serif text-theme-primary">
-              lastminute<span className="italic text-theme-accent">placementprep</span>
-            </p>
-            <p className="text-sm">© {new Date().getFullYear()} All rights reserved.</p>
-          </div>
-        </footer>
-      ) : null}
+      {!embedded ? <PlatformFooter /> : null}
     </div>
   );
 }

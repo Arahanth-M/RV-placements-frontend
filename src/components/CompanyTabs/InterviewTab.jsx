@@ -91,10 +91,12 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import LanguageSolutionPanel from "../LanguageSolutionPanel";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
+import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
   ExperienceEmptyState,
   ExperienceSectionHeader,
@@ -109,6 +111,7 @@ function InterviewTab({
   company,
   isAdmin,
   onCompanyUpdate,
+  isGeneral = false,
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
@@ -511,9 +514,12 @@ function InterviewTab({
             question: newInterviewQuestion,
             solution: newInterviewSolution,
           }),
-          placementYear,
-          ...(placementListContext ? { placementListContext } : {}),
-          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
+          ...submissionTargetFields({
+            isGeneral,
+            placementYear,
+            placementListContext,
+            placementCompanyVisitId,
+          }),
         }),
       });
 
@@ -547,9 +553,12 @@ function InterviewTab({
           type: "interviewProcess",
           content: newInterviewProcess,
           isAnonymous: newInterviewProcessAnonymous,
-          placementYear,
-          ...(placementListContext ? { placementListContext } : {}),
-          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
+          ...submissionTargetFields({
+            isGeneral,
+            placementYear,
+            placementListContext,
+            placementCompanyVisitId,
+          }),
         }),
       });
 
@@ -665,8 +674,30 @@ function InterviewTab({
                   <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
                     <p className="min-w-0">{q}</p>
 
-                    {/* Solution Accordion */}
-                    {solutions[index] && solutions[index].trim().length > 0 ? (
+                    {(() => {
+                      const langSol = company.interviewQuestions_solutions?.[index];
+                      const intuition = String(
+                        company.interviewQuestions_intuition?.[index] || ""
+                      ).trim();
+                      const hasLang =
+                        Boolean(String(langSol?.cpp || "").trim()) ||
+                        Boolean(String(langSol?.java || "").trim()) ||
+                        Boolean(String(langSol?.python || "").trim()) ||
+                        Boolean(intuition);
+                      const fallback = solutions[index];
+                      const hasAny = hasLang || Boolean(String(fallback || "").trim());
+                      if (!hasAny) {
+                        return (
+                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
+                        <div className="px-3 py-2.5 sm:px-4 sm:py-2">
+                          <p className="text-xs sm:text-sm text-slate-400 italic">
+                            Solution not yet provided
+                          </p>
+                        </div>
+                      </div>
+                        );
+                      }
+                      return (
                       <div className="min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60">
                         <button
                           type="button"
@@ -679,6 +710,18 @@ function InterviewTab({
                           </span>
                         </button>
                         {openSolutionIndex[index] && (
+                          hasLang ? (
+                            <div className="p-2 sm:p-3">
+                              <LanguageSolutionPanel
+                                solutions={langSol}
+                                intuition={intuition}
+                                fallbackCode={fallback}
+                                copied={copiedIndex === index}
+                                onCopy={(code) => handleCopySolution(code, index)}
+                                embedded
+                              />
+                            </div>
+                          ) : (
                           <div className="p-2 sm:p-3">
                             <SolutionSyntaxBlock
                               code={solutions[index]}
@@ -704,17 +747,11 @@ function InterviewTab({
                               }
                             />
                           </div>
+                          )
                         )}
                       </div>
-                    ) : (
-                      <div className="border border-slate-700 rounded-lg bg-slate-800/60 overflow-hidden">
-                        <div className="px-3 py-2.5 sm:px-4 sm:py-2">
-                          <p className="text-xs sm:text-sm text-slate-400 italic">
-                            Solution not yet provided
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>

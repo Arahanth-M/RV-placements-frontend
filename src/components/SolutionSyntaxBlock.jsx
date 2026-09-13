@@ -2,16 +2,21 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "../utils/ThemeContext";
 import { inferSolutionLanguage } from "../utils/inferSolutionLanguage";
+import { formatSolutionCode } from "../utils/formatSolutionCode";
 
 /**
  * VS Code–style syntax highlighting for solution bodies.
  * Outer chrome (borders / section chrome) should be applied by the parent; this
  * only styles the editor surface (#1e1e1e dark / VS light).
  */
-export default function SolutionSyntaxBlock({ code, toolbar = null, className = "" }) {
+export default function SolutionSyntaxBlock({ code, toolbar = null, className = "", language }) {
   const { theme } = useTheme();
   const style = theme === "dark" ? vscDarkPlus : vs;
-  const lang = inferSolutionLanguage(String(code ?? ""));
+  const displayCode = formatSolutionCode(code);
+  const lang =
+    typeof language === "string" && language.trim()
+      ? language.trim()
+      : inferSolutionLanguage(displayCode);
 
   return (
     <div className={`solution-syntax-root relative max-w-full min-w-0 ${className}`}>
@@ -44,7 +49,7 @@ export default function SolutionSyntaxBlock({ code, toolbar = null, className = 
           },
         }}
       >
-        {String(code ?? "")}
+        {displayCode}
       </SyntaxHighlighter>
     </div>
   );

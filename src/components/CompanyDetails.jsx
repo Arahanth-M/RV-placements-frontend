@@ -19,7 +19,8 @@ import {
   PLACEMENT_CATEGORY_NO_VISIT_COPY,
   PLACEMENT_YEAR_DROPDOWN_NO_VISIT_COPY,
 } from "../constants/placementTiers.js";
-import { tenantPath, toTenantAppPath } from "../constants/tenant.js";
+import { GENERAL_BASE, isGeneralAppPath, toTenantAppPath } from "../constants/tenant.js";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   COLLEGE_ID_RVITM,
   collegeIdFromUser,
@@ -28,6 +29,7 @@ import {
 } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import BrandLogo from "./BrandLogo.jsx";
+import PaywallModal from "./PaywallPanel.jsx";
 
 import AboutTab from "./CompanyTabs/AboutTab";
 import GeneralTab from "./CompanyTabs/GeneralTab";
@@ -303,6 +305,7 @@ function CompanyDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { appPath, isGeneral } = useTenantShell();
   const { user, isAdmin } = useAuth();
   const collegeId = collegeIdFromUser(user);
   const isRvitmViewer = collegeId === COLLEGE_ID_RVITM;
@@ -321,6 +324,7 @@ function CompanyDetails() {
   const [activeTab, setActiveTab] = useState("about");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [paywallMeta, setPaywallMeta] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
   const [placementYear, setPlacementYear] = useState(DEFAULT_PLACEMENT_DETAIL_YEAR);
@@ -413,8 +417,9 @@ function CompanyDetails() {
       setPlacementYearLoading(false);
       setLoading(true);
       setLoadError(null);
+      setPaywallMeta(null);
       setCompany(null);
-    } else {
+    } else if (!isGeneral) {
       yearForRequest = preferredYear ?? placementYearRef.current;
       const yearChanged =
         Number(yearForRequest) !== Number(placementYearRef.current);
@@ -426,21 +431,29 @@ function CompanyDetails() {
       }
       setPlacementYearLoading(true);
       setLoadError(null);
+    } else {
+      yearForRequest = placementYearRef.current;
+      setLoadError(null);
     }
 
     const fetchGen = ++companyDetailFetchGenRef.current;
 
     companyAPI
-      .getCompany(id, {
-        year: yearForRequest,
-        ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
-        ...(placementCompanyVisitIdForApi
-          ? { placementCompanyVisitId: placementCompanyVisitIdForApi }
-          : {}),
-        ...(placementClusterForApi
-          ? { placementCluster: placementClusterForApi }
-          : {}),
-      })
+      .getCompany(
+        id,
+        isGeneral
+          ? { scope: "platform" }
+          : {
+              year: yearForRequest,
+              ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
+              ...(placementCompanyVisitIdForApi
+                ? { placementCompanyVisitId: placementCompanyVisitIdForApi }
+                : {}),
+              ...(placementClusterForApi
+                ? { placementCluster: placementClusterForApi }
+                : {}),
+            }
+      )
       .then((res) => {
         if (fetchGen !== companyDetailFetchGenRef.current) return;
         setCompany(res.data);
@@ -452,6 +465,12 @@ function CompanyDetails() {
         console.error("❌ Error fetching company details:", err);
         if (err?.response?.status === 403) {
           setLoadError("restricted");
+          return;
+        }
+        if (err?.response?.status === 402) {
+          setLoadError("paywall");
+          setCompany(err.response.data?.company || { _id: id, name: "This company" });
+          setPaywallMeta(err.response.data || {});
           return;
         }
         const isOffline =
@@ -473,6 +492,7 @@ function CompanyDetails() {
     location.pathname,
     location.search,
     location.state?.defaultPlacementYear,
+    isGeneral,
     placementContextForApi,
     placementCompanyVisitIdForApi,
     placementClusterForApi,
@@ -535,8 +555,8 @@ function CompanyDetails() {
     if (!isCsClusterForInterview) return;
     if (openTabFromNav !== "aiinterview") return;
     setActiveTab("aiinterview");
-    navigate(tenantPath(`/companies/${id}`), { replace: true, state: {} });
-  }, [company, id, openTabFromNav, navigate, isCsClusterForInterview]);
+    navigate(appPath(`/companies/${id}`), { replace: true, state: {} });
+  }, [company, id, openTabFromNav, navigate, isCsClusterForInterview, appPath]);
 
   useEffect(() => {
     const COMPANY_TAB_STEP_TO_TAB = {
@@ -627,6 +647,19 @@ function CompanyDetails() {
     rvitmPlacementGotInTotal(company) === 0;
 
   useEffect(() => {
+    if (!isGeneral) return;
+    if (
+      activeTab === "general" ||
+      activeTab === "stats" ||
+      activeTab === "recruitment" ||
+      activeTab === "offcampus" ||
+      activeTab === "aiinterview"
+    ) {
+      setActiveTab("about");
+    }
+  }, [isGeneral, activeTab]);
+
+  useEffect(() => {
     if (
       hideRvitmEmptySelectionTabs &&
       (activeTab === "stats" || activeTab === "recruitment")
@@ -648,16 +681,21 @@ function CompanyDetails() {
     if (user?.betaAccess === false) return;
     setIsRefreshing(true);
     companyAPI
-      .refreshCompany(id, {
-        year: placementYear,
-        ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
-        ...(placementCompanyVisitIdForApi
-          ? { placementCompanyVisitId: placementCompanyVisitIdForApi }
-          : {}),
-        ...(placementClusterForApi
-          ? { placementCluster: placementClusterForApi }
-          : {}),
-      })
+      .refreshCompany(
+        id,
+        isGeneral
+          ? { scope: "platform" }
+          : {
+              year: placementYear,
+              ...(placementContextForApi ? { placementContext: placementContextForApi } : {}),
+              ...(placementCompanyVisitIdForApi
+                ? { placementCompanyVisitId: placementCompanyVisitIdForApi }
+                : {}),
+              ...(placementClusterForApi
+                ? { placementCluster: placementClusterForApi }
+                : {}),
+            }
+      )
       .then((res) => setCompany(res.data))
       .catch((err) => console.error("❌ Error refreshing company:", err))
       .finally(() => setIsRefreshing(false));
@@ -717,6 +755,25 @@ function CompanyDetails() {
         >
           Go back
         </button>
+      </div>
+    );
+  }
+
+  if (loadError === "paywall") {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center text-center min-h-screen bg-theme-app">
+        <PaywallModal
+          open
+          onClose={() => navigate(-1)}
+          title={`Unlock ${paywallMeta?.company?.name || company?.name || "this company"}`}
+          message={
+            paywallMeta?.error ||
+            "This company card is premium. The first company in each category stays free to open. Unlock this category or all company cards to view full details."
+          }
+          pricingPath={appPath("/pricing")}
+          feature="company_detail"
+          categoryId={paywallMeta?.categoryId || paywallMeta?.company?.category}
+        />
       </div>
     );
   }
@@ -793,10 +850,11 @@ function CompanyDetails() {
     !company.placementYearsAvailable.includes(placementYear);
 
   const hideTierContextVisitDetails =
-    hideDreamTierVisitDetails ||
+    !isGeneral &&
+    (hideDreamTierVisitDetails ||
     hideSummerInternshipVisitDetails ||
     hideInternshipOnlyVisitDetails ||
-    hideClusterVisitDetailsForYear;
+    hideClusterVisitDetailsForYear);
 
   const dreamTierVisitPresentForYear = (y) => {
     const m = company.placementDreamTierVisitByYear;
@@ -832,7 +890,18 @@ function CompanyDetails() {
     );
   };
 
-  const companyNavTabs = [
+  const companyNavTabs = isGeneral
+    ? [
+        { id: "about", label: "About" },
+        { id: "oa", label: "OA Questions" },
+        { id: "coding", label: "Coding" },
+        { id: "interview", label: "Interview Experience" },
+        ...(hasInternshipExperience
+          ? [{ id: "internship", label: "Internship Experience" }]
+          : []),
+        { id: "mustdo", label: "Must Do Topics" },
+      ]
+    : [
     { id: "about", label: "About" },
     { id: "general", label: "Roles & Info" },
     ...(!hideRvitmEmptySelectionTabs
@@ -850,7 +919,7 @@ function CompanyDetails() {
     { id: "mustdo", label: "Must Do Topics" },
   ];
   const optionalCompanyNavTabs = [];
-  if (hasInterviewQuestions) {
+  if (!isGeneral && hasInterviewQuestions) {
     optionalCompanyNavTabs.push({
       id: "offcampus",
       label: "Off-Campus Questions",
@@ -879,9 +948,21 @@ function CompanyDetails() {
         (storedReturnPath.startsWith(PATH_COMPANY_STATS) ||
           storedReturnPath.startsWith(PATH_COMPANY_CATEGORY) ||
           storedReturnPath.startsWith("/companystats") ||
-          storedReturnPath.startsWith("/category"))
+          storedReturnPath.startsWith("/category") ||
+          storedReturnPath.startsWith(`${GENERAL_BASE}/companystats`) ||
+          storedReturnPath.startsWith(`${GENERAL_BASE}/category`))
       ) {
-        navigate(toTenantAppPath(storedReturnPath), { replace: true });
+        const returnPathname = storedReturnPath.split("?")[0];
+        navigate(
+          isGeneralAppPath(returnPathname)
+            ? storedReturnPath
+            : toTenantAppPath(storedReturnPath),
+          { replace: true }
+        );
+        return;
+      }
+      if (isGeneral) {
+        navigate(appPath("/companystats"), { replace: true });
         return;
       }
       const storedTier = getSessionValue("companystats_placement_tier");
@@ -972,7 +1053,7 @@ function CompanyDetails() {
 
     const pCluster = readPlacementClusterFromLocation(location);
     if (pCluster) params.set("placementCluster", pCluster);
-    navigate(tenantPath(`/companies/${id}?${params.toString()}`), {
+    navigate(appPath(`/companies/${id}?${params.toString()}`), {
       replace: true,
       state: location.state ?? {},
     });
@@ -1017,8 +1098,8 @@ function CompanyDetails() {
               </p>
             </div>
             <div
-              className="h-11 w-[4.75rem] sm:h-12 sm:w-20 shrink-0 rounded-lg border border-theme bg-white/95 p-1.5 sm:p-2 shadow-sm"
-              title="RV College of Engineering"
+              className="h-11 w-[4.75rem] sm:h-12 sm:w-24 shrink-0 rounded-lg border border-theme bg-theme-card p-1.5 sm:p-2 shadow-sm"
+              title={isGeneral ? "Last Minute Placement Prep" : "RV College of Engineering"}
             >
               <BrandLogo />
             </div>
@@ -1042,12 +1123,14 @@ function CompanyDetails() {
                 {company.name}
               </h1>
               <p className="mt-2 sm:mt-3 text-lg sm:text-xl md:text-2xl text-theme-secondary font-medium break-words">
-                {resolveCompanyHeadlineSubtitle(
-                  company,
-                  readPlacementListContext(location, id)
-                ) || "Placement Drive"}
+                {isGeneral
+                  ? company.business_model || "Company prep"
+                  : resolveCompanyHeadlineSubtitle(
+                      company,
+                      readPlacementListContext(location, id)
+                    ) || "Placement Drive"}
               </p>
-              {user && !isAdmin && (
+              {user && !isAdmin && !isGeneral && (
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <button
                     type="button"
@@ -1113,7 +1196,7 @@ function CompanyDetails() {
             data-tour="company-details-tabs"
           >
             {allCompanyNavTabs.map(({ id, label }) => {
-              const isYearTab = YEAR_TABS.includes(id);
+              const isYearTab = !isGeneral && YEAR_TABS.includes(id);
               const isOpen = openDropdownTab === id;
               const isActive = activeTab === id;
 
@@ -1216,7 +1299,7 @@ function CompanyDetails() {
         </div>
         )}
         <div ref={tabContentRef} className="company-tab-content">
-          {placementYearLoading && YEAR_TABS.includes(activeTab) ? (
+          {placementYearLoading && !isGeneral && YEAR_TABS.includes(activeTab) ? (
             <div
               className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6"
               aria-busy="true"
@@ -1286,8 +1369,9 @@ function CompanyDetails() {
             ) : (
               <OATab
                 company={company}
-                isAdmin={canEditSharedCompanyContent}
+                isAdmin={!isGeneral && canEditSharedCompanyContent}
                 onCompanyUpdate={handleRefresh}
+                isGeneral={isGeneral}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
@@ -1302,8 +1386,9 @@ function CompanyDetails() {
             ) : (
               <InterviewTab
                 company={company}
-                isAdmin={canEditSharedCompanyContent}
+                isAdmin={!isGeneral && canEditSharedCompanyContent}
                 onCompanyUpdate={handleRefresh}
+                isGeneral={isGeneral}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
@@ -1317,6 +1402,7 @@ function CompanyDetails() {
             ) : (
               <InternshipTab
                 company={company}
+                isGeneral={isGeneral}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
@@ -1335,7 +1421,8 @@ function CompanyDetails() {
           {activeTab === "mustdo" && (
             <MustDoTab
               company={company}
-              isAdmin={isAdmin}
+              isAdmin={!isGeneral && isAdmin}
+              isGeneral={isGeneral}
               onCompanyUpdate={handleRefresh}
               placementYear={placementYear}
               placementListContext={placementContextForApi}

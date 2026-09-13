@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
+import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import { FaEdit, FaExternalLinkAlt, FaTrash } from "react-icons/fa";
 import BrandLogo from "../BrandLogo.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
@@ -85,6 +86,7 @@ function MustDoTab({
   placementCompanyVisitId,
   placementCluster,
   isAdmin = false,
+  isGeneral = false,
   onCompanyUpdate,
 }) {
   const [showModal, setShowModal] = useState(false);
@@ -113,9 +115,12 @@ function MustDoTab({
           companyId: company._id,
           type: "mustDoTopics",
           content: topic,
-          placementYear,
-          ...(placementListContext ? { placementListContext } : {}),
-          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
+          ...submissionTargetFields({
+            isGeneral,
+            placementYear,
+            placementListContext,
+            placementCompanyVisitId,
+          }),
         }),
       });
 

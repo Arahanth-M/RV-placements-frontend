@@ -3,10 +3,9 @@ import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { tenantPath, toPostLoginAppPath, GENERAL_BASE } from "../constants/tenant.js";
 import { canAccessRvceTenant } from "../utils/collegeScope.js";
+import { LOGIN_INTENT_CAMPUS, LOGIN_INTENT_SPC } from "../utils/loginIntent.js";
 
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
-const LOGIN_INTENT_KEY = "loginIntent";
-const LOGIN_INTENT_SPC = "spc";
 
 const GoogleIcon = () => (
   <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
@@ -44,7 +43,9 @@ const Login = () => {
       }
     }
 
-    login(isAdminRoute, { intent: spc ? LOGIN_INTENT_SPC : null });
+    login(isAdminRoute, {
+      intent: spc ? LOGIN_INTENT_SPC : isAdminRoute ? null : LOGIN_INTENT_CAMPUS,
+    });
   };
 
   useEffect(() => {
@@ -67,10 +68,10 @@ const Login = () => {
     <div className="min-h-[100dvh] flex flex-col items-center px-4 pt-8 pb-10 sm:px-6 sm:pt-10 lg:px-8 bg-theme-app text-theme-primary">
       <div className="max-w-md w-full -translate-y-4 sm:-translate-y-6 space-y-6 bg-theme-card/95 border border-theme p-8 rounded-3xl shadow-2xl shadow-slate-950/20 backdrop-blur-md h-fit">
         <div>
-          <h2 className="mt-2 text-center text-3xl font-extrabold text-theme-primary">Please sign in to access this content</h2>
+          <h2 className="mt-2 text-center text-3xl font-extrabold text-theme-primary">Please log in to access this content</h2>
           <p className="mt-3 text-center text-sm text-theme-secondary">
             Use your <strong className="text-theme-accent">@rvce.edu.in</strong> email to access the RVCE dashboard.
-            Other students can sign in from the home page to use the general platform.
+            Other students can log in from the home page to use the general platform.
           </p>
         </div>
 
@@ -95,7 +96,7 @@ const Login = () => {
             className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-theme-accent hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
           >
             <GoogleIcon />
-            Sign in with Google
+            Login with Google
           </button>
           {!isAdminRoute && (
             <button
@@ -104,7 +105,7 @@ const Login = () => {
               className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-theme text-sm font-medium rounded-xl text-theme-primary bg-theme-hero hover:bg-theme-card focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
             >
               <GoogleIcon />
-              Sign in as SPC
+              Login as SPC
             </button>
           )}
         </div>

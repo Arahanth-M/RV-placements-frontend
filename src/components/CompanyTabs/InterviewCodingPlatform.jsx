@@ -277,7 +277,8 @@ function InterviewCodingRulesModal({
               <p>
                 <span className="icp-rules-footnote-label">C++: </span>
                 the harness serializes your return value to JSON and compares to expected output the
-                same way; prefer exact structural match.
+                same way; prefer exact structural match. Do not define <code>int main()</code> — the
+                grader already provides it.
               </p>
               <p>
                 <span className="icp-rules-footnote-label">Java: </span>
@@ -338,6 +339,23 @@ function InterviewCodingTestPanel({
   }, [execution]);
 
   const visiblePassed = visibleResults.filter((r) => r.passed).length;
+  const globalError =
+    execution && typeof execution.error === "string" ? execution.error.trim() : "";
+  const status = execution ? String(execution.status || "") : "";
+  const compileOrGlobalFailure =
+    Boolean(execution) &&
+    !loading &&
+    (Boolean(globalError) ||
+      status === "EXECUTION_COMPILATION_ERROR" ||
+      status === "EXECUTION_ERROR" ||
+      status === "EXECUTION_TIMEOUT");
+  const hintList = Array.isArray(hints?.hints) ? hints.hints.filter(Boolean) : [];
+  const visibleHintList = hintList.filter((hint) => {
+    if (!globalError) return true;
+    if (hint === globalError) return false;
+    if (hint === `Compilation failed: ${globalError}`) return false;
+    return true;
+  });
 
   return (
     <div className={`icp-test-panel${collapsed ? " collapsed" : ""}`}>
@@ -373,6 +391,20 @@ function InterviewCodingTestPanel({
             </p>
           ) : null}
 
+          {compileOrGlobalFailure && globalError ? (
+            <div className="icp-test-error" role="alert">
+              {globalError}
+            </div>
+          ) : null}
+
+          {!loading && visibleHintList.length > 0 ? (
+            <ul className="icp-test-hints">
+              {visibleHintList.map((hint, idx) => (
+                <li key={`icp-hint-${idx}`}>{hint}</li>
+              ))}
+            </ul>
+          ) : null}
+
           <div className="icp-test-list">
             {Array.isArray(visibleTestCases) && visibleTestCases.length > 0 ? (
               visibleTestCases.map((testcase, idx) => {
@@ -387,14 +419,16 @@ function InterviewCodingTestPanel({
                     <div className="icp-test-row-main">
                       <p className="icp-test-row-label">Case {idx + 1}</p>
                       <p className="icp-test-row-input">{formatTestValue(testcase?.input)}</p>
-                      {ran && !passed ? (
+                      {ran && !passed && runRow?.actualOutput != null ? (
                         <p className="icp-test-row-input mt-1">
                           Expected: {formatTestValue(runRow?.expectedOutput ?? testcase?.expectedOutput)}
                         </p>
                       ) : null}
                       {ran && runRow?.error ? (
                         <p className="icp-test-row-input mt-1 text-[#f87171]">
-                          {runRow.error}
+                          {globalError && String(runRow.error).trim() === globalError
+                            ? "Did not run — fix the compilation error above."
+                            : runRow.error}
                         </p>
                       ) : null}
                     </div>
@@ -418,6 +452,10 @@ function InterviewCodingTestPanel({
                 {visiblePassed}/{visibleResults.length} passed
               </strong>
               {hints?.summary ? ` · ${hints.summary}` : null}
+            </p>
+          ) : execution && !loading && compileOrGlobalFailure ? (
+            <p className="icp-test-run-summary">
+              {hints?.summary || "Tests did not run because of a compilation or grader-contract error."}
             </p>
           ) : null}
         </>

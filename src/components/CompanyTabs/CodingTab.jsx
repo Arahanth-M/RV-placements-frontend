@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { FaCopy, FaCheck } from "react-icons/fa";
 import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import { formatSolutionCode } from "../../utils/formatSolutionCode";
 
 /**
  * Human-readable label for a key (e.g. "solution_code" -> "Solution Code").
@@ -92,8 +94,7 @@ function FieldBox({ label, value, isCode, displayValue, isLink, codeToolbar }) {
   const content = displayValue !== undefined ? displayValue : value;
 
   if (isCode) {
-    const text =
-      typeof content === "string" ? content : JSON.stringify(content, null, 2);
+    const text = formatSolutionCode(content);
     return (
       <div className="rounded-xl border border-theme bg-theme-card overflow-hidden shadow-sm">
         <div className="px-3 py-2 sm:px-4 sm:py-2.5 border-b border-theme bg-theme-input">
@@ -139,7 +140,32 @@ function FieldBox({ label, value, isCode, displayValue, isLink, codeToolbar }) {
   );
 }
 
-const CODE_KEYS = new Set(["solution", "code", "answer", "explanation", "solution_code"]);
+const CODE_KEYS = new Set([
+  "solution",
+  "code",
+  "answer",
+  "explanation",
+  "solution_code",
+]);
+
+const LANG_SOLUTION_KEYS = new Set([
+  "solution_cpp",
+  "solution_java",
+  "solution_python",
+]);
+
+function langSolutionsFromItem(item) {
+  return {
+    cpp: String(item?.solution_cpp || "").trim(),
+    java: String(item?.solution_java || "").trim(),
+    python: String(item?.solution_python || "").trim(),
+  };
+}
+
+function itemHasLangSolutions(item) {
+  const sols = langSolutionsFromItem(item);
+  return Boolean(sols.cpp || sols.java || sols.python);
+}
 /** Fields that span full width (displayed last, col-span-2). */
 const FULL_WIDTH_KEYS = new Set(["intuition"]);
 const LINK_KEYS = new Set(["link", "source", "url"]);
@@ -249,6 +275,14 @@ function CodingTab({ company }) {
                   <div className="px-3 pb-4 sm:px-4 sm:pb-5 pt-1 min-w-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {keys.map((key) => {
+                        if (LANG_SOLUTION_KEYS.has(key)) return null;
+                        const hasLangPanel = itemHasLangSolutions(item);
+                        if (
+                          hasLangPanel &&
+                          (key === "solution" || key.toLowerCase() === "intuition")
+                        ) {
+                          return null;
+                        }
                         const value = item[key];
                         const isEmpty =
                           value == null ||
@@ -308,6 +342,18 @@ function CodingTab({ company }) {
                         );
                       })}
                     </div>
+                    {itemHasLangSolutions(item) && (
+                      <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60">
+                        <LanguageSolutionPanel
+                          solutions={langSolutionsFromItem(item)}
+                          intuition={item.intuition}
+                          fallbackCode={item.solution || item.code || ""}
+                          copied={copiedKey === `${index}-lang`}
+                          onCopy={(code) => handleCopy(code, `${index}-lang`)}
+                          embedded
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

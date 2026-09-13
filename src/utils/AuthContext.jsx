@@ -3,6 +3,7 @@ import { clearAllResumeDraftCaches } from './resumeDraftCache.js';
 import { authAPI } from './api';
 import { BASE_URL } from './constants';
 import { flushDauPresence } from './dauPresenceFlush';
+import { persistLoginIntent } from './loginIntent.js';
 
 // Use a symbol to check if we're inside a provider
 const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
@@ -45,7 +46,6 @@ export const AuthProvider = ({ children }) => {
   const LOGIN_TIMESTAMP_KEY = 'loginTimestamp';
   const LAST_USER_KEY = 'lastUser';
   const LAST_USER_IS_ADMIN_KEY = 'lastUserIsAdmin';
-  const LOGIN_INTENT_KEY = 'loginIntent';
 
   // Check if session has expired
   const isSessionExpired = () => {
@@ -174,17 +174,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = (isAdmin = false, options = {}) => {
-    // ✅ Use consistent BASE_URL for all API calls
-    const authUrl = isAdmin 
-      ? `${BASE_URL}/api/auth/google/admin`
-      : `${BASE_URL}/api/auth/google`;
-
-    if (options?.intent === 'spc') {
-      sessionStorage.setItem(LOGIN_INTENT_KEY, 'spc');
-    } else {
-      sessionStorage.removeItem(LOGIN_INTENT_KEY);
+    persistLoginIntent(options?.intent);
+    const intent = String(options?.intent || "").trim();
+    const params = new URLSearchParams();
+    if (intent === "campus" || intent === "spc") {
+      params.set("intent", intent);
     }
-    
+    const qs = params.toString();
+    const authUrl = isAdmin
+      ? `${BASE_URL}/api/auth/google/admin`
+      : `${BASE_URL}/api/auth/google${qs ? `?${qs}` : ""}`;
+
     console.log('🚀 Redirecting to login:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);
     // Replace the current entry so browser back returns to the last app page,

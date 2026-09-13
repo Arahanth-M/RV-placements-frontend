@@ -8,7 +8,7 @@ import {
   CompanyInterviewReadinessCard,
 } from "./InterviewHistoryAnswer";
 import { useNavigate } from "react-router-dom";
-import { TENANT_BASE } from "../constants/tenant.js";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -133,6 +133,7 @@ function InterviewSessionsPagination({
 
 function AIInterviews() {
   const { user } = useAuth();
+  const { base, isGeneral } = useTenantShell();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(false);
@@ -225,7 +226,7 @@ function AIInterviews() {
   const navigate = useNavigate();
   
   const handleBack = () => {
-    navigate(TENANT_BASE);
+    navigate(base);
   };
 
   return (
@@ -279,7 +280,9 @@ function AIInterviews() {
         data-tour="ai-interviews-start"
       >
         <span className="font-semibold text-theme-primary">Start a mock interview: </span>
-        Company Stats → open a company → click on "Explore AI interview" button which is located at bottom right → Customize your interview → Start Interview.
+        {isGeneral
+          ? "Student Corner → AI mock interviews → pick a company → customize your interview → Start Interview."
+          : 'Company Stats → open a company → click on "Explore AI interview" button which is located at bottom right → Customize your interview → Start Interview.'}
       </div>
 
       {/* Error/Loading Content */}

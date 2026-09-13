@@ -37,6 +37,7 @@ function InterviewSlotBookModal({
   onBooked,
   /** Optional prefetched availability slots from the parent page — avoids a loading flash. */
   initialSlots = null,
+  hourFull = false,
 }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -124,8 +125,9 @@ function InterviewSlotBookModal({
             {rescheduleBookingId ? "Reschedule interview slot" : "Book interview slot"}
           </h2>
           <p className="mt-1 text-sm text-theme-secondary">
-            DSA mock interviews need a 1-hour IST slot (max 5 students per hour). You can start
-            anytime during your booked hour.
+            {hourFull
+              ? "This IST hour is full (5/5). Pick another 1-hour slot — you can start anytime during that booked hour."
+              : "DSA mock interviews need a 1-hour IST slot (max 5 students per hour). You can start anytime during your booked hour."}
           </p>
         </div>
 

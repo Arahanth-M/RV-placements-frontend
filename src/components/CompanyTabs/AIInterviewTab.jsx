@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
+import { useTenantShell } from "../../context/TenantShellContext.jsx";
 import { MESSAGES } from "../../utils/constants";
 import { FaChevronDown, FaMoon, FaSpinner, FaSun } from "react-icons/fa";
 import BrandLogo from "../BrandLogo.jsx";
@@ -22,10 +23,7 @@ import {
 } from "../../constants/interviewRoundFocus";
 import { clampInterviewQuestionCountForRound } from "../../utils/interviewRoundLimits";
 import InterviewSlotBookModal from "../InterviewSlotBookModal";
-import {
-  findActiveBookingClient,
-  msUntilNextSlotBoundary,
-} from "../../utils/interviewSlotWindow.js";
+import { shouldShowDsaHourFullBanner } from "../../utils/interviewSlotWindow.js";
 
 /** Languages shown in the mock-interview coding picker (backend may still support more). */
 const INTERVIEW_UI_CODING_LANGUAGES = ["python", "cpp", "java"];
@@ -59,10 +57,59 @@ const ROUND_DIFFICULTY_OPTIONS = ["easy", "medium", "hard"];
 const PLAN_ROUND_ROW_CLASS =
   "grid grid-cols-1 min-w-0 gap-3 items-center rounded-lg border-2 border-theme p-3 bg-theme-input";
 
+function CompanyRequiredPrompt({ open, onClose }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-black/55 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="company-required-title"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border border-theme bg-theme-card shadow-2xl p-6 sm:p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p
+          id="company-required-title"
+          className="text-xs font-semibold uppercase tracking-[0.2em] text-theme-accent mb-2"
+        >
+          Company required
+        </p>
+        <h3 className="text-xl font-bold text-theme-primary leading-tight">Select a company first</h3>
+        <p className="mt-2 text-sm text-theme-secondary leading-relaxed">
+          Choose a company above before starting this mock interview to get a customized interview
+          niche to that company
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-6 w-full sm:w-auto rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md transition-colors hover:bg-indigo-700"
+        >
+          Got it
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+const EMPTY_CUSTOM_ROUND = { type: "", difficulty: "" };
+
 const buildDefaultCustomRounds = (count = 2) =>
   Array.from({ length: Math.min(MAX_CUSTOM_ROUNDS, Math.max(1, Number(count) || 1)) }, () => ({
-    type: "DSA",
-    difficulty: "medium",
+    ...EMPTY_CUSTOM_ROUND,
   }));
 
 const isIgnorableDiscardError = (err) => {
@@ -849,11 +896,13 @@ function InterviewQuestionMetaRow({
 
 function AIInterviewTab({
   company,
+  setupLocked = false,
   onInterviewLockChange,
   onForceExitToGeneral,
   registerInterviewExitHandler,
 }) {
   const { user } = useAuth();
+  const { isGeneral, appPath } = useTenantShell();
   const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState("");
   const [question, setQuestion] = useState("");
@@ -883,6 +932,7 @@ function AIInterviewTab({
   const [interviewLimitMessage, setInterviewLimitMessage] = useState("");
   const [interviewLimitRequestStatus, setInterviewLimitRequestStatus] = useState("none");
   const [interviewLimitRequesting, setInterviewLimitRequesting] = useState(false);
+  const [companyRequiredPromptOpen, setCompanyRequiredPromptOpen] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -955,19 +1005,22 @@ function AIInterviewTab({
       (Array.isArray(customRounds) ? customRounds : [])
         .slice(0, MAX_CUSTOM_ROUNDS)
         .map((round) => {
-          const type = ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "DSA";
+          const type = ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "";
           const difficulty = ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
             ? round.difficulty
-            : "medium";
+            : "";
+          if (!type) {
+            return { type: "", difficulty: "" };
+          }
           if (!roundTypeHasFocusPicker(type)) {
-            return { type, difficulty };
+            return { type, difficulty: difficulty || "medium" };
           }
           const focusOptions = getFocusOptionsForRoundType(type);
           const validFocusIds = new Set(focusOptions.map((opt) => opt.id));
           const focus = validFocusIds.has(round?.focus)
             ? round.focus
             : getDefaultFocusForRoundType(type);
-          return { type, difficulty, focus };
+          return { type, difficulty: difficulty || "medium", focus };
         }),
     [customRounds]
   );
@@ -975,6 +1028,9 @@ function AIInterviewTab({
   const customPlanValidationError = useMemo(() => {
     if (normalizedCustomRounds.length < 1 || normalizedCustomRounds.length > MAX_CUSTOM_ROUNDS) {
       return `Select between 1 and ${MAX_CUSTOM_ROUNDS} rounds.`;
+    }
+    if (normalizedCustomRounds.some((round) => !round.type)) {
+      return "Select a round type for each round.";
     }
     const hrCount = normalizedCustomRounds.filter((round) => round.type === "HR").length;
     if (hrCount < 1) {
@@ -989,17 +1045,27 @@ function AIInterviewTab({
     return "";
   }, [normalizedCustomRounds]);
 
+  const showPlanValidationMessage =
+    Boolean(customPlanValidationError) &&
+    customPlanValidationError !== "Select a round type for each round.";
+
   const [slotBookModalOpen, setSlotBookModalOpen] = useState(false);
   const [slotBookingStatus, setSlotBookingStatus] = useState(null);
-  const [slotStatusLoading, setSlotStatusLoading] = useState(false);
-  /** Bumps on a schedule so we re-evaluate the booked hour without polling. */
-  const [slotClockMs, setSlotClockMs] = useState(() => Date.now());
-  const prevClientSlotActiveRef = useRef(false);
+  const [dsaHourFullFromStart, setDsaHourFullFromStart] = useState(false);
 
   const planRequiresDsaSlot = useMemo(
     () => normalizedCustomRounds.some((round) => round.type === "DSA"),
     [normalizedCustomRounds]
   );
+
+  useEffect(() => {
+    setInterviewLimitReached(false);
+    setInterviewLimitOpen(false);
+  }, [company?._id]);
+
+  useEffect(() => {
+    if (!planRequiresDsaSlot) setDsaHourFullFromStart(false);
+  }, [planRequiresDsaSlot]);
 
   const refreshSlotBookingStatus = useCallback(async () => {
     const authUserId = user?.userId || user?._id;
@@ -1007,9 +1073,11 @@ function AIInterviewTab({
       setSlotBookingStatus(null);
       return;
     }
-    setSlotStatusLoading(true);
+    if (normalizedCustomRounds.some((round) => !ROUND_TYPE_OPTIONS.includes(round.type))) {
+      setSlotBookingStatus(null);
+      return;
+    }
     try {
-      // Status schema only needs type/difficulty; strip focus etc. to avoid validation 400s.
       const roundsForStatus = normalizedCustomRounds.map((r) => ({
         type: r.type,
         difficulty: r.difficulty,
@@ -1018,54 +1086,59 @@ function AIInterviewTab({
       setSlotBookingStatus(data || null);
     } catch (err) {
       console.warn("[AIInterviewTab] slot booking status failed", err?.message || err);
-      // Fallback: still unlock Start from /mine bookings if status endpoint fails.
       try {
         const mineRes = await interviewAPI.getMySlotBookings();
         const bookings = Array.isArray(mineRes?.data?.bookings) ? mineRes.data.bookings : [];
+        const hasActiveNow = bookings.some((b) => b?.isActiveNow);
         setSlotBookingStatus({
           requiresSlot: true,
-          hasActiveBookingNow: bookings.some((b) => b?.isActiveNow),
+          hasActiveBookingNow: hasActiveNow,
           activeBooking: bookings.find((b) => b?.isActiveNow) || null,
           upcomingBookings: bookings,
-          canStartDsaInterview: bookings.some((b) => b?.isActiveNow),
+          currentHour: null,
+          canStartDsaInterview: hasActiveNow,
         });
       } catch {
         setSlotBookingStatus(null);
       }
-    } finally {
-      setSlotStatusLoading(false);
     }
   }, [user?.userId, user?._id, normalizedCustomRounds]);
 
-  const clientActiveBooking = useMemo(
-    () => findActiveBookingClient(slotBookingStatus, slotClockMs),
-    [slotBookingStatus, slotClockMs]
+  const hasActiveDsaSlotNow = Boolean(slotBookingStatus?.hasActiveBookingNow);
+  const activeDsaSlotLabel = slotBookingStatus?.activeBooking?.label || null;
+  const currentHourIsFull = Boolean(
+    dsaHourFullFromStart || slotBookingStatus?.currentHour?.isFull
   );
-
-  const hasActiveDsaSlotNow = Boolean(
-    slotBookingStatus?.hasActiveBookingNow || clientActiveBooking
-  );
-  const activeDsaSlotLabel =
-    slotBookingStatus?.activeBooking?.label ||
-    clientActiveBooking?.label ||
-    null;
-  // Do not tie this to slotStatusLoading — a refresh must not disable Start mid-window.
-  const dsaSlotBlocked = planRequiresDsaSlot && !hasActiveDsaSlotNow;
+  const showDsaHourFullBanner = shouldShowDsaHourFullBanner({
+    requiresSlot: planRequiresDsaSlot,
+    hasActiveBookingNow: hasActiveDsaSlotNow,
+    currentHourIsFull,
+  });
 
   const canStart = useMemo(() => {
     return (
       Boolean(user?.userId && company?._id) &&
       !loading &&
-      !customPlanValidationError &&
-      !dsaSlotBlocked
+      !customPlanValidationError
     );
   }, [
     user?.userId,
     company?._id,
     loading,
     customPlanValidationError,
-    dsaSlotBlocked,
   ]);
+
+  const openCompanyRequiredPrompt = useCallback(() => {
+    setCompanyRequiredPromptOpen(true);
+  }, []);
+
+  const closeCompanyRequiredPrompt = useCallback(() => {
+    setCompanyRequiredPromptOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!setupLocked) setCompanyRequiredPromptOpen(false);
+  }, [setupLocked]);
 
   const isMcqQuestionUI = useMemo(() => {
     if (String(expectedAnswerMode || "").toLowerCase() === "mcq") return true;
@@ -1240,9 +1313,18 @@ function AIInterviewTab({
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await interviewAPI.getInterviewEligibility();
+        const { data } = await interviewAPI.getInterviewEligibility(
+          isGeneral
+            ? {
+                contentScope: "platform",
+                ...(company?._id ? { companyId: company._id } : {}),
+              }
+            : {}
+        );
         if (cancelled) return;
-        const blocked = data?.canStart === false && data?.reason === "INTERVIEW_LIMIT_REACHED";
+        const blocked =
+          data?.canStart === false &&
+          (data?.reason === "INTERVIEW_LIMIT_REACHED" || data?.reason === "PAYWALL");
         setInterviewLimitReached(blocked);
         setInterviewLimitMessage(
           blocked ? data?.message || MESSAGES.INTERVIEW_LIMIT_REACHED : ""
@@ -1260,7 +1342,7 @@ function AIInterviewTab({
     return () => {
       cancelled = true;
     };
-  }, [user?.userId, user?.betaAccess, status]);
+  }, [user?.userId, user?.betaAccess, status, isGeneral, company?._id]);
 
   const handleCustomRoundCountChange = useCallback((nextCountRaw) => {
     const nextCount = Math.min(
@@ -1271,7 +1353,7 @@ function AIInterviewTab({
       const base = Array.isArray(prev) ? [...prev] : [];
       if (base.length > nextCount) return base.slice(0, nextCount);
       while (base.length < nextCount) {
-        base.push({ type: "DSA", difficulty: "medium" });
+        base.push({ ...EMPTY_CUSTOM_ROUND });
       }
       return base;
     });
@@ -1282,14 +1364,21 @@ function AIInterviewTab({
       (Array.isArray(prev) ? prev : []).map((round, roundIndex) => {
         if (roundIndex !== index) return round;
         if (field === "type") {
-          const nextType = ROUND_TYPE_OPTIONS.includes(value) ? value : "DSA";
+          const nextType = ROUND_TYPE_OPTIONS.includes(value) ? value : "";
+          if (!nextType) {
+            return { ...EMPTY_CUSTOM_ROUND };
+          }
+          const nextDifficulty = ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
+            ? round.difficulty
+            : "medium";
           if (!roundTypeHasFocusPicker(nextType)) {
             const { focus: _removed, ...withoutFocus } = round;
-            return { ...withoutFocus, type: nextType };
+            return { ...withoutFocus, type: nextType, difficulty: nextDifficulty };
           }
           return {
             ...round,
             type: nextType,
+            difficulty: nextDifficulty,
             focus: getDefaultFocusForRoundType(nextType),
           };
         }
@@ -1763,6 +1852,10 @@ function AIInterviewTab({
     }
 
     if (!canStart) {
+      if (setupLocked || !company?._id) {
+        openCompanyRequiredPrompt();
+        return;
+      }
       setError(
         customPlanValidationError
           ? customPlanValidationError
@@ -1794,6 +1887,7 @@ function AIInterviewTab({
         mergePlacementByType: true,
         interviewPlanMode: "custom",
         customRounds: normalizedCustomRounds,
+        ...(isGeneral ? { contentScope: "platform" } : {}),
       });
 
       setSessionId(data.sessionId || "");
@@ -1844,17 +1938,23 @@ function AIInterviewTab({
     } catch (err) {
       console.error("Failed to start AI interview:", err);
       const code = err?.response?.data?.code;
-      if (code === "INTERVIEW_LIMIT_REACHED") {
+      if (code === "INTERVIEW_LIMIT_REACHED" || code === "PAYWALL") {
         const msg = err?.response?.data?.error || MESSAGES.INTERVIEW_LIMIT_REACHED;
         setInterviewLimitReached(true);
         setInterviewLimitMessage(msg);
         openInterviewLimitModal(msg);
         return;
       }
-      if (code === "DSA_SLOT_REQUIRED" || err?.response?.data?.requiresSlotBooking) {
+      if (
+        code === "DSA_SLOT_FULL" ||
+        code === "DSA_SLOT_REQUIRED" ||
+        code === "SLOT_FULL" ||
+        err?.response?.data?.requiresSlotBooking
+      ) {
+        setDsaHourFullFromStart(true);
         setError(
           err?.response?.data?.error ||
-            "Book a slot for your DSA interview hour (IST), then start during that window."
+            "This hour is full (5/5). Book a different IST slot, then start during that hour."
         );
         setSlotBookModalOpen(true);
         refreshSlotBookingStatus();
@@ -2660,58 +2760,6 @@ function AIInterviewTab({
   const showStartPrompt = !sessionId || status === "idle";
   const interviewCompleted = status === "completed";
 
-  useEffect(() => {
-    if (!showStartPrompt || !(user?.userId || user?._id)) return;
-    refreshSlotBookingStatus();
-  }, [showStartPrompt, user?.userId, user?._id, refreshSlotBookingStatus]);
-
-  // Wake at the next booking boundary so Start unlocks when the hour begins (no steady polling).
-  useEffect(() => {
-    if (!showStartPrompt || !(user?.userId || user?._id) || !planRequiresDsaSlot) return;
-    if (!slotBookingStatus) return;
-
-    const tick = () => setSlotClockMs(Date.now());
-
-    const schedule = () => {
-      if (typeof document !== "undefined" && document.hidden) return null;
-      const wait = msUntilNextSlotBoundary(slotBookingStatus, Date.now());
-      if (wait == null) return null;
-      // Small buffer so we cross the boundary after the server clock.
-      const delay = Math.max(250, Math.min(wait + 250, 60 * 60 * 1000));
-      return window.setTimeout(() => {
-        tick();
-      }, delay);
-    };
-
-    let timerId = schedule();
-
-    const onVisibility = () => {
-      if (document.hidden) {
-        if (timerId != null) window.clearTimeout(timerId);
-        timerId = null;
-        return;
-      }
-      tick();
-      if (timerId != null) window.clearTimeout(timerId);
-      timerId = schedule();
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      if (timerId != null) window.clearTimeout(timerId);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [showStartPrompt, user?.userId, user?._id, planRequiresDsaSlot, slotBookingStatus, slotClockMs]);
-
-  // When the client clock enters an active window, sync once with the server.
-  useEffect(() => {
-    const nowActive = Boolean(clientActiveBooking);
-    if (nowActive && !prevClientSlotActiveRef.current) {
-      refreshSlotBookingStatus();
-    }
-    prevClientSlotActiveRef.current = nowActive;
-  }, [clientActiveBooking, refreshSlotBookingStatus]);
-
   const showInterviewQuestionHero = useMemo(() => {
     return (
       isInterviewActive &&
@@ -2951,9 +2999,14 @@ function AIInterviewTab({
         open={interviewLimitOpen}
         onClose={() => setInterviewLimitOpen(false)}
         message={interviewLimitMessage}
-        limitRequestStatus={interviewLimitRequestStatus}
+        limitRequestStatus={isGeneral ? "none" : interviewLimitRequestStatus}
         onRequestAccess={handleInterviewLimitRequest}
         requesting={interviewLimitRequesting}
+        upgradePath={isGeneral ? `${appPath("/pricing")}?feature=mocks` : ""}
+      />
+      <CompanyRequiredPrompt
+        open={companyRequiredPromptOpen}
+        onClose={closeCompanyRequiredPrompt}
       />
 
       {quitConfirmOpen && (
@@ -3326,10 +3379,13 @@ function AIInterviewTab({
       )}
 
       {!isInterviewActive && (
+      <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h2 className="text-xl font-bold text-theme-primary">AI Mock Interview</h2>
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold text-theme-primary">Interview configuration</h2>
+        </div>
         <div data-tour="company-ai-interview-start" className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl p-1">
-          {showStartPrompt && planRequiresDsaSlot ? (
+          {showStartPrompt && showDsaHourFullBanner ? (
             <button
               type="button"
               onClick={() => setSlotBookModalOpen(true)}
@@ -3344,13 +3400,19 @@ function AIInterviewTab({
               loading ||
               (!showStartPrompt && status === "in_progress") ||
               interviewCompleted ||
-              (showStartPrompt && !canStart)
+              (showStartPrompt &&
+                !canStart &&
+                Boolean(company?._id) &&
+                !customPlanValidationError)
             }
             className={`flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-sm sm:text-base font-semibold min-w-[11rem] ${
               loading ||
               (!showStartPrompt && status === "in_progress") ||
               interviewCompleted ||
-              (showStartPrompt && !canStart)
+              (showStartPrompt &&
+                !canStart &&
+                Boolean(company?._id) &&
+                !customPlanValidationError)
                 ? "bg-slate-700 text-slate-400 cursor-not-allowed shadow-none"
                 : "bg-indigo-600 hover:bg-indigo-700 text-white ring-2 ring-indigo-400/40"
             }`}
@@ -3359,7 +3421,6 @@ function AIInterviewTab({
           </button>
         </div>
       </div>
-      )}
 
       {!user?.userId && (
         <p className="text-sm text-theme-accent mb-3">
@@ -3369,37 +3430,29 @@ function AIInterviewTab({
 
       {user?.userId && user?.betaAccess !== false && showStartPrompt && (
         <div data-tour="company-ai-interview-setup" className="space-y-4">
-        {planRequiresDsaSlot ? (
-          <div
-            className={`rounded-xl border px-4 py-3 text-sm ${
-              hasActiveDsaSlotNow
-                ? "border-emerald-500/40 bg-emerald-500/10 text-theme-secondary"
-                : "border-amber-500/40 bg-amber-500/10 text-theme-secondary"
-            }`}
-          >
-            {slotStatusLoading ? (
-              <span>Checking your interview slot…</span>
-            ) : hasActiveDsaSlotNow ? (
+        {hasActiveDsaSlotNow ? (
+          <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-theme-secondary">
+            <strong className="text-theme-primary">Slot active:</strong>{" "}
+            {activeDsaSlotLabel || "Your booked hour is now — you can start."}
+          </div>
+        ) : showDsaHourFullBanner ? (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-theme-secondary">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span>
-                <strong className="text-theme-primary">Slot active:</strong>{" "}
-                {activeDsaSlotLabel || "Your booked hour is now — you can start."}
+                This hour is full (<strong className="text-theme-primary">5/5</strong>). Book a
+                different 1-hour IST slot, then start anytime during that hour.
               </span>
-            ) : (
-              <span>
-                Your plan includes a <strong className="text-theme-primary">DSA</strong> round. Book a
-                1-hour IST slot (max 5 students/hour), then start anytime during that hour.{" "}
-                <button
-                  type="button"
-                  onClick={() => setSlotBookModalOpen(true)}
-                  className="font-semibold text-theme-accent underline underline-offset-2"
-                >
-                  Book slot
-                </button>
-              </span>
-            )}
+              <button
+                type="button"
+                onClick={() => setSlotBookModalOpen(true)}
+                className="inline-flex shrink-0 items-center justify-center rounded-lg border border-theme-accent/50 bg-theme-hero px-4 py-2 text-sm font-semibold text-theme-accent hover:bg-theme-nav"
+              >
+                Book slot
+              </button>
+            </div>
           </div>
         ) : null}
-        <div className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="plan-setup-panel mb-4 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm space-y-4 min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-theme-primary">Interview plan mode</p>
@@ -3452,9 +3505,11 @@ function AIInterviewTab({
                     onDragOver={(event) => handleRoundDragOver(event, idx)}
                     onDrop={() => handleRoundDrop(idx)}
                     className={`${PLAN_ROUND_ROW_CLASS} ${
-                      roundTypeHasFocusPicker(round.type)
+                      round.type && roundTypeHasFocusPicker(round.type)
                         ? "sm:grid-cols-2 lg:grid-cols-4"
-                        : "sm:grid-cols-3"
+                        : round.type
+                          ? "sm:grid-cols-3"
+                          : "sm:grid-cols-2"
                     } ${
                       draggedRoundIndex === idx
                         ? "opacity-50"
@@ -3475,6 +3530,7 @@ function AIInterviewTab({
                       <ThemedSelect
                         ariaLabel={`Round ${idx + 1} type`}
                         value={round.type}
+                        placeholder="Select a round type"
                         onChange={(next) => handleCustomRoundFieldChange(idx, "type", next)}
                         options={ROUND_TYPE_OPTIONS.map((type) => ({
                           value: type,
@@ -3483,7 +3539,7 @@ function AIInterviewTab({
                         triggerSurface="card"
                       />
                     </div>
-                    {roundTypeHasFocusPicker(round.type) && (
+                    {round.type && roundTypeHasFocusPicker(round.type) && (
                       <div className="relative min-w-0">
                         <ThemedSelect
                           ariaLabel={`Round ${idx + 1} focus`}
@@ -3497,10 +3553,12 @@ function AIInterviewTab({
                         />
                       </div>
                     )}
+                    {round.type ? (
                     <div className="relative min-w-0">
                       <ThemedSelect
                         ariaLabel={`Round ${idx + 1} difficulty`}
                         value={round.difficulty}
+                        placeholder="Select difficulty"
                         onChange={(next) => handleCustomRoundFieldChange(idx, "difficulty", next)}
                         options={ROUND_DIFFICULTY_OPTIONS.map((difficulty) => ({
                           value: difficulty,
@@ -3509,6 +3567,7 @@ function AIInterviewTab({
                         triggerSurface="card"
                       />
                     </div>
+                    ) : null}
                   </div>
                 </React.Fragment>
               ))}
@@ -3518,12 +3577,14 @@ function AIInterviewTab({
                 )}
             </div>
 
-            {customPlanValidationError && (
+            {showPlanValidationMessage ? (
               <p className="text-xs font-medium text-theme-accent">{customPlanValidationError}</p>
-            )}
+            ) : null}
           </div>
         </div>
         </div>
+      )}
+      </div>
       )}
 
       {error && (
@@ -3854,7 +3915,7 @@ function AIInterviewTab({
     <InterviewSlotBookModal
       open={slotBookModalOpen}
       onClose={() => setSlotBookModalOpen(false)}
-      customRounds={normalizedCustomRounds}
+      hourFull={showDsaHourFullBanner}
       onBooked={refreshSlotBookingStatus}
     />
     </>

@@ -12,6 +12,7 @@ import {
 import { useTheme } from "../utils/ThemeContext";
 import { authAPI } from "../utils/api";
 import { PageHeroFontStyles } from "./PageBackNav.jsx";
+import PlatformFooter from "./PlatformFooter.jsx";
 import {
   DATA_EXTENT_OPTIONS,
   ONBOARDING_BASE_PRICE_INR,
@@ -619,6 +620,7 @@ export default function CollegeOnboarding() {
           </div>
         )}
       </main>
+      <PlatformFooter />
     </div>
   );
 }

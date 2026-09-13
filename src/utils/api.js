@@ -171,6 +171,11 @@ export const companyAPI = {
     return companyNamesPromise;
   },
 
+  getPlatformContent: (id) =>
+    API.get(`/api/companies/platform-content/${encodeURIComponent(String(id || ""))}`),
+  savePlatformContent: (id, payload) =>
+    API.put(`/api/companies/platform-content/${encodeURIComponent(String(id || ""))}`, payload),
+
   getHomeStats: () => API.get("/api/companies/home-stats"),
 
   /** Year-aware category tiles: small counts + 5 logo rows per bucket. */
@@ -221,18 +226,23 @@ export const companyAPI = {
         : '';
     const clusterRaw =
       typeof options.placementCluster === 'string' ? options.placementCluster.trim() : '';
-    const dedupeKey = `${id}:y${year}:pc:${ctxRaw || '_'}:v:${visitIdRaw || '_'}:cl:${clusterRaw || '_'}`;
+    const dedupeKey = options.scope === "platform"
+      ? `${id}:platform`
+      : `${id}:y${year}:pc:${ctxRaw || '_'}:v:${visitIdRaw || '_'}:cl:${clusterRaw || '_'}`;
 
     if (!companyDetailsPromises.has(dedupeKey)) {
       companyDetailsPromises.set(
         dedupeKey,
         API.get(`/api/companies/${id}`, {
-          params: {
-            year,
-            ...(ctxRaw ? { placementContext: ctxRaw } : {}),
-            ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
-            ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
-          },
+          params:
+            options.scope === "platform"
+              ? { scope: "platform" }
+              : {
+                  year,
+                  ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+                  ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
+                  ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
+                },
         }).finally(() => {
           companyDetailsPromises.delete(dedupeKey);
         })
@@ -259,13 +269,16 @@ export const companyAPI = {
       const clusterRaw =
         typeof options.placementCluster === 'string' ? options.placementCluster.trim() : '';
       await API.get(`/api/companies/${id}`, {
-        params: {
-          year,
-          prefetch: 1,
-          ...(ctxRaw ? { placementContext: ctxRaw } : {}),
-          ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
-          ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
-        },
+        params:
+          options.scope === "platform"
+            ? { scope: "platform", prefetch: 1 }
+            : {
+                year,
+                prefetch: 1,
+                ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+                ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
+                ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
+              },
       });
     } catch {
       // Best-effort prefetch; navigation path handles errors.
@@ -289,12 +302,15 @@ export const companyAPI = {
     const clusterRaw =
       typeof options.placementCluster === 'string' ? options.placementCluster.trim() : '';
     return API.get(`/api/companies/${id}`, {
-      params: {
-        year,
-        ...(ctxRaw ? { placementContext: ctxRaw } : {}),
-        ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
-        ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
-      },
+      params:
+        options.scope === "platform"
+          ? { scope: "platform" }
+          : {
+              year,
+              ...(ctxRaw ? { placementContext: ctxRaw } : {}),
+              ...(visitIdRaw ? { placementCompanyVisitId: visitIdRaw } : {}),
+              ...(clusterRaw ? { placementCluster: clusterRaw } : {}),
+            },
     });
   },
 
@@ -605,21 +621,46 @@ export const resumeAPI = {
   },
 };
 
+export const billingAPI = {
+  getConfig: () => API.get("/api/billing/config"),
+  getAccess: (companyId) =>
+    API.get("/api/billing/access", {
+      params: companyId ? { companyId: String(companyId) } : undefined,
+    }),
+  quote: ({ planId, categoryId }) =>
+    API.post("/api/billing/quote", {
+      planId,
+      ...(categoryId ? { categoryId } : {}),
+    }),
+  createOrder: ({ planId, categoryId }) =>
+    API.post("/api/billing/orders", {
+      planId,
+      ...(categoryId ? { categoryId } : {}),
+    }),
+  confirm: ({ razorpay_order_id, razorpay_payment_id, razorpay_signature }) =>
+    API.post("/api/billing/confirm", {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    }),
+};
+
 export const prepPathAPI = {
-  getQuota: () => API.get("/api/prep-path/quota"),
+  getQuota: (params = {}) => API.get("/api/prep-path/quota", { params }),
   getPeerDemand: (companyId) =>
     API.get("/api/prep-path/peer-demand", {
       params: { companyId: String(companyId || "") },
     }),
   listPlans: () => API.get("/api/prep-path/plans"),
   getPlan: (id) => API.get(`/api/prep-path/plans/${encodeURIComponent(String(id || ""))}`),
-  generate: ({ companyId, role, track, days, hoursPerDay, resumeFile }) => {
+  generate: ({ companyId, role, track, days, hoursPerDay, resumeFile, scope }) => {
     const formData = new FormData();
     formData.append("companyId", String(companyId || ""));
     formData.append("role", String(role || ""));
     formData.append("track", String(track || "full_time"));
     formData.append("days", String(days ?? ""));
     formData.append("hoursPerDay", String(hoursPerDay ?? ""));
+    if (scope) formData.append("scope", String(scope));
     formData.append("resume", resumeFile);
     return API.post("/api/prep-path/generate", formData, {
       // Large LLM generation; avoid default short axios timeouts.
@@ -661,7 +702,8 @@ export const leaderboardAPI = {
 };
 
 export const interviewAPI = {
-  getInterviewEligibility: () => interviewHttp.get("/api/interview/eligibility"),
+  getInterviewEligibility: (params = {}) =>
+    interviewHttp.get("/api/interview/eligibility", { params }),
   getInterviewLimitRequestStatus: () => interviewHttp.get("/api/interview/limit-request/status"),
   submitInterviewLimitRequest: () => interviewHttp.post("/api/interview/limit-request"),
   async startInterview({
@@ -673,6 +715,7 @@ export const interviewAPI = {
     mergePlacementByType,
     interviewPlanMode = "custom",
     customRounds,
+    contentScope,
   }) {
     const res = await interviewHttp.post('/api/interview/start-interview', {
       userId,
@@ -683,6 +726,7 @@ export const interviewAPI = {
       mergePlacementByType,
       interviewPlanMode,
       customRounds,
+      ...(contentScope ? { contentScope } : {}),
     });
     clearInterviewSummaryCacheForUser(userId);
     if (res?.data?.sessionId) {

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TENANT_BASE, tenantPath } from "../constants/tenant.js";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { interviewAPI } from "../utils/api";
 import InterviewSlotBookModal from "./InterviewSlotBookModal";
 import InterviewSlotsCalendar, {
@@ -48,6 +48,7 @@ function formatSelectedDayLabel(dateKey) {
 
 function InterviewSlotsPage() {
   const navigate = useNavigate();
+  const { base, appPath, isGeneral } = useTenantShell();
   const [bookings, setBookings] = useState([]);
   const [availabilitySlots, setAvailabilitySlots] = useState([]);
   const [dayCountsFromApi, setDayCountsFromApi] = useState({});
@@ -194,7 +195,7 @@ function InterviewSlotsPage() {
       <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate(TENANT_BASE)} label="Back" />
+          <PageBackButton onClick={() => navigate(base)} label="Back" />
         </PageBackNavRow>
 
         <div className="mx-auto max-w-5xl">
@@ -299,7 +300,9 @@ function InterviewSlotsPage() {
                             {activeNow ? (
                               <button
                                 type="button"
-                                onClick={() => navigate(tenantPath("/category"))}
+                                onClick={() =>
+                                  navigate(isGeneral ? appPath("/interviews") : appPath("/category"))
+                                }
                                 className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
                               >
                                 Start interview
@@ -325,7 +328,9 @@ function InterviewSlotsPage() {
                               </>
                             ) : activeNow ? (
                               <span className="self-center text-xs text-theme-muted">
-                                Open a company → AI Interview, with DSA in your plan
+                                {isGeneral
+                                  ? "Open AI mock interviews, pick a company, and include DSA in your plan"
+                                  : "Open a company → AI Interview, with DSA in your plan"}
                               </span>
                             ) : (
                               <span className="text-xs text-theme-muted">

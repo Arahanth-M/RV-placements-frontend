@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus, FaEye, FaFire } from "react-icons/fa";
+import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus, FaEye, FaFire, FaLock } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { adminMayMutateSharedCompanyContent } from "../utils/collegeScope.js";
@@ -9,7 +9,7 @@ import {
   PLACEMENT_TIER_OPEN_DREAM,
   PLACEMENT_TIER_SUMMER_INTERNSHIP,
 } from "../constants/placementTiers.js";
-import { tenantPath } from "../constants/tenant.js";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
   PLACEMENT_DETAIL_VISIT_YEARS,
@@ -18,6 +18,7 @@ import {
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
 import { formatExperienceMonth } from "../utils/parseExperienceStoredEntry.js";
+import PaywallModal from "./PaywallPanel.jsx";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -71,14 +72,15 @@ function CompanyCard({
   helpfulStatus,
   /** Dream / open dream / internship-only / off-campus / summer internship: hide placement “got in” on the card (shown on Stats tab by year). */
   hidePlacementGotInCounts = false,
-  /** Dream / Open dream / Summer internship lists — drives detail-page subtitle framing */
   placementListContext,
-  /** Hub cluster (cs|ec|me|chem) — scopes GET /companies/:id when multiple visits share year/type */
   placementCluster,
+  isTeaser = false,
+  detailLocked = false,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
   const location = useLocation();
+  const { appPath, isGeneral } = useTenantShell();
   const { user } = useAuth();
   const canEditProgramGotIn = adminMayMutateSharedCompanyContent(user, isAdmin);
   const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
@@ -100,6 +102,7 @@ function CompanyCard({
     normalizeTotalGotInByYear(company, cardPlacementYear)
   );
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const viewCount = Math.max(0, Number(company.views) || 0);
   const lastUpdatedMonth = formatExperienceMonth(company.contentUpdatedAt || company.createdAt);
   const isTrending = company.trending === true;
@@ -141,6 +144,7 @@ function CompanyCard({
 
   const companyDetailPath = (() => {
     const cid = company._id;
+    if (isGeneral) return appPath(`/companies/${cid}`);
     const params = new URLSearchParams();
     if (isPlacementDetailVisitYear(detailDefaultYear)) {
       params.set("year", String(detailDefaultYear));
@@ -155,10 +159,14 @@ function CompanyCard({
       params.set("placementCluster", placementCluster.trim().toLowerCase());
     }
     const q = params.toString();
-    return q ? tenantPath(`/companies/${cid}?${q}`) : tenantPath(`/companies/${cid}`);
+    return q ? appPath(`/companies/${cid}?${q}`) : appPath(`/companies/${cid}`);
   })();
 
   const handleCardClick = () => {
+    if (isGeneral && detailLocked) {
+      setPaywallOpen(true);
+      return;
+    }
     // Store that we're navigating from company cards view (user-specific)
     // The parent component (CompanyStats) will store the current state via useEffect cleanup
     const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
@@ -178,7 +186,9 @@ function CompanyCard({
         sessionStorage.removeItem(`company_detail_placement_ctx:${company._id}`);
       }
     }
-    const navState = isPlacementDetailVisitYear(detailDefaultYear)
+    const navState = isGeneral
+      ? undefined
+      : isPlacementDetailVisitYear(detailDefaultYear)
       ? {
           defaultPlacementYear: detailDefaultYear,
           ...(placementListContext ? { placementListContext } : {}),
@@ -196,7 +206,12 @@ function CompanyCard({
 
   const prefetchDetails = () => {
     if (hasPrefetchedRef.current || !company?._id) return;
+    if (isGeneral && detailLocked) return;
     hasPrefetchedRef.current = true;
+    if (isGeneral) {
+      companyAPI.prefetchCompany(company._id, { scope: "platform" });
+      return;
+    }
     const prefetchOpts = {};
     if (isPlacementDetailVisitYear(detailDefaultYear)) {
       prefetchOpts.year = detailDefaultYear;
@@ -359,26 +374,42 @@ function CompanyCard({
       }`}
       data-testid="company-card"
     >
-      {isTrending ? (
-        <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end">
-          <span
-            className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300"
-            title={
-              company.trendingReason === "admin"
-                ? "Marked trending by admin for 24 hours"
-                : "Views are rising quickly"
-            }
-          >
-            <FaFire className="h-3 w-3" aria-hidden />
-            Trending
-          </span>
+      {(isGeneral && (isTeaser || detailLocked)) || isTrending ? (
+        <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end gap-1">
+          {isGeneral && isTeaser ? (
+            <span className="inline-flex items-center rounded-full border border-emerald-400/50 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+              Free
+            </span>
+          ) : null}
+          {isGeneral && detailLocked && !isTeaser ? (
+            <span
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-theme bg-theme-hero text-theme-secondary"
+              title="Locked"
+              aria-label="Locked"
+            >
+              <FaLock className="h-3 w-3" aria-hidden />
+            </span>
+          ) : null}
+          {isTrending ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300"
+              title={
+                company.trendingReason === "admin"
+                  ? "Marked trending by admin for 24 hours"
+                  : "Views are rising quickly"
+              }
+            >
+              <FaFire className="h-3 w-3" aria-hidden />
+              Trending
+            </span>
+          ) : null}
         </div>
       ) : null}
 
       {/* Top Section: Header + Logo */}
       <div
         className={`company-header mb-4 flex flex-shrink-0 items-center gap-3 ${
-          isTrending ? "pr-24" : ""
+          isTrending || (isGeneral && (isTeaser || detailLocked)) ? "pr-12" : ""
         }`}
       >
         <div 
@@ -396,7 +427,11 @@ function CompanyCard({
             {company.name || "Unknown Company"}
           </h2>
           <div className="flex items-center gap-2">
-            {!isEditingType ? (
+            {isGeneral ? (
+              <p className="company-role text-xs sm:text-sm italic truncate text-theme-secondary">
+                Company prep
+              </p>
+            ) : !isEditingType ? (
               <>
                 <p
                   className={`company-role text-xs sm:text-sm italic truncate ${
@@ -585,6 +620,14 @@ function CompanyCard({
           </div>
         </div>
       </div>
+      <PaywallModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        title={`Unlock ${company?.name || "this company"}`}
+        message="This company card is premium. The first company in each category stays free to open. Unlock this category or all company cards to view full details."
+        pricingPath={appPath("/pricing")}
+        feature="company_detail"
+      />
     </div>
   );
 }

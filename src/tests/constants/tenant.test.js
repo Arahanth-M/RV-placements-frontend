@@ -31,6 +31,7 @@ describe("generalPath", () => {
   it("maps onto /general", () => {
     expect(generalPath("/")).toBe(GENERAL_BASE);
     expect(generalPath("/interviews")).toBe("/general/interviews");
+    expect(generalPath("/pricing")).toBe("/general/pricing");
   });
 });
 

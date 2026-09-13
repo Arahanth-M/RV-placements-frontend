@@ -12,6 +12,8 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 import { companyAPI, prepPathAPI } from "../utils/api";
+import { useTenantShell } from "../context/TenantShellContext.jsx";
+import PaywallModal from "./PaywallPanel.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -639,6 +641,7 @@ function PrepPathPlanView({ plan }) {
 
 function PrepPathPage() {
   const navigate = useNavigate();
+  const { isGeneral, appPath } = useTenantShell();
   const suggestRootRef = useRef(null);
   const companiesLoadPromiseRef = useRef(null);
 
@@ -661,6 +664,8 @@ function PrepPathPage() {
   const [activePlan, setActivePlan] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallMessage, setPaywallMessage] = useState("");
   const [loadingPlanId, setLoadingPlanId] = useState("");
   const [formPeerDemand, setFormPeerDemand] = useState(null);
 
@@ -708,7 +713,7 @@ function PrepPathPage() {
     (async () => {
       try {
         const [quotaRes, plansRes] = await Promise.all([
-          prepPathAPI.getQuota(),
+          prepPathAPI.getQuota(isGeneral ? { scope: "platform" } : {}),
           prepPathAPI.listPlans(),
         ]);
         if (cancelled) return;
@@ -723,7 +728,7 @@ function PrepPathPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isGeneral]);
 
   useEffect(() => {
     const companyId = selectedCompany?.id;
@@ -798,6 +803,13 @@ function PrepPathPage() {
       return;
     }
     if (quota && quota.unlimited !== true && Number(quota.remaining) <= 0) {
+      if (isGeneral) {
+        setPaywallMessage(
+          "Your free PrepPath plan has been used. Unlock PrepPath to generate more plans."
+        );
+        setPaywallOpen(true);
+        return;
+      }
       setError("Daily PrepPath limit reached. Try again tomorrow (IST).");
       return;
     }
@@ -811,6 +823,7 @@ function PrepPathPage() {
         days,
         hoursPerDay,
         resumeFile,
+        ...(isGeneral ? { scope: "platform" } : {}),
       });
       setActivePlan(res?.data?.plan || null);
       if (res?.data?.peerDemand) setFormPeerDemand(res.data.peerDemand);
@@ -821,14 +834,23 @@ function PrepPathPage() {
       const fileInput = document.getElementById("prep-path-resume");
       if (fileInput) fileInput.value = "";
     } catch (err) {
-      setError(
-        err?.response?.data?.error ||
-          (err?.code === "ECONNABORTED"
-            ? "Generation timed out. Please try again."
-            : "Failed to generate PrepPath plan.")
-      );
+      const paywall = err?.response?.status === 402;
+      if (isGeneral && paywall) {
+        setPaywallMessage(
+          err?.response?.data?.error ||
+            "Unlock this company or PrepPath to generate a plan."
+        );
+        setPaywallOpen(true);
+      } else {
+        setError(
+          err?.response?.data?.error ||
+            (err?.code === "ECONNABORTED"
+              ? "Generation timed out. Please try again."
+              : "Failed to generate PrepPath plan.")
+        );
+      }
       try {
-        const q = await prepPathAPI.getQuota();
+        const q = await prepPathAPI.getQuota(isGeneral ? { scope: "platform" } : {});
         if (q?.data?.quota) setQuota(q.data.quota);
       } catch {
         /* ignore */
@@ -863,8 +885,14 @@ function PrepPathPage() {
                 {quota ? (
                   <span className="text-xs text-theme-secondary">
                     {quota.unlimited
-                      ? `Generated today: ${quota.used}`
-                      : `Today: ${quota.used}/${quota.limit} used · ${quota.remaining} left`}
+                      ? isGeneral
+                        ? "Unlimited PrepPath"
+                        : `Generated today: ${quota.used}`
+                      : isGeneral
+                        ? quota.remaining > 0
+                          ? "1 free PrepPath remaining"
+                          : "Free PrepPath used"
+                        : `Today: ${quota.used}/${quota.limit} used · ${quota.remaining} left`}
                   </span>
                 ) : null}
               </div>
@@ -1128,6 +1156,17 @@ function PrepPathPage() {
           )}
         </div>
       </aside>
+      <PaywallModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        title="Unlock PrepPath"
+        message={
+          paywallMessage ||
+          "Your free PrepPath plan has been used. Unlock PrepPath to generate more plans."
+        }
+        pricingPath={appPath("/pricing")}
+        feature="prep_path"
+      />
     </div>
   );
 }

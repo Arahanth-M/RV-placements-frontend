@@ -149,7 +149,9 @@ export default function ThemedSelect({
           disabled ? "opacity-60 cursor-not-allowed hover:border-theme" : ""
         }`.trim()}
       >
-        <span className="truncate">{active?.label || placeholder}</span>
+        <span className={`truncate ${active ? "" : "text-theme-muted"}`}>
+          {active?.label || placeholder}
+        </span>
         <svg
           className={`h-4 w-4 shrink-0 text-theme-accent transition-transform ${open ? "rotate-180" : ""}`}
           viewBox="0 0 20 20"

@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import { Provider } from "react-redux";
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, Link } from "react-router-dom";
 import appStore from "./utils/appStore";
 import { AuthProvider, useAuth } from "./utils/AuthContext";
 import { ThemeProvider } from "./utils/ThemeContext";
@@ -9,6 +9,7 @@ import { InterviewLockProvider, useInterviewLock } from "./utils/InterviewLockCo
 import { ProductTourProvider } from "./context/ProductTourContext";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import PlatformFooter from "./components/PlatformFooter";
 import Home from "./components/Home";
 import AuthCallback from "./components/AuthCallback";
 import CompanyStats from "./components/CompanyStats";
@@ -31,6 +32,8 @@ import MySubmissionsPage from "./components/MySubmissionsPage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
+import GeneralMockInterviewPage from "./components/GeneralMockInterviewPage";
+import InterviewAnalyticsPage from "./components/InterviewAnalyticsPage";
 import InterviewSlotsPage from "./components/InterviewSlotsPage";
 import PrepPathPage from "./components/PrepPathPage";
 import Feedback from "./components/Feedback";
@@ -40,6 +43,15 @@ import SPCDashboard from "./components/SPCDashboard";
 import SPCPlacementForm from "./components/SPCPlacementForm";
 import SPCConversionForm from "./components/SPCConversionForm";
 import GeneralStatsPage from "./components/GeneralStats/GeneralStatsPage";
+import GeneralCompanyList from "./components/GeneralCompanyList";
+import GeneralPricingPage from "./components/GeneralPricingPage";
+import GeneralDataEntryPage from "./components/GeneralDataEntryPage";
+import AboutPage from "./components/legal/AboutPage";
+import TermsPage from "./components/legal/TermsPage";
+import PrivacyPage from "./components/legal/PrivacyPage";
+import RefundPage from "./components/legal/RefundPage";
+import ShippingPage from "./components/legal/ShippingPage";
+import PublicPricingPage from "./components/legal/PublicPricingPage";
 import PlatformLanding from "./components/PlatformLanding";
 import CollegeOnboarding from "./components/CollegeOnboarding";
 import { RESUME_BUILDER_ENABLED } from "./utils/constants";
@@ -55,7 +67,50 @@ import {
 } from "./utils/collegeScope.js";
 import { TenantShellProvider } from "./context/TenantShellContext.jsx";
 
-const PUBLIC_ROOT_PATHS = new Set(["/", "/onboard"]);
+function PublicLegalShell() {
+  return (
+    <TenantShellProvider base={GENERAL_BASE}>
+      <div className="flex min-h-screen flex-col bg-theme-app text-theme-primary">
+        <header className="border-b border-theme bg-theme-sidebar px-6 py-4">
+          <Link
+            to="/"
+            className="font-serif text-xl tracking-tight text-theme-primary"
+          >
+            lastminute<span className="italic text-theme-accent">placementprep</span>
+          </Link>
+        </header>
+        <main className="flex-grow">
+          <Outlet />
+        </main>
+        <PlatformFooter />
+      </div>
+    </TenantShellProvider>
+  );
+}
+
+function LegalInfoRoutes() {
+  return (
+    <>
+      <Route path="about" element={<AboutPage />} />
+      <Route path="terms" element={<TermsPage />} />
+      <Route path="privacy" element={<PrivacyPage />} />
+      <Route path="refund" element={<RefundPage />} />
+      <Route path="shipping" element={<ShippingPage />} />
+    </>
+  );
+}
+
+const PUBLIC_ROOT_PATHS = new Set([
+  "/",
+  "/onboard",
+  "/about",
+  "/terms",
+  "/privacy",
+  "/refund",
+  "/shipping",
+  "/pricing",
+  "/contact",
+]);
 
 /** Reset window scroll on client-side navigation (e.g. home marquee → company details). */
 function ScrollToTop() {
@@ -142,28 +197,44 @@ function AppShell({ base }) {
           <Outlet />
         </main>
 
-        {!isInterviewLocked && <Footer />}
+        {!isInterviewLocked &&
+          (base === GENERAL_BASE ? <PlatformFooter /> : <Footer />)}
         {!isInterviewLocked && base === TENANT_BASE ? <PlacementPopupWrapper /> : null}
       </div>
     </TenantShellProvider>
   );
 }
 
-function StudentFeatureRoutes({ includeIndexHome = true } = {}) {
+function StudentFeatureRoutes({
+  includeIndexHome = true,
+  includeLeaderboard = true,
+  flatCompanyList = false,
+  generalInterviewHub = false,
+} = {}) {
   return (
     <>
       {includeIndexHome ? <Route index element={<Home />} /> : null}
-      <Route path="companystats" element={<CompanyStats />} />
-      <Route path="category" element={<CompanyStats />} />
-      <Route path="general-stats" element={<GeneralStatsPage />} />
       <Route
-        path="leaderboard"
-        element={
-          <ProtectedRoute>
-            <Leaderboard />
-          </ProtectedRoute>
-        }
+        path="companystats"
+        element={flatCompanyList ? <GeneralCompanyList /> : <CompanyStats />}
       />
+      <Route
+        path="category"
+        element={flatCompanyList ? <GeneralCompanyList /> : <CompanyStats />}
+      />
+      <Route path="general-stats" element={<GeneralStatsPage />} />
+      {includeLeaderboard ? (
+        <Route
+          path="leaderboard"
+          element={
+            <ProtectedRoute>
+              <Leaderboard />
+            </ProtectedRoute>
+          }
+        />
+      ) : (
+        <Route path="leaderboard" element={<Navigate to={GENERAL_BASE} replace />} />
+      )}
       <Route path="feedback" element={<Feedback />} />
       <Route path="user-manual" element={<UserManual />} />
       <Route
@@ -187,7 +258,7 @@ function StudentFeatureRoutes({ includeIndexHome = true } = {}) {
         path="interviews"
         element={
           <ProtectedRoute>
-            <AIInterviews />
+            {generalInterviewHub ? <GeneralMockInterviewPage /> : <AIInterviews />}
           </ProtectedRoute>
         }
       />
@@ -327,7 +398,39 @@ function GeneralRoutes() {
     <Route path={GENERAL_BASE} element={<GeneralAccessGate />}>
       <Route element={<AppShell base={GENERAL_BASE} />}>
         <Route index element={<PlatformLanding embedded />} />
-        {StudentFeatureRoutes({ includeIndexHome: false })}
+        <Route
+          path="pricing"
+          element={
+            <ProtectedRoute>
+              <GeneralPricingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="data-entry" element={<GeneralDataEntryPage />} />
+        <Route path="data-entry/:companyId" element={<GeneralDataEntryPage />} />
+        {LegalInfoRoutes()}
+        {StudentFeatureRoutes({
+          includeIndexHome: false,
+          includeLeaderboard: false,
+          flatCompanyList: true,
+          generalInterviewHub: true,
+        })}
+        <Route
+          path="interview-slots"
+          element={
+            <ProtectedRoute>
+              <InterviewSlotsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="interview-analytics"
+          element={
+            <ProtectedRoute>
+              <InterviewAnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
     </Route>
   );
@@ -364,6 +467,11 @@ function App() {
                 <Routes>
                   <Route path="/" element={<PlatformLanding />} />
                   <Route path="/onboard" element={<CollegeOnboarding />} />
+                  <Route element={<PublicLegalShell />}>
+                    {LegalInfoRoutes()}
+                    <Route path="pricing" element={<PublicPricingPage />} />
+                    <Route path="contact" element={<Contact />} />
+                  </Route>
                   {TenantRoutes()}
                   {GeneralRoutes()}
                   <Route path="*" element={<LegacyTenantRedirect />} />

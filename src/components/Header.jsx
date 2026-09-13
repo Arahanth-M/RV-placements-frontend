@@ -8,6 +8,7 @@ import {
   FaMoon,
   FaGraduationCap,
   FaChartBar,
+  FaChartLine,
   FaBook,
   FaComments,
   FaTrophy,
@@ -24,6 +25,7 @@ import {
   FaCalendarAlt,
   FaMapMarkedAlt,
   FaRoute,
+  FaLock,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -34,6 +36,7 @@ import {
   isPrefixUnderBase,
 } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
+import { LOGIN_INTENT_CAMPUS, LOGIN_INTENT_SPC } from "../utils/loginIntent.js";
 import NotificationBell from "./NotificationBell";
 import NotificationSubscribeButton from "./NotificationSubscribeButton";
 import BrandLogo from "./BrandLogo.jsx";
@@ -52,21 +55,53 @@ function buildPrimaryLinks(base, isGeneral) {
 function buildStudentCornerLinks(base, isGeneral) {
   const companyStatsPath =
     base === TENANT_BASE ? PATH_COMPANY_STATS : pathUnderBase(base, "/companystats");
+  if (isGeneral) {
+    const links = [
+      { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
+      {
+        label: "AI mock interviews",
+        path: pathUnderBase(base, "/interviews"),
+        icon: FaComments,
+      },
+      {
+        label: "Interview slots",
+        path: pathUnderBase(base, "/interview-slots"),
+        icon: FaCalendarAlt,
+      },
+      {
+        label: "Interview Analytics",
+        path: pathUnderBase(base, "/interview-analytics"),
+        icon: FaChartLine,
+      },
+      { label: "PrepPath", path: pathUnderBase(base, "/prep-path"), icon: FaMapMarkedAlt },
+      { label: "Pricing", path: pathUnderBase(base, "/pricing"), icon: FaLock },
+      { label: "Resources", path: pathUnderBase(base, "/resources"), icon: FaBook },
+    ];
+    if (RESUME_BUILDER_ENABLED) {
+      links.push({
+        label: "Resume Builder",
+        path: pathUnderBase(base, "/resume-builder"),
+        icon: FaFileAlt,
+      });
+    }
+    links.push({
+      label: "User Manual",
+      path: pathUnderBase(base, "/user-manual"),
+      icon: FaBookOpen,
+    });
+    return links;
+  }
   const links = [
     { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
     { label: "AI Interviews", path: pathUnderBase(base, "/interviews"), icon: FaComments },
-  ];
-  if (!isGeneral) {
-    links.push({
+    {
       label: "Interview slots",
       path: pathUnderBase(base, "/interview-slots"),
       icon: FaCalendarAlt,
-    });
-  }
-  links.push(
+    },
     { label: "PrepPath", path: pathUnderBase(base, "/prep-path"), icon: FaMapMarkedAlt },
     { label: "Resources", path: pathUnderBase(base, "/resources"), icon: FaBook },
-  );
+  ];
   if (RESUME_BUILDER_ENABLED) {
     links.push({
       label: "Resume Builder",
@@ -74,10 +109,16 @@ function buildStudentCornerLinks(base, isGeneral) {
       icon: FaFileAlt,
     });
   }
-  links.push(
-    { label: "Leaderboard", path: pathUnderBase(base, "/leaderboard"), icon: FaTrophy },
-    { label: "User Manual", path: pathUnderBase(base, "/user-manual"), icon: FaBookOpen },
-  );
+  links.push({
+    label: "Leaderboard",
+    path: pathUnderBase(base, "/leaderboard"),
+    icon: FaTrophy,
+  });
+  links.push({
+    label: "User Manual",
+    path: pathUnderBase(base, "/user-manual"),
+    icon: FaBookOpen,
+  });
   return links;
 }
 
@@ -279,11 +320,13 @@ const Header = () => {
   const shouldHideViewProfile =
     profileAvailabilityKey &&
     localStorage.getItem(profileAvailabilityKey) === "no_profile";
-  const shouldHideAiInterviews = shouldHideViewProfile;
+  const shouldHideAiInterviews = !isGeneral && shouldHideViewProfile;
   const studentCornerLinks = shouldHideAiInterviews
     ? studentCornerLinksBase.filter(
         (l) =>
-          l.path !== appPath("/interviews") && l.path !== appPath("/interview-slots")
+          l.path !== appPath("/interviews") &&
+          l.path !== appPath("/interview-slots") &&
+          l.path !== appPath("/interview-analytics")
       )
     : studentCornerLinksBase;
 
@@ -489,13 +532,13 @@ const Header = () => {
             {!user ? (
               <>
                 <button
-                  onClick={() => { setAccountMenuOpen(false); login(false); }}
+                  onClick={() => { setAccountMenuOpen(false); login(false, { intent: LOGIN_INTENT_CAMPUS }); }}
                   className={dropdownItemClass}
                 >
                   Login as Student
                 </button>
                 <button
-                  onClick={() => { setAccountMenuOpen(false); login(false, { intent: "spc" }); }}
+                  onClick={() => { setAccountMenuOpen(false); login(false, { intent: LOGIN_INTENT_SPC }); }}
                   className={dropdownItemClass}
                 >
                   Login as SPC

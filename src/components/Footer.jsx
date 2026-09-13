@@ -5,7 +5,7 @@ import { TENANT_BASE } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 
 function Footer() {
-  const { base, appPath, isGeneral } = useTenantShell();
+  const { base, appPath } = useTenantShell();
   const homePath = base || TENANT_BASE;
 
   return (
@@ -59,35 +59,24 @@ function Footer() {
               Contact
             </p>
             <div className="text-base text-theme-secondary leading-relaxed">
-              {isGeneral ? (
-                <p>
-                  Want this on your campus?{" "}
-                  <Link to="/onboard" className="text-theme-accent hover:opacity-80 transition-opacity">
-                    Enrol your college
-                  </Link>
-                </p>
-              ) : (
-                <>
-                  <p>
-                    RVCE:{" "}
-                    <a
-                      href={`mailto:${RVCE_PLACEMENT_EMAIL}`}
-                      className="text-theme-accent hover:opacity-80 transition-opacity"
-                    >
-                      {RVCE_PLACEMENT_EMAIL}
-                    </a>
-                  </p>
-                  <p className="mt-2">
-                    RVITM:{" "}
-                    <a
-                      href={`mailto:${RVITM_PLACEMENT_EMAIL}`}
-                      className="text-theme-accent hover:opacity-80 transition-opacity"
-                    >
-                      {RVITM_PLACEMENT_EMAIL}
-                    </a>
-                  </p>
-                </>
-              )}
+              <p>
+                RVCE:{" "}
+                <a
+                  href={`mailto:${RVCE_PLACEMENT_EMAIL}`}
+                  className="text-theme-accent hover:opacity-80 transition-opacity"
+                >
+                  {RVCE_PLACEMENT_EMAIL}
+                </a>
+              </p>
+              <p className="mt-2">
+                RVITM:{" "}
+                <a
+                  href={`mailto:${RVITM_PLACEMENT_EMAIL}`}
+                  className="text-theme-accent hover:opacity-80 transition-opacity"
+                >
+                  {RVITM_PLACEMENT_EMAIL}
+                </a>
+              </p>
             </div>
           </div>
         </div>

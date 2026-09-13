@@ -566,6 +566,32 @@
   color: var(--icp-secondary);
 }
 
+.icp-test-error {
+  margin: 0 0.85rem 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--icp-fail);
+  white-space: pre-wrap;
+  max-height: 9rem;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--icp-fail) 40%, var(--icp-border));
+  background: color-mix(in srgb, var(--icp-fail) 10%, transparent);
+}
+
+.icp-test-hints {
+  margin: 0 0.85rem 0.55rem;
+  padding-left: 1.15rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--icp-secondary);
+}
+
+.icp-test-hints li + li {
+  margin-top: 0.25rem;
+}
+
 .icp-source-link {
   display: inline-block;
   margin-top: 0.75rem;

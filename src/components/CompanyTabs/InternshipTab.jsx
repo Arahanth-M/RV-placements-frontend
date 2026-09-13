@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
+import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import BrandLogo from "../BrandLogo.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import {
@@ -12,6 +13,7 @@ import { listInternshipExperienceEntries } from "../../utils/parseExperienceStor
 
 function InternshipTab({
   company,
+  isGeneral = false,
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
@@ -33,9 +35,12 @@ function InternshipTab({
           type: "internshipExperience",
           content: JSON.stringify({ experience: experienceText }),
           isAnonymous: submitAnonymously,
-          placementYear,
-          ...(placementListContext ? { placementListContext } : {}),
-          ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
+          ...submissionTargetFields({
+            isGeneral,
+            placementYear,
+            placementListContext,
+            placementCompanyVisitId,
+          }),
         }),
       });
 

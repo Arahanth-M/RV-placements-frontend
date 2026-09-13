@@ -372,6 +372,36 @@ select.spc-field-control {
 .border-theme-accent { border-color: var(--accent); }
 .bg-theme-accent { background-color: var(--accent); color: #fff; }
 .bg-theme-accent:hover { background-color: var(--accent-hover); color: #fff; }
+.login-menu-option {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.login-menu-option-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.login-menu-option-sub {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+.login-menu-option:hover {
+  background-color: #ececec;
+}
+[data-theme="dark"] .login-menu-option:hover {
+  background-color: #2a3242;
+}
 .text-theme-accent { color: var(--accent); }
 .hover\:text-theme-accent:hover { color: var(--accent); }
 .hover\:bg-theme-nav:hover { background-color: var(--nav-hover); }
@@ -1456,7 +1486,7 @@ html, body, #root {
     position: relative;
     width: 100%;
     height: 100%;
-    transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.9s ease-in-out;
     transform-style: preserve-3d;
   }
 

@@ -167,6 +167,8 @@ export function buildPreviewCodeExecutionHints(execution) {
     if (row?.isHidden) continue;
     visibleIndex += 1;
     if (row?.passed === true) continue;
+    const rowErr = typeof row?.error === "string" ? row.error.trim() : "";
+    if (topError && rowErr && rowErr === topError.trim()) continue;
     hints.push(mismatchHintForCase(visibleIndex, row?.expectedOutput, row?.actualOutput, row?.error));
   }
 

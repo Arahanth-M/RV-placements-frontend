@@ -8,6 +8,10 @@ export const LOCALHOST_MAIN_PORT = 7778;
 export const LOCALHOST_INTERVIEW_PORT = 7777;
 export const PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
 
+export const PLATFORM_CONTACT_EMAIL = "lastminuteplacementprep@gmail.com";
+export const DEVOMATION_AI_EMAIL = "devomationai@gmail.com";
+export const PLATFORM_LINKEDIN_URL = "https://www.linkedin.com/company/devomation-ai";
+
 function trimApiBase(value) {
   if (value == null || typeof value !== "string") return "";
   return value.trim().replace(/\/+$/, "");

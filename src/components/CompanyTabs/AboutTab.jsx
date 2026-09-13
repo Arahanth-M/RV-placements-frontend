@@ -80,6 +80,12 @@ function parseAboutBlock(block) {
   return { kind: "paragraph", text: trimmed };
 }
 
+function aboutText(company) {
+  const legacy = String(company?.["About The Company"] || "").trim();
+  if (legacy) return company["About The Company"];
+  return company?.about || "";
+}
+
 function AboutTab({ company = {} }) {
   const formatAboutCompany = (text) => {
     if (!text) {
@@ -143,7 +149,7 @@ function AboutTab({ company = {} }) {
           About {company.name || "the Company"}
         </h2>
         <div className="overflow-y-auto pr-1 space-y-0.5">
-          {formatAboutCompany(company["About The Company"])}
+          {formatAboutCompany(aboutText(company))}
         </div>
       </div>
     </div>
