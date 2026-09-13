@@ -74,4 +74,6 @@ describe("toPostLoginAppPath", () => {
 
   it("keeps RVCE users on /rvce", () => {
     expect(toPostLoginAppPath("/", { useGeneral: false })).toBe("/rvce");
-    expect(toPostLoginAppPath
+    expect(toPostLoginAppPath("/general", { useGeneral: false })).toBe("/rvce");
+  });
+});
