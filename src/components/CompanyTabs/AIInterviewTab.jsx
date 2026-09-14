@@ -24,6 +24,12 @@ import {
 import { clampInterviewQuestionCountForRound } from "../../utils/interviewRoundLimits";
 import InterviewSlotBookModal from "../InterviewSlotBookModal";
 import { shouldShowDsaHourFullBanner } from "../../utils/interviewSlotWindow.js";
+import {
+  CAMPUS_INTERVIEW_ROUND_TYPES,
+  INTERVIEW_DIFFICULTIES,
+  PLATFORM_FRESHER_ROLES,
+  PLATFORM_INTERVIEW_ROUND_TYPES,
+} from "../../constants/interviewCatalog.js";
 
 /** Languages shown in the mock-interview coding picker (backend may still support more). */
 const INTERVIEW_UI_CODING_LANGUAGES = ["python", "cpp", "java"];
@@ -45,14 +51,7 @@ const EXIT_WARNING_MESSAGE =
   "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";
 
 const MAX_CUSTOM_ROUNDS = 4;
-const ROUND_TYPE_OPTIONS = [
-  "DSA",
-  "System Design",
-  "SQL",
-  "CS Fundamentals",
-  "HR",
-];
-const ROUND_DIFFICULTY_OPTIONS = ["easy", "medium", "hard"];
+const ROUND_DIFFICULTY_OPTIONS = INTERVIEW_DIFFICULTIES;
 
 const PLAN_ROUND_ROW_CLASS =
   "grid grid-cols-1 min-w-0 gap-3 items-center rounded-lg border-2 border-theme p-3 bg-theme-input";
@@ -925,6 +924,8 @@ function AIInterviewTab({
   const [questionsPlannedThisRound, setQuestionsPlannedThisRound] = useState(2);
   const [currentQuestionNumberWithinRound, setCurrentQuestionNumberWithinRound] = useState(1);
   const [customRounds, setCustomRounds] = useState(() => buildDefaultCustomRounds(2));
+  const [selectedRole, setSelectedRole] = useState("");
+  const [interviewDifficulty, setInterviewDifficulty] = useState("medium");
   const [draggedRoundIndex, setDraggedRoundIndex] = useState(null);
   const [dragOverRoundIndex, setDragOverRoundIndex] = useState(null);
   const [interviewLimitReached, setInterviewLimitReached] = useState(false);
@@ -999,16 +1000,21 @@ function AIInterviewTab({
   const pendingQuestionFeedbackRef = useRef(null);
   pendingQuestionFeedbackRef.current = pendingQuestionFeedback;
   const quitConfirmResolverRef = useRef(null);
+  const availableRoundTypes = isGeneral
+    ? PLATFORM_INTERVIEW_ROUND_TYPES
+    : CAMPUS_INTERVIEW_ROUND_TYPES;
 
   const normalizedCustomRounds = useMemo(
     () =>
       (Array.isArray(customRounds) ? customRounds : [])
         .slice(0, MAX_CUSTOM_ROUNDS)
         .map((round) => {
-          const type = ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "";
-          const difficulty = ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
-            ? round.difficulty
-            : "";
+          const type = availableRoundTypes.includes(round?.type) ? round.type : "";
+          const difficulty = isGeneral
+            ? interviewDifficulty
+            : ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
+              ? round.difficulty
+              : "";
           if (!type) {
             return { type: "", difficulty: "" };
           }
@@ -1022,7 +1028,7 @@ function AIInterviewTab({
             : getDefaultFocusForRoundType(type);
           return { type, difficulty: difficulty || "medium", focus };
         }),
-    [customRounds]
+    [availableRoundTypes, customRounds, interviewDifficulty, isGeneral]
   );
 
   const customPlanValidationError = useMemo(() => {
@@ -1032,8 +1038,11 @@ function AIInterviewTab({
     if (normalizedCustomRounds.some((round) => !round.type)) {
       return "Select a round type for each round.";
     }
+    if (isGeneral && !PLATFORM_FRESHER_ROLES.includes(selectedRole)) {
+      return "Select the fresher role you are preparing for.";
+    }
     const hrCount = normalizedCustomRounds.filter((round) => round.type === "HR").length;
-    if (hrCount < 1) {
+    if (!isGeneral && hrCount < 1) {
       return "At least one HR round is mandatory.";
     }
     const hardSystemDesignCount = normalizedCustomRounds.filter(
@@ -1043,7 +1052,7 @@ function AIInterviewTab({
       return "Use at most 2 hard System Design rounds.";
     }
     return "";
-  }, [normalizedCustomRounds]);
+  }, [isGeneral, normalizedCustomRounds, selectedRole]);
 
   const showPlanValidationMessage =
     Boolean(customPlanValidationError) &&
@@ -1073,7 +1082,7 @@ function AIInterviewTab({
       setSlotBookingStatus(null);
       return;
     }
-    if (normalizedCustomRounds.some((round) => !ROUND_TYPE_OPTIONS.includes(round.type))) {
+    if (normalizedCustomRounds.some((round) => !availableRoundTypes.includes(round.type))) {
       setSlotBookingStatus(null);
       return;
     }
@@ -1102,7 +1111,7 @@ function AIInterviewTab({
         setSlotBookingStatus(null);
       }
     }
-  }, [user?.userId, user?._id, normalizedCustomRounds]);
+  }, [availableRoundTypes, user?.userId, user?._id, normalizedCustomRounds]);
 
   const hasActiveDsaSlotNow = Boolean(slotBookingStatus?.hasActiveBookingNow);
   const activeDsaSlotLabel = slotBookingStatus?.activeBooking?.label || null;
@@ -1364,7 +1373,7 @@ function AIInterviewTab({
       (Array.isArray(prev) ? prev : []).map((round, roundIndex) => {
         if (roundIndex !== index) return round;
         if (field === "type") {
-          const nextType = ROUND_TYPE_OPTIONS.includes(value) ? value : "";
+          const nextType = availableRoundTypes.includes(value) ? value : "";
           if (!nextType) {
             return { ...EMPTY_CUSTOM_ROUND };
           }
@@ -1383,7 +1392,7 @@ function AIInterviewTab({
           };
         }
         if (field === "focus") {
-          const type = ROUND_TYPE_OPTIONS.includes(round?.type) ? round.type : "DSA";
+          const type = availableRoundTypes.includes(round?.type) ? round.type : "DSA";
           const focusOptions = getFocusOptionsForRoundType(type);
           const validFocusIds = new Set(focusOptions.map((opt) => opt.id));
           return {
@@ -1397,7 +1406,7 @@ function AIInterviewTab({
         };
       })
     );
-  }, []);
+  }, [availableRoundTypes]);
 
   const handleRoundDragStart = useCallback((index) => {
     setDraggedRoundIndex(index);
@@ -1887,7 +1896,13 @@ function AIInterviewTab({
         mergePlacementByType: true,
         interviewPlanMode: "custom",
         customRounds: normalizedCustomRounds,
-        ...(isGeneral ? { contentScope: "platform" } : {}),
+        ...(isGeneral
+          ? {
+              contentScope: "platform",
+              role: selectedRole,
+              interviewDifficulty,
+            }
+          : {}),
       });
 
       setSessionId(data.sessionId || "");
@@ -3457,12 +3472,52 @@ function AIInterviewTab({
             <div>
               <p className="text-sm font-semibold text-theme-primary">Interview plan mode</p>
               <p className="text-xs text-theme-secondary">
-                Customize round order, type, difficulty, and focus area for non-DSA rounds (up to{" "}
-                {MAX_CUSTOM_ROUNDS} rounds).
+                {isGeneral
+                  ? `Choose a fresher role, one difficulty, and up to ${MAX_CUSTOM_ROUNDS} rounds.`
+                  : `Customize round order, type, difficulty, and focus area for non-DSA rounds (up to ${MAX_CUSTOM_ROUNDS} rounds).`}
               </p>
             </div>
           </div>
           <div className="space-y-3">
+            {isGeneral ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <label className="mb-2 block text-sm font-medium text-theme-primary">
+                    Fresher role
+                  </label>
+                  <ThemedSelect
+                    ariaLabel="Fresher role"
+                    value={selectedRole}
+                    placeholder="Select a role"
+                    onChange={setSelectedRole}
+                    options={PLATFORM_FRESHER_ROLES.map((role) => ({
+                      value: role,
+                      label: role,
+                    }))}
+                    triggerSurface="card"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <label className="mb-2 block text-sm font-medium text-theme-primary">
+                    Interview difficulty
+                  </label>
+                  <ThemedSelect
+                    ariaLabel="Interview difficulty"
+                    value={interviewDifficulty}
+                    onChange={(next) =>
+                      setInterviewDifficulty(
+                        ROUND_DIFFICULTY_OPTIONS.includes(next) ? next : "medium"
+                      )
+                    }
+                    options={ROUND_DIFFICULTY_OPTIONS.map((difficulty) => ({
+                      value: difficulty,
+                      label: difficulty.charAt(0).toUpperCase() + difficulty.slice(1),
+                    }))}
+                    triggerSurface="card"
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="flex items-center gap-3">
               <label className="text-sm font-medium text-theme-primary">
                 Number of rounds
@@ -3505,9 +3560,9 @@ function AIInterviewTab({
                     onDragOver={(event) => handleRoundDragOver(event, idx)}
                     onDrop={() => handleRoundDrop(idx)}
                     className={`${PLAN_ROUND_ROW_CLASS} ${
-                      round.type && roundTypeHasFocusPicker(round.type)
+                      !isGeneral && round.type && roundTypeHasFocusPicker(round.type)
                         ? "sm:grid-cols-2 lg:grid-cols-4"
-                        : round.type
+                        : round.type && !isGeneral
                           ? "sm:grid-cols-3"
                           : "sm:grid-cols-2"
                     } ${
@@ -3532,14 +3587,14 @@ function AIInterviewTab({
                         value={round.type}
                         placeholder="Select a round type"
                         onChange={(next) => handleCustomRoundFieldChange(idx, "type", next)}
-                        options={ROUND_TYPE_OPTIONS.map((type) => ({
+                        options={availableRoundTypes.map((type) => ({
                           value: type,
                           label: type,
                         }))}
                         triggerSurface="card"
                       />
                     </div>
-                    {round.type && roundTypeHasFocusPicker(round.type) && (
+                    {!isGeneral && round.type && roundTypeHasFocusPicker(round.type) && (
                       <div className="relative min-w-0">
                         <ThemedSelect
                           ariaLabel={`Round ${idx + 1} focus`}
@@ -3553,7 +3608,7 @@ function AIInterviewTab({
                         />
                       </div>
                     )}
-                    {round.type ? (
+                    {round.type && !isGeneral ? (
                     <div className="relative min-w-0">
                       <ThemedSelect
                         ariaLabel={`Round ${idx + 1} difficulty`}

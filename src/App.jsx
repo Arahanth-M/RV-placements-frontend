@@ -46,6 +46,7 @@ import GeneralStatsPage from "./components/GeneralStats/GeneralStatsPage";
 import GeneralCompanyList from "./components/GeneralCompanyList";
 import GeneralPricingPage from "./components/GeneralPricingPage";
 import GeneralDataEntryPage from "./components/GeneralDataEntryPage";
+import AIInterviewDataEntryPage from "./components/AIInterviewDataEntryPage";
 import AboutPage from "./components/legal/AboutPage";
 import TermsPage from "./components/legal/TermsPage";
 import PrivacyPage from "./components/legal/PrivacyPage";
@@ -157,6 +158,10 @@ function TenantAccessGate() {
 /** `/general` for signed-in students outside an onboarded campus tenant. */
 function GeneralAccessGate() {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const isSharedInterviewDataEntry =
+    String(location.pathname || "").replace(/\/+$/, "") ===
+    `${GENERAL_BASE}/ai-interview-data-entry`;
 
   if (loading) {
     return (
@@ -168,6 +173,12 @@ function GeneralAccessGate() {
 
   if (!user) {
     return <Navigate to="/" replace />;
+  }
+
+  // Temporary shared bank editor: any authenticated account may use this exact route,
+  // including users who would normally be redirected into an onboarded college tenant.
+  if (isSharedInterviewDataEntry) {
+    return <Outlet />;
   }
 
   if (canAccessRvceTenant(user)) {
@@ -408,6 +419,7 @@ function GeneralRoutes() {
         />
         <Route path="data-entry" element={<GeneralDataEntryPage />} />
         <Route path="data-entry/:companyId" element={<GeneralDataEntryPage />} />
+        <Route path="ai-interview-data-entry" element={<AIInterviewDataEntryPage />} />
         {LegalInfoRoutes()}
         {StudentFeatureRoutes({
           includeIndexHome: false,

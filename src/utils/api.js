@@ -541,6 +541,22 @@ export const adminAPI = {
     API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/dismiss`),
 };
 
+export const interviewQuestionBankAPI = {
+  list: (params = {}) => API.get("/api/interview-question-bank", { params }),
+  coverage: () => API.get("/api/interview-question-bank/coverage"),
+  catalog: () => API.get("/api/interview-question-bank/catalog"),
+  create: (payload) => API.post("/api/interview-question-bank", payload),
+  importCsv: (formData) =>
+    API.post("/api/interview-question-bank/import", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  update: (id, payload) =>
+    API.put(`/api/interview-question-bank/${encodeURIComponent(String(id || ""))}`, payload),
+  bulkTags: (payload) => API.patch("/api/interview-question-bank/bulk/tags", payload),
+  remove: (id) =>
+    API.delete(`/api/interview-question-bank/${encodeURIComponent(String(id || ""))}`),
+};
+
 export const getPlacementHubSettings = () =>
   API.get('/api/companies/placement-hub-settings');
 
@@ -716,6 +732,8 @@ export const interviewAPI = {
     interviewPlanMode = "custom",
     customRounds,
     contentScope,
+    role,
+    interviewDifficulty,
   }) {
     const res = await interviewHttp.post('/api/interview/start-interview', {
       userId,
@@ -727,6 +745,8 @@ export const interviewAPI = {
       interviewPlanMode,
       customRounds,
       ...(contentScope ? { contentScope } : {}),
+      ...(role ? { role } : {}),
+      ...(interviewDifficulty ? { interviewDifficulty } : {}),
     });
     clearInterviewSummaryCacheForUser(userId);
     if (res?.data?.sessionId) {
