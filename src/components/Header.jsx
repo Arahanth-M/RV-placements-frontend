@@ -26,8 +26,12 @@ import {
   FaMapMarkedAlt,
   FaRoute,
   FaLock,
+  FaUniversity,
+  FaInbox,
+  FaCreditCard,
+  FaGlobe,
 } from "react-icons/fa";
-import { adminAPI } from "../utils/api";
+import { adminAPI, platformAdminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
 import { PATH_COMPANY_CATEGORY, PATH_COMPANY_STATS } from "../constants/placementTiers.js";
 import {
@@ -37,6 +41,7 @@ import {
 } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { LOGIN_INTENT_CAMPUS, LOGIN_INTENT_SPC } from "../utils/loginIntent.js";
+import { isPlatformAdminUser } from "../utils/collegeScope.js";
 import NotificationBell from "./NotificationBell";
 import NotificationSubscribeButton from "./NotificationSubscribeButton";
 import BrandLogo from "./BrandLogo.jsx";
@@ -144,6 +149,52 @@ function buildSpcCornerLinks(base) {
   ];
 }
 
+function buildPlatformAdminCornerLinks(base) {
+  return [
+    { label: "Platform admin", path: pathUnderBase(base, "/admin/dashboard"), icon: FaTachometerAlt },
+    {
+      label: "Platform stats",
+      path: pathUnderBase(base, "/admin/dashboard?tab=stats"),
+      icon: FaChartBar,
+      tab: "stats",
+    },
+    {
+      label: "Company prep content",
+      path: pathUnderBase(base, "/data-entry"),
+      icon: FaBuilding,
+    },
+    {
+      label: "Interview question bank",
+      path: pathUnderBase(base, "/ai-interview-data-entry"),
+      icon: FaComments,
+    },
+    {
+      label: "Platform submissions",
+      path: pathUnderBase(base, "/admin/dashboard?tab=submissions"),
+      icon: FaInbox,
+      tab: "submissions",
+    },
+    {
+      label: "Onboarding inbox",
+      path: pathUnderBase(base, "/admin/dashboard?tab=onboarding"),
+      icon: FaUniversity,
+      tab: "onboarding",
+    },
+    {
+      label: "Billing",
+      path: pathUnderBase(base, "/admin/dashboard?tab=billing"),
+      icon: FaCreditCard,
+      tab: "billing",
+    },
+    {
+      label: "Visit campus dashboard",
+      path: pathUnderBase(base, "/admin/dashboard?tab=campus"),
+      icon: FaGlobe,
+      tab: "campus",
+    },
+  ];
+}
+
 function buildAdminCornerLinks(base) {
   return [
     { label: "Admin Dashboard", path: pathUnderBase(base, "/admin/dashboard"), icon: FaTachometerAlt },
@@ -233,7 +284,7 @@ const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
 
 const Header = () => {
   const placementFormEntryUrl = `${BASE_URL}/api/placement/form`;
-  const { user, isAdmin, studentData, login, signup, logout, loading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, studentData, login, signup, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -247,7 +298,11 @@ const Header = () => {
     [base, isGeneral]
   );
   const spcCornerLinks = useMemo(() => buildSpcCornerLinks(base), [base]);
-  const adminCornerLinks = useMemo(() => buildAdminCornerLinks(base), [base]);
+  const adminCornerLinks = useMemo(
+    () =>
+      isGeneral ? buildPlatformAdminCornerLinks(base) : buildAdminCornerLinks(base),
+    [base, isGeneral]
+  );
   const [studentMenuOpen, setStudentMenuOpen] = useState(false);
   const [mobileStudentCornerOpen, setMobileStudentCornerOpen] = useState(false);
   const [spcMenuOpen, setSpcMenuOpen] = useState(false);
@@ -332,7 +387,8 @@ const Header = () => {
 
   const isStudentCornerActive = studentCornerLinks.some((l) => isPathActive(l.path));
   const isSpcUser = !isGeneral && user?.role === "spc";
-  const showAdmin = !isGeneral && isAdmin;
+  const showPlatformAdmin = isGeneral && (isSuperAdmin || isPlatformAdminUser(user));
+  const showAdmin = (!isGeneral && isAdmin) || showPlatformAdmin;
   const isSpcCornerActive =
     isSpcUser &&
     (location.pathname === appPath("/spc-dashboard") ||
@@ -407,9 +463,13 @@ const Header = () => {
 
     const checkPendingItems = async () => {
       try {
-        const stats = await adminAPI.getStats();
-        const hasPending =
-          (stats.data?.pendingSubmissions > 0) || (stats.data?.pendingCompanies > 0);
+        const stats = showPlatformAdmin
+          ? await platformAdminAPI.getStats()
+          : await adminAPI.getStats();
+        const hasPending = showPlatformAdmin
+          ? Number(stats.data?.pendingSubmissions || 0) > 0 ||
+            Number(stats.data?.onboardingOpen || 0) > 0
+          : (stats.data?.pendingSubmissions > 0) || (stats.data?.pendingCompanies > 0);
         setHasPendingItems(hasPending);
       } catch {
         setHasPendingItems(false);
@@ -440,7 +500,7 @@ const Header = () => {
       stopPolling();
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [showAdmin, user]);
+  }, [showAdmin, showPlatformAdmin, user]);
 
   // Sidebar-style dropdown wrapper
   const DropdownMenu = ({ children }) => (

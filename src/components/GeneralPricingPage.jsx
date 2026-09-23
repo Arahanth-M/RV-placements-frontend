@@ -15,14 +15,7 @@ import {
 } from "./PageBackNav.jsx";
 import ThemedSelect from "./ThemedSelect.jsx";
 
-const PLAN_ORDER = [
-  "category",
-  "all_cards",
-  "mocks",
-  "prep_path",
-  "mocks_prep",
-  "all_premium",
-];
+const PLAN_ORDER = ["category", "prep_path", "mocks", "all_premium"];
 
 const PLAN_INFO = {
   trial: {
@@ -38,43 +31,26 @@ const PLAN_INFO = {
     ],
   },
   category: {
-    includes: [
-      "Full company-card details for every company in the category you choose",
-    ],
+    includes: ["Full company-card details for every company in the category you choose"],
     excludes: [
-      "AI mock interviews for the unlocked companies",
-      "PrepPath for the unlocked companies",
+      "AI mock interviews",
+      "PrepPath",
       "Companies in other categories",
     ],
-  },
-  all_cards: {
-    includes: ["Full company-card details for every company"],
-    excludes: [
-      "AI mock interviews for the unlocked companies",
-      "PrepPath for the unlocked companies",
-    ],
-  },
-  mocks: {
-    includes: [
-      "Unlimited AI mock interviews for 6 months",
-      "Only on companies you can already open (teasers, an unlocked category, or all cards)",
-    ],
-    excludes: ["Unlocking extra company cards", "Unlimited PrepPath"],
   },
   prep_path: {
     includes: [
       "Unlimited PrepPath plans for 6 months",
-      "Only on companies you can already open (teasers, an unlocked category, or all cards)",
+      "Full company-card details for every company",
     ],
-    excludes: ["Unlocking extra company cards", "Unlimited AI mock interviews"],
+    excludes: ["Unlimited AI mock interviews"],
   },
-  mocks_prep: {
+  mocks: {
     includes: [
       "Unlimited AI mock interviews for 6 months",
-      "Unlimited PrepPath for 6 months",
-      "Only on companies you can already open",
+      "Full company-card details for every company",
     ],
-    excludes: ["Unlocking extra company cards"],
+    excludes: ["Unlimited PrepPath"],
   },
   all_premium: {
     includes: [
@@ -83,6 +59,14 @@ const PLAN_INFO = {
       "Unlimited PrepPath for 6 months",
     ],
     excludes: [],
+  },
+  all_cards: {
+    includes: ["Full company-card details for every company"],
+    excludes: ["AI mock interviews", "PrepPath"],
+  },
+  mocks_prep: {
+    includes: ["Unlimited AI mock interviews", "Unlimited PrepPath"],
+    excludes: ["Unlocking extra company cards"],
   },
 };
 
@@ -290,13 +274,16 @@ export default function GeneralPricingPage() {
   }, [access?.entitlements, plans]);
 
   const highlight = (planId) => {
-    if (feature === "mocks" && (planId === "mocks" || planId === "mocks_prep" || planId === "all_premium")) {
+    if (feature === "mocks" && (planId === "mocks" || planId === "all_premium")) {
       return true;
     }
-    if (feature === "prep_path" && (planId === "prep_path" || planId === "mocks_prep" || planId === "all_premium")) {
+    if (feature === "prep_path" && (planId === "prep_path" || planId === "all_premium")) {
       return true;
     }
-    if (feature === "company_detail" && (planId === "category" || planId === "all_cards" || planId === "all_premium")) {
+    if (
+      feature === "company_detail" &&
+      (planId === "category" || planId === "prep_path" || planId === "mocks" || planId === "all_premium")
+    ) {
       return true;
     }
     return planId === "all_premium";

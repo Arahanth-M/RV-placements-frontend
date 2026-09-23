@@ -19,6 +19,7 @@ import {
 import CompanyLogo from "./CompanyLogo";
 import { formatExperienceMonth } from "../utils/parseExperienceStoredEntry.js";
 import PaywallModal from "./PaywallPanel.jsx";
+import { formatPlatformPrepCoverage } from "../utils/platformPrepCoverage.js";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -308,6 +309,7 @@ function CompanyCard({
   };
 
   const typeShown = typeDisplayLabel ?? company.type;
+  const prepCoverage = formatPlatformPrepCoverage(company.platformPrepCoverage);
 
   /** Dream / Open dream / Summer: category no-visit copy omits company-static teaser rows (business model, tags). */
   const tierPendingOmitsPlacementTeasers =
@@ -367,7 +369,7 @@ function CompanyCard({
 
   return (
     <div
-      className={`relative rounded-2xl shadow-md p-5 sm:p-6 company-card h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 transition-[box-shadow,border-color] duration-300 hover:shadow-2xl ${
+      className={`relative rounded-2xl shadow-md p-5 sm:p-6 company-card @container h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 transition-[box-shadow,border-color] duration-300 hover:shadow-2xl ${
         isTrending
           ? "company-card--trending border-amber-400/70"
           : "border-theme-accent"
@@ -408,7 +410,9 @@ function CompanyCard({
 
       {/* Top Section: Header + Logo */}
       <div
-        className={`company-header mb-4 flex flex-shrink-0 items-center gap-3 ${
+        className={`company-header flex flex-shrink-0 items-center gap-3 ${
+          isGeneral ? "mb-1.5" : "mb-4"
+        } ${
           isTrending || (isGeneral && (isTeaser || detailLocked)) ? "pr-12" : ""
         }`}
       >
@@ -426,12 +430,9 @@ function CompanyCard({
           <h2 className="company-name text-lg sm:text-xl font-bold text-theme-primary tracking-tight truncate">
             {company.name || "Unknown Company"}
           </h2>
+          {isGeneral ? null : (
           <div className="flex items-center gap-2">
-            {isGeneral ? (
-              <p className="company-role text-xs sm:text-sm italic truncate text-theme-secondary">
-                Company prep
-              </p>
-            ) : !isEditingType ? (
+            {!isEditingType ? (
               <>
                 <p
                   className={`company-role text-xs sm:text-sm italic truncate ${
@@ -464,8 +465,17 @@ function CompanyCard({
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
+      {isGeneral ? (
+        <p
+          className="company-role mb-4 w-full min-w-0 whitespace-nowrap tracking-tight text-[clamp(8px,3.4cqi,10px)] leading-none text-theme-secondary tabular-nums"
+          data-testid="company-prep-coverage"
+        >
+          {prepCoverage.line}
+        </p>
+      ) : null}
 
       {/* Middle Section: Main info - Flex grow to push footer down */}
       <div className="flex-1 flex flex-col min-w-0 gap-3">
@@ -624,7 +634,7 @@ function CompanyCard({
         open={paywallOpen}
         onClose={() => setPaywallOpen(false)}
         title={`Unlock ${company?.name || "this company"}`}
-        message="This company card is premium. The first company in each category stays free to open. Unlock this category or all company cards to view full details."
+        message="This company card is premium. The first company in each category stays free to open. Unlock this category, or a plan that includes all company cards."
         pricingPath={appPath("/pricing")}
         feature="company_detail"
       />

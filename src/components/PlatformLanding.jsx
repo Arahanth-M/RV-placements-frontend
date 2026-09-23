@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FaBook,
@@ -25,7 +25,7 @@ import { normalizeCompanyNameKey } from "../utils/companyLogoDomains";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { useTheme } from "../utils/ThemeContext";
-import { canAccessRvceTenant, getAppHomePathForUser } from "../utils/collegeScope.js";
+import { canAccessRvceTenant, getAppHomePathForUser, isPlatformAdminUser } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import { PageHeroFontStyles } from "./PageBackNav.jsx";
 import PlatformFooter from "./PlatformFooter.jsx";
@@ -509,7 +509,8 @@ function HeroHighlightRotator() {
 
 function LandingHero({ user, embedded = false }) {
   const reduceMotion = useReducedMotion();
-  const canEnterRvce = canAccessRvceTenant(user);
+  const isPlatformAdmin = isPlatformAdminUser(user);
+  const canEnterRvce = !isPlatformAdmin && canAccessRvceTenant(user);
   const appHome = getAppHomePathForUser(user);
   const fadeUp = (delay = 0) =>
     reduceMotion
@@ -590,15 +591,13 @@ function LandingHero({ user, embedded = false }) {
                   </Link>
                 ) : appHome ? (
                   <Link to={appHome} className={heroBtnClass}>
-                    {canEnterRvce ? "Enter campus dashboard" : "Open general dashboard"}
+                    {isPlatformAdmin
+                      ? "Open platform admin"
+                      : canEnterRvce
+                        ? "Enter campus dashboard"
+                        : "Open general dashboard"}
                   </Link>
-                ) : (
-                  <PlatformLoginMenu
-                    align="center"
-                    triggerLabel="Login"
-                    triggerClassName={`${heroBtnClass} gap-2`}
-                  />
-                )}
+                ) : null}
                 <a href="#solutions" className={heroBtnClass}>
                   See what you get
                 </a>
@@ -619,7 +618,8 @@ function LandingHero({ user, embedded = false }) {
 
 function LandingHeader({ user, loading }) {
   const { theme, toggleTheme } = useTheme();
-  const canEnterRvce = canAccessRvceTenant(user);
+  const isPlatformAdmin = isPlatformAdminUser(user);
+  const canEnterRvce = !isPlatformAdmin && canAccessRvceTenant(user);
   const appHome = getAppHomePathForUser(user);
   return (
     <header className="sticky top-0 z-50 border-b border-theme bg-theme-card/95 backdrop-blur-xl">
@@ -662,7 +662,7 @@ function LandingHeader({ user, loading }) {
               to={appHome}
               className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
             >
-              {canEnterRvce ? "Dashboard" : "General"}
+              {isPlatformAdmin ? "Admin" : canEnterRvce ? "Dashboard" : "General"}
             </Link>
           ) : (
             <PlatformLoginMenu
@@ -753,6 +753,11 @@ export default function PlatformLanding({ embedded = false }) {
       cancelled = true;
     };
   }, []);
+
+  const appHome = getAppHomePathForUser(user);
+  if (!embedded && !loading && appHome) {
+    return <Navigate to={appHome} replace />;
+  }
 
   const companiesForMarquee = companyLogos.slice(0, 12);
   const companyRowA = repeatForMarquee(companiesForMarquee, 3);

@@ -541,6 +541,28 @@ export const adminAPI = {
     API.post(`/api/admin/interview-limit-requests/${encodeURIComponent(requestId)}/dismiss`),
 };
 
+export const platformAdminAPI = {
+  getStats: () => API.get("/api/admin/platform/stats"),
+  getOnboarding: (config) => API.get("/api/admin/platform/onboarding", config),
+  updateOnboarding: (id, body) =>
+    API.patch(`/api/admin/platform/onboarding/${encodeURIComponent(id)}`, body),
+  getBillingOrders: (config) => API.get("/api/admin/platform/billing/orders", config),
+  getSubmissions: (config) => API.get("/api/admin/platform/submissions", config),
+  getSubmission: (id) => API.get(`/api/admin/platform/submissions/${id}`),
+  enhanceSubmission: (id) => API.post(`/api/admin/platform/submissions/${id}/enhance`),
+  addAnswerToSubmission: (id) =>
+    API.post(`/api/admin/platform/submissions/${id}/add-answer`),
+  approveSubmission: (id, body) =>
+    API.post(`/api/admin/platform/submissions/${id}/approve`, body != null ? body : {}),
+  approveSubmissionsBatch: (ids) =>
+    API.post("/api/admin/platform/submissions/approve-batch", {
+      ids: Array.isArray(ids) ? ids : [],
+    }),
+  rejectSubmission: (id) => API.delete(`/api/admin/platform/submissions/${id}/reject`),
+  deleteApprovedSubmission: (id) =>
+    API.delete(`/api/admin/platform/submissions/${id}/delete`),
+};
+
 export const interviewQuestionBankAPI = {
   list: (params = {}) => API.get("/api/interview-question-bank", { params }),
   coverage: () => API.get("/api/interview-question-bank/coverage"),
@@ -669,7 +691,7 @@ export const prepPathAPI = {
     }),
   listPlans: () => API.get("/api/prep-path/plans"),
   getPlan: (id) => API.get(`/api/prep-path/plans/${encodeURIComponent(String(id || ""))}`),
-  generate: ({ companyId, role, track, days, hoursPerDay, resumeFile, scope }) => {
+  generate: ({ companyId, role, track, days, hoursPerDay, resumeFile, jdFile, scope }) => {
     const formData = new FormData();
     formData.append("companyId", String(companyId || ""));
     formData.append("role", String(role || ""));
@@ -678,11 +700,18 @@ export const prepPathAPI = {
     formData.append("hoursPerDay", String(hoursPerDay ?? ""));
     if (scope) formData.append("scope", String(scope));
     formData.append("resume", resumeFile);
+    if (jdFile) formData.append("jd", jdFile);
     return API.post("/api/prep-path/generate", formData, {
       // Large LLM generation; avoid default short axios timeouts.
       timeout: 180000,
     });
   },
+  applySchedule: (planId, { style, slotMinutes, slotsPerDay }) =>
+    API.post(`/api/prep-path/plans/${encodeURIComponent(String(planId || ""))}/schedule`, {
+      style,
+      slotMinutes,
+      slotsPerDay,
+    }),
 };
 
 export const placementAPI = {
@@ -720,6 +749,8 @@ export const leaderboardAPI = {
 export const interviewAPI = {
   getInterviewEligibility: (params = {}) =>
     interviewHttp.get("/api/interview/eligibility", { params }),
+  getFocusOptions: (params = {}) =>
+    interviewHttp.get("/api/interview/focus-options", { params }),
   getInterviewLimitRequestStatus: () => interviewHttp.get("/api/interview/limit-request/status"),
   submitInterviewLimitRequest: () => interviewHttp.post("/api/interview/limit-request"),
   async startInterview({

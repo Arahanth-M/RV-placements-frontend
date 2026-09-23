@@ -18,9 +18,11 @@ import Contact from "./components/Contact";
 import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
+import ProtectedPlatformAdminRoute from "./components/ProtectedPlatformAdminRoute";
 import ProtectedSpcRoute from "./components/ProtectedSpcRoute";
 import Resources from "./components/Resources";
 import AdminDashboard from "./components/AdminDashboard";
+import PlatformAdminDashboard from "./components/PlatformAdminDashboard";
 import JdImportPage from "./components/JdImportPage";
 import MinCgpaGapsPage from "./components/MinCgpaGapsPage";
 import RvitmDataPage from "./components/RvitmDataPage";
@@ -65,6 +67,8 @@ import {
 import {
   canAccessRvceTenant,
   canAccessGeneralTenant,
+  isPlatformAdminUser,
+  isOnboardedInstitutionUser,
 } from "./utils/collegeScope.js";
 import { TenantShellProvider } from "./context/TenantShellContext.jsx";
 
@@ -122,9 +126,10 @@ function ScrollToTop() {
   return null;
 }
 
-/** `/rvce` is only for signed-in `@rvce.edu.in` accounts (login + OAuth callback exempt). */
+/** `/rvce` is only for signed-in `@rvce.edu.in` accounts (login + OAuth callback exempt).
+ *  Platform owners may also enter campus dashboards. */
 function TenantAccessGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, isSuperAdmin } = useAuth();
   const location = useLocation();
   const path = String(location.pathname || "");
   const isExempt =
@@ -148,20 +153,17 @@ function TenantAccessGate() {
     return <Navigate to="/" replace />;
   }
 
-  if (!canAccessRvceTenant(user)) {
+  if (!canAccessRvceTenant(user) && !isSuperAdmin && !isPlatformAdminUser(user)) {
     return <Navigate to={GENERAL_BASE} replace />;
   }
 
   return <Outlet />;
 }
 
-/** `/general` for signed-in students outside an onboarded campus tenant. */
+/** `/general` for signed-in students outside an onboarded campus tenant.
+ *  Platform owners may stay on `/general` even with a campus email. */
 function GeneralAccessGate() {
-  const { user, loading } = useAuth();
-  const location = useLocation();
-  const isSharedInterviewDataEntry =
-    String(location.pathname || "").replace(/\/+$/, "") ===
-    `${GENERAL_BASE}/ai-interview-data-entry`;
+  const { user, loading, isSuperAdmin } = useAuth();
 
   if (loading) {
     return (
@@ -175,13 +177,11 @@ function GeneralAccessGate() {
     return <Navigate to="/" replace />;
   }
 
-  // Temporary shared bank editor: any authenticated account may use this exact route,
-  // including users who would normally be redirected into an onboarded college tenant.
-  if (isSharedInterviewDataEntry) {
+  if (isSuperAdmin || isPlatformAdminUser(user)) {
     return <Outlet />;
   }
 
-  if (canAccessRvceTenant(user)) {
+  if (isOnboardedInstitutionUser(user)) {
     return <Navigate to={TENANT_BASE} replace />;
   }
 
@@ -409,17 +409,44 @@ function GeneralRoutes() {
     <Route path={GENERAL_BASE} element={<GeneralAccessGate />}>
       <Route element={<AppShell base={GENERAL_BASE} />}>
         <Route index element={<PlatformLanding embedded />} />
-        <Route
-          path="pricing"
-          element={
+        <Route path="pricing" element={
             <ProtectedRoute>
               <GeneralPricingPage />
             </ProtectedRoute>
           }
         />
-        <Route path="data-entry" element={<GeneralDataEntryPage />} />
-        <Route path="data-entry/:companyId" element={<GeneralDataEntryPage />} />
-        <Route path="ai-interview-data-entry" element={<AIInterviewDataEntryPage />} />
+        <Route
+          path="admin/dashboard"
+          element={
+            <ProtectedPlatformAdminRoute>
+              <PlatformAdminDashboard />
+            </ProtectedPlatformAdminRoute>
+          }
+        />
+        <Route
+          path="data-entry"
+          element={
+            <ProtectedPlatformAdminRoute>
+              <GeneralDataEntryPage />
+            </ProtectedPlatformAdminRoute>
+          }
+        />
+        <Route
+          path="data-entry/:companyId"
+          element={
+            <ProtectedPlatformAdminRoute>
+              <GeneralDataEntryPage />
+            </ProtectedPlatformAdminRoute>
+          }
+        />
+        <Route
+          path="ai-interview-data-entry"
+          element={
+            <ProtectedPlatformAdminRoute>
+              <AIInterviewDataEntryPage />
+            </ProtectedPlatformAdminRoute>
+          }
+        />
         {LegalInfoRoutes()}
         {StudentFeatureRoutes({
           includeIndexHome: false,

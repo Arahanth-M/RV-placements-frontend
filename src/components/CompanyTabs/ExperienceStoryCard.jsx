@@ -12,14 +12,14 @@ function authorInitial(name) {
   return ch ? ch[0].toUpperCase() : "?";
 }
 
-function ExpandableBody({ text, className = "" }) {
-  const [expanded, setExpanded] = useState(false);
+function ExpandableBody({ text, className = "", forceExpanded = false }) {
+  const [expanded, setExpanded] = useState(forceExpanded);
   const value = String(text || "").trim();
   if (!value) return null;
 
   const needsToggle = value.length > PREVIEW_CHARS;
   const shown =
-    !needsToggle || expanded ? value : `${value.slice(0, PREVIEW_CHARS).trim()}…`;
+    !needsToggle || expanded || forceExpanded ? value : `${value.slice(0, PREVIEW_CHARS).trim()}…`;
 
   return (
     <div className={className}>
@@ -74,6 +74,8 @@ export function ExperienceStoryCard({
   isAnonymous = false,
   submittedBy = null,
   adminActions = null,
+  highlighted = false,
+  forceExpanded = false,
 }) {
   const narrative = useMemo(
     () => splitExperienceNarrative(content),
@@ -83,10 +85,16 @@ export function ExperienceStoryCard({
   const showAuthor = isAnonymous || Boolean(String(submittedBy?.name || "").trim());
 
   return (
-    <article className="rounded-2xl border border-theme border-l-4 border-l-theme-accent bg-theme-hero p-4 shadow-sm sm:p-5">
+    <article
+      className={`rounded-2xl border border-theme border-l-4 border-l-theme-accent bg-theme-hero p-4 shadow-sm sm:p-5 ${
+        highlighted ? "ring-2 ring-theme-accent bg-theme-accent/10" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-4">
-          {narrative.intro ? <ExpandableBody text={narrative.intro} /> : null}
+          {narrative.intro ? (
+            <ExpandableBody text={narrative.intro} forceExpanded={forceExpanded} />
+          ) : null}
 
           {useTimeline ? (
             <ol className="space-y-5">
@@ -99,7 +107,7 @@ export function ExperienceStoryCard({
                     {round.label}
                   </p>
                   {round.body ? (
-                    <ExpandableBody text={round.body} className="mt-1.5" />
+                    <ExpandableBody text={round.body} className="mt-1.5" forceExpanded={forceExpanded} />
                   ) : null}
                 </li>
               ))}
@@ -112,12 +120,12 @@ export function ExperienceStoryCard({
                     {round.label}
                   </p>
                   {round.body ? (
-                    <ExpandableBody text={round.body} className="mt-1.5" />
+                    <ExpandableBody text={round.body} className="mt-1.5" forceExpanded={forceExpanded} />
                   ) : null}
                 </div>
               ))}
               {!narrative.intro && narrative.rounds.length === 0 ? (
-                <ExpandableBody text={content} />
+                <ExpandableBody text={content} forceExpanded={forceExpanded} />
               ) : null}
             </>
           )}

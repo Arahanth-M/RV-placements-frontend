@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
@@ -10,6 +10,10 @@ import {
   ExperienceStoryCard,
 } from "./ExperienceStoryCard.jsx";
 import { listInternshipExperienceEntries } from "../../utils/parseExperienceStoredEntry.js";
+import {
+  findFocusIndex,
+  scrollFocusNode,
+} from "../../utils/prepPathCompanyFocus.js";
 
 function InternshipTab({
   company,
@@ -17,6 +21,7 @@ function InternshipTab({
   placementYear = DEFAULT_PLACEMENT_DETAIL_YEAR,
   placementListContext,
   placementCompanyVisitId,
+  focusQuery = "",
 }) {
   const [showModal, setShowModal] = useState(false);
   const [experienceText, setExperienceText] = useState("");
@@ -64,6 +69,22 @@ function InternshipTab({
   };
 
   const internshipExperience = listInternshipExperienceEntries(company);
+  const expRefs = useRef({});
+  const [focusedExpIndex, setFocusedExpIndex] = useState(-1);
+
+  useEffect(() => {
+    const idx = findFocusIndex(
+      internshipExperience,
+      focusQuery,
+      (exp) => exp?.content || exp
+    );
+    if (idx < 0) {
+      setFocusedExpIndex(-1);
+      return;
+    }
+    setFocusedExpIndex(idx);
+    scrollFocusNode(expRefs.current[idx]);
+  }, [focusQuery, company]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
@@ -84,12 +105,20 @@ function InternshipTab({
               const submittedBy = exp.submittedBy || null;
 
               return (
-                <ExperienceStoryCard
+                <div
                   key={index}
+                  ref={(el) => {
+                    expRefs.current[index] = el;
+                  }}
+                >
+                <ExperienceStoryCard
                   content={expContent}
                   isAnonymous={isAnonymous}
                   submittedBy={submittedBy}
+                  highlighted={focusedExpIndex === index}
+                  forceExpanded={focusedExpIndex === index}
                 />
+                </div>
               );
             })}
           </div>

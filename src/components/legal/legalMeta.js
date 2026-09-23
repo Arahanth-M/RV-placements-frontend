@@ -1,7 +1,7 @@
 import { useLocation } from "react-router-dom";
 import { GENERAL_BASE } from "../../constants/tenant.js";
 
-export const LEGAL_LAST_UPDATED = "13 September 2026";
+export const LEGAL_LAST_UPDATED = "15 September 2026";
 
 export const LEGAL_BRAND = "Last Minute Placement Prep";
 export const LEGAL_OPERATOR = "Devomation AI";
@@ -38,32 +38,24 @@ export const PUBLIC_PLAN_PRICES = [
   },
   {
     name: "Unlock one category",
-    price: "₹299",
-    detail: "Full company-card details for one category. One-time, 6 months. No auto-renew.",
+    price: "₹199",
+    detail:
+      "Company-card details for one category. No AI mocks or PrepPath. One-time, 6 months. No auto-renew.",
   },
   {
-    name: "Unlock all company cards",
+    name: "Unlimited PrepPath",
     price: "₹499",
-    detail: "Full details for every company card. One-time, 6 months. No auto-renew.",
+    detail:
+      "Unlimited PrepPath plus all company cards. One-time, 6 months. No auto-renew.",
   },
   {
     name: "Unlimited AI mock interviews",
-    price: "₹399",
-    detail: "Unlimited AI mocks on companies you can open. One-time, 6 months. No auto-renew.",
-  },
-  {
-    name: "Unlock PrepPath",
-    price: "₹299",
-    detail: "Unlimited PrepPath plans on companies you can open. One-time, 6 months. No auto-renew.",
-  },
-  {
-    name: "AI mocks + PrepPath",
     price: "₹499",
-    detail: "Unlimited AI mocks and PrepPath. One-time, 6 months. No auto-renew.",
+    detail: "Unlimited AI mocks plus all company cards. One-time, 6 months. No auto-renew.",
   },
   {
     name: "All premium features",
     price: "₹699",
-    detail: "All company cards, unlimited AI mocks, and PrepPath. One-time, 6 months. No auto-renew.",
+    detail: "All company cards, unlimited AI mocks, and unlimited PrepPath. One-time, 6 months. No auto-renew.",
   },
 ];

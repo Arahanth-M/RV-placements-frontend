@@ -85,7 +85,7 @@
 
 // export default InterviewTab;
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
@@ -102,6 +102,11 @@ import {
   ExperienceSectionHeader,
   ExperienceStoryCard,
 } from "./ExperienceStoryCard.jsx";
+import {
+  findFocusIndex,
+  PREP_FOCUS_HIGHLIGHT_CLASS,
+  scrollFocusNode,
+} from "../../utils/prepPathCompanyFocus.js";
 
 function questionTextIsPresent(value) {
   return String(value ?? "").trim().length > 0;
@@ -116,6 +121,7 @@ function InterviewTab({
   placementListContext,
   placementCompanyVisitId,
   placementCluster,
+  focusQuery = "",
 }) {
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
@@ -134,6 +140,8 @@ function InterviewTab({
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const questionRowRefs = useRef({});
+  const processRowRefs = useRef({});
+  const [focusedProcessIndex, setFocusedProcessIndex] = useState(-1);
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -599,6 +607,27 @@ function InterviewTab({
     interviewProcess = [parseExperienceStoredEntry(company.interviewProcess, processDates[0])];
   }
 
+  useEffect(() => {
+    const qIdx = findFocusIndex(interviewQuestions, focusQuery, (q) =>
+      typeof q === "string" ? q : String(q?.question || q || "")
+    );
+    if (qIdx >= 0) {
+      setOpenIndexQ(qIdx);
+      setFocusedProcessIndex(-1);
+      scrollFocusNode(questionRowRefs.current[qIdx]);
+      return;
+    }
+    const pIdx = findFocusIndex(
+      interviewProcess,
+      focusQuery,
+      (p) => p?.content || p
+    );
+    if (pIdx >= 0) {
+      setFocusedProcessIndex(pIdx);
+      scrollFocusNode(processRowRefs.current[pIdx]);
+    }
+  }, [focusQuery, company]);
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       <div data-tour="company-contribute-actions" className="space-y-5 sm:space-y-6">
@@ -633,7 +662,9 @@ function InterviewTab({
                   questionRowRefs.current[index] = el;
                 }}
                 data-interview-question
-                className="interview-question-row border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
+                className={`interview-question-row border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden ${
+                  focusQuery && openIndexQ === index ? PREP_FOCUS_HIGHLIGHT_CLASS : ""
+                }`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button
@@ -781,11 +812,19 @@ function InterviewTab({
               const submittedBy = process.submittedBy || null;
 
               return (
+                <div
+                  key={index}
+                  ref={(el) => {
+                    processRowRefs.current[index] = el;
+                  }}
+                >
                 <ExperienceStoryCard
                   key={index}
                   content={processContent}
                   isAnonymous={isAnonymous}
                   submittedBy={submittedBy}
+                  highlighted={focusedProcessIndex === index}
+                  forceExpanded={focusedProcessIndex === index}
                   adminActions={
                     isAdmin ? (
                       <>
@@ -810,6 +849,7 @@ function InterviewTab({
                     ) : null
                   }
                 />
+                </div>
               );
             })}
           </div>

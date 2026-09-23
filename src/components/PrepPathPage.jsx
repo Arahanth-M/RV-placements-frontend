@@ -1,19 +1,32 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   FaArrowDown,
-  FaArrowLeft,
   FaArrowRight,
   FaChevronDown,
   FaChevronLeft,
   FaChevronRight,
+  FaChevronUp,
+  FaComments,
+  FaFileAlt,
   FaHistory,
-  FaMapMarkedAlt,
   FaSpinner,
+  FaTimes,
 } from "react-icons/fa";
 import { companyAPI, prepPathAPI } from "../utils/api";
+import {
+  buildPrepPathCompanyHref,
+  buildPrepPathMockInterviewHref,
+  displayPrepEvidenceLabel,
+  tabForPrepEvidence,
+} from "../utils/prepPathCompanyFocus.js";
+import { listStudyScheduleOptions } from "../utils/prepPathStudySchedule.js";
+import { resolvePrepResourceLink } from "../utils/prepPathResourceLinks.js";
+import { assignSubtopicsToDays } from "../utils/prepPathSlotSubtopics.js";
+import { PLATFORM_FRESHER_ROLES } from "../constants/interviewCatalog.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
+import ThemedSelect from "./ThemedSelect.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -28,6 +41,10 @@ const INPUT =
 
 const LABEL = "mb-1 block text-xs font-medium text-theme-secondary whitespace-nowrap";
 
+/** Off-platform resource links — sky blue, distinct from accent (internal) links. */
+const PREP_PATH_EXTERNAL_LINK_CLASS =
+  "mt-0.5 inline-block max-w-full break-all text-[10px] font-medium text-external-link underline-offset-2 hover:text-external-link-hover hover:underline";
+
 function trackLabel(track) {
   return String(track) === "summer_internship" ? "Summer internship" : "Full-time";
 }
@@ -36,6 +53,11 @@ const TRACK_OPTIONS = [
   { value: "full_time", label: "Full-time" },
   { value: "summer_internship", label: "Summer internship" },
 ];
+
+const FRESHER_ROLE_OPTIONS = PLATFORM_FRESHER_ROLES.map((role) => ({
+  value: role,
+  label: role,
+}));
 
 /** Theme-aware track picker — matches PrepPath INPUT styling in light/dark (avoids native OS select chrome). */
 function PrepPathTrackSelect({ value, onChange }) {
@@ -110,25 +132,207 @@ function PrepPathTrackSelect({ value, onChange }) {
   );
 }
 
-function CampusEvidenceChips({ items }) {
+function clampPrepNumber(value, min, max, step) {
+  let n = Number(value);
+  if (!Number.isFinite(n)) n = min;
+  const steps = Math.round((n - min) / step);
+  n = min + steps * step;
+  n = Math.min(max, Math.max(min, n));
+  return Number(n.toFixed(4));
+}
+
+/** Theme-aware number field — hides native spinners (they clash in dark mode). */
+function PrepPathNumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  ariaLabel,
+}) {
+  const bump = (delta) => onChange(clampPrepNumber(Number(value) + delta, min, max, step));
+  return (
+    <div className="w-full">
+      {label ? <label className={LABEL}>{label}</label> : null}
+      <div className="cgpa-filter-field relative w-full">
+        <input
+          type="number"
+          inputMode="decimal"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          aria-label={ariaLabel || label}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === "") return;
+            onChange(clampPrepNumber(raw, min, max, step));
+          }}
+          onBlur={() => onChange(clampPrepNumber(value, min, max, step))}
+          className={`${INPUT} cgpa-filter-input pr-9`}
+        />
+        <div className="cgpa-filter-stepper">
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={`Increase ${ariaLabel || label || "value"}`}
+            onClick={() => bump(step)}
+          >
+            <FaChevronUp aria-hidden />
+          </button>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={`Decrease ${ariaLabel || label || "value"}`}
+            onClick={() => bump(-step)}
+          >
+            <FaChevronDown aria-hidden />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatResumeSize(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n < 0) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function PrepPathDocumentField({
+  id,
+  label,
+  required = false,
+  optional = false,
+  file,
+  onChange,
+  inputRef,
+}) {
+  const removeLabel = `Remove ${label.toLowerCase()}`;
+  return (
+    <div className="min-w-0 w-full">
+      <div className="mb-1 flex min-w-0 items-baseline gap-1.5">
+        <label className="truncate text-xs font-medium text-theme-secondary" htmlFor={id}>
+          {label}
+          {required ? <span className="text-theme-accent"> *</span> : null}
+        </label>
+        {optional ? (
+          <span className="shrink-0 text-[10px] font-normal text-theme-muted">optional</span>
+        ) : null}
+      </div>
+      <input
+        ref={inputRef}
+        id={id}
+        type="file"
+        accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        className="sr-only"
+        onChange={(e) => onChange(e.target.files?.[0] || null)}
+      />
+      <div
+        className={`${INPUT} flex h-[38px] min-w-0 items-center gap-1.5 py-0 pl-2 pr-1 ${
+          file ? "border-theme-accent/50" : ""
+        }`}
+      >
+        <label htmlFor={id} className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 overflow-hidden">
+          <FaFileAlt className="h-3.5 w-3.5 shrink-0 text-theme-accent" aria-hidden />
+          <span className="min-w-0 truncate text-xs sm:text-sm">
+            {file ? (
+              <>
+                <span className="text-theme-primary">{file.name}</span>
+                {formatResumeSize(file.size) ? (
+                  <span className="hidden text-theme-muted sm:inline">
+                    {" "}
+                    · {formatResumeSize(file.size)}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span className="text-theme-muted">PDF / DOCX</span>
+            )}
+          </span>
+        </label>
+        {file ? (
+          <button
+            type="button"
+            aria-label={removeLabel}
+            onClick={() => {
+              onChange(null);
+              if (inputRef?.current) inputRef.current.value = "";
+            }}
+            className="shrink-0 rounded-md p-1.5 text-theme-muted hover:bg-theme-hero hover:text-theme-primary"
+          >
+            <FaTimes className="h-3 w-3" aria-hidden />
+          </button>
+        ) : (
+          <label
+            htmlFor={id}
+            className="shrink-0 cursor-pointer rounded-md bg-theme-hero px-2 py-1 text-[10px] font-semibold text-theme-secondary hover:text-theme-primary sm:text-[11px]"
+          >
+            Browse
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CampusEvidenceChips({ items, companyId }) {
+  const { appPath, isGeneral } = useTenantShell();
+  const location = useLocation();
   const list = Array.isArray(items) ? items.filter((e) => e?.label || e?.snippet) : [];
   if (!list.length) return null;
   return (
-    <div className="mt-2 flex flex-col gap-1">
-      {list.map((ev, i) => (
-        <div
-          key={`${ev.label || ev.snippet}-${i}`}
-          className="rounded-md border border-theme-accent/30 bg-theme-accent/5 px-2 py-1 text-[10px] leading-snug text-theme-secondary"
-          title={ev.snippet || ev.label}
-        >
-          <span className="font-semibold text-theme-accent">
-            {ev.label || "Seen in RVCE visit data"}
-          </span>
-          {ev.snippet ? (
-            <span className="mt-0.5 block truncate text-theme-muted">“{ev.snippet}”</span>
-          ) : null}
-        </div>
-      ))}
+    <div className="mt-3 flex flex-col gap-2.5">
+      {list.map((ev, i) => {
+        const tab = tabForPrepEvidence(ev.sourceType);
+        const href =
+          companyId && tab
+            ? buildPrepPathCompanyHref(appPath, companyId, {
+                tab,
+                focus: ev.snippet,
+              })
+            : "";
+        const label = displayPrepEvidenceLabel(ev.label, { isGeneral });
+        const className =
+          "block rounded-lg border border-theme-accent/40 bg-theme-accent/5 px-2.5 py-2 text-[10px] leading-snug text-theme-secondary";
+        const inner = (
+          <>
+            <span className="font-semibold text-theme-accent">{label}</span>
+            {ev.snippet ? (
+              <span className="mt-0.5 block break-words whitespace-pre-wrap text-theme-muted">
+                “{ev.snippet}”
+              </span>
+            ) : null}
+            {href ? (
+              <span className="mt-0.5 block font-medium text-theme-accent">
+                Open full item →
+              </span>
+            ) : null}
+          </>
+        );
+        if (!href) {
+          return (
+            <div key={`${label}-${i}`} className={className} title={ev.snippet || label}>
+              {inner}
+            </div>
+          );
+        }
+        return (
+          <Link
+            key={`${label}-${i}`}
+            to={href}
+            state={{ fromPrepPath: true, from: location.pathname + location.search }}
+            className={`${className} cursor-pointer transition hover:border-theme-accent hover:bg-theme-accent/25 hover:text-theme-primary hover:ring-2 hover:ring-theme-accent/70`}
+            title="Open this item on the company page"
+          >
+            {inner}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -169,69 +373,217 @@ function formatPlanDate(iso) {
   }
 }
 
-const FLOW_COLS = 3;
-
-function buildSnakeRows(days, cols = FLOW_COLS) {
-  const rows = [];
-  for (let i = 0; i < days.length; i += cols) {
-    const chunk = days.slice(i, i + cols);
-    const rowIndex = Math.floor(i / cols);
-    rows.push({
-      rowIndex,
-      rtl: rowIndex % 2 === 1,
-      days: chunk,
-    });
-  }
-  return rows;
+function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, taskTitle }) {
+  const list = Array.isArray(items) ? items.filter((s) => s?.title) : [];
+  if (!list.length) return null;
+  return (
+    <div className="mt-2">
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-theme-muted">
+        Subtopics to cover
+      </p>
+      <ul className="space-y-2 border-l-2 border-theme-accent/50 pl-2.5">
+      {list.map((sub, idx) => {
+        const resolved =
+          sub.isPlatformItem
+            ? null
+            : resolvePrepResourceLink({
+                resourceId: sub.resourceId,
+                title: sub.title,
+                topicTitle: sub.topicTitle || dayFocus,
+                taskTitle,
+                notes: sub.notes,
+              });
+        const linkUrl = resolved?.url || sub.linkUrl || sub.link?.url || "";
+        const linkTitle = resolved?.title || sub.linkTitle || sub.link?.title || "Resource";
+        const linkWhy = resolved?.why || sub.linkWhy || sub.link?.why || "";
+        const platformHref =
+          sub.isPlatformItem && companyId
+            ? buildPrepPathCompanyHref(appPath, companyId, {
+                tab: tabForPrepEvidence(sub.sourceType),
+                focus: sub.platformSnippet || sub.notes,
+              })
+            : "";
+        const showTopic =
+          sub.topicTitle &&
+          normTopicLabel(sub.topicTitle) !== normTopicLabel(dayFocus);
+        return (
+          <li key={sub.key || `${sub.title}-${idx}`} className="min-w-0 text-[11px] leading-snug">
+            <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+              <div className="min-w-0">
+                {showTopic ? (
+                  <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-theme-muted">
+                    {sub.topicTitle}
+                  </span>
+                ) : null}
+                <span className="break-words font-medium text-theme-primary">{sub.title}</span>
+                {sub.notes && !sub.isPlatformItem ? (
+                  <div className="mt-0.5 break-words text-[10px] text-theme-muted">{sub.notes}</div>
+                ) : sub.isPlatformItem && sub.notes ? (
+                  <div className="mt-0.5 line-clamp-2 break-words text-[10px] text-theme-muted">
+                    {sub.notes}
+                  </div>
+                ) : null}
+              </div>
+              {sub.minutes || sub.hours ? (
+                <span className="shrink-0 font-semibold text-theme-accent">
+                  {sub.minutes ? `${sub.minutes} min` : `${sub.hours}h`}
+                </span>
+              ) : null}
+            </div>
+            {platformHref ? (
+              <Link
+                to={platformHref}
+                className="mt-0.5 inline-block max-w-full break-all text-[10px] font-medium text-theme-accent underline-offset-2 hover:underline"
+              >
+                {isGeneral ? "Open on company page" : "Open in campus visit data"}
+              </Link>
+            ) : linkUrl ? (
+              <a
+                href={linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={PREP_PATH_EXTERNAL_LINK_CLASS}
+                title={linkWhy || linkTitle}
+              >
+                {linkTitle}
+              </a>
+            ) : null}
+          </li>
+        );
+      })}
+      </ul>
+    </div>
+  );
 }
 
-function DayPrepBox({ day, showNext, onNext, isLatest, nextArrow = "right" }) {
-  const NextIcon = nextArrow === "down" ? FaArrowDown : FaArrowRight;
+function normTopicLabel(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function DayTaskList({
+  day,
+  tasks,
+  emptyLabel = "No tasks listed for this block.",
+  companyId,
+  appPath,
+  isGeneral,
+}) {
+  const list = Array.isArray(tasks) ? tasks : [];
+  return (
+    <ul className="mt-2.5 space-y-3 text-xs text-theme-secondary">
+      {list.map((task, idx) => (
+        <li
+          key={`${day.day}-${idx}-${task.title}`}
+          className="rounded-lg border border-theme/50 bg-theme-card/60 px-2.5 py-2"
+        >
+          <span className="break-words font-medium text-theme-primary">{task.title}</span>
+          {task.minutes ? (
+            <span className="text-theme-muted"> · {task.minutes} min</span>
+          ) : null}
+          {task.resourceHint ? (
+            <div className="mt-0.5 break-words text-[10px] text-theme-muted">
+              {task.resourceHint}
+            </div>
+          ) : null}
+          {task.notes ? (
+            <div className="mt-0.5 break-words text-[10px] text-theme-secondary">
+              {task.notes}
+            </div>
+          ) : null}
+          <SlotSubtopicPoints
+            items={task.subtopics}
+            dayFocus={day.focus}
+            companyId={companyId}
+            appPath={appPath}
+            isGeneral={isGeneral}
+            taskTitle={task.title}
+          />
+        </li>
+      ))}
+      {!list.length ? <li className="text-theme-muted">{emptyLabel}</li> : null}
+    </ul>
+  );
+}
+
+function DayPrepBox({ day, showNext, onNext, isLatest, companyId, appPath, isGeneral }) {
+  const slots = Array.isArray(day.slots) ? day.slots : [];
+  const useSlots = slots.length > 0;
+  const hasPlatformEvidence = (Array.isArray(day.campusEvidence) ? day.campusEvidence : []).some(
+    (ev) => ev?.label || ev?.snippet
+  );
+  const platformHeadlineSuffix = hasPlatformEvidence
+    ? isGeneral
+      ? " + quick look at company favourite questions and topics"
+      : " + quick look at company favourite questions and topics"
+    : "";
+
   return (
     <div
-      className={`flex w-full min-w-0 flex-col rounded-xl border px-3 py-3 ${
+      className={`flex w-full min-w-0 flex-col rounded-2xl border-2 px-3.5 py-4 ${
         isLatest
           ? "border-theme-accent bg-theme-hero shadow-sm"
-          : "border-theme bg-theme-card"
+          : "border-theme-accent/45 bg-theme-card"
       }`}
       style={{ minHeight: "unset", height: "auto" }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold text-theme-accent">Day {day.day}</span>
-        <span className="shrink-0 text-[11px] text-theme-muted">{day.hours}h</span>
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 break-words text-sm leading-snug text-theme-primary">
+          <span className="text-base font-bold text-theme-accent">Day {day.day}:</span>
+          {day.focus || platformHeadlineSuffix ? (
+            <>
+              {" "}
+              <span className="font-medium">
+                {day.focus}
+                {platformHeadlineSuffix ? (
+                  <span className="font-normal text-theme-secondary">{platformHeadlineSuffix}</span>
+                ) : null}
+              </span>
+            </>
+          ) : null}
+        </p>
+        <span className="shrink-0 pt-0.5 text-[11px] text-theme-muted">{day.hours}h</span>
       </div>
-      {day.focus ? (
-        <p className="mt-1 break-words text-xs font-medium text-theme-primary">{day.focus}</p>
-      ) : null}
 
-      <CampusEvidenceChips items={day.campusEvidence} />
+      <CampusEvidenceChips items={day.campusEvidence} companyId={companyId} />
 
-      <ul className="mt-2 space-y-1.5 text-xs text-theme-secondary">
-        {(day.tasks || []).map((task, idx) => (
-          <li
-            key={`${day.day}-${idx}-${task.title}`}
-            className="rounded-md border border-theme/40 bg-theme-card/50 px-2 py-1.5"
-          >
-            <span className="break-words font-medium text-theme-primary">{task.title}</span>
-            {task.minutes ? (
-              <span className="text-theme-muted"> · {task.minutes} min</span>
-            ) : null}
-            {task.resourceHint ? (
-              <div className="mt-0.5 break-words text-[10px] text-theme-muted">
-                {task.resourceHint}
-              </div>
-            ) : null}
-            {task.notes ? (
-              <div className="mt-0.5 break-words text-[10px] text-theme-secondary">
-                {task.notes}
-              </div>
-            ) : null}
-          </li>
-        ))}
-        {!(day.tasks || []).length ? (
-          <li className="text-theme-muted">No tasks listed for this day.</li>
-        ) : null}
-      </ul>
+      {useSlots ? (
+        <div
+          className={`mt-3.5 grid grid-cols-1 gap-4 ${
+            slots.length > 1 ? "lg:grid-cols-2" : ""
+          }`}
+        >
+          {slots.map((slot) => (
+            <div
+              key={`${day.day}-slot-${slot.index}`}
+              className="rounded-xl border-2 border-theme-accent/55 bg-theme-card px-3 py-3"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-theme-accent">
+                Slot {slot.index}
+                {slot.minutes ? ` · ${slot.minutes} min` : ""}
+              </p>
+              <DayTaskList
+                day={day}
+                tasks={slot.tasks}
+                companyId={companyId}
+                appPath={appPath}
+                isGeneral={isGeneral}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <DayTaskList
+          day={day}
+          tasks={day.tasks}
+          emptyLabel="No tasks listed for this day."
+          companyId={companyId}
+          appPath={appPath}
+          isGeneral={isGeneral}
+        />
+      )}
 
       {showNext ? (
         <button
@@ -240,7 +592,7 @@ function DayPrepBox({ day, showNext, onNext, isLatest, nextArrow = "right" }) {
           className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-theme-accent px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
         >
           Next day
-          <NextIcon className="h-3 w-3" />
+          <FaArrowDown className="h-3 w-3" />
         </button>
       ) : isLatest ? (
         <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-wide text-theme-muted">
@@ -251,19 +603,51 @@ function DayPrepBox({ day, showNext, onNext, isLatest, nextArrow = "right" }) {
   );
 }
 
-function DayByDayFlowchart({ days, planKey }) {
-  const [unlocked, setUnlocked] = useState(1);
+const PREP_PATH_UNLOCKED_PREFIX = "prepPath:unlocked:";
+
+function prepPathUnlockedStorageKey(planKey) {
+  return `${PREP_PATH_UNLOCKED_PREFIX}${String(planKey || "").trim()}`;
+}
+
+function readPrepPathUnlockedDay(planKey, totalDays = 0) {
+  if (!planKey) return 1;
+  try {
+    const raw = localStorage.getItem(prepPathUnlockedStorageKey(planKey));
+    const n = Math.floor(Number(raw));
+    if (!Number.isFinite(n) || n < 1) return 1;
+    if (totalDays > 0) return Math.min(n, totalDays);
+    return n;
+  } catch {
+    return 1;
+  }
+}
+
+function writePrepPathUnlockedDay(planKey, day) {
+  if (!planKey) return;
+  try {
+    localStorage.setItem(prepPathUnlockedStorageKey(planKey), String(day));
+  } catch {
+    // ignore quota / private browsing
+  }
+}
+
+function DayByDayFlowchart({ days, planKey, companyId }) {
+  const { appPath, isGeneral } = useTenantShell();
+  const total = days.length;
+  const [unlocked, setUnlocked] = useState(() => readPrepPathUnlockedDay(planKey, total));
 
   useEffect(() => {
-    setUnlocked(1);
-  }, [planKey]);
+    setUnlocked(readPrepPathUnlockedDay(planKey, total));
+  }, [planKey, total]);
+
+  useEffect(() => {
+    writePrepPathUnlockedDay(planKey, unlocked);
+  }, [planKey, unlocked]);
 
   const visibleDays = useMemo(
     () => days.filter((d) => Number(d.day) <= unlocked),
     [days, unlocked]
   );
-  const rows = useMemo(() => buildSnakeRows(visibleDays, FLOW_COLS), [visibleDays]);
-  const total = days.length;
   const canNext = unlocked < total;
 
   const revealNext = () => {
@@ -276,20 +660,29 @@ function DayByDayFlowchart({ days, planKey }) {
       <div>
         <h3 className="text-lg font-semibold text-theme-primary">Day-by-day flowchart</h3>
         <p className="mt-1 text-xs text-theme-muted">
-          Day {unlocked} of {total} · use Next day inside a box to follow the path
+          Day {unlocked} of {total} · use Next day to reveal the next full-width day below
+          {days.some((d) => Array.isArray(d.slots) && d.slots.length > 1)
+            ? " · hours are split into your study slots"
+            : ""}
+          {days.some((d) =>
+            [...(d.slots || [{ tasks: d.tasks }])].some((slot) =>
+              (slot.tasks || []).some((task) => (task.subtopics || []).length)
+            )
+          )
+            ? " · each task lists the subtopics to cover"
+            : ""}
         </p>
       </div>
 
-      {/* Mobile: vertical stack — each next day appends below with a down arrow */}
-      <div className="mt-5 flex w-full min-w-0 flex-col sm:hidden">
+      <div className="mt-5 flex w-full min-w-0 flex-col">
         {visibleDays.map((day, idx) => {
           const dayNum = Number(day.day);
           const isLatest = dayNum === unlocked;
           const showNext = Boolean(isLatest && canNext);
           return (
-            <React.Fragment key={`m-day-${day.day}`}>
+            <React.Fragment key={`day-${day.day}`}>
               {idx > 0 ? (
-                <div className="flex justify-center py-2" aria-hidden>
+                <div className="flex justify-center py-3 sm:py-4" aria-hidden>
                   <FaArrowDown className="h-5 w-5 text-theme-accent" />
                 </div>
               ) : null}
@@ -298,76 +691,11 @@ function DayByDayFlowchart({ days, planKey }) {
                 isLatest={isLatest}
                 showNext={showNext}
                 onNext={revealNext}
-                nextArrow="down"
+                companyId={companyId}
+                appPath={appPath}
+                isGeneral={isGeneral}
               />
             </React.Fragment>
-          );
-        })}
-      </div>
-
-      {/* sm+: zigzag snake layout */}
-      <div className="mt-5 hidden w-full flex-col gap-3 sm:flex">
-        {rows.map((row, rowIdx) => {
-          const cells = Array.from({ length: FLOW_COLS }, () => null);
-          row.days.forEach((day, i) => {
-            const col = row.rtl ? FLOW_COLS - 1 - i : i;
-            cells[col] = day;
-          });
-          const ArrowBetween = row.rtl ? FaArrowLeft : FaArrowRight;
-          const endsOnRight = !row.rtl;
-          const nextRow = rows[rowIdx + 1];
-          const downCol = endsOnRight ? FLOW_COLS - 1 : 0;
-
-          return (
-            <div key={`row-${row.rowIndex}`} className="flex w-full flex-col gap-3">
-              <div className="flex w-full items-start">
-                {cells.map((day, colIdx) => {
-                  const leftDay = cells[colIdx - 1];
-                  const dayNum = day ? Number(day.day) : null;
-                  const isLatest = dayNum != null && dayNum === unlocked;
-                  const showNext = Boolean(isLatest && canNext);
-
-                  return (
-                    <React.Fragment key={`c-${row.rowIndex}-${colIdx}`}>
-                      {colIdx > 0 ? (
-                        <div className="flex w-6 shrink-0 items-center justify-center pt-10 sm:w-8">
-                          {leftDay && day ? (
-                            <ArrowBetween className="h-5 w-5 text-theme-accent" aria-hidden />
-                          ) : null}
-                        </div>
-                      ) : null}
-                      <div className="min-w-0 flex-1 self-start">
-                        {day ? (
-                          <DayPrepBox
-                            day={day}
-                            isLatest={isLatest}
-                            showNext={showNext}
-                            onNext={revealNext}
-                          />
-                        ) : (
-                          <div aria-hidden className="h-0" />
-                        )}
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-
-              {nextRow ? (
-                <div className="flex w-full items-center">
-                  {cells.map((_, colIdx) => (
-                    <React.Fragment key={`down-${row.rowIndex}-${colIdx}`}>
-                      {colIdx > 0 ? <div className="w-6 shrink-0 sm:w-8" /> : null}
-                      <div className="flex min-w-0 flex-1 justify-center">
-                        {colIdx === downCol ? (
-                          <FaArrowDown className="h-5 w-5 text-theme-accent" aria-hidden />
-                        ) : null}
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
-              ) : null}
-            </div>
           );
         })}
       </div>
@@ -376,7 +704,9 @@ function DayByDayFlowchart({ days, planKey }) {
 }
 
 function PrepPathPlanView({ plan }) {
+  const { isGeneral, appPath } = useTenantShell();
   if (!plan) return null;
+  const companyId = String(plan.companyId || plan.company?._id || "").trim();
   const roadmap = plan.roadmap || {};
   const days = Array.isArray(roadmap.days) ? roadmap.days : [];
   const topics = Array.isArray(roadmap.topicSections) ? roadmap.topicSections : [];
@@ -390,6 +720,11 @@ function PrepPathPlanView({ plan }) {
   const flags = plan.contextFlags || {};
   const peerDemand = plan.peerDemand || null;
   const planKey = String(plan._id || `${plan.companyName}-${plan.role}-${plan.createdAt}`);
+  const mockSuggestion = plan.mockSuggestion || null;
+  const mockRounds = Array.isArray(mockSuggestion?.rounds) ? mockSuggestion.rounds : [];
+  const mockDifficulty = String(mockSuggestion?.difficulty || "medium");
+  const mockDifficultyLabel =
+    mockDifficulty.charAt(0).toUpperCase() + mockDifficulty.slice(1);
 
   /** Prefer per-subtopic links; for older plans, fall back to top-level studyLinks. */
   const topicsWithLinks = (() => {
@@ -418,6 +753,8 @@ function PrepPathPlanView({ plan }) {
     switch (String(type || "").toLowerCase()) {
       case "oa":
         return "OA";
+      case "coding":
+        return "Coding";
       case "interview_question":
         return "Interview Q";
       case "interview_experience":
@@ -442,10 +779,16 @@ function PrepPathPlanView({ plan }) {
             <p className="mt-1 text-sm text-theme-secondary">
               {trackLabel(plan.track)} · {plan.days} days · {plan.hoursPerDay} h/day
               {roadmap.totalHours != null ? ` · ~${roadmap.totalHours} total hours` : ""}
+              {plan.studySchedule?.label ? ` · ${plan.studySchedule.label}` : ""}
               <span className="text-theme-muted"> · Fresher-focused plan</span>
             </p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
+            {flags.jdProvided ? (
+              <span className="rounded-full border border-theme-accent/40 bg-theme-accent/5 px-2.5 py-1 text-theme-secondary">
+                JD-informed
+              </span>
+            ) : null}
             {flags.webAugmented ? (
               <span className="rounded-full border border-theme px-2.5 py-1 text-theme-secondary">
                 Web-augmented
@@ -497,6 +840,11 @@ function PrepPathPlanView({ plan }) {
             <h3 className="text-sm font-semibold text-theme-accent">
               What the company expects most
             </h3>
+            {flags.jdProvided ? (
+              <p className="mt-1 text-xs text-theme-muted">
+                Aligned to your uploaded JD and this company&apos;s platform data.
+              </p>
+            ) : null}
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-theme-secondary">
               {roadmap.companyExpectations.map((g) => (
                 <li key={g}>{g}</li>
@@ -519,21 +867,25 @@ function PrepPathPlanView({ plan }) {
         {companySignals.length > 0 ? (
           <div className="mt-5 rounded-xl border border-theme bg-theme-hero px-4 py-3">
             <h3 className="text-sm font-semibold text-theme-primary">
-              From this company&apos;s campus data
+              {isGeneral
+                ? "From this company's platform data"
+                : "From this company's campus data"}
             </h3>
             <ul className="mt-2 space-y-2 text-sm text-theme-secondary">
               {companySignals.map((sig, i) => (
-                <li key={`${sig.point}-${i}`} className="flex flex-col gap-1 sm:flex-row sm:gap-2">
-                  <span className="mt-0.5 w-fit shrink-0 rounded border border-theme px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-theme-accent">
-                    {signalLabel(sig.sourceType)}
-                    {sig.year ? ` · ${sig.year}` : ""}
-                  </span>
-                  <div className="min-w-0">
-                    <span>{sig.point}</span>
-                    {sig.label ? (
-                      <div className="mt-0.5 text-[10px] text-theme-muted">{sig.label}</div>
-                    ) : null}
-                  </div>
+                <li key={`${sig.point}-${i}`}>
+                  <CampusEvidenceChips
+                    items={[
+                      {
+                        sourceType: sig.sourceType,
+                        snippet: sig.snippet || sig.point,
+                        label:
+                          displayPrepEvidenceLabel(sig.label, { isGeneral }) ||
+                          signalLabel(sig.sourceType),
+                      },
+                    ]}
+                    companyId={companyId}
+                  />
                 </li>
               ))}
             </ul>
@@ -541,84 +893,59 @@ function PrepPathPlanView({ plan }) {
         ) : null}
       </section>
 
-      {topicsWithLinks.length > 0 ? (
+      {isGeneral && mockSuggestion?.role && mockRounds.length > 0 ? (
         <section className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-6">
-          <h3 className="text-lg font-semibold text-theme-primary">Topics & hour split</h3>
-          <p className="mt-1 text-xs text-theme-muted">
-            Each subtopic includes hours and a practice link. Campus tags cite RVCE visit data when matched.
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-theme-primary">
+                <FaComments className="h-4 w-4 shrink-0 text-theme-accent" aria-hidden />
+                Suggested AI mock
+              </h3>
+              <p className="mt-1 text-xs text-theme-muted">
+                Mapped onto this platform&apos;s mock catalog — you can still change role,
+                difficulty, or rounds before starting.
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-theme-secondary">
+            <span className="font-medium text-theme-primary">{mockSuggestion.role}</span>
+            {" · "}
+            {mockDifficultyLabel}
           </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {topicsWithLinks.map((t) => (
-              <div
-                key={`${t.title}-${t.hours}`}
-                className="min-w-0 overflow-hidden rounded-xl border border-theme bg-theme-hero p-3 sm:p-4"
+          <div className="mt-3 flex flex-wrap gap-2">
+            {mockRounds.map((round) => (
+              <span
+                key={round}
+                className="rounded-full border border-theme-accent/30 bg-theme-accent/5 px-2.5 py-1 text-xs font-medium text-theme-secondary"
               >
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
-                  <h4 className="min-w-0 break-words font-medium text-theme-primary">{t.title}</h4>
-                  <span className="shrink-0 text-sm font-semibold text-theme-accent">
-                    {t.hours}h total
-                  </span>
-                </div>
-                {t.why ? (
-                  <p className="mt-2 break-words text-sm text-theme-secondary">{t.why}</p>
-                ) : null}
-                <CampusEvidenceChips items={t.campusEvidence} />
-                {Array.isArray(t.subtopics) && t.subtopics.length > 0 ? (
-                  <ul className="mt-3 space-y-1.5">
-                    {t.subtopics.map((s) => {
-                      const linkUrl = s.linkUrl || s.link?.url || "";
-                      const linkTitle = s.linkTitle || s.link?.title || "Resource";
-                      const linkWhy = s.linkWhy || s.link?.why || "";
-                      return (
-                        <li
-                          key={`${t.title}-${s.title}`}
-                          className="min-w-0 rounded-md border border-theme/50 bg-theme-card/60 px-2.5 py-1.5 text-xs"
-                        >
-                          <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
-                            <div className="min-w-0">
-                              <span className="break-words font-medium text-theme-primary">
-                                {s.title}
-                              </span>
-                              {s.notes ? (
-                                <div className="mt-0.5 break-words text-theme-muted">{s.notes}</div>
-                              ) : null}
-                            </div>
-                            <span className="shrink-0 font-semibold text-theme-accent">
-                              {s.hours}h
-                            </span>
-                          </div>
-                          {linkUrl ? (
-                            <a
-                              href={linkUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-1 inline-block max-w-full break-all text-[11px] font-medium text-theme-accent underline-offset-2 hover:underline"
-                              title={linkWhy || linkTitle}
-                            >
-                              {linkTitle}
-                            </a>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : null}
-                {Array.isArray(t.practiceHints) && t.practiceHints.length > 0 ? (
-                  <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-theme-muted">
-                    {t.practiceHints.map((h) => (
-                      <li key={h} className="break-words">
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
+                {round}
+              </span>
             ))}
           </div>
+          {mockSuggestion.why ? (
+            <p className="mt-3 text-sm leading-relaxed text-theme-secondary">
+              {mockSuggestion.why}
+            </p>
+          ) : null}
+          {companyId ? (
+            <Link
+              to={buildPrepPathMockInterviewHref(appPath, companyId, mockSuggestion)}
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Open this mock
+              <FaArrowRight className="h-3 w-3" aria-hidden />
+            </Link>
+          ) : null}
         </section>
       ) : null}
 
-      {days.length > 0 ? <DayByDayFlowchart days={days} planKey={planKey} /> : null}
+      {days.length > 0 ? (
+        <DayByDayFlowchart
+          days={assignSubtopicsToDays(days, topicsWithLinks, { isGeneral })}
+          planKey={planKey}
+          companyId={companyId}
+        />
+      ) : null}
 
       {motivationSlogans.length > 0 ? (
         <section className="rounded-2xl border border-theme-accent/40 bg-theme-hero p-5 sm:p-6">
@@ -639,8 +966,66 @@ function PrepPathPlanView({ plan }) {
   );
 }
 
+function StudyStylePrompt({
+  days,
+  hoursPerDay,
+  options,
+  selectedId,
+  generating,
+  applying,
+  planReady,
+  onSelect,
+}) {
+  const busy = applying;
+  return (
+    <section className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-6">
+      <h3 className="text-lg font-semibold text-theme-primary">How do you prefer to study?</h3>
+      <p className="mt-1 text-sm text-theme-secondary">
+        Your window is {days} day{Number(days) === 1 ? "" : "s"} × {hoursPerDay} h/day. Pick how to
+        split each day — we&apos;ll lay the plan out in those blocks.
+      </p>
+      <p className="mt-2 text-xs text-theme-muted">
+        {generating && !planReady
+          ? "Building your PrepPath… choose a style now and we will apply it when the plan is ready."
+          : planReady
+            ? "Plan is ready. Choose a style to open your day-by-day path."
+            : "Choose a study style."}
+      </p>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {options.map((option) => {
+          const selected = option.id === selectedId;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={busy}
+              onClick={() => onSelect(option)}
+              className={`rounded-xl border px-4 py-3 text-left transition-opacity disabled:cursor-not-allowed disabled:opacity-60 ${
+                selected
+                  ? "border-theme-accent bg-theme-accent/10"
+                  : "border-theme bg-theme-hero hover:border-theme-accent/50"
+              }`}
+            >
+              <span className="block text-sm font-semibold text-theme-primary">
+                {option.label}
+              </span>
+              <span className="mt-1 block text-xs text-theme-secondary">{option.detail}</span>
+            </button>
+          );
+        })}
+      </div>
+      {applying ? (
+        <p className="mt-4 inline-flex items-center gap-2 text-sm text-theme-secondary">
+          <FaSpinner className="animate-spin" /> Laying out your slots…
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function PrepPathPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isGeneral, appPath } = useTenantShell();
   const suggestRootRef = useRef(null);
   const companiesLoadPromiseRef = useRef(null);
@@ -657,6 +1042,9 @@ function PrepPathPage() {
   const [days, setDays] = useState(5);
   const [hoursPerDay, setHoursPerDay] = useState(2);
   const [resumeFile, setResumeFile] = useState(null);
+  const [jdFile, setJdFile] = useState(null);
+  const resumeInputRef = useRef(null);
+  const jdInputRef = useRef(null);
 
   const [quota, setQuota] = useState(null);
   const [history, setHistory] = useState([]);
@@ -666,8 +1054,15 @@ function PrepPathPage() {
   const [error, setError] = useState("");
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallMessage, setPaywallMessage] = useState("");
+  const [paywallFeature, setPaywallFeature] = useState("prep_path");
+  const [paywallCategoryId, setPaywallCategoryId] = useState("");
   const [loadingPlanId, setLoadingPlanId] = useState("");
   const [formPeerDemand, setFormPeerDemand] = useState(null);
+  const [studyPromptOpen, setStudyPromptOpen] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState(null);
+  const [selectedStudyOption, setSelectedStudyOption] = useState(null);
+  const [applyingSchedule, setApplyingSchedule] = useState(false);
+  const selectedStudyOptionRef = useRef(null);
 
   const filteredCompanies = useMemo(() => {
     const q = companyQuery.trim().toLocaleLowerCase("en");
@@ -677,6 +1072,11 @@ function PrepPathPage() {
       .filter((c) => String(c?.name || "").toLocaleLowerCase("en").includes(q))
       .slice(0, 12);
   }, [companies, companyQuery]);
+
+  const studyOptions = useMemo(
+    () => listStudyScheduleOptions(hoursPerDay),
+    [hoursPerDay]
+  );
 
   const ensureCompanyNames = useCallback(async () => {
     if (companiesLoaded) return;
@@ -712,13 +1112,16 @@ function PrepPathPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [quotaRes, plansRes] = await Promise.all([
+        const planIdFromUrl = String(searchParams.get("plan") || "").trim();
+        const [quotaRes, plansRes, planRes] = await Promise.all([
           prepPathAPI.getQuota(isGeneral ? { scope: "platform" } : {}),
           prepPathAPI.listPlans(),
+          planIdFromUrl ? prepPathAPI.getPlan(planIdFromUrl).catch(() => null) : Promise.resolve(null),
         ]);
         if (cancelled) return;
         setQuota(quotaRes?.data?.quota || null);
         setHistory(Array.isArray(plansRes?.data?.plans) ? plansRes.data.plans : []);
+        if (planRes?.data?.plan) setActivePlan(planRes.data.plan);
       } catch (err) {
         if (!cancelled) {
           setError(err?.response?.data?.error || "Failed to load PrepPath.");
@@ -728,7 +1131,19 @@ function PrepPathPage() {
     return () => {
       cancelled = true;
     };
+    // Restore a specific plan from ?plan= only on first mount / tenant change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGeneral]);
+
+  useEffect(() => {
+    const planId = String(activePlan?._id || "").trim();
+    const current = String(searchParams.get("plan") || "").trim();
+    if (!planId) return;
+    if (current === planId) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("plan", planId);
+    setSearchParams(next, { replace: true });
+  }, [activePlan?._id, searchParams, setSearchParams]);
 
   useEffect(() => {
     const companyId = selectedCompany?.id;
@@ -775,6 +1190,8 @@ function PrepPathPage() {
     try {
       const res = await prepPathAPI.getPlan(planId);
       setActivePlan(res?.data?.plan || null);
+      setStudyPromptOpen(false);
+      setPendingPlan(null);
       setHistoryOpen(false);
     } catch (err) {
       setError(err?.response?.data?.error || "Failed to open plan.");
@@ -782,6 +1199,45 @@ function PrepPathPage() {
       setLoadingPlanId("");
     }
   };
+
+  const applyingScheduleRef = useRef(false);
+
+  const applyStudyChoice = useCallback(async (plan, option) => {
+    const planId = String(plan?._id || "").trim();
+    if (!planId || !option) return;
+    if (applyingScheduleRef.current) return;
+    applyingScheduleRef.current = true;
+    setApplyingSchedule(true);
+    setError("");
+    try {
+      const res = await prepPathAPI.applySchedule(planId, {
+        style: option.style,
+        slotMinutes: option.slotMinutes,
+        slotsPerDay: option.slotsPerDay,
+      });
+      setActivePlan(res?.data?.plan || plan);
+      setStudyPromptOpen(false);
+      setPendingPlan(null);
+      setSelectedStudyOption(null);
+      selectedStudyOptionRef.current = null;
+    } catch (err) {
+      setError(err?.response?.data?.error || "Failed to save study style.");
+    } finally {
+      applyingScheduleRef.current = false;
+      setApplyingSchedule(false);
+    }
+  }, []);
+
+  const onPickStudyOption = useCallback(
+    (option) => {
+      setSelectedStudyOption(option);
+      selectedStudyOptionRef.current = option;
+      if (pendingPlan) {
+        applyStudyChoice(pendingPlan, option);
+      }
+    },
+    [pendingPlan, applyStudyChoice]
+  );
 
   const onGenerate = async (e) => {
     e.preventDefault();
@@ -791,7 +1247,11 @@ function PrepPathPage() {
       return;
     }
     if (!role.trim()) {
-      setError("Enter the target role.");
+      setError(isGeneral ? "Select a fresher role." : "Enter the target role.");
+      return;
+    }
+    if (isGeneral && !PLATFORM_FRESHER_ROLES.includes(role)) {
+      setError("Select a fresher role from the list.");
       return;
     }
     if (track !== "full_time" && track !== "summer_internship") {
@@ -802,11 +1262,23 @@ function PrepPathPage() {
       setError("Upload a PDF or DOCX resume.");
       return;
     }
+    const dayCount = Math.round(Number(days));
+    if (!Number.isFinite(dayCount) || dayCount < 1 || dayCount > 5) {
+      setError("Days must be between 1 and 5.");
+      return;
+    }
+    const hpd = Number(hoursPerDay);
+    if (!Number.isFinite(hpd) || hpd < 0.5 || hpd > 16) {
+      setError("Hours per day must be between 0.5 and 16.");
+      return;
+    }
     if (quota && quota.unlimited !== true && Number(quota.remaining) <= 0) {
       if (isGeneral) {
         setPaywallMessage(
           "Your free PrepPath plan has been used. Unlock PrepPath to generate more plans."
         );
+        setPaywallFeature("prep_path");
+        setPaywallCategoryId("");
         setPaywallOpen(true);
         return;
       }
@@ -814,6 +1286,11 @@ function PrepPathPage() {
       return;
     }
 
+    const autoOption = studyOptions.length === 1 ? studyOptions[0] : null;
+    selectedStudyOptionRef.current = autoOption;
+    setSelectedStudyOption(autoOption);
+    setPendingPlan(null);
+    setStudyPromptOpen(true);
     setGenerating(true);
     try {
       const res = await prepPathAPI.generate({
@@ -823,23 +1300,37 @@ function PrepPathPage() {
         days,
         hoursPerDay,
         resumeFile,
+        jdFile: jdFile || undefined,
         ...(isGeneral ? { scope: "platform" } : {}),
       });
-      setActivePlan(res?.data?.plan || null);
+      const plan = res?.data?.plan || null;
       if (res?.data?.peerDemand) setFormPeerDemand(res.data.peerDemand);
       if (res?.data?.quota) setQuota(res.data.quota);
       const plansRes = await prepPathAPI.listPlans();
       setHistory(Array.isArray(plansRes?.data?.plans) ? plansRes.data.plans : []);
       setResumeFile(null);
-      const fileInput = document.getElementById("prep-path-resume");
-      if (fileInput) fileInput.value = "";
+      setJdFile(null);
+      if (resumeInputRef.current) resumeInputRef.current.value = "";
+      if (jdInputRef.current) jdInputRef.current.value = "";
+      setPendingPlan(plan);
+      const choice = selectedStudyOptionRef.current;
+      if (plan && choice) {
+        await applyStudyChoice(plan, choice);
+      }
     } catch (err) {
+      setStudyPromptOpen(false);
+      setPendingPlan(null);
+      setSelectedStudyOption(null);
+      selectedStudyOptionRef.current = null;
       const paywall = err?.response?.status === 402;
       if (isGeneral && paywall) {
+        const data = err?.response?.data || {};
         setPaywallMessage(
-          err?.response?.data?.error ||
+          data.error ||
             "Unlock this company or PrepPath to generate a plan."
         );
+        setPaywallFeature(data.feature || "prep_path");
+        setPaywallCategoryId(data.categoryId || "");
         setPaywallOpen(true);
       } else {
         setError(
@@ -860,6 +1351,8 @@ function PrepPathPage() {
     }
   };
 
+  const isIdleEmpty = !activePlan && !studyPromptOpen;
+
   return (
     <div className={`relative min-h-screen ${pageShellOuterClassCompact}`}>
       <PageHeroFontStyles />
@@ -872,17 +1365,18 @@ function PrepPathPage() {
           PrepPath
         </PageHeroHeader>
 
-        <div className="w-full space-y-5">
+        <div
+          className={
+            isIdleEmpty
+              ? "flex min-h-[min(38rem,calc(100dvh-12rem))] items-center justify-center"
+              : "w-full space-y-5"
+          }
+        >
+          <div className={isIdleEmpty ? "w-full" : "w-full space-y-5"}>
             {/* Single-row inputs */}
             <section className="w-full rounded-2xl border border-theme bg-theme-card p-4 sm:p-5">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="inline-flex items-center gap-2 text-theme-accent">
-                  <FaMapMarkedAlt />
-                  <span className="text-xs font-semibold uppercase tracking-wide sm:text-sm">
-                    New plan
-                  </span>
-                </div>
-                {quota ? (
+              {quota ? (
+                <div className="mb-3 flex justify-end">
                   <span className="text-xs text-theme-secondary">
                     {quota.unlimited
                       ? isGeneral
@@ -894,10 +1388,11 @@ function PrepPathPage() {
                           : "Free PrepPath used"
                         : `Today: ${quota.used}/${quota.limit} used · ${quota.remaining} left`}
                   </span>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
 
               <form onSubmit={onGenerate}>
+                <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
                   <div ref={suggestRootRef} className="relative min-w-0 flex-1">
                     <label className={LABEL}>
@@ -955,17 +1450,31 @@ function PrepPathPage() {
                     ) : null}
                   </div>
 
-                  <div className="min-w-0 flex-[0.9]">
+                  <div
+                    className={`min-w-0 ${isGeneral ? "flex-1 sm:min-w-[220px] xl:min-w-[260px]" : "flex-[0.9]"}`}
+                  >
                     <label className={LABEL}>
-                      Role <span className="text-theme-accent">*</span>
+                      {isGeneral ? "Fresher role" : "Role"}{" "}
+                      <span className="text-theme-accent">*</span>
                     </label>
-                    <input
-                      className={INPUT}
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      placeholder="e.g. SDE / Backend"
-                      maxLength={120}
-                    />
+                    {isGeneral ? (
+                      <ThemedSelect
+                        ariaLabel="Fresher role"
+                        value={role}
+                        onChange={setRole}
+                        placeholder="Select a role"
+                        options={FRESHER_ROLE_OPTIONS}
+                        triggerSurface="input"
+                      />
+                    ) : (
+                      <input
+                        className={INPUT}
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        placeholder="e.g. SDE / Backend"
+                        maxLength={120}
+                      />
+                    )}
                   </div>
 
                   <div className="w-full sm:w-44 xl:w-44">
@@ -975,65 +1484,73 @@ function PrepPathPage() {
                     <PrepPathTrackSelect value={track} onChange={setTrack} />
                   </div>
 
-                  <div className="w-full sm:w-24 xl:w-20">
-                    <label className={LABEL}>Days</label>
-                    <input
-                      type="number"
+                  <div className="w-full sm:w-24 xl:w-24">
+                    <PrepPathNumberField
+                      label="Days"
+                      value={days}
                       min={1}
                       max={5}
-                      className={INPUT}
-                      value={days}
-                      onChange={(e) => setDays(Number(e.target.value))}
+                      step={1}
+                      onChange={setDays}
                     />
                   </div>
 
-                  <div className="w-full sm:w-28 xl:w-24">
-                    <label className={LABEL}>Hrs / day</label>
-                    <input
-                      type="number"
+                  <div className="w-full sm:w-28 xl:w-28">
+                    <PrepPathNumberField
+                      label="Hrs / day"
+                      value={hoursPerDay}
                       min={0.5}
                       max={16}
                       step={0.5}
-                      className={INPUT}
-                      value={hoursPerDay}
-                      onChange={(e) => setHoursPerDay(Number(e.target.value))}
+                      onChange={setHoursPerDay}
                     />
                   </div>
+                </div>
 
-                  <div className="min-w-0 flex-1">
-                    <label className={LABEL}>
-                      Resume <span className="text-theme-accent">*</span>
-                    </label>
-                    <input
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                    <PrepPathDocumentField
                       id="prep-path-resume"
-                      type="file"
-                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      className="block w-full truncate text-xs text-theme-secondary file:mr-2 file:rounded-md file:border-0 file:bg-theme-hero file:px-2.5 file:py-2 file:text-xs file:font-medium file:text-theme-primary sm:text-sm"
-                      onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                      label="Resume"
+                      required
+                      file={resumeFile}
+                      onChange={setResumeFile}
+                      inputRef={resumeInputRef}
+                    />
+                    <PrepPathDocumentField
+                      id="prep-path-jd"
+                      label="Job description"
+                      optional
+                      file={jdFile}
+                      onChange={setJdFile}
+                      inputRef={jdInputRef}
                     />
                   </div>
 
-                  <div className="w-full shrink-0 xl:w-auto">
-                    <label className={`${LABEL} invisible hidden xl:block`}>Go</label>
+                  <div className="w-full shrink-0 sm:w-auto">
+                    <label className={`${LABEL} invisible hidden sm:block`}>Go</label>
                     <button
                       type="submit"
                       disabled={
                         generating ||
+                        studyPromptOpen ||
+                        applyingSchedule ||
                         (quota &&
                           quota.unlimited !== true &&
                           Number(quota.remaining) <= 0)
                       }
-                      className="inline-flex h-[38px] w-full items-center justify-center gap-2 rounded-lg bg-theme-accent px-4 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60 xl:w-auto xl:min-w-[9.5rem]"
+                      className="inline-flex h-[38px] w-full items-center justify-center gap-1.5 rounded-lg bg-theme-accent px-3 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60 sm:w-[6.75rem]"
                     >
                       {generating ? (
                         <>
-                          <FaSpinner className="animate-spin" /> Generating…
+                          <FaSpinner className="h-3 w-3 animate-spin" /> …
                         </>
                       ) : (
                         "Generate"
                       )}
                     </button>
                   </div>
+                </div>
                 </div>
 
                 {formPeerDemand?.label ? (
@@ -1056,17 +1573,26 @@ function PrepPathPage() {
               </form>
             </section>
 
-            {/* Full-width plan */}
+            {!isIdleEmpty ? (
             <div className="w-full pb-10">
-              {activePlan ? (
+              {studyPromptOpen ? (
+                <StudyStylePrompt
+                  days={days}
+                  hoursPerDay={hoursPerDay}
+                  options={studyOptions}
+                  selectedId={selectedStudyOption?.id}
+                  generating={generating}
+                  applying={applyingSchedule}
+                  planReady={Boolean(pendingPlan)}
+                  onSelect={onPickStudyOption}
+                />
+              ) : activePlan ? (
                 <PrepPathPlanView plan={activePlan} />
-              ) : (
-                <div className="rounded-2xl bg-theme-card/60 px-6 py-16 text-center text-sm text-theme-secondary">
-                  Generate a plan above, or open History from the left arrow to view a previous roadmap.
-                </div>
-              )}
+              ) : null}
             </div>
+            ) : null}
           </div>
+        </div>
       </div>
 
       {/* History edge tab (left) */}
@@ -1159,13 +1685,16 @@ function PrepPathPage() {
       <PaywallModal
         open={paywallOpen}
         onClose={() => setPaywallOpen(false)}
-        title="Unlock PrepPath"
+        title={
+          paywallFeature === "company_detail" ? "Unlock this company" : "Unlock PrepPath"
+        }
         message={
           paywallMessage ||
           "Your free PrepPath plan has been used. Unlock PrepPath to generate more plans."
         }
         pricingPath={appPath("/pricing")}
-        feature="prep_path"
+        feature={paywallFeature}
+        categoryId={paywallCategoryId}
       />
     </div>
   );

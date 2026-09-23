@@ -6,8 +6,7 @@ export const CAMPUS_INTERVIEW_ROUND_TYPES = [
   "HR",
 ];
 
-export const PLATFORM_INTERVIEW_ROUND_TYPES = [
-  ...CAMPUS_INTERVIEW_ROUND_TYPES,
+export const PLATFORM_EXCLUSIVE_INTERVIEW_ROUND_TYPES = [
   "Aptitude",
   "Core Technical",
   "Circuit Design",
@@ -16,6 +15,16 @@ export const PLATFORM_INTERVIEW_ROUND_TYPES = [
   "Embedded Systems",
   "Case Interview",
   "Project/Resume Deep Dive",
+];
+
+export const PLATFORM_INTERVIEW_ROUND_TYPES = [
+  "DSA",
+  "System Design",
+  "Web Dev",
+  "SQL",
+  "CS Fundamentals",
+  "HR",
+  ...PLATFORM_EXCLUSIVE_INTERVIEW_ROUND_TYPES,
 ];
 
 export const PLATFORM_FRESHER_ROLES = [

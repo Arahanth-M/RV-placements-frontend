@@ -326,8 +326,8 @@ export default function AIInterviewDataEntryPage() {
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton
-            onClick={() => navigate(`${GENERAL_BASE}/interviews`)}
-            label="Back to interviews"
+            onClick={() => navigate(`${GENERAL_BASE}/admin/dashboard`)}
+            label="Back to platform admin"
           />
         </PageBackNavRow>
 

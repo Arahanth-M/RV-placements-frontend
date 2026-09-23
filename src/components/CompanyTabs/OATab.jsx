@@ -268,7 +268,7 @@
 
 // export default OATab;
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
@@ -279,6 +279,11 @@ import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
+import {
+  findFocusIndex,
+  PREP_FOCUS_HIGHLIGHT_CLASS,
+  scrollFocusNode,
+} from "../../utils/prepPathCompanyFocus.js";
 
 function questionTextIsPresent(value) {
   return String(value ?? "").trim().length > 0;
@@ -293,6 +298,7 @@ function OATab({
   placementListContext,
   placementCompanyVisitId,
   placementCluster,
+  focusQuery = "",
 }) {
   const [showModal, setShowModal] = useState(false);
   const [question, setQuestion] = useState("");
@@ -305,6 +311,7 @@ function OATab({
   const [editSolution, setEditSolution] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const questionRowRefs = useRef({});
 
   const safeCompany = company || {};
   const adminOpts = adminCompanyVisitOpts({
@@ -476,6 +483,13 @@ function OATab({
         return normalizeOaDisplayString(qa);
       }
     }) || [];
+
+  useEffect(() => {
+    const idx = findFocusIndex(parsedQuestions, focusQuery);
+    if (idx < 0) return;
+    setOpenQuestionIndex(idx);
+    scrollFocusNode(questionRowRefs.current[idx]);
+  }, [focusQuery, company]);
 
   // Function to convert escape sequences to their actual characters and remove unnecessary quotes
   const unescapeString = (str) => {
@@ -659,7 +673,12 @@ function OATab({
               return (
               <div
                 key={index}
-                className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
+                ref={(el) => {
+                  questionRowRefs.current[index] = el;
+                }}
+                className={`border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden ${
+                  focusQuery && openQuestionIndex === index ? PREP_FOCUS_HIGHLIGHT_CLASS : ""
+                }`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button

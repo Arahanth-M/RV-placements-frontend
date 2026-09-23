@@ -1,6 +1,14 @@
 /** Mirrors backend `config/interviewRoundFocus.js` for custom plan UI. */
 
 export const INTERVIEW_ROUND_FOCUS_BY_TYPE = {
+  DSA: [
+    { id: "general", label: "Any topic" },
+    { id: "arrays", label: "Arrays & hashing" },
+    { id: "trees", label: "Trees & BST" },
+    { id: "graphs", label: "Graphs & BFS/DFS" },
+    { id: "dp", label: "Dynamic programming" },
+    { id: "strings", label: "Strings" },
+  ],
   "System Design": [
     { id: "general", label: "General design" },
     { id: "scalability", label: "Scalability" },
@@ -21,6 +29,13 @@ export const INTERVIEW_ROUND_FOCUS_BY_TYPE = {
     { id: "os", label: "Operating systems" },
     { id: "networks", label: "Networks" },
   ],
+  "Web Dev": [
+    { id: "general", label: "General web" },
+    { id: "javascript", label: "JavaScript" },
+    { id: "react", label: "React" },
+    { id: "html_css", label: "HTML & CSS" },
+    { id: "networks", label: "Web & HTTP" },
+  ],
   HR: [
     { id: "general", label: "General behavioral" },
     { id: "teamwork", label: "Teamwork" },
@@ -29,14 +44,33 @@ export const INTERVIEW_ROUND_FOCUS_BY_TYPE = {
     { id: "failure", label: "Failure & learning" },
     { id: "why_company", label: "Why this company" },
   ],
+  Aptitude: [
+    { id: "general", label: "General aptitude" },
+    { id: "quant", label: "Quantitative" },
+    { id: "logical", label: "Logical reasoning" },
+  ],
+  "ML/AI Technical": [
+    { id: "general", label: "General ML/AI" },
+    { id: "supervised", label: "Supervised learning" },
+    { id: "deep_learning", label: "Deep learning" },
+  ],
+  "Case Interview": [
+    { id: "general", label: "General case" },
+    { id: "profitability", label: "Profitability" },
+    { id: "market_entry", label: "Market entry" },
+  ],
+  "Core Technical": [{ id: "general", label: "General technical" }],
+  "Circuit Design": [{ id: "general", label: "General circuit design" }],
+  "Embedded Systems": [{ id: "general", label: "General embedded" }],
+  "Project/Resume Deep Dive": [{ id: "general", label: "General deep dive" }],
 };
 
 export const roundTypeHasFocusPicker = (roundType) =>
   Boolean(INTERVIEW_ROUND_FOCUS_BY_TYPE[roundType]);
 
 export const getFocusOptionsForRoundType = (roundType) => {
-  if (roundType === "DSA") return [];
-  return INTERVIEW_ROUND_FOCUS_BY_TYPE[roundType] || [];
+  const type = String(roundType || "").trim();
+  return INTERVIEW_ROUND_FOCUS_BY_TYPE[type] || [];
 };
 
 export const getDefaultFocusForRoundType = (roundType) =>

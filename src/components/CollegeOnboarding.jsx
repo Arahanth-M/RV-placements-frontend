@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  FaArrowLeft,
   FaCheckCircle,
   FaHandshake,
   FaMoon,
@@ -9,9 +8,15 @@ import {
   FaSun,
   FaUsers,
 } from "react-icons/fa";
+import { useAuth } from "../utils/AuthContext";
 import { useTheme } from "../utils/ThemeContext";
+import { getProductHomePathForUser } from "../utils/collegeScope.js";
 import { authAPI } from "../utils/api";
-import { PageHeroFontStyles } from "./PageBackNav.jsx";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  PageHeroFontStyles,
+} from "./PageBackNav.jsx";
 import PlatformFooter from "./PlatformFooter.jsx";
 import {
   DATA_EXTENT_OPTIONS,
@@ -66,33 +71,26 @@ function toggleId(list, id) {
 
 function OnboardingHeader() {
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const homePath = getProductHomePathForUser(user);
   return (
     <header className="sticky top-0 z-50 border-b border-theme bg-theme-card/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
-          to="/"
+          to={homePath}
           className="min-w-0 shrink font-serif text-lg sm:text-xl text-theme-primary tracking-tight"
         >
           lastminute<span className="italic text-theme-accent">placementprep</span>
         </Link>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero transition-colors"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <FaSun className="h-3.5 w-3.5" /> : <FaMoon className="h-3.5 w-3.5" />}
-          </button>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 rounded-xl border border-theme px-3 py-2 text-sm font-semibold text-theme-secondary hover:text-theme-accent transition-colors"
-          >
-            <FaArrowLeft className="h-3 w-3" />
-            Back
-          </Link>
-        </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero transition-colors"
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <FaSun className="h-3.5 w-3.5" /> : <FaMoon className="h-3.5 w-3.5" />}
+        </button>
       </div>
     </header>
   );
@@ -127,6 +125,8 @@ function PathCard({ active, icon: Icon, title, subtitle, onClick }) {
 }
 
 function SuccessPanel({ path, collegeName, approxPriceInr, onReset }) {
+  const { user } = useAuth();
+  const homePath = getProductHomePathForUser(user);
   const isDemo = path === "demo";
   return (
     <div className="rounded-2xl border border-theme bg-theme-card p-6 sm:p-8">
@@ -179,7 +179,7 @@ function SuccessPanel({ path, collegeName, approxPriceInr, onReset }) {
 
       <div className="mt-6 flex flex-wrap gap-2">
         <Link
-          to="/"
+          to={homePath}
           className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
         >
           Back to home
@@ -197,6 +197,9 @@ function SuccessPanel({ path, collegeName, approxPriceInr, onReset }) {
 }
 
 export default function CollegeOnboarding() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const homePath = getProductHomePathForUser(user);
   const [path, setPath] = useState(null);
   const [collegeName, setCollegeName] = useState("");
   const [pocName, setPocName] = useState("");
@@ -299,6 +302,9 @@ export default function CollegeOnboarding() {
       <OnboardingHeader />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate(homePath)} label="Back" />
+        </PageBackNavRow>
         <p style={PAGE_SECTION_LABEL_STYLE}>College onboarding</p>
         <h1 style={PAGE_SECTION_TITLE_STYLE} className="text-theme-primary">
           Bring the platform{" "}

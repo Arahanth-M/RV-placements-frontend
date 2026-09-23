@@ -668,9 +668,9 @@ export default function GeneralDataEntryPage() {
       <PageHeroFontStyles />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
-          <PageBackButton onClick={() => navigate(GENERAL_BASE)} label="Back" />
+          <PageBackButton onClick={() => navigate(`${GENERAL_BASE}/admin/dashboard`)} label="Back to platform admin" />
         </PageBackNavRow>
-        <PageHeroHeader subtitle="Temporary editor for company_platform_content. Open a company to view, add, or edit fields.">
+        <PageHeroHeader subtitle="Platform admin editor for company_platform_content. Open a company to view, add, or edit fields.">
           Data entry
         </PageHeroHeader>
 

@@ -23,6 +23,8 @@ import {
 } from "../../constants/interviewRoundFocus";
 import { clampInterviewQuestionCountForRound } from "../../utils/interviewRoundLimits";
 import InterviewSlotBookModal from "../InterviewSlotBookModal";
+import InterviewPlanPreviewModal from "../InterviewPlanPreviewModal";
+import { buildInterviewPlanPreview } from "../../utils/interviewPlanPreview";
 import { shouldShowDsaHourFullBanner } from "../../utils/interviewSlotWindow.js";
 import {
   CAMPUS_INTERVIEW_ROUND_TYPES,
@@ -893,12 +895,28 @@ function InterviewQuestionMetaRow({
   );
 }
 
+function roundsFromMockPrefill(rounds, difficulty) {
+  const types = (Array.isArray(rounds) ? rounds : [])
+    .map((round) => (typeof round === "string" ? round : round?.type))
+    .map((type) => String(type || "").trim())
+    .filter((type) => PLATFORM_INTERVIEW_ROUND_TYPES.includes(type))
+    .slice(0, MAX_CUSTOM_ROUNDS);
+  if (!types.length) return null;
+  const level = INTERVIEW_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
+  return types.map((type) => ({
+    type,
+    difficulty: level,
+    focus: getDefaultFocusForRoundType(type),
+  }));
+}
+
 function AIInterviewTab({
   company,
   setupLocked = false,
   onInterviewLockChange,
   onForceExitToGeneral,
   registerInterviewExitHandler,
+  initialMockPlan = null,
 }) {
   const { user } = useAuth();
   const { isGeneral, appPath } = useTenantShell();
@@ -923,9 +941,21 @@ function AIInterviewTab({
   const [roundsQuestionSummary, setRoundsQuestionSummary] = useState([]);
   const [questionsPlannedThisRound, setQuestionsPlannedThisRound] = useState(2);
   const [currentQuestionNumberWithinRound, setCurrentQuestionNumberWithinRound] = useState(1);
-  const [customRounds, setCustomRounds] = useState(() => buildDefaultCustomRounds(2));
-  const [selectedRole, setSelectedRole] = useState("");
-  const [interviewDifficulty, setInterviewDifficulty] = useState("medium");
+  const [customRounds, setCustomRounds] = useState(() => {
+    if (!isGeneral) return buildDefaultCustomRounds(2);
+    return roundsFromMockPrefill(initialMockPlan?.rounds, initialMockPlan?.difficulty) ||
+      buildDefaultCustomRounds(2);
+  });
+  const [selectedRole, setSelectedRole] = useState(() =>
+    isGeneral && PLATFORM_FRESHER_ROLES.includes(initialMockPlan?.role)
+      ? initialMockPlan.role
+      : ""
+  );
+  const [interviewDifficulty, setInterviewDifficulty] = useState(() =>
+    isGeneral && INTERVIEW_DIFFICULTIES.includes(initialMockPlan?.difficulty)
+      ? initialMockPlan.difficulty
+      : "medium"
+  );
   const [draggedRoundIndex, setDraggedRoundIndex] = useState(null);
   const [dragOverRoundIndex, setDragOverRoundIndex] = useState(null);
   const [interviewLimitReached, setInterviewLimitReached] = useState(false);
@@ -934,6 +964,7 @@ function AIInterviewTab({
   const [interviewLimitRequestStatus, setInterviewLimitRequestStatus] = useState("none");
   const [interviewLimitRequesting, setInterviewLimitRequesting] = useState(false);
   const [companyRequiredPromptOpen, setCompanyRequiredPromptOpen] = useState(false);
+  const [interviewPlanPreviewOpen, setInterviewPlanPreviewOpen] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1004,11 +1035,117 @@ function AIInterviewTab({
     ? PLATFORM_INTERVIEW_ROUND_TYPES
     : CAMPUS_INTERVIEW_ROUND_TYPES;
 
+  const [roundFocusMeta, setRoundFocusMeta] = useState({});
+
+  const resolveFocusOptionsForRound = useCallback(
+    (roundIndex, roundType) => {
+      const loaded = roundFocusMeta[roundIndex];
+      if (Array.isArray(loaded?.options) && loaded.options.length > 0) {
+        return loaded.options;
+      }
+      return getFocusOptionsForRoundType(roundType).map((opt) => ({
+        id: opt.id,
+        label: opt.label,
+      }));
+    },
+    [roundFocusMeta]
+  );
+
+  const showFocusPickerForRound = useCallback(
+    (roundIndex, roundType) => {
+      if (!roundType) return false;
+      const loaded = roundFocusMeta[roundIndex];
+      if (loaded && typeof loaded.hasPicker === "boolean") {
+        return loaded.hasPicker;
+      }
+      return getFocusOptionsForRoundType(roundType).length > 1;
+    },
+    [roundFocusMeta]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const rounds = Array.isArray(customRounds) ? customRounds : [];
+
+    const load = async () => {
+      const nextMeta = {};
+      await Promise.all(
+        rounds.map(async (round, index) => {
+          const type = availableRoundTypes.includes(round?.type) ? round.type : "";
+          if (!type) {
+            nextMeta[index] = { options: [], hasPicker: false };
+            return;
+          }
+
+          const staticFallback = getFocusOptionsForRoundType(type).map((opt) => ({
+            id: opt.id,
+            label: opt.label,
+            source: "static",
+          }));
+
+          if (isGeneral && !selectedRole) {
+            nextMeta[index] = {
+              options: staticFallback,
+              hasPicker: staticFallback.length > 1,
+            };
+            return;
+          }
+
+          try {
+            const params = {
+              roundType: type,
+              difficulty: isGeneral
+                ? interviewDifficulty
+                : ROUND_DIFFICULTY_OPTIONS.includes(round?.difficulty)
+                  ? round.difficulty
+                  : "medium",
+            };
+            if (isGeneral) {
+              params.contentScope = "platform";
+              params.role = selectedRole;
+              if (company?._id) params.companyId = company._id;
+              if (company?.name) params.companyName = company.name;
+            } else if (company?.name) {
+              params.companyName = company.name;
+            }
+            const { data } = await interviewAPI.getFocusOptions(params);
+            nextMeta[index] = {
+              options: Array.isArray(data?.options) ? data.options : staticFallback,
+              hasPicker: Boolean(data?.hasPicker) || staticFallback.length > 1,
+            };
+          } catch {
+            nextMeta[index] = {
+              options: staticFallback,
+              hasPicker: staticFallback.length > 1,
+            };
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setRoundFocusMeta(nextMeta);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    availableRoundTypes,
+    customRounds,
+    company?._id,
+    company?.name,
+    interviewDifficulty,
+    isGeneral,
+    selectedRole,
+  ]);
+
   const normalizedCustomRounds = useMemo(
     () =>
       (Array.isArray(customRounds) ? customRounds : [])
         .slice(0, MAX_CUSTOM_ROUNDS)
-        .map((round) => {
+        .map((round, roundIndex) => {
           const type = availableRoundTypes.includes(round?.type) ? round.type : "";
           const difficulty = isGeneral
             ? interviewDifficulty
@@ -1018,17 +1155,42 @@ function AIInterviewTab({
           if (!type) {
             return { type: "", difficulty: "" };
           }
-          if (!roundTypeHasFocusPicker(type)) {
+          const focusOptions = resolveFocusOptionsForRound(roundIndex, type);
+          const shouldIncludeFocus =
+            showFocusPickerForRound(roundIndex, type) || focusOptions.length > 1;
+          if (!shouldIncludeFocus) {
             return { type, difficulty: difficulty || "medium" };
           }
-          const focusOptions = getFocusOptionsForRoundType(type);
           const validFocusIds = new Set(focusOptions.map((opt) => opt.id));
           const focus = validFocusIds.has(round?.focus)
             ? round.focus
-            : getDefaultFocusForRoundType(type);
+            : focusOptions[0]?.id || getDefaultFocusForRoundType(type);
           return { type, difficulty: difficulty || "medium", focus };
         }),
-    [availableRoundTypes, customRounds, interviewDifficulty, isGeneral]
+    [
+      availableRoundTypes,
+      customRounds,
+      interviewDifficulty,
+      isGeneral,
+      resolveFocusOptionsForRound,
+      showFocusPickerForRound,
+    ]
+  );
+
+  const interviewPlanPreview = useMemo(
+    () =>
+      buildInterviewPlanPreview(normalizedCustomRounds, {
+        role: isGeneral ? selectedRole : "",
+        difficulty: isGeneral ? interviewDifficulty : "",
+        companyName: company?.name || "",
+      }),
+    [
+      company?.name,
+      interviewDifficulty,
+      isGeneral,
+      normalizedCustomRounds,
+      selectedRole,
+    ]
   );
 
   const customPlanValidationError = useMemo(() => {
@@ -1066,6 +1228,28 @@ function AIInterviewTab({
     () => normalizedCustomRounds.some((round) => round.type === "DSA"),
     [normalizedCustomRounds]
   );
+
+  const initialMockPlanKey = [
+    initialMockPlan?.role || "",
+    initialMockPlan?.difficulty || "",
+    (Array.isArray(initialMockPlan?.rounds) ? initialMockPlan.rounds : []).join("|"),
+  ].join("::");
+  const initialMockPlanRef = useRef(initialMockPlan);
+  initialMockPlanRef.current = initialMockPlan;
+
+  useEffect(() => {
+    if (!isGeneral) return;
+    if (!initialMockPlanKey || initialMockPlanKey === "::") return;
+    const plan = initialMockPlanRef.current;
+    if (PLATFORM_FRESHER_ROLES.includes(plan?.role)) {
+      setSelectedRole(plan.role);
+    }
+    if (INTERVIEW_DIFFICULTIES.includes(plan?.difficulty)) {
+      setInterviewDifficulty(plan.difficulty);
+    }
+    const nextRounds = roundsFromMockPrefill(plan?.rounds, plan?.difficulty);
+    if (nextRounds) setCustomRounds(nextRounds);
+  }, [isGeneral, initialMockPlanKey]);
 
   useEffect(() => {
     setInterviewLimitReached(false);
@@ -1393,11 +1577,13 @@ function AIInterviewTab({
         }
         if (field === "focus") {
           const type = availableRoundTypes.includes(round?.type) ? round.type : "DSA";
-          const focusOptions = getFocusOptionsForRoundType(type);
+          const focusOptions = resolveFocusOptionsForRound(roundIndex, type);
           const validFocusIds = new Set(focusOptions.map((opt) => opt.id));
           return {
             ...round,
-            focus: validFocusIds.has(value) ? value : getDefaultFocusForRoundType(type),
+            focus: validFocusIds.has(value)
+              ? value
+              : focusOptions[0]?.id || getDefaultFocusForRoundType(type),
           };
         }
         return {
@@ -1406,7 +1592,7 @@ function AIInterviewTab({
         };
       })
     );
-  }, [availableRoundTypes]);
+  }, [availableRoundTypes, resolveFocusOptionsForRound]);
 
   const handleRoundDragStart = useCallback((index) => {
     setDraggedRoundIndex(index);
@@ -1854,13 +2040,47 @@ function AIInterviewTab({
     }
   }, []);
 
-  const handleStartInterview = async () => {
+  const openInterviewPlanPreview = () => {
     if (interviewLimitReached) {
       openInterviewLimitModal(interviewLimitMessage);
       return;
     }
 
     if (!canStart) {
+      if (setupLocked || !company?._id) {
+        openCompanyRequiredPrompt();
+        return;
+      }
+      setError(
+        customPlanValidationError
+          ? customPlanValidationError
+          : "Please login and make sure company details are loaded."
+      );
+      return;
+    }
+
+    if (user?.betaAccess === false) return;
+    if (interviewPlanPreview.rounds.length < 1) {
+      setError("Select a round type for each round.");
+      return;
+    }
+    setInterviewPlanPreviewOpen(true);
+  };
+
+  const closeInterviewPlanPreview = useCallback(() => {
+    if (loadingRef.current) return;
+    setInterviewPlanPreviewOpen(false);
+  }, []);
+
+  const handleStartInterview = async () => {
+    if (interviewLimitReached) {
+      setInterviewPlanPreviewOpen(false);
+      openInterviewLimitModal(interviewLimitMessage);
+      return;
+    }
+
+    if (!canStart) {
+      setInterviewPlanPreviewOpen(false);
       if (setupLocked || !company?._id) {
         openCompanyRequiredPrompt();
         return;
@@ -1949,9 +2169,11 @@ function AIInterviewTab({
         }
       }
       await enterFullscreen();
+      setInterviewPlanPreviewOpen(false);
       // Resume intentionally disabled.
     } catch (err) {
       console.error("Failed to start AI interview:", err);
+      setInterviewPlanPreviewOpen(false);
       const code = err?.response?.data?.code;
       if (code === "INTERVIEW_LIMIT_REACHED" || code === "PAYWALL") {
         const msg = err?.response?.data?.error || MESSAGES.INTERVIEW_LIMIT_REACHED;
@@ -1975,7 +2197,11 @@ function AIInterviewTab({
         refreshSlotBookingStatus();
         return;
       }
-      setError(err?.response?.data?.error || "Failed to start interview.");
+      const data = err?.response?.data;
+      const joiBits = Array.isArray(data?.errors)
+        ? data.errors.filter(Boolean).join(" ")
+        : "";
+      setError(data?.error || data?.message || joiBits || "Failed to start interview.");
     } finally {
       loadingRef.current = false;
       setLoading(false);
@@ -3023,6 +3249,13 @@ function AIInterviewTab({
         open={companyRequiredPromptOpen}
         onClose={closeCompanyRequiredPrompt}
       />
+      <InterviewPlanPreviewModal
+        open={interviewPlanPreviewOpen}
+        preview={interviewPlanPreview}
+        starting={loading}
+        onCancel={closeInterviewPlanPreview}
+        onConfirm={handleStartInterview}
+      />
 
       {quitConfirmOpen && (
         <div
@@ -3410,7 +3643,7 @@ function AIInterviewTab({
             </button>
           ) : null}
           <button
-            onClick={showStartPrompt ? handleStartInterview : resetInterviewState}
+            onClick={showStartPrompt ? openInterviewPlanPreview : resetInterviewState}
             disabled={
               loading ||
               (!showStartPrompt && status === "in_progress") ||
@@ -3560,8 +3793,10 @@ function AIInterviewTab({
                     onDragOver={(event) => handleRoundDragOver(event, idx)}
                     onDrop={() => handleRoundDrop(idx)}
                     className={`${PLAN_ROUND_ROW_CLASS} ${
-                      !isGeneral && round.type && roundTypeHasFocusPicker(round.type)
-                        ? "sm:grid-cols-2 lg:grid-cols-4"
+                      round.type && showFocusPickerForRound(idx, round.type)
+                        ? isGeneral
+                          ? "sm:grid-cols-2 lg:grid-cols-3"
+                          : "sm:grid-cols-2 lg:grid-cols-4"
                         : round.type && !isGeneral
                           ? "sm:grid-cols-3"
                           : "sm:grid-cols-2"
@@ -3594,15 +3829,18 @@ function AIInterviewTab({
                         triggerSurface="card"
                       />
                     </div>
-                    {!isGeneral && round.type && roundTypeHasFocusPicker(round.type) && (
+                    {round.type && showFocusPickerForRound(idx, round.type) && (
                       <div className="relative min-w-0">
                         <ThemedSelect
-                          ariaLabel={`Round ${idx + 1} focus`}
-                          value={round.focus}
+                          ariaLabel={`Round ${idx + 1} subtopic`}
+                          value={round.focus || getDefaultFocusForRoundType(round.type)}
                           onChange={(next) => handleCustomRoundFieldChange(idx, "focus", next)}
-                          options={getFocusOptionsForRoundType(round.type).map((opt) => ({
+                          options={resolveFocusOptionsForRound(idx, round.type).map((opt) => ({
                             value: opt.id,
-                            label: opt.label,
+                            label:
+                              opt.source === "bank" && opt.count
+                                ? `${opt.label} (${opt.count})`
+                                : opt.label,
                           }))}
                           triggerSurface="card"
                         />

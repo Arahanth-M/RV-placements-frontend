@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
 import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
@@ -10,6 +10,11 @@ import {
   resolveMustDoTopicResources,
   resourceLinkChipClass,
 } from "../../utils/mustDoTopicResources.js";
+import {
+  findFocusIndex,
+  PREP_FOCUS_HIGHLIGHT_CLASS,
+  scrollFocusNode,
+} from "../../utils/prepPathCompanyFocus.js";
 
 function ResourceLinkChip({ link }) {
   return (
@@ -88,6 +93,7 @@ function MustDoTab({
   isAdmin = false,
   isGeneral = false,
   onCompanyUpdate,
+  focusQuery = "",
 }) {
   const [showModal, setShowModal] = useState(false);
   const [topic, setTopic] = useState("");
@@ -96,6 +102,18 @@ function MustDoTab({
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const topics = company.Must_Do_Topics ?? [];
+  const topicRefs = useRef({});
+  const [focusedTopicIndex, setFocusedTopicIndex] = useState(-1);
+
+  useEffect(() => {
+    const idx = findFocusIndex(topics, focusQuery);
+    if (idx < 0) {
+      setFocusedTopicIndex(-1);
+      return;
+    }
+    setFocusedTopicIndex(idx);
+    scrollFocusNode(topicRefs.current[idx]);
+  }, [focusQuery, company]);
 
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
@@ -236,7 +254,12 @@ function MustDoTab({
             {topics.map((topicItem, index) => (
               <div
                 key={`${index}-${String(topicItem).slice(0, 24)}`}
-                className="rounded-xl border border-theme bg-theme-input/30 p-4 shadow-sm transition hover:border-theme-accent/40"
+                ref={(el) => {
+                  topicRefs.current[index] = el;
+                }}
+                className={`rounded-xl border border-theme bg-theme-input/30 p-4 shadow-sm transition hover:border-theme-accent/40 ${
+                  focusedTopicIndex === index ? PREP_FOCUS_HIGHLIGHT_CLASS : ""
+                }`}
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-theme-accent/35 bg-theme-accent/10 text-xs font-bold text-theme-accent">

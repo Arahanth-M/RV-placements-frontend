@@ -22,6 +22,10 @@ import {
 import { GENERAL_BASE, isGeneralAppPath, toTenantAppPath } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
+  copyPrepPathFocusParams,
+  readCompanyFocusFromLocation,
+} from "../utils/prepPathCompanyFocus.js";
+import {
   COLLEGE_ID_RVITM,
   collegeIdFromUser,
   normalizeCollegeId,
@@ -321,7 +325,9 @@ function CompanyDetails() {
     localStorage.getItem(profileAvailabilityKey) === "no_profile";
   const { setIsInterviewLocked: setGlobalInterviewLocked } = useInterviewLock();
   const [company, setCompany] = useState(null);
-  const [activeTab, setActiveTab] = useState("about");
+  const [activeTab, setActiveTab] = useState(
+    () => readCompanyFocusFromLocation(location).tab || "about"
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [paywallMeta, setPaywallMeta] = useState(null);
@@ -351,6 +357,7 @@ function CompanyDetails() {
   const placementCompanyVisitIdForApi = readPlacementCompanyVisitIdFromLocation(location);
   const placementClusterForApi = readPlacementClusterFromLocation(location);
   const isCsClusterForInterview = placementClusterForApi === PLACEMENT_CLUSTER_CS;
+  const prepFocusNav = readCompanyFocusFromLocation(location);
 
   const interviewFocusMode = isInterviewLocked && activeTab === "aiinterview";
 
@@ -549,6 +556,11 @@ function CompanyDetails() {
       setDetailRequestSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!prepFocusNav.tab) return;
+    setActiveTab(prepFocusNav.tab);
+  }, [id, prepFocusNav.tab, prepFocusNav.fromPrepPath]);
 
   useEffect(() => {
     if (!company || !id) return;
@@ -768,7 +780,7 @@ function CompanyDetails() {
           title={`Unlock ${paywallMeta?.company?.name || company?.name || "this company"}`}
           message={
             paywallMeta?.error ||
-            "This company card is premium. The first company in each category stays free to open. Unlock this category or all company cards to view full details."
+            "This company card is premium. The first company in each category stays free to open. Unlock this category, or a plan that includes all company cards."
           }
           pricingPath={appPath("/pricing")}
           feature="company_detail"
@@ -941,6 +953,10 @@ function CompanyDetails() {
     }
 
     const fromCompanyCards = getSessionValue("fromCompanyCards");
+    if (prepFocusNav.fromPrepPath || location.state?.fromPrepPath) {
+      navigate(-1);
+      return;
+    }
     if (fromCompanyCards === "true") {
       const storedReturnPath = getSessionValue(COMPANY_DETAILS_RETURN_PATH_KEY);
       if (
@@ -1053,6 +1069,7 @@ function CompanyDetails() {
 
     const pCluster = readPlacementClusterFromLocation(location);
     if (pCluster) params.set("placementCluster", pCluster);
+    copyPrepPathFocusParams(location.search, params);
     navigate(appPath(`/companies/${id}?${params.toString()}`), {
       replace: true,
       state: location.state ?? {},
@@ -1376,6 +1393,7 @@ function CompanyDetails() {
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
                 placementCluster={placementClusterForApi}
+                focusQuery={prepFocusNav.focus}
               />
             ))}
           {/* Coding is company-static; Must Do is cluster-wide — not the selected year's visit. */}
@@ -1393,6 +1411,7 @@ function CompanyDetails() {
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
                 placementCluster={placementClusterForApi}
+                focusQuery={prepFocusNav.focus}
               />
             ))}
           {activeTab === "internship" &&
@@ -1406,6 +1425,7 @@ function CompanyDetails() {
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
+                focusQuery={prepFocusNav.focus}
               />
             ))}
           {isCsClusterForInterview && activeTab === "aiinterview" && (
@@ -1428,6 +1448,7 @@ function CompanyDetails() {
               placementListContext={placementContextForApi}
               placementCompanyVisitId={company?.placementCompanyVisitId}
               placementCluster={placementClusterForApi}
+              focusQuery={prepFocusNav.focus}
             />
           )}
           {activeTab === "offcampus" &&
