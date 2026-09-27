@@ -7,6 +7,10 @@ export function inferSolutionLanguage(code) {
   const c = code.trim();
   if (!c) return "markdown";
 
+  if (/\*\*[^*\n]+\*\*/.test(c) || /^\|.+\|\s*$/m.test(c)) return "markdown";
+  const pipeCount = (c.match(/\|/g) || []).length;
+  if (pipeCount >= 6 && /\|[^|\n]+\|/.test(c)) return "markdown";
+
   if (/#include\s*[<"]|using\s+namespace|std::|template\s*</.test(c)) return "cpp";
   if (/^\s*def\s+\w+\s*\(|^from\s+[\w.]+\s+import|^import\s+[\w.]+(\s+as\s+)?/m.test(c)) {
     return "python";

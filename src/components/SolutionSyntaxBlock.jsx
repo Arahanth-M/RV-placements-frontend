@@ -3,6 +3,7 @@ import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism"
 import { useTheme } from "../utils/ThemeContext";
 import { inferSolutionLanguage } from "../utils/inferSolutionLanguage";
 import { formatSolutionCode } from "../utils/formatSolutionCode";
+import { prepareSourceCodeForDisplay } from "../utils/prepareSourceCodeForDisplay.js";
 
 /**
  * VS Code–style syntax highlighting for solution bodies.
@@ -12,11 +13,14 @@ import { formatSolutionCode } from "../utils/formatSolutionCode";
 export default function SolutionSyntaxBlock({ code, toolbar = null, className = "", language }) {
   const { theme } = useTheme();
   const style = theme === "dark" ? vscDarkPlus : vs;
-  const displayCode = formatSolutionCode(code);
   const lang =
     typeof language === "string" && language.trim()
       ? language.trim()
-      : inferSolutionLanguage(displayCode);
+      : inferSolutionLanguage(formatSolutionCode(code));
+  const displayCode =
+    lang && lang !== "markdown"
+      ? prepareSourceCodeForDisplay(code, lang)
+      : formatSolutionCode(code);
 
   return (
     <div className={`solution-syntax-root relative max-w-full min-w-0 ${className}`}>
@@ -28,7 +32,7 @@ export default function SolutionSyntaxBlock({ code, toolbar = null, className = 
         style={style}
         showLineNumbers={false}
         PreTag="div"
-        wrapLongLines
+        wrapLongLines={false}
         customStyle={{
           margin: 0,
           paddingTop: toolbar ? "2.75rem" : "0.75rem",
@@ -46,6 +50,7 @@ export default function SolutionSyntaxBlock({ code, toolbar = null, className = 
           style: {
             fontFamily:
               'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+            whiteSpace: "pre",
           },
         }}
       >

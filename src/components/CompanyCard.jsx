@@ -19,7 +19,7 @@ import {
 import CompanyLogo from "./CompanyLogo";
 import { formatExperienceMonth } from "../utils/parseExperienceStoredEntry.js";
 import PaywallModal from "./PaywallPanel.jsx";
-import { formatPlatformPrepCoverage } from "../utils/platformPrepCoverage.js";
+import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -105,9 +105,12 @@ function CompanyCard({
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const viewCount = Math.max(0, Number(company.views) || 0);
-  const lastUpdatedMonth = formatExperienceMonth(company.contentUpdatedAt || company.createdAt);
+  const lastUpdatedMonth = formatExperienceMonth(
+    isGeneral
+      ? company.platformContentUpdatedAt || company.contentUpdatedAt || company.createdAt
+      : company.contentUpdatedAt || company.createdAt
+  );
   const isTrending = company.trending === true;
-
   // Update local state when company prop changes
   useEffect(() => {
     setHelpfulCount(company.helpfulCount || 0);
@@ -309,8 +312,6 @@ function CompanyCard({
   };
 
   const typeShown = typeDisplayLabel ?? company.type;
-  const prepCoverage = formatPlatformPrepCoverage(company.platformPrepCoverage);
-
   /** Dream / Open dream / Summer: category no-visit copy omits company-static teaser rows (business model, tags). */
   const tierPendingOmitsPlacementTeasers =
     typePlacementLabelPending &&
@@ -469,12 +470,11 @@ function CompanyCard({
         </div>
       </div>
       {isGeneral ? (
-        <p
-          className="company-role mb-4 w-full min-w-0 whitespace-nowrap tracking-tight text-[clamp(8px,3.4cqi,10px)] leading-none text-theme-secondary tabular-nums"
-          data-testid="company-prep-coverage"
-        >
-          {prepCoverage.line}
-        </p>
+        <GeneralCompanyPrepSummary
+          company={company}
+          variant="card"
+          className="mb-4 w-full min-w-0"
+        />
       ) : null}
 
       {/* Middle Section: Main info - Flex grow to push footer down */}

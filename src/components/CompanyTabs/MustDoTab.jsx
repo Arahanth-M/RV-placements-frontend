@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
+import { adminAPI, adminCompanyVisitOpts, platformAdminAPI } from "../../utils/api";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import { FaEdit, FaExternalLinkAlt, FaTrash } from "react-icons/fa";
 import BrandLogo from "../BrandLogo.jsx";
@@ -181,12 +181,21 @@ function MustDoTab({
     }
     try {
       setActionLoading(true);
-      await adminAPI.updateMustDoTopic(
-        company._id,
-        index,
-        { topic: nextTopic },
-        adminOpts
-      );
+      const currentTopic = topics[index];
+      if (isGeneral) {
+        await platformAdminAPI.updateMustDoTopicByTopic(
+          company._id,
+          currentTopic,
+          nextTopic
+        );
+      } else {
+        await adminAPI.updateMustDoTopic(
+          company._id,
+          index,
+          { topic: nextTopic },
+          adminOpts
+        );
+      }
       cancelEdit();
       setSubmissionFeedback({
         variant: "success",
@@ -209,7 +218,12 @@ function MustDoTab({
     if (!ok) return;
     try {
       setActionLoading(true);
-      await adminAPI.deleteMustDoTopic(company._id, index, adminOpts);
+      const currentTopic = topics[index];
+      if (isGeneral) {
+        await platformAdminAPI.deleteMustDoTopicByTopic(company._id, currentTopic);
+      } else {
+        await adminAPI.deleteMustDoTopic(company._id, index, adminOpts);
+      }
       if (editIndex === index) cancelEdit();
       setSubmissionFeedback({
         variant: "success",

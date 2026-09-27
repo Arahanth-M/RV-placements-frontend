@@ -36,6 +36,9 @@ const baseCompany = {
   focusTags: ["DSA"],
   helpfulCount: 0,
   platformPrepCoverage: { oa: 12, interview: 5, experiences: 3 },
+  prepRoles: [{ key: "sde", label: "SDE" }],
+  onlineQuestions_prepRoleKey: ["sde"],
+  platformContentUpdatedAt: "2026-03-01T00:00:00.000Z",
 };
 
 function renderCard(base, company = baseCompany) {
@@ -53,12 +56,13 @@ describe("CompanyCard /general prep coverage", () => {
     vi.clearAllMocks();
   });
 
-  it("shows per-company OA, interview, and experience counts", () => {
+  it("shows prep counts under the name and last updated in the card footer", () => {
     renderCard(GENERAL_BASE);
-    expect(screen.getByTestId("company-prep-coverage")).toHaveTextContent(
-      /12 OA\s*·\s*5 interview q's\s*·\s*3 interview exprs/
-    );
-    expect(screen.getByTestId("company-prep-coverage")).toHaveClass("whitespace-nowrap");
+    const coverage = screen.getByTestId("company-prep-coverage");
+    expect(coverage).toHaveTextContent(/12 OA\s*·\s*5 interview q's\s*·\s*3 interview exprs/);
+    expect(coverage).not.toHaveClass("whitespace-nowrap");
+    expect(coverage).not.toHaveTextContent(/Roles:/);
+    expect(screen.getByText(/Last updated on:\s*March 2026/)).toBeInTheDocument();
     expect(screen.queryByText("Company prep")).not.toBeInTheDocument();
     expect(screen.queryByText("FTE")).not.toBeInTheDocument();
   });

@@ -85,16 +85,28 @@
 
 // export default InterviewTab;
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { PrepRoleChromeDark } from "../PrepRoleChrome.jsx";
+import {
+  buildPrepRoleTabs,
+  hasRoleScopedPrepContent,
+  itemMatchesPrepRoleTab,
+  pickDefaultPrepRoleTab,
+} from "../../utils/prepRoleTabs.js";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
-import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
+import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransition.js";
+import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import PrepSolutionBody from "../PrepSolutionBody";
+import PlatformAdminCodeBlock from "../platform/PlatformAdminCodeBlock.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
+import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
+import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
 import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
@@ -122,7 +134,14 @@ function InterviewTab({
   placementCompanyVisitId,
   placementCluster,
   focusQuery = "",
+  /** General platform: `"questions"` | `"experience"`; college: null (both). */
+  generalSection = null,
 }) {
+  const showQuestionsSection =
+    generalSection == null || generalSection === "questions";
+  const showExperienceSection =
+    generalSection == null || generalSection === "experience";
+  const contentAdmin = companyContentAdminAPI(isGeneral);
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
   const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
@@ -155,6 +174,68 @@ function InterviewTab({
     : company.interviewQuestions
     ? [company.interviewQuestions]
     : [];
+
+  const interviewPrepRoleKeys = Array.isArray(company.interviewQuestions_prepRoleKey)
+    ? company.interviewQuestions_prepRoleKey
+    : [];
+  const prepRoles = Array.isArray(company.prepRoles) ? company.prepRoles : [];
+  /** `null` = user has not picked a tab yet; use smart default. */
+  const [activeInterviewPrepRoleKey, setActiveInterviewPrepRoleKey] = useState(null);
+  const interviewRoleItemKeys = useMemo(
+    () =>
+      interviewQuestions.map((_, index) => String(interviewPrepRoleKeys[index] ?? "")),
+    [interviewQuestions, interviewPrepRoleKeys]
+  );
+  const interviewRoleTabs = useMemo(
+    () => buildPrepRoleTabs(prepRoles, interviewRoleItemKeys, { excludeGeneralTab: true }),
+    [prepRoles, interviewRoleItemKeys]
+  );
+  const showInterviewRoleChrome =
+    isGeneral && hasRoleScopedPrepContent(prepRoles, interviewRoleItemKeys);
+
+  const effectiveInterviewPrepRoleKey = useMemo(() => {
+    if (!showInterviewRoleChrome) return "";
+    const preferred = pickDefaultPrepRoleTab(prepRoles, interviewRoleItemKeys, {
+      excludeGeneralTab: true,
+    });
+    if (activeInterviewPrepRoleKey === null) return preferred;
+    const candidate = interviewRoleTabs.some((tab) => tab.key === activeInterviewPrepRoleKey)
+      ? activeInterviewPrepRoleKey
+      : preferred;
+    const hasQuestions = interviewQuestions.some(
+      (q, index) =>
+        questionTextIsPresent(q) &&
+        itemMatchesPrepRoleTab(interviewPrepRoleKeys[index], candidate)
+    );
+    return hasQuestions ? candidate : preferred;
+  }, [
+    showInterviewRoleChrome,
+    prepRoles,
+    interviewRoleItemKeys,
+    interviewRoleTabs,
+    activeInterviewPrepRoleKey,
+    interviewQuestions,
+    interviewPrepRoleKeys,
+  ]);
+  const roleSwitching = usePrepRoleSwitchTransition(
+    showInterviewRoleChrome ? effectiveInterviewPrepRoleKey : "__static__"
+  );
+
+  const interviewQuestionVisible = (index) => {
+    if (!questionTextIsPresent(interviewQuestions[index])) return false;
+    if (!showInterviewRoleChrome) return true;
+    return itemMatchesPrepRoleTab(
+      interviewPrepRoleKeys[index],
+      effectiveInterviewPrepRoleKey
+    );
+  };
+
+  const visibleInterviewQuestionCount = interviewQuestions.filter((_, index) =>
+    interviewQuestionVisible(index)
+  ).length;
+  const totalInterviewQuestionCount = interviewQuestions.filter((q) =>
+    questionTextIsPresent(q)
+  ).length;
 
   // Function to convert escape sequences to their actual characters and remove unnecessary quotes
   const unescapeString = (str) => {
@@ -434,7 +515,7 @@ function InterviewTab({
     if (editIQIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateInterviewQuestion(
+      await contentAdmin.updateInterviewQuestion(
         company._id,
         editIQIndex,
         { question: editIQQuestion, solution: editIQSolution },
@@ -456,7 +537,7 @@ function InterviewTab({
     if (!company?._id || !window.confirm("Delete this interview question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewQuestion(company._id, index, adminOpts);
+      await contentAdmin.deleteInterviewQuestion(company._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenIndexQ(null);
     } catch (err) {
@@ -477,7 +558,7 @@ function InterviewTab({
     if (editIPIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateInterviewProcess(
+      await contentAdmin.updateInterviewProcess(
         company._id,
         editIPIndex,
         { content: editIPContent },
@@ -498,7 +579,7 @@ function InterviewTab({
     if (!company?._id || !window.confirm("Delete this interview process entry?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewProcess(company._id, index, adminOpts);
+      await contentAdmin.deleteInterviewProcess(company._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
     } catch (err) {
       console.error(err);
@@ -631,7 +712,21 @@ function InterviewTab({
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       <div data-tour="company-contribute-actions" className="space-y-5 sm:space-y-6">
-      {/* Interview Questions */}
+      {showQuestionsSection && showInterviewRoleChrome ? (
+        <PrepRoleChromeDark
+          prepRoles={prepRoles}
+          itemRoleKeys={interviewRoleItemKeys}
+          activeKey={effectiveInterviewPrepRoleKey}
+          onChange={setActiveInterviewPrepRoleKey}
+          ariaLabel="Interview question roles"
+          excludeGeneralTab
+          switching={roleSwitching}
+        />
+      ) : null}
+      {showQuestionsSection && roleSwitching ? (
+        <PrepRoleSwitchShimmer variant="dark" />
+      ) : null}
+      {showQuestionsSection && !roleSwitching ? (
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="shrink-0">Interview Questions</span>
@@ -647,14 +742,13 @@ function InterviewTab({
             <span>Add Interview Question</span>
           </button>
         </h2>
-
-        {interviewQuestions.some(questionTextIsPresent) ? (
+        {visibleInterviewQuestionCount > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {interviewQuestions.map((q, index) => {
-              if (!questionTextIsPresent(q)) return null;
+              if (!interviewQuestionVisible(index)) return null;
               const displayNumber = interviewQuestions
                 .slice(0, index + 1)
-                .filter(questionTextIsPresent).length;
+                .filter((_, i) => interviewQuestionVisible(i)).length;
               return (
               <div
                 key={index}
@@ -740,8 +834,8 @@ function InterviewTab({
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
-                        {openSolutionIndex[index] && (
-                          hasLang ? (
+                        {openSolutionIndex[index] &&
+                          (hasLang ? (
                             <div className="p-2 sm:p-3">
                               <LanguageSolutionPanel
                                 solutions={langSol}
@@ -750,36 +844,70 @@ function InterviewTab({
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
                                 embedded
+                                richTextVariant="dark"
+                                platformAdminCodeDisplay={isGeneral}
                               />
                             </div>
                           ) : (
-                          <div className="p-2 sm:p-3">
-                            <SolutionSyntaxBlock
-                              code={solutions[index]}
-                              toolbar={
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySolution(solutions[index], index)}
-                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
-                                  title="Copy solution"
-                                >
-                                  {copiedIndex === index ? (
-                                    <>
-                                      <FaCheck className="w-3 h-3 shrink-0" />
-                                      <span>Copied!</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FaCopy className="w-3 h-3 shrink-0" />
-                                      <span>Copy</span>
-                                    </>
+                            <div className="p-2 sm:p-3">
+                              {isGeneral &&
+                              ["cpp", "java", "python"].includes(
+                                inferSolutionLanguage(formatSolutionCode(solutions[index]))
+                              ) ? (
+                                <PlatformAdminCodeBlock
+                                  code={solutions[index]}
+                                  language={inferSolutionLanguage(
+                                    formatSolutionCode(solutions[index])
                                   )}
-                                </button>
-                              }
-                            />
-                          </div>
-                          )
-                        )}
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              ) : (
+                                <PrepSolutionBody
+                                  code={solutions[index]}
+                                  richTextVariant="dark"
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              )}
+                            </div>
+                          ))}
                       </div>
                       );
                     })()}
@@ -789,12 +917,17 @@ function InterviewTab({
               );
             })}
           </div>
+        ) : totalInterviewQuestionCount > 0 && showInterviewRoleChrome ? (
+          <p className="text-slate-400">
+            No questions for this role. Choose another role tab above.
+          </p>
         ) : (
           <p className="text-slate-400">No interview questions yet.</p>
         )}
       </div>
+      ) : null}
 
-      {/* Interview Process — display only; stored strings are unchanged */}
+      {showExperienceSection ? (
       <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
         <ExperienceSectionHeader
           kicker="Experiences"
@@ -861,6 +994,7 @@ function InterviewTab({
           />
         )}
       </div>
+      ) : null}
       </div>
 
       {/* Add Interview Question Modal */}

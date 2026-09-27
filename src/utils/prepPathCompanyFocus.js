@@ -5,21 +5,23 @@
 export const PREP_PATH_COMPANY_TABS = new Set([
   "oa",
   "interview",
+  "interviewquestions",
+  "interviewexperience",
   "mustdo",
   "internship",
   "coding",
 ]);
 
-export function tabForPrepEvidence(sourceType) {
+export function tabForPrepEvidence(sourceType, { isGeneral = false } = {}) {
   switch (String(sourceType || "").trim().toLowerCase()) {
     case "oa":
       return "oa";
     case "coding":
       return "coding";
     case "interview_question":
-      return "interview";
+      return isGeneral ? "interviewquestions" : "interview";
     case "interview_experience":
-      return "interview";
+      return isGeneral ? "interviewexperience" : "interview";
     case "must_do":
       return "mustdo";
     default:

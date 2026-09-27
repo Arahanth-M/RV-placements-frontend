@@ -272,12 +272,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
-import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
-import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import PrepSolutionBody from "../PrepSolutionBody";
+import PlatformAdminCodeBlock from "../platform/PlatformAdminCodeBlock.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
+import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
+import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
   findFocusIndex,
@@ -314,6 +317,7 @@ function OATab({
   const questionRowRefs = useRef({});
 
   const safeCompany = company || {};
+  const contentAdmin = companyContentAdminAPI(isGeneral);
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -382,7 +386,7 @@ function OATab({
     if (editIndex == null || !safeCompany._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateOAQuestion(
+      await contentAdmin.updateOAQuestion(
         safeCompany._id,
         editIndex,
         { question: editQuestion, solution: editSolution },
@@ -404,7 +408,7 @@ function OATab({
     if (!safeCompany._id || !window.confirm("Delete this OA question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteOAQuestion(safeCompany._id, index, adminOpts);
+      await contentAdmin.deleteOAQuestion(safeCompany._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenQuestionIndex(null);
     } catch (err) {
@@ -748,8 +752,8 @@ function OATab({
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
-                        {openSolutionIndex[index] && (
-                          hasLang ? (
+                        {openSolutionIndex[index] &&
+                          (hasLang ? (
                             <div className="p-2 sm:p-3">
                               <LanguageSolutionPanel
                                 solutions={langSol}
@@ -758,36 +762,70 @@ function OATab({
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
                                 embedded
+                                richTextVariant="dark"
+                                platformAdminCodeDisplay={isGeneral}
                               />
                             </div>
                           ) : (
-                          <div className="p-2 sm:p-3">
-                            <SolutionSyntaxBlock
-                              code={solutions[index]}
-                              toolbar={
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySolution(solutions[index], index)}
-                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
-                                  title="Copy solution"
-                                >
-                                  {copiedIndex === index ? (
-                                    <>
-                                      <FaCheck className="w-3 h-3 shrink-0" />
-                                      <span>Copied!</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FaCopy className="w-3 h-3 shrink-0" />
-                                      <span>Copy</span>
-                                    </>
+                            <div className="p-2 sm:p-3">
+                              {isGeneral &&
+                              ["cpp", "java", "python"].includes(
+                                inferSolutionLanguage(formatSolutionCode(solutions[index]))
+                              ) ? (
+                                <PlatformAdminCodeBlock
+                                  code={solutions[index]}
+                                  language={inferSolutionLanguage(
+                                    formatSolutionCode(solutions[index])
                                   )}
-                                </button>
-                              }
-                            />
-                          </div>
-                          )
-                        )}
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              ) : (
+                                <PrepSolutionBody
+                                  code={solutions[index]}
+                                  richTextVariant="dark"
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              )}
+                            </div>
+                          ))}
                       </div>
                       );
                     })()}

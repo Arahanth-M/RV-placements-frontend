@@ -834,7 +834,6 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="Student"
               titleAccent="Challenges"
-              subtitle="Most students don’t fail from lack of effort — they fail from missing context, structure, practice, and timing. Hover a card to see how we fix each one."
               id="landing-challenges-heading"
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -865,7 +864,7 @@ export default function PlatformLanding({ embedded = false }) {
                 const Icon = feature.icon;
                 return (
                   <RevealCard key={feature.title} delay={idx * 55}>
-                    <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-theme bg-theme-card text-left transition-all duration-300 hover:-translate-y-1 hover:border-theme-accent/45 hover:shadow-xl">
+                    <div className="relative flex h-full flex-col overflow-hidden rounded-3xl border border-theme bg-theme-card text-left">
                       <div
                         className="h-1 w-full"
                         style={{
@@ -879,7 +878,7 @@ export default function PlatformLanding({ embedded = false }) {
                             <Icon className="h-4 w-4" />
                           </span>
                         </div>
-                        <h3 className="mb-2 text-xl font-bold text-theme-primary transition-colors group-hover:text-theme-accent sm:text-2xl" style={{ fontFamily: "Inter, sans-serif" }}>
+                        <h3 className="mb-2 text-xl font-bold text-theme-primary sm:text-2xl" style={{ fontFamily: "Inter, sans-serif" }}>
                           {feature.title}
                         </h3>
                         <p className="flex-1 text-base leading-relaxed text-theme-secondary sm:text-lg">
@@ -903,7 +902,6 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="Platform"
               titleAccent="Stats"
-              subtitle="Live counts where we have them, plus the scale of prep data already on the dashboard."
               id="landing-stats-heading"
             />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
@@ -952,7 +950,6 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="Campus"
               titleAccent="Institutions"
-              subtitle="A dedicated placement dashboard for each campus — same product, local data."
               id="landing-institutions-heading"
             />
           </div>

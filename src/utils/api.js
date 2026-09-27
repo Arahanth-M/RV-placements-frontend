@@ -176,6 +176,44 @@ export const companyAPI = {
   savePlatformContent: (id, payload) =>
     API.put(`/api/companies/platform-content/${encodeURIComponent(String(id || ""))}`, payload),
 
+  /** Research + Groq answer generation can run for many minutes. */
+  startCompanyResearch: (payload) =>
+    API.post("/api/admin/platform/company-research", payload, { timeout: 120000 }),
+  getCompanyResearchStatus: (jobId) =>
+    API.get(`/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}`, {
+      timeout: 60000,
+    }),
+  publishCompanyResearchSources: (jobId) =>
+    API.post(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/publish-sources`,
+      {},
+      { timeout: 120000 }
+    ),
+  generateCompanyResearchLinksSummary: (jobId) =>
+    API.post(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/generate-links-summary`,
+      {},
+      { timeout: 300000 }
+    ),
+  saveCompanyResearchLinksSummaryDraft: (jobId, summary) =>
+    API.put(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/links-summary-draft`,
+      { summary },
+      { timeout: 120000 }
+    ),
+  generateCompanyResearchAnswers: (jobId, selectedIndexes) =>
+    API.post(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/generate-answers`,
+      { selectedIndexes },
+      { timeout: 900000 }
+    ),
+  publishCompanyResearch: (jobId, selectedIndexes) =>
+    API.post(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/publish`,
+      { selectedIndexes },
+      { timeout: 120000 }
+    ),
+
   getHomeStats: () => API.get("/api/companies/home-stats"),
 
   /** Year-aware category tiles: small counts + 5 logo rows per bucket. */
@@ -561,7 +599,37 @@ export const platformAdminAPI = {
   rejectSubmission: (id) => API.delete(`/api/admin/platform/submissions/${id}/reject`),
   deleteApprovedSubmission: (id) =>
     API.delete(`/api/admin/platform/submissions/${id}/delete`),
+  updateOAQuestion: (companyId, index, data) =>
+    API.put(`/api/admin/platform/companies/${companyId}/oa-questions/${index}`, data),
+  deleteOAQuestion: (companyId, index) =>
+    API.delete(`/api/admin/platform/companies/${companyId}/oa-questions/${index}`),
+  updateInterviewQuestion: (companyId, index, data) =>
+    API.put(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`, data),
+  deleteInterviewQuestion: (companyId, index) =>
+    API.delete(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`),
+  updateInterviewProcess: (companyId, index, data) =>
+    API.put(`/api/admin/platform/companies/${companyId}/interview-process/${index}`, data),
+  deleteInterviewProcess: (companyId, index) =>
+    API.delete(`/api/admin/platform/companies/${companyId}/interview-process/${index}`),
+  updateMustDoTopicByTopic: (companyId, currentTopic, topic) =>
+    API.put(`/api/admin/platform/companies/${companyId}/must-do-topics/by-topic`, {
+      currentTopic,
+      topic,
+    }),
+  deleteMustDoTopicByTopic: (companyId, currentTopic) =>
+    API.delete(`/api/admin/platform/companies/${companyId}/must-do-topics/by-topic`, {
+      data: { currentTopic },
+    }),
+  deleteResearchSource: (companyId, url) =>
+    API.delete(`/api/admin/platform/companies/${companyId}/research-sources`, {
+      data: { url },
+    }),
 };
+
+/** Campus visit admin vs /general platform content admin. */
+export function companyContentAdminAPI(isGeneral) {
+  return isGeneral ? platformAdminAPI : adminAPI;
+}
 
 export const interviewQuestionBankAPI = {
   list: (params = {}) => API.get("/api/interview-question-bank", { params }),

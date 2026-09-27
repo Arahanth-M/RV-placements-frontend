@@ -288,7 +288,7 @@ function CampusEvidenceChips({ items, companyId }) {
   return (
     <div className="mt-3 flex flex-col gap-2.5">
       {list.map((ev, i) => {
-        const tab = tabForPrepEvidence(ev.sourceType);
+        const tab = tabForPrepEvidence(ev.sourceType, { isGeneral });
         const href =
           companyId && tab
             ? buildPrepPathCompanyHref(appPath, companyId, {
@@ -399,7 +399,7 @@ function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, ta
         const platformHref =
           sub.isPlatformItem && companyId
             ? buildPrepPathCompanyHref(appPath, companyId, {
-                tab: tabForPrepEvidence(sub.sourceType),
+                tab: tabForPrepEvidence(sub.sourceType, { isGeneral }),
                 focus: sub.platformSnippet || sub.notes,
               })
             : "";

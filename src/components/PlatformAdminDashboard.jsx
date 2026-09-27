@@ -16,6 +16,7 @@ import {
   pageShellInnerClass,
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+import ThemedSelect from "./ThemedSelect.jsx";
 
 const TAB_KEYS = new Set(["stats", "submissions", "onboarding", "billing", "campus"]);
 const ONBOARDING_STATUSES = [
@@ -142,9 +143,6 @@ function StatCard({ label, value, hint }) {
     </div>
   );
 }
-
-const inputClass =
-  "w-full rounded-xl border border-theme bg-theme-input px-3 py-2 text-sm text-theme-primary";
 
 export default function PlatformAdminDashboard() {
   const navigate = useNavigate();
@@ -445,18 +443,17 @@ function OnboardingInbox() {
               </td>
               <td className="px-4 py-3 text-theme-secondary">{row.path}</td>
               <td className="px-4 py-3">
-                <select
-                  className={inputClass}
+                <ThemedSelect
+                  ariaLabel={`Onboarding status for ${row.collegeName}`}
                   value={row.status}
                   disabled={savingId === String(row._id)}
-                  onChange={(event) => updateStatus(String(row._id), event.target.value)}
-                >
-                  {ONBOARDING_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status.replaceAll("_", " ")}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(status) => updateStatus(String(row._id), status)}
+                  options={ONBOARDING_STATUSES.map((status) => ({
+                    value: status,
+                    label: status.replaceAll("_", " "),
+                  }))}
+                  triggerClassName="min-w-[12rem]"
+                />
               </td>
               <td className="px-4 py-3 text-theme-secondary">{formatWhen(row.createdAt)}</td>
             </tr>

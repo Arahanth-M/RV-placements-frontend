@@ -16,6 +16,12 @@ describe("prepPathCompanyFocus", () => {
     expect(tabForPrepEvidence("coding")).toBe("coding");
     expect(tabForPrepEvidence("interview_question")).toBe("interview");
     expect(tabForPrepEvidence("interview_experience")).toBe("interview");
+    expect(tabForPrepEvidence("interview_question", { isGeneral: true })).toBe(
+      "interviewquestions"
+    );
+    expect(tabForPrepEvidence("interview_experience", { isGeneral: true })).toBe(
+      "interviewexperience"
+    );
     expect(tabForPrepEvidence("must_do")).toBe("mustdo");
     expect(tabForPrepEvidence("platform_role")).toBeNull();
   });
