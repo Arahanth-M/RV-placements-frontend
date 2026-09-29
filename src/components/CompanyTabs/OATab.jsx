@@ -469,6 +469,16 @@ function OATab({
   };
 
   // Normalize questions & solutions
+  const oaQuestionKinds = Array.isArray(safeCompany.onlineQuestions_kind)
+    ? safeCompany.onlineQuestions_kind
+    : [];
+
+  function oaKindBadge(kind) {
+    if (kind === "coding") return "DSA";
+    if (kind === "sql") return "SQL";
+    return "";
+  }
+
   const parsedQuestions =
     safeCompany.onlineQuestions?.map((qa) => {
       if (!qa) return "";
@@ -621,12 +631,19 @@ function OATab({
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 ml-0 sm:ml-10">
-                  {[
-                    { label: 'A', value: q.optionA },
-                    { label: 'B', value: q.optionB },
-                    { label: 'C', value: q.optionC },
-                    { label: 'D', value: q.optionD }
-                  ].map((opt) => opt.value && (
+                  {(
+                    Array.isArray(q.mcqMetadata?.options) && q.mcqMetadata.options.length > 0
+                      ? q.mcqMetadata.options.map((opt) => ({
+                          label: String(opt?.id || "").toUpperCase(),
+                          value: opt?.text,
+                        }))
+                      : [
+                          { label: "A", value: q.optionA },
+                          { label: "B", value: q.optionB },
+                          { label: "C", value: q.optionC },
+                          { label: "D", value: q.optionD },
+                        ]
+                  ).map((opt) => opt.value && (
                     <div
                       key={opt.label}
                       className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-theme-input border border-theme text-theme-secondary"
@@ -639,14 +656,19 @@ function OATab({
                   ))}
                 </div>
 
-                {q.answer && (
+                {q.answer ? (
                   <div className="mt-3 sm:mt-4 ml-0 sm:ml-10 flex flex-wrap items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-2 rounded-lg border border-emerald-500/20 w-full sm:w-fit max-w-full">
                     <FaCheck className="w-3.5 h-3.5 shrink-0" />
                     <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug">
                       Correct Answer: <span className="text-emerald-300 ml-1">{q.answer}</span>
                     </span>
                   </div>
-                )}
+                ) : null}
+                {q.explanation ? (
+                  <p className="mt-3 ml-0 sm:ml-10 text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">
+                    {q.explanation}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -689,7 +711,14 @@ function OATab({
                     onClick={() => toggleQuestionAccordion(index)}
                     className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate min-w-0">Question {displayNumber}</span>
+                    <span className="truncate min-w-0 flex items-center gap-2">
+                      Question {displayNumber}
+                      {oaKindBadge(oaQuestionKinds[index]) ? (
+                        <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+                          {oaKindBadge(oaQuestionKinds[index])}
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openQuestionIndex === index ? "−" : "+"}
                     </span>

@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { companyAPI } from "../utils/api";
 import PrepRichText from "./PrepRichText.jsx";
 import PlatformGeneratedSolutionView from "./platform/PlatformGeneratedSolutionView.jsx";
+import SpcThemeSelect from "./SpcThemeSelect.jsx";
 
 const inputClass =
   "w-full rounded-xl border-2 border-theme bg-theme-input px-3 py-2 text-sm text-theme-primary";
+const selectButtonClass = `${inputClass} outline-none focus:border-theme-accent`;
 const labelClass = "mb-1 block text-xs font-medium text-theme-secondary";
 const sectionCardClass = "rounded-2xl border border-theme bg-theme-card p-4 sm:p-5";
 
@@ -45,10 +47,23 @@ function httpUrl(value) {
 }
 
 function kindLabel(kind) {
-  if (kind === "coding") return "Coding";
+  if (kind === "coding") return "Coding (DSA)";
+  if (kind === "sql") return "SQL";
+  if (kind === "mcq") return "MCQ";
   if (kind === "non_coding") return "Non-coding";
   return typeof kind === "string" ? kind : "";
 }
+
+function oaFormLabel(item) {
+  const form = item?.form || item?.kind;
+  return kindLabel(form);
+}
+
+const OA_ROLE_OPTIONS = [
+  { value: "SDE", label: "SDE" },
+  { value: "Analyst", label: "Analyst" },
+  { value: "Data Scientist", label: "Data Scientist" },
+];
 
 function SourceLink({ url, children }) {
   const href = httpUrl(url);
@@ -65,17 +80,18 @@ function SourceLink({ url, children }) {
   );
 }
 
-function ResearchStats({ stats }) {
+function ResearchStats({ stats, itemNoun = "Questions" }) {
   if (!stats || typeof stats !== "object") return null;
+  const noun = String(itemNoun || "Questions");
   const rows = [
     ["Search queries", stats.searchQueries],
     ["Sources found", stats.searchedResults],
     ["Sources selected", stats.selectedSources],
     ["Sources extracted", stats.extractedSources],
     ["Sources failed", stats.failedSources],
-    ["Questions extracted", stats.extractedCandidates],
+    [`${noun} extracted`, stats.extractedCandidates],
     ["Duplicates removed", stats.duplicateCandidates],
-    ["Final questions", stats.finalCandidates],
+    [`Final ${noun.toLowerCase()}`, stats.finalCandidates],
   ];
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -121,6 +137,8 @@ export function ResearchQuestions({
   disabled,
   showAnswers = false,
   selectable = true,
+  heading = "Interview question",
+  hideSourceLinks = false,
 }) {
   if (!Array.isArray(items) || items.length === 0) return null;
   const rows = itemIndexes
@@ -148,11 +166,105 @@ export function ResearchQuestions({
                 Select
               </label>
             ) : null}
-            <p className="text-xs font-medium uppercase tracking-wide text-theme-secondary">Interview question</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-theme-secondary">{heading}</p>
             <p className="text-sm font-semibold text-theme-primary">{item?.question || ""}</p>
             <p className="text-xs text-theme-secondary">
-              Type <span className="font-medium text-theme-primary">{kindLabel(item?.kind)}</span>
+              Form{" "}
+              <span className="font-medium text-theme-primary">{oaFormLabel(item)}</span>
             </p>
+            {item?.form === "mcq" && Array.isArray(item?.mcqMetadata?.options) ? (
+              <ul className="list-none space-y-1 text-sm text-theme-secondary">
+                {item.mcqMetadata.options.map((opt) => (
+                  <li key={opt.id}>
+                    <span className="font-semibold text-theme-accent">{opt.id}.</span> {opt.text}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {!hideSourceLinks ? (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  Evidence
+                </p>
+                <p className="whitespace-pre-wrap text-sm text-theme-primary">{item?.evidence || ""}</p>
+              </div>
+            ) : null}
+            {!hideSourceLinks ? (
+              <>
+                <div className="text-sm text-theme-secondary">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide">Source</p>
+                  <SourceLink url={item?.sourceUrl}>{item?.sourceTitle || item?.sourceUrl}</SourceLink>
+                </div>
+                {supporting.length > 0 ? (
+                  <div>
+                    <p className="mb-1 text-xs font-medium text-theme-secondary">
+                      Supported by {supporting.length} {supporting.length === 1 ? "source" : "sources"}
+                    </p>
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                      {supporting.map((source, sourceIndex) => (
+                        <li key={`${source?.sourceUrl || "support"}-${sourceIndex}`}>
+                          <SourceLink url={source?.sourceUrl}>
+                            {source?.sourceTitle || source?.sourceUrl}
+                          </SourceLink>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            {showAnswers ? (
+              <PlatformGeneratedSolutionView
+                answer={item?.answer}
+                solutions={item?.solutions}
+                intuition={item?.intuition}
+              />
+            ) : null}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+export function ResearchExperiences({
+  items,
+  itemIndexes,
+  selectedIndexes,
+  onToggle,
+  disabled,
+  selectable = true,
+}) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const rows = itemIndexes
+    ? itemIndexes.map((index) => ({ index, item: items[index] })).filter((row) => row.item)
+    : items.map((item, index) => ({ index, item }));
+  return (
+    <div className="space-y-3">
+      {rows.map(({ index, item }) => {
+        const supporting = Array.isArray(item?.supportingSources) ? item.supportingSources : [];
+        return (
+          <article
+            key={`${item?.sourceUrl || "experience"}-${index}`}
+            className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4"
+          >
+            {selectable ? (
+              <label className="flex items-center gap-2 text-sm text-theme-primary">
+                <input
+                  type="checkbox"
+                  checked={selectedIndexes.has(index)}
+                  disabled={disabled}
+                  onChange={() => onToggle(index)}
+                  aria-label={`Select experience ${index + 1}`}
+                />
+                Select
+              </label>
+            ) : null}
+            <p className="text-xs font-medium uppercase tracking-wide text-theme-secondary">
+              Interview experience
+              {item?.summarized ? " · Summarized" : ""}
+            </p>
+            <PrepRichText variant="theme">{item?.content || ""}</PrepRichText>
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                 Evidence
@@ -178,13 +290,6 @@ export function ResearchQuestions({
                   ))}
                 </ul>
               </div>
-            ) : null}
-            {showAnswers ? (
-              <PlatformGeneratedSolutionView
-                answer={item?.answer}
-                solutions={item?.solutions}
-                intuition={item?.intuition}
-              />
             ) : null}
           </article>
         );
@@ -220,7 +325,25 @@ function ReviewTabs({ active, onChange, sourceCount, questionCount }) {
   );
 }
 
+const CONTENT_FIELDS = [
+  { id: "interviewQuestions", label: "Interview questions", action: "Research interview questions" },
+  { id: "onlineQuestions", label: "OA questions", action: "Research OA questions" },
+  { id: "interviewExperiences", label: "Interview experiences", action: "Research interview experiences" },
+];
+
+function contentCopy(field) {
+  if (field === "onlineQuestions") {
+    return "Research OA questions for SDE, Analyst, or Data Scientist. Questions are normalized to coding (DSA), SQL, or MCQ. Links are not saved. Finalize, generate answers, then publish.";
+  }
+  if (field === "interviewExperiences") {
+    return "Research interview experiences for this company. The full writeup is kept unless it is longer than 12,000 characters, in which case a summary is saved. Source links are published to Quick Links with the experiences.";
+  }
+  return "Approve research links and interview questions separately. Finalize your question list, generate answers, then publish questions to the company.";
+}
+
 export default function GeneralResearchPanel({ companyId, companyName }) {
+  const [contentField, setContentField] = useState("interviewQuestions");
+  const [jobField, setJobField] = useState("");
   const [role, setRole] = useState("");
   const [country, setCountry] = useState("India");
   const [maxSources, setMaxSources] = useState(3);
@@ -292,6 +415,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
           statusRef.current = "review";
           setResearchStatus("review");
           setResearchResult(job.result ?? null);
+          if (typeof job.field === "string" && job.field) setJobField(job.field);
           setResearchJobSnapshot({
             role: typeof job.role === "string" ? job.role : "",
             linksSummaryDraft: job.linksSummaryDraft ?? null,
@@ -348,6 +472,10 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
       setResearchError("Search depth must be basic or advanced.");
       return;
     }
+    if (contentField === "onlineQuestions" && !String(role || "").trim()) {
+      setResearchError("Choose a role: SDE, Analyst, or Data Scientist.");
+      return;
+    }
 
     generationRef.current += 1;
     setResearchStarting(true);
@@ -356,7 +484,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     setResearchStatus("");
     setResearchJobId("");
     setSelectedIndexes(new Set());
-    setReviewTab("sources");
+    setReviewTab(contentField === "interviewQuestions" ? "sources" : "questions");
     setPublishingSources(false);
     setSourcesPublishSummary(null);
     setQuestionsFinalized(false);
@@ -371,12 +499,13 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     setGeneratingLinksSummary(false);
     setSavingLinksSummary(false);
     statusRef.current = "";
+    setJobField(contentField);
     const generation = generationRef.current;
     try {
       const res = await companyAPI.startCompanyResearch({
         companyId: id,
         companyName: company,
-        field: "interviewQuestions",
+        field: contentField,
         role: String(role || "").trim(),
         country: String(country || "").trim(),
         maxSources: sources,
@@ -400,6 +529,11 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     }
   };
 
+  const reviewField = jobField || contentField;
+  const savesLinks = reviewField === "interviewQuestions";
+  const isExperience = reviewField === "interviewExperiences";
+  const selectedContent =
+    CONTENT_FIELDS.find((row) => row.id === contentField) || CONTENT_FIELDS[0];
   const questions = Array.isArray(researchResult?.items) ? researchResult.items : [];
   const published = researchStatus === "published";
   const statusCopy = STATUS_COPY[researchStatus] || "";
@@ -556,23 +690,42 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   return (
     <section className={sectionCardClass}>
       <h2 className="text-lg font-semibold text-theme-primary">AI research</h2>
-      <p className="mt-1 text-sm text-theme-secondary">
-        Approve research links and interview questions separately. Finalize your question list, generate answers,
-        then publish questions to the company.
-      </p>
+      <p className="mt-1 text-sm text-theme-secondary">{contentCopy(contentField)}</p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Field label="Content">
+          <SpcThemeSelect
+            name="content"
+            value={contentField}
+            onChange={(e) => setContentField(e.target.value)}
+            ariaLabel="Content"
+            buttonClassName={selectButtonClass}
+            options={CONTENT_FIELDS.map((row) => ({ value: row.id, label: row.label }))}
+          />
+        </Field>
         <Field label="Company">
           <input className={inputClass} value={companyName || ""} readOnly aria-label="Company" />
         </Field>
         <Field label="Role">
-          <input
-            className={inputClass}
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="Software Engineer"
-            aria-label="Role"
-          />
+          {contentField === "onlineQuestions" ? (
+            <SpcThemeSelect
+              name="oaRole"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              ariaLabel="OA role"
+              buttonClassName={selectButtonClass}
+              placeholder="Select role"
+              options={OA_ROLE_OPTIONS}
+            />
+          ) : (
+            <input
+              className={inputClass}
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder="Software Engineer"
+              aria-label="Role"
+            />
+          )}
         </Field>
         <Field label="Country">
           <input
@@ -594,15 +747,17 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
           />
         </Field>
         <Field label="Search depth">
-          <select
-            className={inputClass}
+          <SpcThemeSelect
+            name="searchDepth"
             value={searchDepth}
             onChange={(e) => setSearchDepth(e.target.value)}
-            aria-label="Search depth"
-          >
-            <option value="basic">Basic</option>
-            <option value="advanced">Advanced</option>
-          </select>
+            ariaLabel="Search depth"
+            buttonClassName={selectButtonClass}
+            options={[
+              { value: "basic", label: "Basic" },
+              { value: "advanced", label: "Advanced" },
+            ]}
+          />
         </Field>
       </div>
 
@@ -612,7 +767,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
         onClick={startResearch}
         className="mt-4 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
       >
-        {researchStarting ? "Starting…" : "Research Interview Questions"}
+        {researchStarting ? "Starting…" : selectedContent.action}
       </button>
 
       {statusCopy ? (
@@ -629,15 +784,17 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
 
       {showResult ? (
         <div className="mt-5 space-y-5">
-          <ResearchStats stats={researchResult.stats} />
-          <ReviewTabs
-            active={reviewTab}
-            onChange={setReviewTab}
-            sourceCount={sourceList.length}
-            questionCount={questionsFinalized ? finalizedIndexes.length : questions.length}
-          />
+          <ResearchStats stats={researchResult.stats} itemNoun={isExperience ? "Experiences" : "Questions"} />
+          {savesLinks ? (
+            <ReviewTabs
+              active={reviewTab}
+              onChange={setReviewTab}
+              sourceCount={sourceList.length}
+              questionCount={questionsFinalized ? finalizedIndexes.length : questions.length}
+            />
+          ) : null}
 
-          {reviewTab === "sources" ? (
+          {savesLinks && reviewTab === "sources" ? (
             <div className="space-y-4" role="tabpanel">
               <p className="text-sm text-theme-secondary">
                 Content from this job will be tagged for role{" "}
@@ -696,7 +853,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
             </div>
           ) : null}
 
-          {reviewTab === "questions" ? (
+          {!savesLinks || reviewTab === "questions" ? (
             <div className="space-y-4" role="tabpanel">
               {!questionsFinalized && questions.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -722,48 +879,85 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                     onClick={finalizeQuestions}
                     className="rounded-lg bg-theme-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
                   >
-                    Finalize questions
+                    {isExperience ? "Finalize experiences" : "Finalize questions"}
                   </button>
                 </div>
               ) : null}
               {questionsFinalized ? (
                 <p className="text-sm text-theme-secondary">
-                  Finalized {finalizedIndexes.length} question
-                  {finalizedIndexes.length === 1 ? "" : "s"}. Unselected questions are discarded from this review.
+                  Finalized {finalizedIndexes.length}{" "}
+                  {isExperience
+                    ? finalizedIndexes.length === 1
+                      ? "experience"
+                      : "experiences"
+                    : finalizedIndexes.length === 1
+                      ? "question"
+                      : "questions"}
+                  . Unselected items are discarded from this review.
                 </p>
               ) : null}
-              <ResearchQuestions
-                items={questions}
-                itemIndexes={questionsFinalized ? finalizedIndexes : null}
-                selectedIndexes={selectedIndexes}
-                onToggle={toggleQuestion}
-                disabled={published || publishing}
-                selectable={!questionsFinalized}
-                showAnswers={questionsFinalized && answersGenerated}
-              />
+              {isExperience ? (
+                <ResearchExperiences
+                  items={questions}
+                  itemIndexes={questionsFinalized ? finalizedIndexes : null}
+                  selectedIndexes={selectedIndexes}
+                  onToggle={toggleQuestion}
+                  disabled={published || publishing}
+                  selectable={!questionsFinalized}
+                />
+              ) : (
+                <ResearchQuestions
+                  items={questions}
+                  itemIndexes={questionsFinalized ? finalizedIndexes : null}
+                  selectedIndexes={selectedIndexes}
+                  onToggle={toggleQuestion}
+                  disabled={published || publishing}
+                  selectable={!questionsFinalized}
+                  showAnswers={questionsFinalized && answersGenerated}
+                  heading={reviewField === "onlineQuestions" ? "OA question" : "Interview question"}
+                  hideSourceLinks={reviewField === "onlineQuestions"}
+                />
+              )}
               {questionsFinalized ? (
                 <div className="space-y-3">
+                  {isExperience ? null : (
+                    <button
+                      type="button"
+                      disabled={published || generatingAnswers || publishing}
+                      onClick={addAnswers}
+                      className="rounded-xl border border-theme px-4 py-2 text-sm font-semibold text-theme-primary disabled:opacity-60"
+                    >
+                      {generatingAnswers ? "Generating answers…" : "Add answers"}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    disabled={published || generatingAnswers || publishing}
-                    onClick={addAnswers}
-                    className="rounded-xl border border-theme px-4 py-2 text-sm font-semibold text-theme-primary disabled:opacity-60"
-                  >
-                    {generatingAnswers ? "Generating answers…" : "Add answers"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={published || publishing || !answersGenerated}
+                    disabled={published || publishing || (!isExperience && !answersGenerated)}
                     onClick={() => setConfirmingPublish(true)}
                     className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   >
-                    {publishing ? "Publishing…" : "Publish finalized questions"}
+                    {publishing
+                      ? "Publishing…"
+                      : isExperience
+                        ? "Publish finalized experiences"
+                        : "Publish finalized questions"}
                   </button>
                   {confirmingPublish && !published ? (
                     <div className="rounded-xl border border-theme bg-theme-hero/30 p-3">
                       <p className="text-sm text-theme-primary">
-                        Publish {finalizedIndexes.length} finalized interview{" "}
-                        {finalizedIndexes.length === 1 ? "question" : "questions"} to this company?
+                        Publish {finalizedIndexes.length} finalized{" "}
+                        {isExperience
+                          ? finalizedIndexes.length === 1
+                            ? "interview experience"
+                            : "interview experiences"
+                          : reviewField === "onlineQuestions"
+                            ? finalizedIndexes.length === 1
+                              ? "OA question"
+                              : "OA questions"
+                            : finalizedIndexes.length === 1
+                              ? "interview question"
+                              : "interview questions"}{" "}
+                        to this company?
                       </p>
                       <div className="mt-3 flex gap-2">
                         <button
@@ -787,8 +981,15 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                   ) : null}
                   {publishSummary ? (
                     <p className="text-sm text-emerald-500">
-                      Inserted {publishSummary.insertedCount} question
-                      {publishSummary.insertedCount === 1 ? "" : "s"}. Duplicates skipped{" "}
+                      Inserted {publishSummary.insertedCount}{" "}
+                      {isExperience
+                        ? publishSummary.insertedCount === 1
+                          ? "experience"
+                          : "experiences"
+                        : publishSummary.insertedCount === 1
+                          ? "question"
+                          : "questions"}
+                      . Duplicates skipped{" "}
                       {publishSummary.duplicateCount}.
                     </p>
                   ) : null}

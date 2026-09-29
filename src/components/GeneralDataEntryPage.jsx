@@ -117,7 +117,7 @@ export default function GeneralDataEntryPage() {
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(`${GENERAL_BASE}/admin/dashboard`)} label="Back to platform admin" />
         </PageBackNavRow>
-        <PageHeroHeader subtitle="Choose a company to run AI research and publish links and interview questions.">
+        <PageHeroHeader subtitle="Choose a company to research interview questions, OA questions, or interview experiences.">
           Data entry
         </PageHeroHeader>
 

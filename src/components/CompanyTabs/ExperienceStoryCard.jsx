@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import {
-  shouldShowExperienceTimeline,
+  plainExperienceText,
   splitExperienceNarrative,
 } from "../../utils/splitExperienceNarrative.js";
 
@@ -12,20 +12,35 @@ function authorInitial(name) {
   return ch ? ch[0].toUpperCase() : "?";
 }
 
-function ExpandableBody({ text, className = "", forceExpanded = false }) {
+function proseParagraphs(text) {
+  return String(text || "")
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.replace(/\s*\n\s*/g, " ").trim())
+    .filter(Boolean);
+}
+
+function ExpandableBody({ text, className = "", forceExpanded = false, showFull = false }) {
   const [expanded, setExpanded] = useState(forceExpanded);
   const value = String(text || "").trim();
   if (!value) return null;
 
-  const needsToggle = value.length > PREVIEW_CHARS;
+  const needsToggle = !showFull && value.length > PREVIEW_CHARS;
   const shown =
     !needsToggle || expanded || forceExpanded ? value : `${value.slice(0, PREVIEW_CHARS).trim()}…`;
+  const paragraphs = proseParagraphs(shown);
 
   return (
     <div className={className}>
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-theme-secondary sm:text-[15px]">
-        {shown}
-      </p>
+      <div className="space-y-3">
+        {paragraphs.map((paragraph, index) => (
+          <p
+            key={index}
+            className="break-words text-sm leading-7 text-theme-secondary"
+          >
+            {paragraph}
+          </p>
+        ))}
+      </div>
       {needsToggle ? (
         <button
           type="button"
@@ -37,6 +52,12 @@ function ExpandableBody({ text, className = "", forceExpanded = false }) {
       ) : null}
     </div>
   );
+}
+
+function roundNumber(label, index) {
+  const match = String(label || "").match(/(\d+)/);
+  const value = match ? Number(match[1]) : index + 1;
+  return String(value).padStart(2, "0");
 }
 
 function ExperienceFooter({ isAnonymous, submittedBy }) {
@@ -76,67 +97,81 @@ export function ExperienceStoryCard({
   adminActions = null,
   highlighted = false,
   forceExpanded = false,
+  showFull = false,
 }) {
   const narrative = useMemo(
     () => splitExperienceNarrative(content),
     [content]
   );
-  const useTimeline = shouldShowExperienceTimeline(narrative);
   const showAuthor = isAnonymous || Boolean(String(submittedBy?.name || "").trim());
+
+  const rounds = narrative.rounds;
 
   return (
     <article
-      className={`rounded-2xl border border-theme border-l-4 border-l-theme-accent bg-theme-hero p-4 shadow-sm sm:p-5 ${
-        highlighted ? "ring-2 ring-theme-accent bg-theme-accent/10" : ""
+      className={`overflow-hidden rounded-xl border border-theme bg-theme-hero ${
+        highlighted ? "ring-2 ring-theme-accent" : ""
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-4">
-          {narrative.intro ? (
-            <ExpandableBody text={narrative.intro} forceExpanded={forceExpanded} />
+      {narrative.intro || adminActions ? (
+        <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5">
+          <div className="min-w-0 flex-1">
+            {narrative.intro ? (
+              <ExpandableBody text={narrative.intro} forceExpanded={forceExpanded} showFull={showFull} />
+            ) : null}
+          </div>
+          {adminActions ? (
+            <div className="flex shrink-0 items-start gap-1">{adminActions}</div>
           ) : null}
-
-          {useTimeline ? (
-            <ol className="space-y-5">
-              {narrative.rounds.map((round, index) => (
-                <li
-                  key={`${round.label}-${index}`}
-                  className="border-l-2 border-theme-accent pl-3"
-                >
-                  <p className="text-xs font-bold uppercase tracking-wide text-theme-accent">
-                    {round.label}
-                  </p>
-                  {round.body ? (
-                    <ExpandableBody text={round.body} className="mt-1.5" forceExpanded={forceExpanded} />
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <>
-              {narrative.rounds.map((round, index) => (
-                <div key={`${round.label}-${index}`}>
-                  <p className="text-xs font-bold uppercase tracking-wide text-theme-accent">
-                    {round.label}
-                  </p>
-                  {round.body ? (
-                    <ExpandableBody text={round.body} className="mt-1.5" forceExpanded={forceExpanded} />
-                  ) : null}
-                </div>
-              ))}
-              {!narrative.intro && narrative.rounds.length === 0 ? (
-                <ExpandableBody text={content} forceExpanded={forceExpanded} />
-              ) : null}
-            </>
-          )}
         </div>
-        {adminActions ? (
-          <div className="flex shrink-0 items-start gap-1">{adminActions}</div>
-        ) : null}
-      </div>
+      ) : null}
+
+      {rounds.length > 0 ? (
+        <ol className={narrative.intro || adminActions ? "border-t border-theme" : ""}>
+          {rounds.map((round, index) => (
+            <li
+              key={`${round.label}-${index}`}
+              className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 border-t border-theme px-4 py-4 first:border-t-0 sm:grid-cols-[2.75rem_minmax(0,1fr)] sm:gap-4 sm:px-5 sm:py-5"
+            >
+              <span className="mt-0.5 text-xs font-semibold tabular-nums tracking-wide text-theme-muted">
+                {roundNumber(round.label, index)}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
+                  {round.label}
+                </p>
+                {round.subtitle ? (
+                  <p className="mt-1 text-sm font-semibold leading-6 text-theme-primary">
+                    {round.subtitle}
+                  </p>
+                ) : null}
+                {round.body ? (
+                  <ExpandableBody
+                    text={round.body}
+                    className={round.subtitle ? "mt-2" : "mt-1.5"}
+                    forceExpanded={forceExpanded}
+                    showFull={showFull}
+                  />
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : !narrative.intro ? (
+        <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5">
+          <ExpandableBody
+            text={plainExperienceText(content)}
+            forceExpanded={forceExpanded}
+            showFull={showFull}
+          />
+          {adminActions ? (
+            <div className="flex shrink-0 items-start gap-1">{adminActions}</div>
+          ) : null}
+        </div>
+      ) : null}
 
       {showAuthor ? (
-        <div className="mt-4 flex items-center justify-end border-t border-theme pt-3">
+        <div className="flex items-center justify-end border-t border-theme px-4 py-3 sm:px-5">
           <ExperienceFooter isAnonymous={isAnonymous} submittedBy={submittedBy} />
         </div>
       ) : null}

@@ -108,6 +108,10 @@ import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
 import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
 import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
+import { composeInterviewProcess } from "../../utils/splitExperienceNarrative.js";
+import InterviewProcessFields, {
+  blankInterviewRound,
+} from "./InterviewProcessFields.jsx";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
   ExperienceEmptyState,
@@ -146,7 +150,9 @@ function InterviewTab({
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
   const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
   const [newInterviewSolution, setNewInterviewSolution] = useState("");
-  const [newInterviewProcess, setNewInterviewProcess] = useState("");
+  const [processOverview, setProcessOverview] = useState("");
+  const [processRounds, setProcessRounds] = useState(() => [blankInterviewRound()]);
+  const [processFormError, setProcessFormError] = useState("");
   const [newInterviewProcessAnonymous, setNewInterviewProcessAnonymous] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({});
@@ -181,6 +187,7 @@ function InterviewTab({
   const prepRoles = Array.isArray(company.prepRoles) ? company.prepRoles : [];
   /** `null` = user has not picked a tab yet; use smart default. */
   const [activeInterviewPrepRoleKey, setActiveInterviewPrepRoleKey] = useState(null);
+  const [activeExperiencePrepRoleKey, setActiveExperiencePrepRoleKey] = useState(null);
   const interviewRoleItemKeys = useMemo(
     () =>
       interviewQuestions.map((_, index) => String(interviewPrepRoleKeys[index] ?? "")),
@@ -630,8 +637,24 @@ function InterviewTab({
     }
   };
 
+  const resetInterviewProcessForm = () => {
+    setProcessOverview("");
+    setProcessRounds([blankInterviewRound()]);
+    setProcessFormError("");
+    setNewInterviewProcessAnonymous(false);
+  };
+
   const handleSubmitInterviewProcess = async (e) => {
     e.preventDefault();
+    const content = composeInterviewProcess({
+      overview: processOverview,
+      rounds: processRounds,
+    });
+    if (!content || !processRounds.some((round) => round.title.trim() || round.details.trim())) {
+      setProcessFormError("Add at least one round before submitting.");
+      return;
+    }
+    setProcessFormError("");
     try {
       const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
         method: "POST",
@@ -640,7 +663,7 @@ function InterviewTab({
         body: JSON.stringify({
           companyId: company?._id,
           type: "interviewProcess",
-          content: newInterviewProcess,
+          content,
           isAnonymous: newInterviewProcessAnonymous,
           ...submissionTargetFields({
             isGeneral,
@@ -657,8 +680,7 @@ function InterviewTab({
         variant: "success",
         message: data.message || MESSAGES.SUBMISSION_SUCCESS,
       });
-      setNewInterviewProcess("");
-      setNewInterviewProcessAnonymous(false);
+      resetInterviewProcessForm();
       setShowAddProcessModal(false);
     } catch (err) {
       console.error(err);
@@ -687,6 +709,33 @@ function InterviewTab({
     // Legacy support: convert string to array
     interviewProcess = [parseExperienceStoredEntry(company.interviewProcess, processDates[0])];
   }
+
+  const experienceRoleItemKeys = interviewProcess.map((process) =>
+    String(process?.prepRoleKey ?? "")
+  );
+  const experiencePrepRoles = prepRoles.filter((row) =>
+    experienceRoleItemKeys.includes(String(row?.key ?? ""))
+  );
+  const experienceRoleTabs = buildPrepRoleTabs(experiencePrepRoles, experienceRoleItemKeys, {
+    excludeGeneralTab: true,
+  });
+  const showExperienceRoleChrome =
+    isGeneral && experienceRoleItemKeys.some((key) => key !== "");
+  const effectiveExperiencePrepRoleKey = (() => {
+    if (!showExperienceRoleChrome) return "";
+    const preferred = pickDefaultPrepRoleTab(experiencePrepRoles, experienceRoleItemKeys, {
+      excludeGeneralTab: true,
+    });
+    if (activeExperiencePrepRoleKey === null) return preferred;
+    return experienceRoleTabs.some((tab) => tab.key === activeExperiencePrepRoleKey)
+      ? activeExperiencePrepRoleKey
+      : preferred;
+  })();
+  const experienceVisible = (process) => {
+    if (!showExperienceRoleChrome) return true;
+    return itemMatchesPrepRoleTab(process?.prepRoleKey, effectiveExperiencePrepRoleKey);
+  };
+  const visibleInterviewProcess = interviewProcess.filter(experienceVisible);
 
   useEffect(() => {
     const qIdx = findFocusIndex(interviewQuestions, focusQuery, (q) =>
@@ -927,19 +976,30 @@ function InterviewTab({
       </div>
       ) : null}
 
+      {showExperienceSection && showExperienceRoleChrome ? (
+        <PrepRoleChromeDark
+          prepRoles={experiencePrepRoles}
+          itemRoleKeys={experienceRoleItemKeys}
+          activeKey={effectiveExperiencePrepRoleKey}
+          onChange={setActiveExperiencePrepRoleKey}
+          ariaLabel="Interview experience roles"
+          excludeGeneralTab
+        />
+      ) : null}
       {showExperienceSection ? (
       <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
         <ExperienceSectionHeader
           kicker="Experiences"
           title="Interview Process"
-          count={interviewProcess.length}
+          count={visibleInterviewProcess.length}
           addLabel="Add Interview Process"
           onAdd={() => setShowAddProcessModal(true)}
         />
 
-        {interviewProcess.length > 0 ? (
+        {visibleInterviewProcess.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {interviewProcess.map((process, index) => {
+              if (!experienceVisible(process)) return null;
               const processContent = process.content || process;
               const isAnonymous = process.isAnonymous === true || process.isAnonymous === "true";
               const submittedBy = process.submittedBy || null;
@@ -958,6 +1018,7 @@ function InterviewTab({
                   submittedBy={submittedBy}
                   highlighted={focusedProcessIndex === index}
                   forceExpanded={focusedProcessIndex === index}
+                  showFull
                   adminActions={
                     isAdmin ? (
                       <>
@@ -1058,49 +1119,47 @@ function InterviewTab({
 
       {/* Add Interview Process Modal */}
       {showAddProcessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4 py-6">
+          <div className="flex max-h-[min(90vh,860px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
             <div className="border-b border-theme bg-theme-card px-6 py-4">
               <div className="flex items-center gap-3">
-                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                <div className="h-14 w-52 shrink-0 rounded-lg border border-theme bg-white/95 px-3 py-2 shadow-sm">
                   <BrandLogo />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-theme-primary">Add Interview Process</h3>
-                  <p className="mt-1 text-sm text-theme-secondary">Describe the rounds, focus areas, and expectations in a structured way.</p>
+                  <p className="mt-1 text-sm text-theme-secondary">Add the overview, then enter each round separately.</p>
                 </div>
               </div>
             </div>
-            <form onSubmit={handleSubmitInterviewProcess} className="space-y-5 px-6 py-5">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-theme-primary">Process details</label>
-                <textarea
-                  value={newInterviewProcess}
-                  onChange={(e) => setNewInterviewProcess(e.target.value)}
-                  placeholder="Example: Round 1 - Online Assessment ... Round 2 - Technical Interview ..."
-                  className="w-full min-h-[170px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
-                  required
+            <form onSubmit={handleSubmitInterviewProcess} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                <InterviewProcessFields
+                  overview={processOverview}
+                  onOverviewChange={setProcessOverview}
+                  rounds={processRounds}
+                  onRoundsChange={setProcessRounds}
+                  error={processFormError}
                 />
+                <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={newInterviewProcessAnonymous}
+                    onChange={(e) => setNewInterviewProcessAnonymous(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-theme text-theme-accent focus:ring-theme-accent"
+                  />
+                  <span className="text-sm text-theme-secondary">
+                    Submit anonymously (your name will be hidden in public interview experience view).
+                  </span>
+                </label>
               </div>
-              <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={newInterviewProcessAnonymous}
-                  onChange={(e) => setNewInterviewProcessAnonymous(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-theme text-theme-accent focus:ring-theme-accent"
-                />
-                <span className="text-sm text-theme-secondary">
-                  Submit anonymously (your name will be hidden in public interview experience view).
-                </span>
-              </label>
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-3 border-t border-theme px-6 py-4">
                 <button
                   type="button"
                   className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
                   onClick={() => {
                     setShowAddProcessModal(false);
-                    setNewInterviewProcess("");
-                    setNewInterviewProcessAnonymous(false);
+                    resetInterviewProcessForm();
                   }}
                 >
                   Cancel
