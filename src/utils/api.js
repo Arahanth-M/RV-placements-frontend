@@ -695,6 +695,21 @@ export const notificationAPI = {
   unsubscribe: () => API.delete('/api/notifications/subscription'),
 };
 
+/** Student-owned drive calendar (visits / deadlines / checklists + reminders). */
+export const driveCalendarAPI = {
+  list: (params = {}) =>
+    API.get("/api/drive-calendar", { params: { from: params.from, to: params.to } }),
+  create: (body) => API.post("/api/drive-calendar", body),
+  update: (entryId, body) =>
+    API.patch(`/api/drive-calendar/${encodeURIComponent(entryId)}`, body),
+  remove: (entryId) => API.delete(`/api/drive-calendar/${encodeURIComponent(entryId)}`),
+  toggleChecklist: (entryId, { itemId, done }) =>
+    API.post(`/api/drive-calendar/${encodeURIComponent(entryId)}/checklist/toggle`, {
+      itemId,
+      done,
+    }),
+};
+
 export const studentAPI = {
   getStudentByUSN: (usn) => API.get(`/api/students/student-data/${usn}`),
   getStudentByName: (username) => API.get(`/api/students/student-data-by-name/${encodeURIComponent(username)}`),
@@ -1008,6 +1023,81 @@ export const interviewAPI = {
     interviewHttp.post("/api/interview/slot-bookings/reschedule", { bookingId, newSlotKey }),
   cancelSlotBooking: (bookingId) =>
     interviewHttp.delete(`/api/interview/slot-bookings/${encodeURIComponent(bookingId)}`),
+  startBehavioralCoach: ({ focus } = {}) =>
+    interviewHttp.post("/api/interview/behavioral-coach/start", { focus }, { timeout: 90000 }),
+  evaluateBehavioralCoach: ({ practiceId, answer }) =>
+    interviewHttp.post(
+      "/api/interview/behavioral-coach/evaluate",
+      { practiceId, answer },
+      { timeout: 120000 }
+    ),
+  getBehavioralCoachAnalytics: (params = {}) =>
+    interviewHttp.get("/api/interview/behavioral-coach/analytics", {
+      params: { limit: params.limit },
+    }),
+  listOpenPeerSessions: (params = {}) =>
+    interviewHttp.get("/api/interview/peer-sessions/open", {
+      params: { sessionType: params.sessionType },
+    }),
+  listMyPeerSessions: () => interviewHttp.get("/api/interview/peer-sessions/mine"),
+  findPeerSessionByCode: (inviteCode) =>
+    interviewHttp.get(
+      `/api/interview/peer-sessions/by-code/${encodeURIComponent(String(inviteCode || "").trim())}`
+    ),
+  getPeerSession: (sessionId) =>
+    interviewHttp.get(`/api/interview/peer-sessions/${encodeURIComponent(sessionId)}`),
+  createPeerSession: (body) => interviewHttp.post("/api/interview/peer-sessions", body),
+  requestJoinPeerSession: ({ sessionId, note }) =>
+    interviewHttp.post("/api/interview/peer-sessions/join", {
+      sessionId: String(sessionId || "").trim(),
+      note: String(note || "").trim(),
+    }),
+  /** @deprecated use requestJoinPeerSession */
+  joinPeerSession: ({ sessionId, note }) =>
+    interviewHttp.post("/api/interview/peer-sessions/join", {
+      sessionId: String(sessionId || "").trim(),
+      note: String(note || "").trim(),
+    }),
+  acceptPeerJoinRequest: (sessionId, requesterUserId) =>
+    interviewHttp.post(`/api/interview/peer-sessions/${encodeURIComponent(sessionId)}/accept`, {
+      requesterUserId,
+    }),
+  rejectPeerJoinRequest: (sessionId, requesterUserId) =>
+    interviewHttp.post(`/api/interview/peer-sessions/${encodeURIComponent(sessionId)}/reject`, {
+      requesterUserId,
+    }),
+  cancelPeerJoinRequest: (sessionId) =>
+    interviewHttp.post(
+      `/api/interview/peer-sessions/${encodeURIComponent(sessionId)}/cancel-request`
+    ),
+  cancelPeerSession: (sessionId) =>
+    interviewHttp.post(`/api/interview/peer-sessions/${encodeURIComponent(sessionId)}/cancel`),
+  leavePeerSession: (sessionId) =>
+    interviewHttp.post(`/api/interview/peer-sessions/${encodeURIComponent(sessionId)}/leave`),
+};
+
+/** Daily / weekly DSA practice challenges (interview backend — uses code judge). */
+export const practiceChallengeAPI = {
+  getToday: () => interviewHttp.get("/api/practice-challenges/today"),
+  getWeek: () => interviewHttp.get("/api/practice-challenges/week"),
+  getById: (challengeId) =>
+    interviewHttp.get(`/api/practice-challenges/${encodeURIComponent(challengeId)}`),
+  runPreview: (challengeId, questionId, { code, language }) =>
+    interviewHttp.post(
+      `/api/practice-challenges/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/run-preview`,
+      { code, language },
+      { timeout: 120000 }
+    ),
+  submit: (challengeId, questionId, { code, language }) =>
+    interviewHttp.post(
+      `/api/practice-challenges/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/submit`,
+      { code, language },
+      { timeout: 120000 }
+    ),
+  getLeaderboard: (period = "weekly") =>
+    interviewHttp.get("/api/practice-challenges/leaderboard", { params: { period } }),
+  getMyRank: (period = "weekly") =>
+    interviewHttp.get("/api/practice-challenges/leaderboard/me", { params: { period } }),
 };
 
 export default API;

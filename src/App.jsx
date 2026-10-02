@@ -38,6 +38,10 @@ import GeneralMockInterviewPage from "./components/GeneralMockInterviewPage";
 import InterviewAnalyticsPage from "./components/InterviewAnalyticsPage";
 import InterviewSlotsPage from "./components/InterviewSlotsPage";
 import PrepPathPage from "./components/PrepPathPage";
+import BehavioralCoachPage from "./components/BehavioralCoachPage";
+import PeerSessionsPage from "./components/PeerSessionsPage";
+import PracticeChallengesPage from "./components/PracticeChallengesPage";
+import DriveCalendarPage from "./components/DriveCalendarPage";
 import Feedback from "./components/Feedback";
 import UserManual from "./components/UserManual";
 import ResumeBuilderPage from "./components/ResumeBuilderPage";
@@ -278,6 +282,38 @@ function StudentFeatureRoutes({
         element={
           <ProtectedRoute>
             <PrepPathPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="behavioral-coach"
+        element={
+          <ProtectedRoute>
+            <BehavioralCoachPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="peer-sessions"
+        element={
+          <ProtectedRoute>
+            <PeerSessionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="challenges"
+        element={
+          <ProtectedRoute>
+            <PracticeChallengesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="drive-calendar"
+        element={
+          <ProtectedRoute>
+            <DriveCalendarPage />
           </ProtectedRoute>
         }
       />
