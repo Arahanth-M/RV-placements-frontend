@@ -22,12 +22,17 @@ import {
 import { GENERAL_BASE, isGeneralAppPath, toTenantAppPath } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
+  copyPrepPathFocusParams,
+  readCompanyFocusFromLocation,
+} from "../utils/prepPathCompanyFocus.js";
+import {
   COLLEGE_ID_RVITM,
   collegeIdFromUser,
   normalizeCollegeId,
   adminMayMutateSharedCompanyContent,
 } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
+import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
 import BrandLogo from "./BrandLogo.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
 
@@ -43,6 +48,7 @@ import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import AiInterviewExploreButton from "./AiInterviewExploreButton";
 import InternshipTab from "./CompanyTabs/InternshipTab";
 import StatsTab from "./CompanyTabs/StatsTab";
+import QuickLinksTab from "./CompanyTabs/QuickLinksTab";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import {
   DEFAULT_PLACEMENT_DETAIL_YEAR,
@@ -321,7 +327,9 @@ function CompanyDetails() {
     localStorage.getItem(profileAvailabilityKey) === "no_profile";
   const { setIsInterviewLocked: setGlobalInterviewLocked } = useInterviewLock();
   const [company, setCompany] = useState(null);
-  const [activeTab, setActiveTab] = useState("about");
+  const [activeTab, setActiveTab] = useState(
+    () => readCompanyFocusFromLocation(location).tab || "about"
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [paywallMeta, setPaywallMeta] = useState(null);
@@ -351,6 +359,7 @@ function CompanyDetails() {
   const placementCompanyVisitIdForApi = readPlacementCompanyVisitIdFromLocation(location);
   const placementClusterForApi = readPlacementClusterFromLocation(location);
   const isCsClusterForInterview = placementClusterForApi === PLACEMENT_CLUSTER_CS;
+  const prepFocusNav = readCompanyFocusFromLocation(location);
 
   const interviewFocusMode = isInterviewLocked && activeTab === "aiinterview";
 
@@ -551,6 +560,11 @@ function CompanyDetails() {
   };
 
   useEffect(() => {
+    if (!prepFocusNav.tab) return;
+    setActiveTab(prepFocusNav.tab);
+  }, [id, prepFocusNav.tab, prepFocusNav.fromPrepPath]);
+
+  useEffect(() => {
     if (!company || !id) return;
     if (!isCsClusterForInterview) return;
     if (openTabFromNav !== "aiinterview") return;
@@ -573,8 +587,8 @@ function CompanyDetails() {
       "company-tab-recruitment": "recruitment",
       "company-tab-oa": "oa",
       "company-tab-coding": "coding",
-      "company-tab-interview": "interview",
-      "company-add-interview-question": "interview",
+      "company-tab-interview": "interviewquestions",
+      "company-add-interview-question": "interviewquestions",
       "company-tab-internship": "internship",
       "company-tab-mustdo": "mustdo",
     };
@@ -601,7 +615,7 @@ function CompanyDetails() {
       }
 
       if (stepId === "company-add-interview-question") {
-        setActiveTab("interview");
+        setActiveTab(isGeneral ? "interviewquestions" : "interview");
         setOpenDropdownTab(null);
         return;
       }
@@ -648,6 +662,10 @@ function CompanyDetails() {
 
   useEffect(() => {
     if (!isGeneral) return;
+    if (activeTab === "interview") {
+      setActiveTab("interviewquestions");
+      return;
+    }
     if (
       activeTab === "general" ||
       activeTab === "stats" ||
@@ -768,7 +786,7 @@ function CompanyDetails() {
           title={`Unlock ${paywallMeta?.company?.name || company?.name || "this company"}`}
           message={
             paywallMeta?.error ||
-            "This company card is premium. The first company in each category stays free to open. Unlock this category or all company cards to view full details."
+            "This company card is premium. The first company in each category stays free to open. Unlock this category, or a plan that includes all company cards."
           }
           pricingPath={appPath("/pricing")}
           feature="company_detail"
@@ -895,11 +913,13 @@ function CompanyDetails() {
         { id: "about", label: "About" },
         { id: "oa", label: "OA Questions" },
         { id: "coding", label: "Coding" },
-        { id: "interview", label: "Interview Experience" },
+        { id: "interviewquestions", label: "Interview Questions" },
+        { id: "interviewexperience", label: "Interview Experience" },
         ...(hasInternshipExperience
           ? [{ id: "internship", label: "Internship Experience" }]
           : []),
         { id: "mustdo", label: "Must Do Topics" },
+        { id: "quicklinks", label: "Quick Links" },
       ]
     : [
     { id: "about", label: "About" },
@@ -941,6 +961,10 @@ function CompanyDetails() {
     }
 
     const fromCompanyCards = getSessionValue("fromCompanyCards");
+    if (prepFocusNav.fromPrepPath || location.state?.fromPrepPath) {
+      navigate(-1);
+      return;
+    }
     if (fromCompanyCards === "true") {
       const storedReturnPath = getSessionValue(COMPANY_DETAILS_RETURN_PATH_KEY);
       if (
@@ -1053,6 +1077,7 @@ function CompanyDetails() {
 
     const pCluster = readPlacementClusterFromLocation(location);
     if (pCluster) params.set("placementCluster", pCluster);
+    copyPrepPathFocusParams(location.search, params);
     navigate(appPath(`/companies/${id}?${params.toString()}`), {
       replace: true,
       state: location.state ?? {},
@@ -1122,14 +1147,16 @@ function CompanyDetails() {
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-theme-primary leading-[1.08] tracking-tight break-words">
                 {company.name}
               </h1>
-              <p className="mt-2 sm:mt-3 text-lg sm:text-xl md:text-2xl text-theme-secondary font-medium break-words">
-                {isGeneral
-                  ? company.business_model || "Company prep"
-                  : resolveCompanyHeadlineSubtitle(
-                      company,
-                      readPlacementListContext(location, id)
-                    ) || "Placement Drive"}
-              </p>
+              {isGeneral ? (
+                <GeneralCompanyPrepSummary company={company} variant="detail" />
+              ) : (
+                <p className="mt-2 sm:mt-3 text-lg sm:text-xl md:text-2xl text-theme-secondary font-medium break-words">
+                  {resolveCompanyHeadlineSubtitle(
+                    company,
+                    readPlacementListContext(location, id)
+                  ) || "Placement Drive"}
+                </p>
+              )}
               {user && !isAdmin && !isGeneral && (
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <button
@@ -1363,36 +1390,54 @@ function CompanyDetails() {
                 placementCluster={placementClusterForApi}
               />
             ))}
+          {activeTab === "quicklinks" && isGeneral && (
+            <QuickLinksTab
+              company={company}
+              isAdmin={canEditSharedCompanyContent}
+              onCompanyUpdate={handleRefresh}
+            />
+          )}
           {activeTab === "oa" &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
             ) : (
               <OATab
                 company={company}
-                isAdmin={!isGeneral && canEditSharedCompanyContent}
+                isAdmin={canEditSharedCompanyContent}
                 onCompanyUpdate={handleRefresh}
                 isGeneral={isGeneral}
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
                 placementCluster={placementClusterForApi}
+                focusQuery={prepFocusNav.focus}
               />
             ))}
           {/* Coding is company-static; Must Do is cluster-wide — not the selected year's visit. */}
           {activeTab === "coding" && <CodingTab company={company} />}
-          {activeTab === "interview" &&
+          {(activeTab === "interview" ||
+            activeTab === "interviewquestions" ||
+            activeTab === "interviewexperience") &&
             (hideTierContextVisitDetails ? (
               <DreamTierVisitEmptyPanel />
             ) : (
               <InterviewTab
                 company={company}
-                isAdmin={!isGeneral && canEditSharedCompanyContent}
+                isAdmin={canEditSharedCompanyContent}
                 onCompanyUpdate={handleRefresh}
                 isGeneral={isGeneral}
+                generalSection={
+                  isGeneral
+                    ? activeTab === "interviewexperience"
+                      ? "experience"
+                      : "questions"
+                    : null
+                }
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
                 placementCluster={placementClusterForApi}
+                focusQuery={prepFocusNav.focus}
               />
             ))}
           {activeTab === "internship" &&
@@ -1406,6 +1451,7 @@ function CompanyDetails() {
                 placementYear={placementYear}
                 placementListContext={placementContextForApi}
                 placementCompanyVisitId={company?.placementCompanyVisitId}
+                focusQuery={prepFocusNav.focus}
               />
             ))}
           {isCsClusterForInterview && activeTab === "aiinterview" && (
@@ -1421,13 +1467,14 @@ function CompanyDetails() {
           {activeTab === "mustdo" && (
             <MustDoTab
               company={company}
-              isAdmin={!isGeneral && isAdmin}
+              isAdmin={canEditSharedCompanyContent}
               isGeneral={isGeneral}
               onCompanyUpdate={handleRefresh}
               placementYear={placementYear}
               placementListContext={placementContextForApi}
               placementCompanyVisitId={company?.placementCompanyVisitId}
               placementCluster={placementClusterForApi}
+              focusQuery={prepFocusNav.focus}
             />
           )}
           {activeTab === "offcampus" &&

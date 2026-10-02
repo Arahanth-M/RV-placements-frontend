@@ -13,7 +13,7 @@ const FLOATING_LIST_Z = 10000;
  *
  * @param {{ id?: string, name: string, value: string|number, onChange: (e: { target: { name: string, value: unknown } }) => void,
  *   options: Array<{ value: string|number, label: string }>, placeholder?: string, labelId?: string,
- *   required?: boolean, disabled?: boolean }} props
+ *   ariaLabel?: string, buttonClassName?: string, required?: boolean, disabled?: boolean }} props
  */
 export default function SpcThemeSelect({
   id,
@@ -23,6 +23,8 @@ export default function SpcThemeSelect({
   options,
   placeholder = "",
   labelId,
+  ariaLabel,
+  buttonClassName = "",
   required = false,
   disabled = false,
 }) {
@@ -149,8 +151,9 @@ export default function SpcThemeSelect({
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
         aria-labelledby={labelId}
+        aria-label={ariaLabel}
         aria-required={required || undefined}
-        className={`${INPUT_CLASS} flex cursor-pointer items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${buttonClassName || INPUT_CLASS} flex cursor-pointer items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50`}
         onClick={() => !disabled && setOpen((p) => !p)}
       >
         <span className={muted ? "text-theme-muted" : "text-theme-primary"}>

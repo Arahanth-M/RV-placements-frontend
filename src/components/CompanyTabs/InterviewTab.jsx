@@ -85,23 +85,44 @@
 
 // export default InterviewTab;
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { PrepRoleChromeDark } from "../PrepRoleChrome.jsx";
+import {
+  buildPrepRoleTabs,
+  hasRoleScopedPrepContent,
+  itemMatchesPrepRoleTab,
+  pickDefaultPrepRoleTab,
+} from "../../utils/prepRoleTabs.js";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
-import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
+import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransition.js";
+import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import PrepSolutionBody from "../PrepSolutionBody";
+import PlatformAdminCodeBlock from "../platform/PlatformAdminCodeBlock.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
+import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
+import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
 import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
+import { composeInterviewProcess } from "../../utils/splitExperienceNarrative.js";
+import InterviewProcessFields, {
+  blankInterviewRound,
+} from "./InterviewProcessFields.jsx";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
   ExperienceEmptyState,
   ExperienceSectionHeader,
   ExperienceStoryCard,
 } from "./ExperienceStoryCard.jsx";
+import {
+  findFocusIndex,
+  PREP_FOCUS_HIGHLIGHT_CLASS,
+  scrollFocusNode,
+} from "../../utils/prepPathCompanyFocus.js";
 
 function questionTextIsPresent(value) {
   return String(value ?? "").trim().length > 0;
@@ -116,12 +137,22 @@ function InterviewTab({
   placementListContext,
   placementCompanyVisitId,
   placementCluster,
+  focusQuery = "",
+  /** General platform: `"questions"` | `"experience"`; college: null (both). */
+  generalSection = null,
 }) {
+  const showQuestionsSection =
+    generalSection == null || generalSection === "questions";
+  const showExperienceSection =
+    generalSection == null || generalSection === "experience";
+  const contentAdmin = companyContentAdminAPI(isGeneral);
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAddProcessModal, setShowAddProcessModal] = useState(false);
   const [newInterviewQuestion, setNewInterviewQuestion] = useState("");
   const [newInterviewSolution, setNewInterviewSolution] = useState("");
-  const [newInterviewProcess, setNewInterviewProcess] = useState("");
+  const [processOverview, setProcessOverview] = useState("");
+  const [processRounds, setProcessRounds] = useState(() => [blankInterviewRound()]);
+  const [processFormError, setProcessFormError] = useState("");
   const [newInterviewProcessAnonymous, setNewInterviewProcessAnonymous] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({});
@@ -134,6 +165,8 @@ function InterviewTab({
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const questionRowRefs = useRef({});
+  const processRowRefs = useRef({});
+  const [focusedProcessIndex, setFocusedProcessIndex] = useState(-1);
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -147,6 +180,69 @@ function InterviewTab({
     : company.interviewQuestions
     ? [company.interviewQuestions]
     : [];
+
+  const interviewPrepRoleKeys = Array.isArray(company.interviewQuestions_prepRoleKey)
+    ? company.interviewQuestions_prepRoleKey
+    : [];
+  const prepRoles = Array.isArray(company.prepRoles) ? company.prepRoles : [];
+  /** `null` = user has not picked a tab yet; use smart default. */
+  const [activeInterviewPrepRoleKey, setActiveInterviewPrepRoleKey] = useState(null);
+  const [activeExperiencePrepRoleKey, setActiveExperiencePrepRoleKey] = useState(null);
+  const interviewRoleItemKeys = useMemo(
+    () =>
+      interviewQuestions.map((_, index) => String(interviewPrepRoleKeys[index] ?? "")),
+    [interviewQuestions, interviewPrepRoleKeys]
+  );
+  const interviewRoleTabs = useMemo(
+    () => buildPrepRoleTabs(prepRoles, interviewRoleItemKeys, { excludeGeneralTab: true }),
+    [prepRoles, interviewRoleItemKeys]
+  );
+  const showInterviewRoleChrome =
+    isGeneral && hasRoleScopedPrepContent(prepRoles, interviewRoleItemKeys);
+
+  const effectiveInterviewPrepRoleKey = useMemo(() => {
+    if (!showInterviewRoleChrome) return "";
+    const preferred = pickDefaultPrepRoleTab(prepRoles, interviewRoleItemKeys, {
+      excludeGeneralTab: true,
+    });
+    if (activeInterviewPrepRoleKey === null) return preferred;
+    const candidate = interviewRoleTabs.some((tab) => tab.key === activeInterviewPrepRoleKey)
+      ? activeInterviewPrepRoleKey
+      : preferred;
+    const hasQuestions = interviewQuestions.some(
+      (q, index) =>
+        questionTextIsPresent(q) &&
+        itemMatchesPrepRoleTab(interviewPrepRoleKeys[index], candidate)
+    );
+    return hasQuestions ? candidate : preferred;
+  }, [
+    showInterviewRoleChrome,
+    prepRoles,
+    interviewRoleItemKeys,
+    interviewRoleTabs,
+    activeInterviewPrepRoleKey,
+    interviewQuestions,
+    interviewPrepRoleKeys,
+  ]);
+  const roleSwitching = usePrepRoleSwitchTransition(
+    showInterviewRoleChrome ? effectiveInterviewPrepRoleKey : "__static__"
+  );
+
+  const interviewQuestionVisible = (index) => {
+    if (!questionTextIsPresent(interviewQuestions[index])) return false;
+    if (!showInterviewRoleChrome) return true;
+    return itemMatchesPrepRoleTab(
+      interviewPrepRoleKeys[index],
+      effectiveInterviewPrepRoleKey
+    );
+  };
+
+  const visibleInterviewQuestionCount = interviewQuestions.filter((_, index) =>
+    interviewQuestionVisible(index)
+  ).length;
+  const totalInterviewQuestionCount = interviewQuestions.filter((q) =>
+    questionTextIsPresent(q)
+  ).length;
 
   // Function to convert escape sequences to their actual characters and remove unnecessary quotes
   const unescapeString = (str) => {
@@ -426,7 +522,7 @@ function InterviewTab({
     if (editIQIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateInterviewQuestion(
+      await contentAdmin.updateInterviewQuestion(
         company._id,
         editIQIndex,
         { question: editIQQuestion, solution: editIQSolution },
@@ -448,7 +544,7 @@ function InterviewTab({
     if (!company?._id || !window.confirm("Delete this interview question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewQuestion(company._id, index, adminOpts);
+      await contentAdmin.deleteInterviewQuestion(company._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenIndexQ(null);
     } catch (err) {
@@ -469,7 +565,7 @@ function InterviewTab({
     if (editIPIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateInterviewProcess(
+      await contentAdmin.updateInterviewProcess(
         company._id,
         editIPIndex,
         { content: editIPContent },
@@ -490,7 +586,7 @@ function InterviewTab({
     if (!company?._id || !window.confirm("Delete this interview process entry?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteInterviewProcess(company._id, index, adminOpts);
+      await contentAdmin.deleteInterviewProcess(company._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
     } catch (err) {
       console.error(err);
@@ -541,8 +637,24 @@ function InterviewTab({
     }
   };
 
+  const resetInterviewProcessForm = () => {
+    setProcessOverview("");
+    setProcessRounds([blankInterviewRound()]);
+    setProcessFormError("");
+    setNewInterviewProcessAnonymous(false);
+  };
+
   const handleSubmitInterviewProcess = async (e) => {
     e.preventDefault();
+    const content = composeInterviewProcess({
+      overview: processOverview,
+      rounds: processRounds,
+    });
+    if (!content || !processRounds.some((round) => round.title.trim() || round.details.trim())) {
+      setProcessFormError("Add at least one round before submitting.");
+      return;
+    }
+    setProcessFormError("");
     try {
       const res = await fetch(API_ENDPOINTS.SUBMISSIONS, {
         method: "POST",
@@ -551,7 +663,7 @@ function InterviewTab({
         body: JSON.stringify({
           companyId: company?._id,
           type: "interviewProcess",
-          content: newInterviewProcess,
+          content,
           isAnonymous: newInterviewProcessAnonymous,
           ...submissionTargetFields({
             isGeneral,
@@ -568,8 +680,7 @@ function InterviewTab({
         variant: "success",
         message: data.message || MESSAGES.SUBMISSION_SUCCESS,
       });
-      setNewInterviewProcess("");
-      setNewInterviewProcessAnonymous(false);
+      resetInterviewProcessForm();
       setShowAddProcessModal(false);
     } catch (err) {
       console.error(err);
@@ -599,10 +710,72 @@ function InterviewTab({
     interviewProcess = [parseExperienceStoredEntry(company.interviewProcess, processDates[0])];
   }
 
+  const experienceRoleItemKeys = interviewProcess.map((process) =>
+    String(process?.prepRoleKey ?? "")
+  );
+  const experiencePrepRoles = prepRoles.filter((row) =>
+    experienceRoleItemKeys.includes(String(row?.key ?? ""))
+  );
+  const experienceRoleTabs = buildPrepRoleTabs(experiencePrepRoles, experienceRoleItemKeys, {
+    excludeGeneralTab: true,
+  });
+  const showExperienceRoleChrome =
+    isGeneral && experienceRoleItemKeys.some((key) => key !== "");
+  const effectiveExperiencePrepRoleKey = (() => {
+    if (!showExperienceRoleChrome) return "";
+    const preferred = pickDefaultPrepRoleTab(experiencePrepRoles, experienceRoleItemKeys, {
+      excludeGeneralTab: true,
+    });
+    if (activeExperiencePrepRoleKey === null) return preferred;
+    return experienceRoleTabs.some((tab) => tab.key === activeExperiencePrepRoleKey)
+      ? activeExperiencePrepRoleKey
+      : preferred;
+  })();
+  const experienceVisible = (process) => {
+    if (!showExperienceRoleChrome) return true;
+    return itemMatchesPrepRoleTab(process?.prepRoleKey, effectiveExperiencePrepRoleKey);
+  };
+  const visibleInterviewProcess = interviewProcess.filter(experienceVisible);
+
+  useEffect(() => {
+    const qIdx = findFocusIndex(interviewQuestions, focusQuery, (q) =>
+      typeof q === "string" ? q : String(q?.question || q || "")
+    );
+    if (qIdx >= 0) {
+      setOpenIndexQ(qIdx);
+      setFocusedProcessIndex(-1);
+      scrollFocusNode(questionRowRefs.current[qIdx]);
+      return;
+    }
+    const pIdx = findFocusIndex(
+      interviewProcess,
+      focusQuery,
+      (p) => p?.content || p
+    );
+    if (pIdx >= 0) {
+      setFocusedProcessIndex(pIdx);
+      scrollFocusNode(processRowRefs.current[pIdx]);
+    }
+  }, [focusQuery, company]);
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       <div data-tour="company-contribute-actions" className="space-y-5 sm:space-y-6">
-      {/* Interview Questions */}
+      {showQuestionsSection && showInterviewRoleChrome ? (
+        <PrepRoleChromeDark
+          prepRoles={prepRoles}
+          itemRoleKeys={interviewRoleItemKeys}
+          activeKey={effectiveInterviewPrepRoleKey}
+          onChange={setActiveInterviewPrepRoleKey}
+          ariaLabel="Interview question roles"
+          excludeGeneralTab
+          switching={roleSwitching}
+        />
+      ) : null}
+      {showQuestionsSection && roleSwitching ? (
+        <PrepRoleSwitchShimmer variant="dark" />
+      ) : null}
+      {showQuestionsSection && !roleSwitching ? (
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <span className="shrink-0">Interview Questions</span>
@@ -618,14 +791,13 @@ function InterviewTab({
             <span>Add Interview Question</span>
           </button>
         </h2>
-
-        {interviewQuestions.some(questionTextIsPresent) ? (
+        {visibleInterviewQuestionCount > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {interviewQuestions.map((q, index) => {
-              if (!questionTextIsPresent(q)) return null;
+              if (!interviewQuestionVisible(index)) return null;
               const displayNumber = interviewQuestions
                 .slice(0, index + 1)
-                .filter(questionTextIsPresent).length;
+                .filter((_, i) => interviewQuestionVisible(i)).length;
               return (
               <div
                 key={index}
@@ -633,7 +805,9 @@ function InterviewTab({
                   questionRowRefs.current[index] = el;
                 }}
                 data-interview-question
-                className="interview-question-row border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
+                className={`interview-question-row border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden ${
+                  focusQuery && openIndexQ === index ? PREP_FOCUS_HIGHLIGHT_CLASS : ""
+                }`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button
@@ -709,8 +883,8 @@ function InterviewTab({
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
-                        {openSolutionIndex[index] && (
-                          hasLang ? (
+                        {openSolutionIndex[index] &&
+                          (hasLang ? (
                             <div className="p-2 sm:p-3">
                               <LanguageSolutionPanel
                                 solutions={langSol}
@@ -719,36 +893,70 @@ function InterviewTab({
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
                                 embedded
+                                richTextVariant="dark"
+                                platformAdminCodeDisplay={isGeneral}
                               />
                             </div>
                           ) : (
-                          <div className="p-2 sm:p-3">
-                            <SolutionSyntaxBlock
-                              code={solutions[index]}
-                              toolbar={
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySolution(solutions[index], index)}
-                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
-                                  title="Copy solution"
-                                >
-                                  {copiedIndex === index ? (
-                                    <>
-                                      <FaCheck className="w-3 h-3 shrink-0" />
-                                      <span>Copied!</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FaCopy className="w-3 h-3 shrink-0" />
-                                      <span>Copy</span>
-                                    </>
+                            <div className="p-2 sm:p-3">
+                              {isGeneral &&
+                              ["cpp", "java", "python"].includes(
+                                inferSolutionLanguage(formatSolutionCode(solutions[index]))
+                              ) ? (
+                                <PlatformAdminCodeBlock
+                                  code={solutions[index]}
+                                  language={inferSolutionLanguage(
+                                    formatSolutionCode(solutions[index])
                                   )}
-                                </button>
-                              }
-                            />
-                          </div>
-                          )
-                        )}
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              ) : (
+                                <PrepSolutionBody
+                                  code={solutions[index]}
+                                  richTextVariant="dark"
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              )}
+                            </div>
+                          ))}
                       </div>
                       );
                     })()}
@@ -758,34 +966,59 @@ function InterviewTab({
               );
             })}
           </div>
+        ) : totalInterviewQuestionCount > 0 && showInterviewRoleChrome ? (
+          <p className="text-slate-400">
+            No questions for this role. Choose another role tab above.
+          </p>
         ) : (
           <p className="text-slate-400">No interview questions yet.</p>
         )}
       </div>
+      ) : null}
 
-      {/* Interview Process — display only; stored strings are unchanged */}
+      {showExperienceSection && showExperienceRoleChrome ? (
+        <PrepRoleChromeDark
+          prepRoles={experiencePrepRoles}
+          itemRoleKeys={experienceRoleItemKeys}
+          activeKey={effectiveExperiencePrepRoleKey}
+          onChange={setActiveExperiencePrepRoleKey}
+          ariaLabel="Interview experience roles"
+          excludeGeneralTab
+        />
+      ) : null}
+      {showExperienceSection ? (
       <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
         <ExperienceSectionHeader
           kicker="Experiences"
           title="Interview Process"
-          count={interviewProcess.length}
+          count={visibleInterviewProcess.length}
           addLabel="Add Interview Process"
           onAdd={() => setShowAddProcessModal(true)}
         />
 
-        {interviewProcess.length > 0 ? (
+        {visibleInterviewProcess.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {interviewProcess.map((process, index) => {
+              if (!experienceVisible(process)) return null;
               const processContent = process.content || process;
               const isAnonymous = process.isAnonymous === true || process.isAnonymous === "true";
               const submittedBy = process.submittedBy || null;
 
               return (
+                <div
+                  key={index}
+                  ref={(el) => {
+                    processRowRefs.current[index] = el;
+                  }}
+                >
                 <ExperienceStoryCard
                   key={index}
                   content={processContent}
                   isAnonymous={isAnonymous}
                   submittedBy={submittedBy}
+                  highlighted={focusedProcessIndex === index}
+                  forceExpanded={focusedProcessIndex === index}
+                  showFull
                   adminActions={
                     isAdmin ? (
                       <>
@@ -810,6 +1043,7 @@ function InterviewTab({
                     ) : null
                   }
                 />
+                </div>
               );
             })}
           </div>
@@ -821,6 +1055,7 @@ function InterviewTab({
           />
         )}
       </div>
+      ) : null}
       </div>
 
       {/* Add Interview Question Modal */}
@@ -884,49 +1119,47 @@ function InterviewTab({
 
       {/* Add Interview Process Modal */}
       {showAddProcessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4 py-6">
+          <div className="flex max-h-[min(90vh,860px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
             <div className="border-b border-theme bg-theme-card px-6 py-4">
               <div className="flex items-center gap-3">
-                <div className="h-14 w-24 shrink-0 rounded-lg border border-theme bg-white/95 p-2 shadow-sm">
+                <div className="h-14 w-52 shrink-0 rounded-lg border border-theme bg-white/95 px-3 py-2 shadow-sm">
                   <BrandLogo />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-theme-primary">Add Interview Process</h3>
-                  <p className="mt-1 text-sm text-theme-secondary">Describe the rounds, focus areas, and expectations in a structured way.</p>
+                  <p className="mt-1 text-sm text-theme-secondary">Add the overview, then enter each round separately.</p>
                 </div>
               </div>
             </div>
-            <form onSubmit={handleSubmitInterviewProcess} className="space-y-5 px-6 py-5">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-theme-primary">Process details</label>
-                <textarea
-                  value={newInterviewProcess}
-                  onChange={(e) => setNewInterviewProcess(e.target.value)}
-                  placeholder="Example: Round 1 - Online Assessment ... Round 2 - Technical Interview ..."
-                  className="w-full min-h-[170px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
-                  required
+            <form onSubmit={handleSubmitInterviewProcess} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                <InterviewProcessFields
+                  overview={processOverview}
+                  onOverviewChange={setProcessOverview}
+                  rounds={processRounds}
+                  onRoundsChange={setProcessRounds}
+                  error={processFormError}
                 />
+                <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={newInterviewProcessAnonymous}
+                    onChange={(e) => setNewInterviewProcessAnonymous(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-theme text-theme-accent focus:ring-theme-accent"
+                  />
+                  <span className="text-sm text-theme-secondary">
+                    Submit anonymously (your name will be hidden in public interview experience view).
+                  </span>
+                </label>
               </div>
-              <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={newInterviewProcessAnonymous}
-                  onChange={(e) => setNewInterviewProcessAnonymous(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-theme text-theme-accent focus:ring-theme-accent"
-                />
-                <span className="text-sm text-theme-secondary">
-                  Submit anonymously (your name will be hidden in public interview experience view).
-                </span>
-              </label>
-              <div className="flex items-center justify-end gap-3">
+              <div className="flex items-center justify-end gap-3 border-t border-theme px-6 py-4">
                 <button
                   type="button"
                   className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors"
                   onClick={() => {
                     setShowAddProcessModal(false);
-                    setNewInterviewProcess("");
-                    setNewInterviewProcessAnonymous(false);
+                    resetInterviewProcessForm();
                   }}
                 >
                   Cancel

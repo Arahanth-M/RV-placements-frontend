@@ -19,7 +19,7 @@ function laterIso(a, b) {
 /**
  * @param {unknown} entry
  * @param {unknown} [sidecarDate]
- * @returns {{ content: string, isAnonymous: boolean, submittedBy: unknown, updatedAt: string|null }}
+ * @returns {{ content: string, prepRoleKey: string, isAnonymous: boolean, submittedBy: unknown, updatedAt: string|null }}
  */
 export function parseExperienceStoredEntry(entry, sidecarDate = null) {
   const sidecar = asDateIso(sidecarDate);
@@ -28,6 +28,7 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
     const content = String(entry.content || entry.experience || "").trim();
     return {
       content,
+      prepRoleKey: String(entry.prepRoleKey ?? ""),
       isAnonymous: entry.isAnonymous === true || entry.isAnonymous === "true",
       submittedBy: entry.submittedBy || null,
       updatedAt: laterIso(
@@ -39,7 +40,7 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
 
   const trimmed = String(entry || "").trim();
   if (!trimmed) {
-    return { content: "", isAnonymous: false, submittedBy: null, updatedAt: sidecar };
+    return { content: "", prepRoleKey: "", isAnonymous: false, submittedBy: null, updatedAt: sidecar };
   }
 
   try {
@@ -49,6 +50,7 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
       if (content || parsed.submittedBy || parsed.isAnonymous != null) {
         return {
           content: content || trimmed,
+          prepRoleKey: String(parsed.prepRoleKey ?? ""),
           isAnonymous: parsed.isAnonymous === true || parsed.isAnonymous === "true",
           submittedBy: parsed.submittedBy || null,
           updatedAt: laterIso(
@@ -64,6 +66,7 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
 
   return {
     content: trimmed,
+    prepRoleKey: "",
     isAnonymous: false,
     submittedBy: null,
     updatedAt: sidecar,

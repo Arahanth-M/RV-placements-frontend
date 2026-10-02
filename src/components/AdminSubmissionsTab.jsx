@@ -71,6 +71,7 @@ export default function AdminSubmissionsTab({
   pendingCount = 0,
   approvedCount = 0,
   onCountsChanged,
+  api = adminAPI,
 }) {
   const [submissionsSubTab, setSubmissionsSubTab] = useState("pending");
   const [submissions, setSubmissions] = useState([]);
@@ -95,7 +96,7 @@ export default function AdminSubmissionsTab({
     setLoading(true);
     setError("");
     try {
-      const { data } = await adminAPI.getSubmissions({
+      const { data } = await api.getSubmissions({
         params: { status, page, limit: PAGE_SIZE },
       });
       const items = Array.isArray(data?.items) ? data.items : [];
@@ -124,7 +125,7 @@ export default function AdminSubmissionsTab({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     if (submissionsSubTab === "pending") {
@@ -160,7 +161,7 @@ export default function AdminSubmissionsTab({
     if (!window.confirm(confirmMsg)) return;
     setApprovingIds((prev) => new Set(prev).add(id));
     try {
-      await adminAPI.approveSubmission(id, withEnhanced ? { mergeContent } : {});
+      await api.approveSubmission(id, withEnhanced ? { mergeContent } : {});
       closeSubmissionModal();
       await refreshAfterChange();
     } catch (e) {
@@ -178,7 +179,7 @@ export default function AdminSubmissionsTab({
     if (!window.confirm("Reject and delete this submission?")) return;
     setRejectingIds((prev) => new Set(prev).add(id));
     try {
-      await adminAPI.rejectSubmission(id);
+      await api.rejectSubmission(id);
       closeSubmissionModal();
       await refreshAfterChange();
     } catch (e) {
@@ -196,7 +197,7 @@ export default function AdminSubmissionsTab({
     if (!window.confirm("Delete this approved submission from the database?")) return;
     setDeletingIds((prev) => new Set(prev).add(id));
     try {
-      await adminAPI.deleteApprovedSubmission(id);
+      await api.deleteApprovedSubmission(id);
       closeSubmissionModal();
       await refreshAfterChange();
     } catch (e) {
@@ -216,7 +217,7 @@ export default function AdminSubmissionsTab({
     if (!window.confirm(`Approve all ${ids.length} submission(s) on this page?`)) return;
     setApprovingAll(true);
     try {
-      await adminAPI.approveSubmissionsBatch(ids);
+      await api.approveSubmissionsBatch(ids);
       await refreshAfterChange();
     } catch (e) {
       alert(e?.response?.data?.error || e?.message || "Failed to approve submissions.");
@@ -233,7 +234,7 @@ export default function AdminSubmissionsTab({
     setShowSubmissionModal(true);
     if (!submission?._id) return;
     try {
-      const { data } = await adminAPI.getSubmission(submission._id);
+      const { data } = await api.getSubmission(submission._id);
       setSelectedSubmission(data);
     } catch (e) {
       console.error("Failed to load full submission:", e);
@@ -246,7 +247,7 @@ export default function AdminSubmissionsTab({
     setSubmissionEnhancedContent(null);
     setSubmissionAnswerGenerated(false);
     try {
-      const { data } = await adminAPI.enhanceSubmission(id);
+      const { data } = await api.enhanceSubmission(id);
       const next = data?.content;
       if (typeof next !== "string" || !next.trim()) {
         setSubmissionEnhanceError("Enhancement returned empty content.");
@@ -273,10 +274,10 @@ export default function AdminSubmissionsTab({
     setSubmissionAnswerGenerated(false);
     try {
       if (selectedSubmission?.contentTruncated && String(selectedSubmission._id) === String(id)) {
-        const res = await adminAPI.getSubmission(id);
+        const res = await api.getSubmission(id);
         setSelectedSubmission(res.data);
       }
-      const { data } = await adminAPI.addAnswerToSubmission(id);
+      const { data } = await api.addAnswerToSubmission(id);
       const next = data?.content;
       if (typeof next !== "string" || !next.trim()) {
         setSubmissionEnhanceError("Answer generation returned empty content.");

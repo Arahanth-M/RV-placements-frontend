@@ -1,18 +1,22 @@
-import { useAuth } from '../utils/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { TENANT_BASE } from '../constants/tenant.js';
-import { useEffect } from 'react';
-import Login from './Login';
+import { useAuth } from "../utils/AuthContext";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { TENANT_BASE, GENERAL_BASE, isGeneralAppPath } from "../constants/tenant.js";
+import { isPlatformAdminUser } from "../utils/collegeScope.js";
+import Login from "./Login";
 
 const ProtectedAdminRoute = ({ children }) => {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const home = isGeneralAppPath(location.pathname) ? GENERAL_BASE : TENANT_BASE;
+  const canAccessCampusAdmin = isAdmin || isSuperAdmin || isPlatformAdminUser(user);
 
   useEffect(() => {
-    if (!loading && user && !isAdmin) {
-      navigate(TENANT_BASE, { replace: true });
+    if (!loading && user && !canAccessCampusAdmin) {
+      navigate(home, { replace: true });
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, canAccessCampusAdmin, loading, navigate, home]);
 
   if (loading) {
     return (
@@ -26,7 +30,7 @@ const ProtectedAdminRoute = ({ children }) => {
     return <Login />;
   }
 
-  if (!isAdmin) {
+  if (!canAccessCampusAdmin) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
@@ -41,4 +45,3 @@ const ProtectedAdminRoute = ({ children }) => {
 };
 
 export default ProtectedAdminRoute;
-

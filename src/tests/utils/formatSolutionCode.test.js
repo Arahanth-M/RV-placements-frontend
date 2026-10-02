@@ -1,36 +1,55 @@
-import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
+import { describe, expect, it } from "vitest";
+import {
+  formatSolutionCode,
+  newlineAfterStatementSemicolons,
+  reflowSpacedSourceCode,
+} from "../../utils/formatSolutionCode.js";
 
 describe("formatSolutionCode", () => {
-  test("unwraps a JSON array of one escaped C++ string", () => {
-    const stored = JSON.stringify([
-      "#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n  return 0;\n}",
-    ]);
-    const out = formatSolutionCode(stored);
-    expect(out).toContain("#include <bits/stdc++.h>");
-    expect(out).toContain("using namespace std;");
-    expect(out).not.toContain("\\n");
-    expect(out.startsWith("[")).toBe(false);
+  it("unescapes literal newlines in stored strings", () => {
+    expect(formatSolutionCode("line1\\nline2")).toBe("line1\nline2");
   });
 
-  test("turns literal \\n into newlines when the blob is one line", () => {
-    const out = formatSolutionCode("int main() {\\n  return 0;\\n}");
-    expect(out).toBe("int main() {\n  return 0;\n}");
+  it("reflows space-separated C++ includes onto separate lines", () => {
+    const oneLine = '#include <iostream> #include <thread> int main() { return 0; }';
+    const out = reflowSpacedSourceCode(oneLine, "cpp");
+    expect(out).toContain("#include <iostream>");
+    expect(out).toContain("\n#include <thread>");
   });
 
-  test("leaves already-formatted source alone", () => {
-    const src = "#include <iostream>\nint main() {\n  return 0;\n}";
-    expect(formatSolutionCode(src)).toBe(src);
+  it("keeps for-loop header semicolons on one line when reflowing a one-liner", () => {
+    const oneLine =
+      "int main() { for (int i = 0; i < n; ++i) { long long x; cin >> x; } return 0; }";
+    const out = reflowSpacedSourceCode(oneLine, "cpp");
+    expect(out).toMatch(/for \(int i = 0; i < n; \+\+i\)/);
+    expect(out).not.toMatch(/for \(int i = 0;\ni < n;/);
   });
 
-  test("unwraps pretty-printed JSON the way Mongo often stores it", () => {
-    const stored = JSON.stringify(
-      ["#include <bits/stdc++.h>\nusing namespace std;\nint main() { return 0; }"],
-      null,
-      2
+  it("newlineAfterStatementSemicolons respects parentheses", () => {
+    expect(newlineAfterStatementSemicolons("for (int i = 0; i < n; ++i) { x; y; }")).toBe(
+      "for (int i = 0; i < n; ++i) { x; y; }"
     );
-    const out = formatSolutionCode(stored);
-    expect(out.startsWith("#include")).toBe(true);
-    expect(out).toContain("\nusing namespace std;");
-    expect(out).not.toMatch(/^\[/);
+    expect(newlineAfterStatementSemicolons("int a; int b;")).toBe("int a;\nint b;");
+  });
+
+  it("does not split long long or break a normal multiline for-loop", () => {
+    const multiline = [
+      "for (int i = 0; i < n; ++i) {",
+      "  long long x;",
+      "  cin >> x;",
+      "  total += x;",
+      "}",
+    ].join("\n");
+    const out = reflowSpacedSourceCode(multiline, "cpp");
+    expect(out).toBe(multiline);
+    expect(out).not.toMatch(/^long\n/m);
+  });
+
+  it("reflows a one-line Python def into multiple lines", () => {
+    const oneLine = "import sys def main(): n = int(data[0]) return n";
+    const out = reflowSpacedSourceCode(oneLine, "python");
+    expect(out).toContain("import sys");
+    expect(out).toContain("def main():");
+    expect(out.split("\n").length).toBeGreaterThan(2);
   });
 });

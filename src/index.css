@@ -60,6 +60,9 @@ body {
   --status-danger-border: #fca5a5;
   --status-danger-card-bg: rgba(239, 68, 68, 0.06);
   --status-danger-card-border: rgba(239, 68, 68, 0.38);
+  /* External / off-platform links (distinct from accent nav links) */
+  --external-link-text: #0369a1;
+  --external-link-hover: #0c4a6e;
   --border: #d0d8e8;
   --border-light: #e2e8f4;
   --border-sidebar: #d0d8e8;
@@ -355,6 +358,8 @@ select.spc-field-control {
   --status-danger-border: rgba(248, 113, 113, 0.42);
   --status-danger-card-bg: rgba(127, 29, 29, 0.28);
   --status-danger-card-border: rgba(248, 113, 113, 0.38);
+  --external-link-text: #7dd3fc;
+  --external-link-hover: #bae6fd;
 }
 
 /* Theme-aware utility classes */
@@ -391,16 +396,15 @@ select.spc-field-control {
   font-weight: 600;
   color: var(--text-primary);
 }
-.login-menu-option-sub {
-  font-size: 0.75rem;
-  line-height: 1.35;
-  color: var(--text-secondary);
-}
 .login-menu-option:hover {
-  background-color: #ececec;
+  background-color: var(--nav-hover);
 }
-[data-theme="dark"] .login-menu-option:hover {
-  background-color: #2a3242;
+.login-intent-backdrop {
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
+}
+[data-theme="dark"] .login-intent-backdrop {
+  background-color: rgba(0, 0, 0, 0.55);
 }
 .text-theme-accent { color: var(--accent); }
 .hover\:text-theme-accent:hover { color: var(--accent); }
@@ -413,6 +417,9 @@ select.spc-field-control {
 .text-status-warning { color: var(--status-warning-text); }
 .text-status-warning-muted { color: var(--status-warning-text-muted); }
 .text-status-danger { color: var(--status-danger-text); }
+
+.text-external-link { color: var(--external-link-text); }
+.hover\:text-external-link-hover:hover { color: var(--external-link-hover); }
 
 .status-badge-success,
 .status-badge-warning {

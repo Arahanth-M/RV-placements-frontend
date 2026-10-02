@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ResponsiveContainer, LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { adminAPI, eventAPI, getAdminStats } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
+import { GENERAL_BASE } from '../constants/tenant.js';
+import { isPlatformAdminUser } from '../utils/collegeScope.js';
 import {
   hubClusterKeysForCollege,
   PLACEMENT_HUB_CLUSTER_LABELS,
@@ -283,7 +285,9 @@ function AdminChartEmpty({ message }) {
 }
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
+  const showPlatformAdminLink = isSuperAdmin || isPlatformAdminUser(user);
   const isRvitmAdmin = collegeIdFromUser(user) === COLLEGE_ID_RVITM;
   const [searchParams, setSearchParams] = useSearchParams();
   const [stats, setStats] = useState({
@@ -1197,11 +1201,20 @@ const AdminDashboard = () => {
           </PageBackNavRow>
         ) : null}
 
+        {activeMainTab == null && showPlatformAdminLink ? (
+          <PageBackNavRow>
+            <PageBackButton
+              onClick={() => navigate(`${GENERAL_BASE}/admin/dashboard`)}
+              label="Back to platform admin dashboard"
+            />
+          </PageBackNavRow>
+        ) : null}
+
         {/* Header — hub only (tab views keep Back at the top like Resources) */}
         {activeMainTab == null ? (
           <div className="mb-6">
             <PageHeroHeader
-              subtitle="Manage and monitor platform activity"
+              subtitle="Manage and monitor campus activity"
               subtitleClassName="text-slate-400"
             >
               Admin <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Dashboard</em>

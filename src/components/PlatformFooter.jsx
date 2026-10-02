@@ -5,6 +5,8 @@ import {
   PLATFORM_LINKEDIN_URL,
 } from "../utils/constants";
 import { GENERAL_BASE } from "../constants/tenant.js";
+import { useAuth } from "../utils/AuthContext";
+import { getProductHomePathForUser } from "../utils/collegeScope.js";
 import { GENERAL_LEGAL_PATHS, PUBLIC_LEGAL_PATHS } from "./legal/legalMeta.js";
 
 function hashHref(pathname, hash) {
@@ -42,8 +44,10 @@ function FooterLink({ to, href, children }) {
  */
 export default function PlatformFooter() {
   const { pathname } = useLocation();
+  const { user } = useAuth();
   const onOnboard = pathname === "/onboard";
   const inGeneral = String(pathname || "").startsWith(GENERAL_BASE);
+  const homePath = getProductHomePathForUser(user);
   const legalItems = (inGeneral ? GENERAL_LEGAL_PATHS : PUBLIC_LEGAL_PATHS).map((item) => ({
     label: item.label,
     to: inGeneral ? `${GENERAL_BASE}${item.path}` : item.path,
@@ -54,7 +58,7 @@ export default function PlatformFooter() {
     { label: "Solutions", href: hashHref(pathname, "solutions") },
     { label: "Institutions", href: hashHref(pathname, "institutions") },
     onOnboard
-      ? { label: "Back to home", to: "/" }
+      ? { label: "Back to home", to: homePath }
       : { label: "Enrol your college", to: "/onboard" },
   ];
 

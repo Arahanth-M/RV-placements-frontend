@@ -1,9 +1,22 @@
 import { useEffect } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { tenantPath, toPostLoginAppPath, GENERAL_BASE } from "../constants/tenant.js";
-import { canAccessRvceTenant } from "../utils/collegeScope.js";
-import { LOGIN_INTENT_CAMPUS, LOGIN_INTENT_SPC } from "../utils/loginIntent.js";
+import {
+  tenantPath,
+  generalPath,
+  toPostLoginAppPath,
+  GENERAL_BASE,
+  isGeneralAppPath,
+} from "../constants/tenant.js";
+import {
+  canAccessRvceTenant,
+  isPlatformAdminUser,
+} from "../utils/collegeScope.js";
+import {
+  LOGIN_INTENT_CAMPUS,
+  LOGIN_INTENT_SPC,
+  LOGIN_INTENT_PLATFORM_ADMIN,
+} from "../utils/loginIntent.js";
 
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 
@@ -29,10 +42,11 @@ const GoogleIcon = () => (
 );
 
 const Login = () => {
-  const { login, user, isAdmin } = useAuth();
+  const { login, user, isAdmin, isSuperAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isAdminRoute = location.pathname.includes("/admin");
+  const isPlatformAdminRoute = isGeneralAppPath(location.pathname) && isAdminRoute;
   const spcAccessDenied = new URLSearchParams(location.search).get("reason") === "spc_access_denied";
 
   const handleGoogleSignIn = ({ spc = false } = {}) => {
@@ -44,12 +58,22 @@ const Login = () => {
     }
 
     login(isAdminRoute, {
-      intent: spc ? LOGIN_INTENT_SPC : isAdminRoute ? null : LOGIN_INTENT_CAMPUS,
+      intent: spc
+        ? LOGIN_INTENT_SPC
+        : isPlatformAdminRoute
+          ? LOGIN_INTENT_PLATFORM_ADMIN
+          : isAdminRoute
+            ? null
+            : LOGIN_INTENT_CAMPUS,
     });
   };
 
   useEffect(() => {
     if (!user) return;
+    if (isPlatformAdminUser(user) || isSuperAdmin) {
+      navigate(generalPath("/admin/dashboard"), { replace: true });
+      return;
+    }
     if (!canAccessRvceTenant(user)) {
       navigate(GENERAL_BASE, { replace: true });
       return;
@@ -62,7 +86,7 @@ const Login = () => {
     const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral: false });
     sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
     navigate(safeRedirect, { replace: true });
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, isSuperAdmin, navigate]);
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center px-4 pt-8 pb-10 sm:px-6 sm:pt-10 lg:px-8 bg-theme-app text-theme-primary">
@@ -70,8 +94,14 @@ const Login = () => {
         <div>
           <h2 className="mt-2 text-center text-3xl font-extrabold text-theme-primary">Please log in to access this content</h2>
           <p className="mt-3 text-center text-sm text-theme-secondary">
-            Use your <strong className="text-theme-accent">@rvce.edu.in</strong> email to access the RVCE dashboard.
-            Other students can log in from the home page to use the general platform.
+            {isPlatformAdminRoute ? (
+              <>Sign in with a platform owner Google account to open the <strong className="text-theme-accent">/general</strong> admin console.</>
+            ) : (
+              <>
+                Use your <strong className="text-theme-accent">@rvce.edu.in</strong> email to access the RVCE dashboard.
+                Other students can log in from the home page to use the general platform.
+              </>
+            )}
           </p>
         </div>
 
@@ -86,7 +116,8 @@ const Login = () => {
           {isAdminRoute && (
             <div className="bg-yellow-100/90 dark:bg-yellow-900/25 border border-yellow-300 dark:border-yellow-700 rounded-xl p-4">
               <p className="text-sm text-yellow-900 dark:text-yellow-200">
-                <strong>Admin sign-in:</strong> Only authorized admin accounts can access this section.
+                <strong>{isPlatformAdminRoute ? "Platform admin sign-in:" : "Admin sign-in:"}</strong>{" "}
+                Only authorized admin accounts can access this section.
               </p>
             </div>
           )}

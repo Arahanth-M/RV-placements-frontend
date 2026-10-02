@@ -24,6 +24,7 @@ import {
   pageShellInnerClass,
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+import ThemedSelect from "./ThemedSelect.jsx";
 
 const EVALUATION_OPTIONS = [
   { value: "rubric_llm", label: "Rubric-based answer" },
@@ -33,8 +34,6 @@ const EVALUATION_OPTIONS = [
   { value: "sql_execution", label: "Executable SQL question" },
 ];
 
-const inputClass =
-  "w-full rounded-xl border-2 border-theme bg-theme-input px-3 py-2.5 text-sm text-theme-primary outline-none transition focus:border-theme-accent";
 const cardClass = "rounded-2xl border border-theme bg-theme-card shadow-sm";
 
 const TEMPLATE_COLUMNS = [
@@ -326,8 +325,8 @@ export default function AIInterviewDataEntryPage() {
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton
-            onClick={() => navigate(`${GENERAL_BASE}/interviews`)}
-            label="Back to interviews"
+            onClick={() => navigate(`${GENERAL_BASE}/admin/dashboard`)}
+            label="Back to platform admin"
           />
         </PageBackNavRow>
 
@@ -363,28 +362,35 @@ export default function AIInterviewDataEntryPage() {
               />
               <div className="mt-5 grid gap-4 md:grid-cols-3">
                 <Field label="Round type">
-                  <select className={inputClass} value={roundType} onChange={(event) => setRoundType(event.target.value)}>
-                    <option value="">Select round type</option>
-                    {PLATFORM_INTERVIEW_ROUND_TYPES.map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
+                  <ThemedSelect
+                    ariaLabel="Round type"
+                    value={roundType}
+                    placeholder="Select round type"
+                    onChange={setRoundType}
+                    options={PLATFORM_INTERVIEW_ROUND_TYPES.map((type) => ({
+                      value: type,
+                      label: type,
+                    }))}
+                  />
                 </Field>
                 <Field label="Difficulty">
-                  <select className={inputClass} value={difficulty} onChange={(event) => setDifficulty(event.target.value)}>
-                    {INTERVIEW_DIFFICULTIES.map((level) => (
-                      <option key={level} value={level}>
-                        {level.charAt(0).toUpperCase() + level.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                  <ThemedSelect
+                    ariaLabel="Difficulty"
+                    value={difficulty}
+                    onChange={setDifficulty}
+                    options={INTERVIEW_DIFFICULTIES.map((level) => ({
+                      value: level,
+                      label: level.charAt(0).toUpperCase() + level.slice(1),
+                    }))}
+                  />
                 </Field>
                 <Field label="Evaluation">
-                  <select className={inputClass} value={evaluationStrategy} onChange={(event) => setEvaluationStrategy(event.target.value)}>
-                    {EVALUATION_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
+                  <ThemedSelect
+                    ariaLabel="Evaluation"
+                    value={evaluationStrategy}
+                    onChange={setEvaluationStrategy}
+                    options={EVALUATION_OPTIONS}
+                  />
                 </Field>
               </div>
             </section>

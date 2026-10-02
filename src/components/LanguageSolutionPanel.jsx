@@ -1,6 +1,10 @@
 import { useState } from "react";
-import SolutionSyntaxBlock from "./SolutionSyntaxBlock";
+import PrepSolutionBody from "./PrepSolutionBody";
+import PrepRichText from "./PrepRichText";
 import { formatSolutionCode } from "../utils/formatSolutionCode";
+import { prepareSourceCodeForDisplay } from "../utils/prepareSourceCodeForDisplay.js";
+import { looksLikeMarkdownProse } from "../utils/looksLikeMarkdownProse";
+import PlatformAdminCodeBlock from "./platform/PlatformAdminCodeBlock.jsx";
 
 const LANGS = [
   { id: "cpp", label: "C++" },
@@ -14,9 +18,9 @@ function formattedSolutions(solutions) {
       ? solutions
       : {};
   return {
-    cpp: formatSolutionCode(sols.cpp),
-    java: formatSolutionCode(sols.java),
-    python: formatSolutionCode(sols.python),
+    cpp: prepareSourceCodeForDisplay(sols.cpp, "cpp"),
+    java: prepareSourceCodeForDisplay(sols.java, "java"),
+    python: prepareSourceCodeForDisplay(sols.python, "python"),
   };
 }
 
@@ -35,6 +39,8 @@ export default function LanguageSolutionPanel({
   copied = false,
   onCopy,
   embedded = false,
+  richTextVariant = "dark",
+  platformAdminCodeDisplay = false,
 }) {
   const sols = formattedSolutions(solutions);
   const intuitionText = formatSolutionCode(intuition);
@@ -91,15 +97,19 @@ export default function LanguageSolutionPanel({
       ) : null}
       {active === "intuition" && intuitionText ? (
         <div className="border-theme bg-theme-card p-4 sm:p-5">
-          <p className="whitespace-pre-wrap text-sm leading-7 text-theme-secondary sm:text-base sm:leading-8">
-            {intuitionText}
-          </p>
+          {looksLikeMarkdownProse(intuitionText) ? (
+            <PrepRichText variant={richTextVariant}>{intuitionText}</PrepRichText>
+          ) : (
+            <p className="whitespace-pre-wrap text-sm leading-7 text-theme-secondary sm:text-base sm:leading-8">
+              {intuitionText}
+            </p>
+          )}
         </div>
       ) : code ? (
-        <div className="p-2 sm:p-3">
-          <SolutionSyntaxBlock
-            code={code}
-            language={active === "cpp" ? "cpp" : active}
+        platformAdminCodeDisplay && active !== "intuition" ? (
+          <PlatformAdminCodeBlock
+            code={solutions?.[active] ?? fallbackCode}
+            language={active}
             toolbar={
               onCopy ? (
                 <button
@@ -113,7 +123,27 @@ export default function LanguageSolutionPanel({
               ) : null
             }
           />
-        </div>
+        ) : (
+          <div className="p-2 sm:p-3">
+            <PrepSolutionBody
+              code={code}
+              language={active === "intuition" ? undefined : active}
+              richTextVariant={richTextVariant}
+              toolbar={
+                onCopy ? (
+                  <button
+                    type="button"
+                    onClick={() => onCopy(code)}
+                    className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600"
+                    title="Copy solution"
+                  >
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                ) : null
+              }
+            />
+          </div>
+        )
       ) : null}
     </div>
   );

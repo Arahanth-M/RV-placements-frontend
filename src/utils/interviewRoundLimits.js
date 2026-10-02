@@ -9,7 +9,7 @@ export function inferInterviewQuestionCount(roundType) {
   if (t === "SQL") return 4;
   if (t === "System Design") return 3;
   if (t === "HR") return MAX_HR_QUESTIONS_PER_ROUND;
-  if (t === "CS Fundamentals") return 3;
+  if (t === "CS Fundamentals" || t === "Web Dev") return 3;
   return 3;
 }
 

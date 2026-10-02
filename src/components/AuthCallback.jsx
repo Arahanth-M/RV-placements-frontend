@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tenantPath, toPostLoginAppPath, TENANT_BASE, GENERAL_BASE } from '../constants/tenant.js';
+import { tenantPath, toPostLoginAppPath, TENANT_BASE, GENERAL_BASE, generalPath } from '../constants/tenant.js';
 import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
-import { canAccessRvceTenant } from '../utils/collegeScope.js';
+import { canAccessRvceTenant, isPlatformAdminUser } from '../utils/collegeScope.js';
 import BlockedLoginInterestForm from './BlockedLoginInterestForm';
 import {
   LOGIN_INTENT_KEY,
@@ -42,13 +42,17 @@ const AuthCallback = () => {
           const fetchedUserData = await refreshUser();
           
           if (fetchedUserData) {
-            const useGeneral = !canAccessRvceTenant(fetchedUserData);
+            const adminFlag = urlParams.get("admin") === "true";
+            const platformAdmin =
+              adminFlag &&
+              (urlParams.get("scope") === "platform" ||
+                isPlatformAdminUser(fetchedUserData));
+            const useGeneral = !canAccessRvceTenant(fetchedUserData) && !platformAdmin;
 
             const loginIntent = sessionStorage.getItem(LOGIN_INTENT_KEY);
             const signupFlag = urlParams.get('signup') === 'success';
-            const adminFlag = urlParams.get('admin') === 'true';
 
-            if (useGeneral && (loginIntent === LOGIN_INTENT_SPC || adminFlag)) {
+            if (useGeneral && (loginIntent === LOGIN_INTENT_SPC || (adminFlag && !platformAdmin))) {
               try {
                 await logout();
               } catch {
@@ -56,7 +60,7 @@ const AuthCallback = () => {
               }
               setAccessDeniedMessage(
                 adminFlag
-                  ? "Admin access requires an onboarded campus account."
+                  ? "Campus admin access requires an onboarded campus account. Platform owners should sign in from the home page."
                   : "SPC access is only available on onboarded campus dashboards."
               );
               setIsProcessing(false);
@@ -110,7 +114,7 @@ const AuthCallback = () => {
           setLoginError({
             title: "Login restricted",
             message:
-              "Admin sign-in requires an official college email. Students can sign in from the home page to use the general platform.",
+              "Platform admin sign-in is for owner accounts from the home page. Campus admin requires an official college email.",
           });
         } else if (reason === 'not_allowed') {
           setLoginError({
@@ -121,7 +125,7 @@ const AuthCallback = () => {
           setLoginError({
             title: "Login restricted",
             message:
-              "Admin sign-in requires an official college email. Students can sign in from the home page to use the general platform.",
+              "Platform admin sign-in is for owner accounts from the home page. Campus admin requires an official college email.",
           });
         } else if (reason === 'not_admin') {
           setLoginError({
@@ -204,7 +208,11 @@ const AuthCallback = () => {
     }
 
     if (admin) {
-      window.location.replace(tenantPath("/admin/dashboard"));
+      window.location.replace(
+        isPlatformAdminUser(user)
+          ? generalPath("/admin/dashboard")
+          : tenantPath("/admin/dashboard")
+      );
     } else if (loginIntent === LOGIN_INTENT_SPC) {
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
       window.location.replace(tenantPath("/spc-dashboard"));

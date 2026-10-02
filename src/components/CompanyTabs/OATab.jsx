@@ -268,17 +268,25 @@
 
 // export default OATab;
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
-import { adminAPI, adminCompanyVisitOpts } from "../../utils/api";
-import SolutionSyntaxBlock from "../SolutionSyntaxBlock";
+import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import PrepSolutionBody from "../PrepSolutionBody";
+import PlatformAdminCodeBlock from "../platform/PlatformAdminCodeBlock.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
+import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
+import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
 import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
+import {
+  findFocusIndex,
+  PREP_FOCUS_HIGHLIGHT_CLASS,
+  scrollFocusNode,
+} from "../../utils/prepPathCompanyFocus.js";
 
 function questionTextIsPresent(value) {
   return String(value ?? "").trim().length > 0;
@@ -293,6 +301,7 @@ function OATab({
   placementListContext,
   placementCompanyVisitId,
   placementCluster,
+  focusQuery = "",
 }) {
   const [showModal, setShowModal] = useState(false);
   const [question, setQuestion] = useState("");
@@ -305,8 +314,10 @@ function OATab({
   const [editSolution, setEditSolution] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const questionRowRefs = useRef({});
 
   const safeCompany = company || {};
+  const contentAdmin = companyContentAdminAPI(isGeneral);
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -375,7 +386,7 @@ function OATab({
     if (editIndex == null || !safeCompany._id) return;
     setActionLoading(true);
     try {
-      await adminAPI.updateOAQuestion(
+      await contentAdmin.updateOAQuestion(
         safeCompany._id,
         editIndex,
         { question: editQuestion, solution: editSolution },
@@ -397,7 +408,7 @@ function OATab({
     if (!safeCompany._id || !window.confirm("Delete this OA question?")) return;
     setActionLoading(true);
     try {
-      await adminAPI.deleteOAQuestion(safeCompany._id, index, adminOpts);
+      await contentAdmin.deleteOAQuestion(safeCompany._id, index, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
       setOpenQuestionIndex(null);
     } catch (err) {
@@ -458,6 +469,16 @@ function OATab({
   };
 
   // Normalize questions & solutions
+  const oaQuestionKinds = Array.isArray(safeCompany.onlineQuestions_kind)
+    ? safeCompany.onlineQuestions_kind
+    : [];
+
+  function oaKindBadge(kind) {
+    if (kind === "coding") return "DSA";
+    if (kind === "sql") return "SQL";
+    return "";
+  }
+
   const parsedQuestions =
     safeCompany.onlineQuestions?.map((qa) => {
       if (!qa) return "";
@@ -476,6 +497,13 @@ function OATab({
         return normalizeOaDisplayString(qa);
       }
     }) || [];
+
+  useEffect(() => {
+    const idx = findFocusIndex(parsedQuestions, focusQuery);
+    if (idx < 0) return;
+    setOpenQuestionIndex(idx);
+    scrollFocusNode(questionRowRefs.current[idx]);
+  }, [focusQuery, company]);
 
   // Function to convert escape sequences to their actual characters and remove unnecessary quotes
   const unescapeString = (str) => {
@@ -603,12 +631,19 @@ function OATab({
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 ml-0 sm:ml-10">
-                  {[
-                    { label: 'A', value: q.optionA },
-                    { label: 'B', value: q.optionB },
-                    { label: 'C', value: q.optionC },
-                    { label: 'D', value: q.optionD }
-                  ].map((opt) => opt.value && (
+                  {(
+                    Array.isArray(q.mcqMetadata?.options) && q.mcqMetadata.options.length > 0
+                      ? q.mcqMetadata.options.map((opt) => ({
+                          label: String(opt?.id || "").toUpperCase(),
+                          value: opt?.text,
+                        }))
+                      : [
+                          { label: "A", value: q.optionA },
+                          { label: "B", value: q.optionB },
+                          { label: "C", value: q.optionC },
+                          { label: "D", value: q.optionD },
+                        ]
+                  ).map((opt) => opt.value && (
                     <div
                       key={opt.label}
                       className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-theme-input border border-theme text-theme-secondary"
@@ -621,14 +656,19 @@ function OATab({
                   ))}
                 </div>
 
-                {q.answer && (
+                {q.answer ? (
                   <div className="mt-3 sm:mt-4 ml-0 sm:ml-10 flex flex-wrap items-center gap-2 text-emerald-400 bg-emerald-500/5 px-3 py-2 rounded-lg border border-emerald-500/20 w-full sm:w-fit max-w-full">
                     <FaCheck className="w-3.5 h-3.5 shrink-0" />
                     <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug">
                       Correct Answer: <span className="text-emerald-300 ml-1">{q.answer}</span>
                     </span>
                   </div>
-                )}
+                ) : null}
+                {q.explanation ? (
+                  <p className="mt-3 ml-0 sm:ml-10 text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">
+                    {q.explanation}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -659,14 +699,26 @@ function OATab({
               return (
               <div
                 key={index}
-                className="border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden"
+                ref={(el) => {
+                  questionRowRefs.current[index] = el;
+                }}
+                className={`border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden ${
+                  focusQuery && openQuestionIndex === index ? PREP_FOCUS_HIGHLIGHT_CLASS : ""
+                }`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <button
                     onClick={() => toggleQuestionAccordion(index)}
                     className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate min-w-0">Question {displayNumber}</span>
+                    <span className="truncate min-w-0 flex items-center gap-2">
+                      Question {displayNumber}
+                      {oaKindBadge(oaQuestionKinds[index]) ? (
+                        <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+                          {oaKindBadge(oaQuestionKinds[index])}
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openQuestionIndex === index ? "−" : "+"}
                     </span>
@@ -729,8 +781,8 @@ function OATab({
                             {openSolutionIndex[index] ? "−" : "+"}
                           </span>
                         </button>
-                        {openSolutionIndex[index] && (
-                          hasLang ? (
+                        {openSolutionIndex[index] &&
+                          (hasLang ? (
                             <div className="p-2 sm:p-3">
                               <LanguageSolutionPanel
                                 solutions={langSol}
@@ -739,36 +791,70 @@ function OATab({
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
                                 embedded
+                                richTextVariant="dark"
+                                platformAdminCodeDisplay={isGeneral}
                               />
                             </div>
                           ) : (
-                          <div className="p-2 sm:p-3">
-                            <SolutionSyntaxBlock
-                              code={solutions[index]}
-                              toolbar={
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySolution(solutions[index], index)}
-                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
-                                  title="Copy solution"
-                                >
-                                  {copiedIndex === index ? (
-                                    <>
-                                      <FaCheck className="w-3 h-3 shrink-0" />
-                                      <span>Copied!</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FaCopy className="w-3 h-3 shrink-0" />
-                                      <span>Copy</span>
-                                    </>
+                            <div className="p-2 sm:p-3">
+                              {isGeneral &&
+                              ["cpp", "java", "python"].includes(
+                                inferSolutionLanguage(formatSolutionCode(solutions[index]))
+                              ) ? (
+                                <PlatformAdminCodeBlock
+                                  code={solutions[index]}
+                                  language={inferSolutionLanguage(
+                                    formatSolutionCode(solutions[index])
                                   )}
-                                </button>
-                              }
-                            />
-                          </div>
-                          )
-                        )}
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              ) : (
+                                <PrepSolutionBody
+                                  code={solutions[index]}
+                                  richTextVariant="dark"
+                                  toolbar={
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopySolution(solutions[index], index)}
+                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                      title="Copy solution"
+                                    >
+                                      {copiedIndex === index ? (
+                                        <>
+                                          <FaCheck className="w-3 h-3 shrink-0" />
+                                          <span>Copied!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FaCopy className="w-3 h-3 shrink-0" />
+                                          <span>Copy</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  }
+                                />
+                              )}
+                            </div>
+                          ))}
                       </div>
                       );
                     })()}

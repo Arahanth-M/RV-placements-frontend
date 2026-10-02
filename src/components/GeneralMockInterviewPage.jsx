@@ -4,6 +4,7 @@ import { FaBuilding, FaSearch } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useInterviewLock } from "../utils/InterviewLockContext";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
+import { parsePrepPathMockPrefill } from "../utils/prepPathCompanyFocus.js";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
 import {
   PageBackButton,
@@ -25,6 +26,19 @@ function GeneralMockInterviewPage() {
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
 
   const selectedId = String(searchParams.get("companyId") || "").trim();
+  const mockPrefill = useMemo(
+    () => parsePrepPathMockPrefill(searchParams),
+    [searchParams]
+  );
+  const fromPrepPath = mockPrefill.fromPrepPath;
+  const initialMockPlan = useMemo(() => {
+    if (!mockPrefill.role && !mockPrefill.rounds.length) return null;
+    return {
+      role: mockPrefill.role,
+      difficulty: mockPrefill.difficulty,
+      rounds: mockPrefill.rounds,
+    };
+  }, [mockPrefill.role, mockPrefill.difficulty, mockPrefill.rounds]);
 
   useEffect(() => {
     setGlobalInterviewLocked(isInterviewLocked);
@@ -87,7 +101,10 @@ function GeneralMockInterviewPage() {
       <div className={pageShellInnerClass}>
         {!isInterviewLocked ? (
           <PageBackNavRow>
-            <PageBackButton onClick={() => navigate(base)} label="Back" />
+            <PageBackButton
+              onClick={() => (fromPrepPath ? navigate(-1) : navigate(base))}
+              label="Back"
+            />
           </PageBackNavRow>
         ) : null}
 
@@ -165,6 +182,13 @@ function GeneralMockInterviewPage() {
               {loadError ? (
                 <p className="mt-2 text-sm text-red-400">{loadError}</p>
               ) : null}
+
+              {fromPrepPath && selectedCompany ? (
+                <p className="mt-3 text-xs text-theme-muted">
+                  PrepPath suggested this mock. You can still change role, difficulty, or
+                  rounds before starting.
+                </p>
+              ) : null}
             </section>
           ) : null}
 
@@ -173,6 +197,7 @@ function GeneralMockInterviewPage() {
             setupLocked={!selectedCompany}
             onInterviewLockChange={setIsInterviewLocked}
             onForceExitToGeneral={() => setIsInterviewLocked(false)}
+            initialMockPlan={initialMockPlan}
           />
         </div>
       </div>

@@ -3,6 +3,16 @@
 export const COLLEGE_ID_RVCE = "rvce";
 export const COLLEGE_ID_RVITM = "rvitm";
 
+/** Campus admin platforms a platform owner can open. Add colleges here as they onboard. */
+export const CAMPUS_ADMIN_SITES = [
+  {
+    id: COLLEGE_ID_RVCE,
+    name: "RVCE",
+    description: "R.V. College of Engineering — placement visits, SPC, events, and campus student stats.",
+    href: "/rvce/admin/dashboard",
+  },
+];
+
 export const RVCE_PLACEMENT_EMAIL = "placement@rvce.edu.in";
 export const RVITM_PLACEMENT_EMAIL = "placement.rvitm@rvei.edu.in";
 
@@ -25,12 +35,28 @@ export function isRvceEmail(email) {
 }
 
 /**
+ * True when the signed-in JWT is a platform owner / super admin.
+ * @param {{ isSuperAdmin?: unknown, adminScope?: unknown }|null|undefined} user
+ * @returns {boolean}
+ */
+export function isPlatformAdminUser(user) {
+  if (!user) return false;
+  if (user.isSuperAdmin === true) return true;
+  return String(user.adminScope || "")
+    .trim()
+    .toLowerCase() === "platform";
+}
+
+/**
  * RVCE tenant (`/rvce`) is only for signed-in `@rvce.edu.in` accounts.
- * @param {{ email?: unknown }|null|undefined} user
+ * Platform owners may also enter campus dashboards.
+ * @param {{ email?: unknown, isSuperAdmin?: unknown, adminScope?: unknown }|null|undefined} user
  * @returns {boolean}
  */
 export function canAccessRvceTenant(user) {
-  return Boolean(user && isRvceEmail(user.email));
+  if (!user) return false;
+  if (isPlatformAdminUser(user)) return true;
+  return isRvceEmail(user.email);
 }
 
 /**
@@ -40,24 +66,41 @@ export function canAccessRvceTenant(user) {
  * @returns {boolean}
  */
 export function isOnboardedInstitutionUser(user) {
-  return canAccessRvceTenant(user);
+  return Boolean(user && isRvceEmail(user.email));
 }
 
 /**
  * General product shell for signed-in students outside an onboarded campus tenant.
- * @param {{ email?: unknown }|null|undefined} user
+ * Platform owners may also stay on `/general`.
+ * @param {{ email?: unknown, isSuperAdmin?: unknown, adminScope?: unknown }|null|undefined} user
  * @returns {boolean}
  */
 export function canAccessGeneralTenant(user) {
-  return Boolean(user && !isOnboardedInstitutionUser(user));
+  if (!user) return false;
+  if (isPlatformAdminUser(user)) return true;
+  return !isOnboardedInstitutionUser(user);
 }
 
 /**
- * @param {{ email?: unknown }|null|undefined} user
- * @returns {"/rvce"|"/general"|null}
+ * @param {{ email?: unknown, isSuperAdmin?: unknown, adminScope?: unknown }|null|undefined} user
+ * @returns {"/rvce"|"/general"|"/general/admin/dashboard"|null}
  */
 export function getAppHomePathForUser(user) {
   if (!user) return null;
+  if (isPlatformAdminUser(user)) return "/general/admin/dashboard";
+  return isOnboardedInstitutionUser(user) ? "/rvce" : "/general";
+}
+
+/**
+ * Product home (not an admin dashboard). Used by public pages such as /onboard.
+ * Guests go to `/`; campus students go to `/rvce`; everyone else, including
+ * platform owners, goes to `/general`.
+ * @param {{ email?: unknown, isSuperAdmin?: unknown, adminScope?: unknown }|null|undefined} user
+ * @returns {"/"|"/rvce"|"/general"}
+ */
+export function getProductHomePathForUser(user) {
+  if (!user) return "/";
+  if (isPlatformAdminUser(user)) return "/general";
   return isOnboardedInstitutionUser(user) ? "/rvce" : "/general";
 }
 
@@ -107,6 +150,7 @@ export function collegeIdFromUser(user) {
  */
 export function adminMayMutateSharedCompanyContent(user, isAdmin = false) {
   if (!isAdmin) return false;
+  if (isPlatformAdminUser(user)) return true;
   return collegeIdFromUser(user) !== COLLEGE_ID_RVITM;
 }
 

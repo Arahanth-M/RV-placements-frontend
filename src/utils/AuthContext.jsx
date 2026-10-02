@@ -3,7 +3,7 @@ import { clearAllResumeDraftCaches } from './resumeDraftCache.js';
 import { authAPI } from './api';
 import { BASE_URL } from './constants';
 import { flushDauPresence } from './dauPresenceFlush';
-import { persistLoginIntent } from './loginIntent.js';
+import { persistLoginIntent, LOGIN_INTENT_PLATFORM_ADMIN } from './loginIntent.js';
 
 // Use a symbol to check if we're inside a provider
 const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
@@ -11,6 +11,7 @@ const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
 const AuthContext = createContext({
   user: null,
   isAdmin: false,
+  isSuperAdmin: false,
   studentData: null,
   loading: true,
   login: () => {},
@@ -37,6 +38,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionExpiredNotice, setSessionExpiredNotice] = useState('');
@@ -111,13 +113,16 @@ export const AuthProvider = ({ children }) => {
             // In offline mode, treat user as non-admin to avoid admin writes
             const offlineIsAdmin = storedIsAdmin ? JSON.parse(storedIsAdmin) === true : false;
             setIsAdmin(offlineIsAdmin && false);
+            setIsSuperAdmin(false);
           } catch {
             setUser(null);
             setIsAdmin(false);
+            setIsSuperAdmin(false);
           }
         } else {
           setUser(null);
           setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
         setLoading(false);
         return;
@@ -129,6 +134,7 @@ export const AuthProvider = ({ children }) => {
         clearLoginTimestamp();
         setUser(null);
         setIsAdmin(false);
+        setIsSuperAdmin(false);
         localStorage.removeItem(LAST_USER_KEY);
         localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
         setLoading(false);
@@ -147,16 +153,22 @@ export const AuthProvider = ({ children }) => {
         // Check admin status
         try {
           const adminResponse = await authAPI.isAdmin();
-          const adminFlag = adminResponse.data?.isAdmin || false;
+          const adminFlag = adminResponse.data?.isAdmin === true;
           setIsAdmin(adminFlag);
+          setIsSuperAdmin(
+            adminResponse.data?.isSuperAdmin === true ||
+              adminResponse.data?.adminScope === "platform"
+          );
           localStorage.setItem(LAST_USER_IS_ADMIN_KEY, JSON.stringify(adminFlag));
         } catch {
           setIsAdmin(false);
+          setIsSuperAdmin(false);
           localStorage.setItem(LAST_USER_IS_ADMIN_KEY, JSON.stringify(false));
         }
       } else {
         setUser(null);
         setIsAdmin(false);
+        setIsSuperAdmin(false);
         clearLoginTimestamp();
         localStorage.removeItem(LAST_USER_KEY);
         localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
@@ -165,6 +177,7 @@ export const AuthProvider = ({ children }) => {
       console.log('User not authenticated');
       setUser(null);
       setIsAdmin(false);
+      setIsSuperAdmin(false);
       clearLoginTimestamp();
       localStorage.removeItem(LAST_USER_KEY);
       localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
@@ -182,7 +195,9 @@ export const AuthProvider = ({ children }) => {
     }
     const qs = params.toString();
     const authUrl = isAdmin
-      ? `${BASE_URL}/api/auth/google/admin`
+      ? `${BASE_URL}/api/auth/google/admin${
+          intent === LOGIN_INTENT_PLATFORM_ADMIN ? "?intent=platform" : ""
+        }`
       : `${BASE_URL}/api/auth/google${qs ? `?${qs}` : ""}`;
 
     console.log('🚀 Redirecting to login:', authUrl);
@@ -240,6 +255,7 @@ export const AuthProvider = ({ children }) => {
       setStudentData(null);
       setUser(null);
       setIsAdmin(false);
+      setIsSuperAdmin(false);
       clearLoginTimestamp();
       localStorage.removeItem(LAST_USER_KEY);
       localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
@@ -277,6 +293,7 @@ export const AuthProvider = ({ children }) => {
       setStudentData(null);
       setUser(null);
       setIsAdmin(false);
+      setIsSuperAdmin(false);
       clearLoginTimestamp();
       localStorage.removeItem(LAST_USER_KEY);
       localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
@@ -339,13 +356,16 @@ export const AuthProvider = ({ children }) => {
             const storedIsAdmin = localStorage.getItem(LAST_USER_IS_ADMIN_KEY);
             const offlineIsAdmin = storedIsAdmin ? JSON.parse(storedIsAdmin) === true : false;
             setIsAdmin(offlineIsAdmin && false);
+            setIsSuperAdmin(false);
           } catch {
             setUser(null);
             setIsAdmin(false);
+            setIsSuperAdmin(false);
           }
         } else {
           setUser(null);
           setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
         setLoading(false);
         return null;
@@ -357,6 +377,7 @@ export const AuthProvider = ({ children }) => {
         clearLoginTimestamp();
         setUser(null);
         setIsAdmin(false);
+        setIsSuperAdmin(false);
         setLoading(false);
         return null;
       }
@@ -372,14 +393,20 @@ export const AuthProvider = ({ children }) => {
         // Check admin status
         try {
           const adminResponse = await authAPI.isAdmin();
-          setIsAdmin(adminResponse.data?.isAdmin || false);
+          setIsAdmin(adminResponse.data?.isAdmin === true);
+          setIsSuperAdmin(
+            adminResponse.data?.isSuperAdmin === true ||
+              adminResponse.data?.adminScope === "platform"
+          );
         } catch {
           setIsAdmin(false);
+          setIsSuperAdmin(false);
         }
         return response.data;
       } else {
         setUser(null);
         setIsAdmin(false);
+        setIsSuperAdmin(false);
         clearLoginTimestamp();
         return null;
       }
@@ -387,6 +414,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Failed to refresh user:', error);
       setUser(null);
       setIsAdmin(false);
+      setIsSuperAdmin(false);
       clearLoginTimestamp();
       return null;
     } finally {
@@ -418,6 +446,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAdmin,
+    isSuperAdmin,
     studentData,
     loading,
     login,
