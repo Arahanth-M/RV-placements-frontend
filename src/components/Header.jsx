@@ -26,6 +26,9 @@ import {
   FaMapMarkedAlt,
   FaRoute,
   FaLock,
+  FaUserFriends,
+  FaUsers,
+  FaCalendarCheck,
 } from "react-icons/fa";
 import { adminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -64,6 +67,26 @@ function buildStudentCornerLinks(base, isGeneral) {
         icon: FaComments,
       },
       {
+        label: "Behavioral coach",
+        path: pathUnderBase(base, "/behavioral-coach"),
+        icon: FaUserFriends,
+      },
+      {
+        label: "Peer sessions",
+        path: pathUnderBase(base, "/peer-sessions"),
+        icon: FaUsers,
+      },
+      {
+        label: "Challenges",
+        path: pathUnderBase(base, "/challenges"),
+        icon: FaTrophy,
+      },
+      {
+        label: "Drive calendar",
+        path: pathUnderBase(base, "/drive-calendar"),
+        icon: FaCalendarCheck,
+      },
+      {
         label: "Interview slots",
         path: pathUnderBase(base, "/interview-slots"),
         icon: FaCalendarAlt,
@@ -94,6 +117,26 @@ function buildStudentCornerLinks(base, isGeneral) {
   const links = [
     { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
     { label: "AI Interviews", path: pathUnderBase(base, "/interviews"), icon: FaComments },
+    {
+      label: "Behavioral coach",
+      path: pathUnderBase(base, "/behavioral-coach"),
+      icon: FaUserFriends,
+    },
+    {
+      label: "Peer sessions",
+      path: pathUnderBase(base, "/peer-sessions"),
+      icon: FaUsers,
+    },
+    {
+      label: "Challenges",
+      path: pathUnderBase(base, "/challenges"),
+      icon: FaTrophy,
+    },
+    {
+      label: "Drive calendar",
+      path: pathUnderBase(base, "/drive-calendar"),
+      icon: FaCalendarCheck,
+    },
     {
       label: "Interview slots",
       path: pathUnderBase(base, "/interview-slots"),
@@ -326,7 +369,8 @@ const Header = () => {
         (l) =>
           l.path !== appPath("/interviews") &&
           l.path !== appPath("/interview-slots") &&
-          l.path !== appPath("/interview-analytics")
+          l.path !== appPath("/interview-analytics") &&
+          l.path !== appPath("/behavioral-coach")
       )
     : studentCornerLinksBase;
 

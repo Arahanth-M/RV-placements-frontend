@@ -80,7 +80,7 @@ function buildMonthGrid(year, month) {
 }
 
 /**
- * Month calendar: day-of-month + total slots booked that day (anonymous). No hours.
+ * Month calendar: day-of-month + count badge for that day.
  */
 function InterviewSlotsCalendar({
   dayBookedCounts = null,
@@ -90,6 +90,8 @@ function InterviewSlotsCalendar({
   viewMonth,
   onPrevMonth,
   onNextMonth,
+  countSuffix = "booked",
+  footerHint = "Numbers are total slots booked that day (IST). Tap a day to manage your bookings.",
 }) {
   const todayKey = useMemo(() => istDateKeyFromDate(new Date()), []);
   const counts =
@@ -169,7 +171,7 @@ function InterviewSlotsCalendar({
               </span>
               {booked > 0 ? (
                 <span className="mt-auto rounded bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-theme-accent sm:text-[11px]">
-                  {booked} booked
+                  {booked} {countSuffix}
                 </span>
               ) : null}
             </button>
@@ -177,9 +179,7 @@ function InterviewSlotsCalendar({
         })}
       </div>
 
-      <p className="mt-3 text-xs text-theme-muted">
-        Numbers are total slots booked that day (IST). Tap a day to manage your bookings.
-      </p>
+      <p className="mt-3 text-xs text-theme-muted">{footerHint}</p>
     </div>
   );
 }

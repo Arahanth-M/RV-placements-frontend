@@ -196,6 +196,17 @@ function NotificationBell() {
     if (!notification.isSeen) {
       handleMarkAsSeen(notification._id);
     }
+    if (notification.type === "DRIVE_REMINDER" || notification.payload?.path === "/drive-calendar") {
+      const entryId = notification.payload?.entryId;
+      const dateKey = notification.payload?.dateKey;
+      const qs = new URLSearchParams();
+      if (entryId) qs.set("entryId", entryId);
+      if (dateKey) qs.set("date", dateKey);
+      const q = qs.toString();
+      navigate(tenantPath(`/drive-calendar${q ? `?${q}` : ""}`));
+      setShowDropdown(false);
+      return;
+    }
     if (notification.companyId) {
       navigate(tenantPath(`/companies/${notification.companyId}`));
       setShowDropdown(false);
