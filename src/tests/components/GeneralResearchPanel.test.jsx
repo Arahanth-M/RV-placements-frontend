@@ -642,5 +642,44 @@ describe("GeneralResearchPanel", () => {
     expect(screen.getByRole("button", { name: "Publish finalized questions" })).toBeDisabled();
     expect(companyAPI.savePlatformContent).not.toHaveBeenCalled();
   });
+
+  it("restores link approval after publishing questions and reopening the company page", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-published",
+            status: "published",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "SDE",
+            result: reviewResult,
+            publication: { insertedCount: 1, duplicateCount: 0 },
+          },
+        ],
+      },
+    });
+    companyAPI.publishCompanyResearchSources.mockResolvedValue({
+      data: { insertedSourceCount: 1, duplicateSourceCount: 0 },
+    });
+
+    const view = renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("button", { name: "Approve all links" })).toBeEnabled();
+
+    view.unmount();
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve all links" }));
+    await waitFor(() => {
+      expect(companyAPI.publishCompanyResearchSources).toHaveBeenCalledWith("job-published");
+    });
+  });
 });
 

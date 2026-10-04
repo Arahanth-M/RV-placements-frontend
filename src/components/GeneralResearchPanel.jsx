@@ -1302,6 +1302,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   const isExperience = reviewField === "interviewExperiences";
   const questions = Array.isArray(researchResult?.items) ? researchResult.items : [];
   const published = researchStatus === "published";
+  const sourcesPublished = Boolean(sourcesPublishSummary);
   const statusCopy = STATUS_COPY[researchStatus] || "";
   const statusIsError = researchStatus === "failed" || researchStatus === "timed_out";
   const showResult = (researchStatus === "review" || published) && researchResult;
@@ -1335,7 +1336,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     String(researchJobSnapshot?.role || viewRole || "").trim() || "General (all roles)";
 
   const generateLinksSummary = async () => {
-    if (!researchJobId || published) return;
+    if (!researchJobId || sourcesPublished) return;
     setGeneratingLinksSummary(true);
     setResearchError("");
     try {
@@ -1357,7 +1358,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   };
 
   const saveLinksSummaryDraft = async () => {
-    if (!researchJobId || published) return;
+    if (!researchJobId || sourcesPublished) return;
     const summary = String(linksSummaryText || "").trim();
     if (!summary) {
       setResearchError("Write or generate a summary before saving.");
@@ -1382,15 +1383,31 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   };
 
   const approveAllLinks = async () => {
-    if (!researchJobId || published) return;
+    if (!researchJobId || sourcesPublished) return;
     setPublishingSources(true);
     setResearchError("");
     try {
       const res = await companyAPI.publishCompanyResearchSources(researchJobId);
-      setSourcesPublishSummary({
+      const summary = {
         insertedSourceCount: Number(res?.data?.insertedSourceCount) || 0,
         duplicateSourceCount: Number(res?.data?.duplicateSourceCount) || 0,
-      });
+      };
+      setSourcesPublishSummary(summary);
+      const jobId = researchJobIdRef.current;
+      const nextMap = { ...jobsBySlotRef.current };
+      for (const [key, row] of Object.entries(nextMap)) {
+        if (row?.jobId !== jobId) continue;
+        nextMap[key] = {
+          ...row,
+          sourcesPublication: {
+            publishedAt: new Date().toISOString(),
+            insertedSourceCount: summary.insertedSourceCount,
+            duplicateSourceCount: summary.duplicateSourceCount,
+          },
+        };
+      }
+      jobsBySlotRef.current = nextMap;
+      setJobsBySlot(nextMap);
     } catch (err) {
       setResearchError(apiErrorMessage(err, "Research links could not be approved."));
     } finally {
@@ -1795,7 +1812,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={published || generatingLinksSummary || sourceList.length === 0}
+                    disabled={sourcesPublished || generatingLinksSummary || sourceList.length === 0}
                     onClick={generateLinksSummary}
                     className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
                   >
@@ -1803,7 +1820,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                   </button>
                   <button
                     type="button"
-                    disabled={published || savingLinksSummary || !String(linksSummaryText || "").trim()}
+                    disabled={sourcesPublished || savingLinksSummary || !String(linksSummaryText || "").trim()}
                     onClick={saveLinksSummaryDraft}
                     className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
                   >
@@ -1813,7 +1830,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
               </div>
               <button
                 type="button"
-                disabled={published || publishingSources || sourceList.length === 0}
+                disabled={sourcesPublished || publishingSources || sourceList.length === 0}
                 onClick={approveAllLinks}
                 className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
