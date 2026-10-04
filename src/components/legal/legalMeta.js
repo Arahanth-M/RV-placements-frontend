@@ -38,24 +38,24 @@ export const PUBLIC_PLAN_PRICES = [
   },
   {
     name: "Unlock one category",
-    price: "₹199",
+    price: "₹7",
     detail:
       "Company-card details for one category. No AI mocks or PrepPath. One-time, 6 months. No auto-renew.",
   },
   {
     name: "Unlimited PrepPath",
-    price: "₹499",
+    price: "₹7",
     detail:
       "Unlimited PrepPath plus all company cards. One-time, 6 months. No auto-renew.",
   },
   {
     name: "Unlimited AI mock interviews",
-    price: "₹499",
+    price: "₹7",
     detail: "Unlimited AI mocks plus all company cards. One-time, 6 months. No auto-renew.",
   },
   {
     name: "All premium features",
-    price: "₹699",
+    price: "₹7",
     detail: "All company cards, unlimited AI mocks, and unlimited PrepPath. One-time, 6 months. No auto-renew.",
   },
 ];
