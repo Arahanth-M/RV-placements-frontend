@@ -12,6 +12,8 @@ function sourceLabel(source) {
 
 export default function PlatformRuntimeSecretsPanel() {
   const [keys, setKeys] = useState([]);
+  const [budgets, setBudgets] = useState([]);
+  const [budgetDrafts, setBudgetDrafts] = useState({});
   const [drafts, setDrafts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -23,7 +25,12 @@ export default function PlatformRuntimeSecretsPanel() {
     setError("");
     try {
       const { data } = await platformAdminAPI.getRuntimeSecrets();
+      const nextBudgets = Array.isArray(data?.budgets) ? data.budgets : [];
       setKeys(Array.isArray(data?.keys) ? data.keys : []);
+      setBudgets(nextBudgets);
+      setBudgetDrafts(
+        Object.fromEntries(nextBudgets.map((row) => [row.id, String(row.value ?? "")]))
+      );
     } catch (err) {
       setError(err?.response?.data?.error || "Keys could not be loaded.");
       setKeys([]);
@@ -57,6 +64,23 @@ export default function PlatformRuntimeSecretsPanel() {
     }
   };
 
+  const saveBudget = async (id) => {
+    const value = Number(budgetDrafts[id]);
+    setSavingId(id);
+    setError("");
+    setNotice("");
+    try {
+      const { data } = await platformAdminAPI.updateRuntimeBudget(id, value);
+      setBudgets((current) => current.map((row) => (row.id === id ? data : row)));
+      setBudgetDrafts((current) => ({ ...current, [id]: String(data?.value ?? value) }));
+      setNotice("Token budget saved. The next research, enhance, or answer run uses it.");
+    } catch (err) {
+      setError(err?.response?.data?.error || "Token budget could not be saved.");
+    } finally {
+      setSavingId("");
+    }
+  };
+
   const revertKey = async (id) => {
     setSavingId(id);
     setError("");
@@ -81,7 +105,7 @@ export default function PlatformRuntimeSecretsPanel() {
       <div>
         <h3 className="text-base font-semibold text-theme-primary">Research API keys</h3>
         <p className="mt-1 text-sm text-theme-secondary">
-          Replace a Groq or Tavily key when it is used up. The full key stays on the server. This page shows only the last four characters.
+          Replace a Groq or Tavily key when its token limit is used up, or change how many completion tokens each step may use. The full key stays on the server. This page shows only the last four characters.
         </p>
       </div>
       {error ? <p className="text-sm text-red-500">{error}</p> : null}
@@ -129,6 +153,45 @@ export default function PlatformRuntimeSecretsPanel() {
                 Use server default
               </button>
             ) : null}
+          </article>
+        ))}
+      </div>
+      <div>
+        <h3 className="text-base font-semibold text-theme-primary">Token budgets</h3>
+        <p className="mt-1 text-sm text-theme-secondary">
+          Raise these when a run stops because the model ran out of completion tokens. Each value is the maximum tokens for that step.
+        </p>
+      </div>
+      <div className="space-y-3">
+        {budgets.map((row) => (
+          <article key={row.id} className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-5">
+            <label className="block text-sm font-semibold text-theme-primary" htmlFor={`budget-${row.id}`}>
+              {row.label}
+            </label>
+            <p className="mt-1 text-xs text-theme-secondary">
+              {row.min}–{row.max} tokens. Default {row.defaultValue}.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                id={`budget-${row.id}`}
+                className={`${inputClass} sm:max-w-xs`}
+                type="number"
+                min={row.min}
+                max={row.max}
+                value={budgetDrafts[row.id] ?? ""}
+                onChange={(event) =>
+                  setBudgetDrafts((current) => ({ ...current, [row.id]: event.target.value }))
+                }
+              />
+              <button
+                type="button"
+                disabled={savingId === row.id}
+                onClick={() => void saveBudget(row.id)}
+                className="shrink-0 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {savingId === row.id ? "Saving…" : "Save tokens"}
+              </button>
+            </div>
           </article>
         ))}
       </div>

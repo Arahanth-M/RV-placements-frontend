@@ -606,11 +606,14 @@ export const adminAPI = {
 
 export const platformAdminAPI = {
   getStats: () => API.get("/api/admin/platform/stats"),
+  getVisitors: (config) => API.get("/api/admin/platform/visitors", config),
   getRuntimeSecrets: () => API.get("/api/admin/platform/runtime-secrets"),
   updateRuntimeSecret: (id, value) =>
     API.put(`/api/admin/platform/runtime-secrets/${encodeURIComponent(id)}`, { value }),
   revertRuntimeSecret: (id) =>
     API.put(`/api/admin/platform/runtime-secrets/${encodeURIComponent(id)}`, { revert: true }),
+  updateRuntimeBudget: (id, value) =>
+    API.put(`/api/admin/platform/runtime-budgets/${encodeURIComponent(id)}`, { value }),
   getOnboarding: (config) => API.get("/api/admin/platform/onboarding", config),
   updateOnboarding: (id, body) =>
     API.patch(`/api/admin/platform/onboarding/${encodeURIComponent(id)}`, body),

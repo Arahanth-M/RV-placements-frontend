@@ -268,7 +268,15 @@
 
 // export default OATab;
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { PrepRoleChromeDark } from "../PrepRoleChrome.jsx";
+import {
+  buildPrepRoleTabs,
+  itemMatchesPrepRoleTab,
+  pickDefaultPrepRoleTab,
+} from "../../utils/prepRoleTabs.js";
+import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransition.js";
+import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
@@ -314,6 +322,7 @@ function OATab({
   const [editSolution, setEditSolution] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const [activeOaPrepRoleKey, setActiveOaPrepRoleKey] = useState(null);
   const questionRowRefs = useRef({});
 
   const safeCompany = company || {};
@@ -498,9 +507,59 @@ function OATab({
       }
     }) || [];
 
+  const oaPrepRoleKeys = Array.isArray(safeCompany.onlineQuestions_prepRoleKey)
+    ? safeCompany.onlineQuestions_prepRoleKey
+    : [];
+  const mcqQuestions = Array.isArray(safeCompany.mcqQuestions) ? safeCompany.mcqQuestions : [];
+  const prepRoles = Array.isArray(safeCompany.prepRoles) ? safeCompany.prepRoles : [];
+  const oaRoleItemKeys = useMemo(() => {
+    const keys = [];
+    parsedQuestions.forEach((question, index) => {
+      if (!questionTextIsPresent(question)) return;
+      keys.push(String(oaPrepRoleKeys[index] ?? ""));
+    });
+    mcqQuestions.forEach((question) => {
+      if (!questionTextIsPresent(question?.question)) return;
+      keys.push(String(question?.prepRoleKey ?? ""));
+    });
+    return keys;
+  }, [parsedQuestions, oaPrepRoleKeys, mcqQuestions]);
+  const oaPrepRoles = prepRoles.filter((row) =>
+    oaRoleItemKeys.includes(String(row?.key ?? ""))
+  );
+  const oaRoleTabs = useMemo(
+    () => buildPrepRoleTabs(oaPrepRoles, oaRoleItemKeys),
+    [oaPrepRoles, oaRoleItemKeys]
+  );
+  const showOaRoleChrome = isGeneral && oaRoleItemKeys.length > 0;
+  const effectiveOaPrepRoleKey = useMemo(() => {
+    if (!showOaRoleChrome) return "";
+    const preferred = pickDefaultPrepRoleTab(oaPrepRoles, oaRoleItemKeys);
+    if (activeOaPrepRoleKey === null) return preferred;
+    return oaRoleTabs.some((tab) => tab.key === activeOaPrepRoleKey)
+      ? activeOaPrepRoleKey
+      : preferred;
+  }, [showOaRoleChrome, oaPrepRoles, oaRoleItemKeys, oaRoleTabs, activeOaPrepRoleKey]);
+  const roleSwitching = usePrepRoleSwitchTransition(
+    showOaRoleChrome ? effectiveOaPrepRoleKey : "__static__"
+  );
+  const oaQuestionVisible = (index) => {
+    if (!questionTextIsPresent(parsedQuestions[index])) return false;
+    if (!showOaRoleChrome) return true;
+    return itemMatchesPrepRoleTab(oaPrepRoleKeys[index], effectiveOaPrepRoleKey);
+  };
+  const mcqVisible = (question) => {
+    if (!showOaRoleChrome) return true;
+    return itemMatchesPrepRoleTab(question?.prepRoleKey, effectiveOaPrepRoleKey);
+  };
+  const visibleOaQuestionCount = parsedQuestions.filter((_, index) => oaQuestionVisible(index)).length;
+  const visibleMcqCount = mcqQuestions.filter((question) => mcqVisible(question)).length;
+  const hasAnyOaCoding = parsedQuestions.some(questionTextIsPresent);
+
   useEffect(() => {
     const idx = findFocusIndex(parsedQuestions, focusQuery);
     if (idx < 0) return;
+    setActiveOaPrepRoleKey(String(oaPrepRoleKeys[idx] ?? ""));
     setOpenQuestionIndex(idx);
     scrollFocusNode(questionRowRefs.current[idx]);
   }, [focusQuery, company]);
@@ -605,8 +664,22 @@ function OATab({
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
+      {showOaRoleChrome ? (
+        <PrepRoleChromeDark
+          prepRoles={oaPrepRoles}
+          itemRoleKeys={oaRoleItemKeys}
+          activeKey={effectiveOaPrepRoleKey}
+          onChange={setActiveOaPrepRoleKey}
+          ariaLabel="OA question roles"
+          excludeGeneralTab={false}
+          switching={roleSwitching}
+        />
+      ) : null}
+      {showOaRoleChrome && roleSwitching ? <PrepRoleSwitchShimmer variant="dark" /> : null}
+      {roleSwitching ? null : (
+      <>
       {/* MCQ Questions Section */}
-      {safeCompany.mcqQuestions && safeCompany.mcqQuestions.length > 0 && (
+      {visibleMcqCount > 0 && (
         <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-indigo-400 flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -615,7 +688,12 @@ function OATab({
             Multiple Choice Questions (MCQs)
           </h2>
           <div className="space-y-5 sm:space-y-6">
-            {safeCompany.mcqQuestions.map((q, qIndex) => (
+            {mcqQuestions.map((q, qIndex) => {
+              if (!mcqVisible(q)) return null;
+              const displayNumber = mcqQuestions
+                .slice(0, qIndex + 1)
+                .filter((question) => mcqVisible(question)).length;
+              return (
               <div 
                 key={qIndex} 
                 className="border border-slate-700/50 rounded-lg bg-slate-800/40 p-4 sm:p-5 hover:border-slate-600 transition-colors"
@@ -623,7 +701,7 @@ function OATab({
               >
                 <div className="flex gap-2.5 sm:gap-3 mb-3 sm:mb-4">
                   <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-indigo-900/50 text-indigo-300 text-xs sm:text-sm font-bold border border-indigo-700/50">
-                    {qIndex + 1}
+                    {displayNumber}
                   </span>
                   <p className="text-slate-200 font-medium text-sm sm:text-lg leading-relaxed sm:leading-snug min-w-0">
                     {q.question}
@@ -670,7 +748,8 @@ function OATab({
                   </p>
                 ) : null}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -689,13 +768,13 @@ function OATab({
           </button>
         </h2>
 
-        {parsedQuestions.some(questionTextIsPresent) ? (
+        {visibleOaQuestionCount > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {parsedQuestions.map((q, index) => {
-              if (!questionTextIsPresent(q)) return null;
+              if (!oaQuestionVisible(index)) return null;
               const displayNumber = parsedQuestions
                 .slice(0, index + 1)
-                .filter(questionTextIsPresent).length;
+                .filter((_, itemIndex) => oaQuestionVisible(itemIndex)).length;
               return (
               <div
                 key={index}
@@ -864,10 +943,18 @@ function OATab({
               );
             })}
           </div>
-        ) : (
-          <p className="text-slate-400">No online assessment questions yet.</p>
-        )}
+        ) : hasAnyOaCoding && showOaRoleChrome ? (
+          <p className="text-slate-400">No questions for this role. Choose another role tab above.</p>
+        ) : visibleMcqCount === 0 ? (
+          <p className="text-slate-400">
+            {showOaRoleChrome && oaRoleItemKeys.length > 0
+              ? "No questions for this role. Choose another role tab above."
+              : "No online assessment questions yet."}
+          </p>
+        ) : null}
       </div>
+      </>
+      )}
 
       {/* Modal to add new question */}
       {showModal && (

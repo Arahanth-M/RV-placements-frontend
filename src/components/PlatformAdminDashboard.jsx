@@ -19,7 +19,15 @@ import {
 import ThemedSelect from "./ThemedSelect.jsx";
 import PlatformRuntimeSecretsPanel from "./PlatformRuntimeSecretsPanel.jsx";
 
-const TAB_KEYS = new Set(["stats", "submissions", "onboarding", "billing", "campus", "keys"]);
+const TAB_KEYS = new Set([
+  "stats",
+  "visitors",
+  "submissions",
+  "onboarding",
+  "billing",
+  "campus",
+  "keys",
+]);
 const ONBOARDING_STATUSES = [
   "demo_requested",
   "quotation_requested",
@@ -196,6 +204,14 @@ export default function PlatformAdminDashboard() {
         ctaColor: "text-violet-500",
       },
       {
+        key: "visitors",
+        title: "Visitors",
+        description: "People who signed in on or after 1 October 2026.",
+        cta: "View visitors",
+        accent: "border-l-teal-500",
+        ctaColor: "text-teal-600",
+      },
+      {
         key: "companies",
         title: "Company prep content",
         description: "Edit OA, interviews, and experiences on company_platform_content.",
@@ -335,6 +351,8 @@ export default function PlatformAdminDashboard() {
           </div>
         ) : null}
 
+        {!loading && !error && activeTab === "visitors" ? <VisitorsPanel /> : null}
+
         {!loading && !error && activeTab === "submissions" ? (
           <AdminSubmissionsTab
             api={platformAdminAPI}
@@ -358,6 +376,145 @@ export default function PlatformAdminDashboard() {
 
         {!loading && !error && activeTab === "keys" ? <PlatformRuntimeSecretsPanel /> : null}
       </div>
+    </div>
+  );
+}
+
+function visitorName(row) {
+  const name = String(row?.username || "").trim();
+  if (name) return name;
+  const email = String(row?.email || "").trim();
+  return email ? email.split("@")[0] : "Visitor";
+}
+
+function VisitorsPanel() {
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await platformAdminAPI.getVisitors({
+        params: { page, limit: 50, q: query || undefined },
+      });
+      setItems(Array.isArray(data?.items) ? data.items : []);
+      setTotal(Number(data?.total) || 0);
+      setTotalPages(Math.max(1, Number(data?.totalPages) || 1));
+    } catch (err) {
+      setError(err?.response?.data?.error || "Could not load visitors.");
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, query]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    setPage(1);
+    setQuery(draft.trim());
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-theme-primary">Signed-in visitors</h3>
+          <p className="mt-1 text-sm text-theme-secondary">
+            {total} {total === 1 ? "person" : "people"} signed in on or after 1 October 2026, newest first.
+          </p>
+        </div>
+        <form className="flex gap-2" onSubmit={submitSearch}>
+          <input
+            className="w-full rounded-xl border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary sm:w-64"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Search name or email"
+            aria-label="Search visitors"
+          />
+          <button
+            type="submit"
+            className="shrink-0 rounded-xl border border-theme px-3 py-2 text-sm font-semibold text-theme-primary"
+          >
+            Search
+          </button>
+        </form>
+      </div>
+
+      {loading ? <p className="text-sm text-theme-secondary">Loading visitors…</p> : null}
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+      {!loading && !error ? (
+        <div className="overflow-x-auto rounded-2xl border border-theme bg-theme-card">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-theme text-xs uppercase tracking-wide text-theme-muted">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Last login</th>
+                <th className="px-4 py-3">Audience</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-4 text-theme-secondary" colSpan={4}>
+                    {query ? "No visitors match that search." : "No sign-ins yet."}
+                  </td>
+                </tr>
+              ) : (
+                items.map((row) => (
+                  <tr key={row.id} className="border-b border-theme/60 last:border-0">
+                    <td className="px-4 py-3 font-medium text-theme-primary">{visitorName(row)}</td>
+                    <td className="px-4 py-3 text-theme-secondary">{row.email || "—"}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-theme-secondary">
+                      {formatWhen(row.lastLoginAt)}
+                    </td>
+                    <td className="px-4 py-3 text-theme-secondary">
+                      {row.audience === "campus" ? "Campus" : "General"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {!loading && !error && totalPages > 1 ? (
+        <div className="flex items-center justify-between text-sm text-theme-secondary">
+          <button
+            type="button"
+            className="rounded-xl border border-theme px-3 py-2 font-semibold text-theme-primary disabled:opacity-50"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="rounded-xl border border-theme px-3 py-2 font-semibold text-theme-primary disabled:opacity-50"
+            disabled={page >= totalPages}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

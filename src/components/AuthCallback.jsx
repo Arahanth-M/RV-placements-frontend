@@ -102,7 +102,12 @@ const AuthCallback = () => {
         }
       } else if (urlParams.get('login') === 'failed') {
         const reason = urlParams.get('reason');
-        if (reason === 'domain') {
+        if (reason === 'closed') {
+          setLoginError({
+            title: "Login through ur official college emailId",
+            message: "",
+          });
+        } else if (reason === 'domain') {
           const intent = urlParams.get('blocked_intent') || "";
           setBlockedIntentToken(intent);
           if (intent) {
@@ -253,7 +258,9 @@ const AuthCallback = () => {
       <div className="min-h-screen flex items-center justify-center bg-theme-app px-4">
         <div className="max-w-md w-full bg-theme-card border border-theme rounded-3xl p-8 text-center shadow-2xl">
           <h2 className="text-2xl font-bold text-theme-primary mb-3">{loginError.title}</h2>
-          <p className="text-sm text-theme-secondary">{loginError.message}</p>
+          {loginError.message ? (
+            <p className="text-sm text-theme-secondary">{loginError.message}</p>
+          ) : null}
           {blockedIntentToken ? (
             <BlockedLoginInterestForm
               token={blockedIntentToken}

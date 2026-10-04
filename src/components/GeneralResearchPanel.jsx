@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { companyAPI } from "../utils/api";
+import ResearchLimitRecovery from "./ResearchLimitRecovery.jsx";
 import PrepRichText from "./PrepRichText.jsx";
 import PlatformGeneratedSolutionView from "./platform/PlatformGeneratedSolutionView.jsx";
 import SpcThemeSelect from "./SpcThemeSelect.jsx";
@@ -34,12 +35,41 @@ function Field({ label, children }) {
 }
 
 function apiErrorMessage(err, fallback) {
+  return readApiFailure(err, fallback).message;
+}
+
+function readApiFailure(err, fallback, defaultSecretId = "") {
   const data = err?.response?.data;
   const error = data?.error;
-  if (typeof error === "string" && error.trim()) return error.trim();
-  if (error && typeof error.message === "string" && error.message.trim()) return error.message.trim();
-  if (typeof data?.message === "string" && data.message.trim()) return data.message.trim();
-  return fallback;
+  const message =
+    typeof error === "string" && error.trim()
+      ? error.trim()
+      : error && typeof error.message === "string" && error.message.trim()
+        ? error.message.trim()
+        : typeof data?.message === "string" && data.message.trim()
+          ? data.message.trim()
+          : fallback;
+  const tokenLimit = error?.tokenLimit === true || looksLikeTokenLimit(message);
+  return {
+    message,
+    tokenLimit,
+    secretId: tokenLimit ? error?.secretId || defaultSecretId : "",
+  };
+}
+
+function looksLikeTokenLimit(value) {
+  const lower = String(value || "").toLowerCase();
+  return (
+    lower.includes("rate limit") ||
+    lower.includes("rate_limit") ||
+    lower.includes("tokens per minute") ||
+    lower.includes("tokens per day") ||
+    lower.includes("token limit") ||
+    lower.includes("too many requests") ||
+    lower.includes("quota") ||
+    /\btpm\b/.test(lower) ||
+    /\b429\b/.test(lower)
+  );
 }
 
 function uiStorageKey(companyId, jobId) {
@@ -736,6 +766,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   const [researchStatus, setResearchStatus] = useState("");
   const [researchResult, setResearchResult] = useState(null);
   const [researchError, setResearchError] = useState("");
+  const [researchLimit, setResearchLimit] = useState(null);
   const [selectedIndexes, setSelectedIndexes] = useState(() => new Set());
   const [reviewTab, setReviewTab] = useState("sources");
   const [publishingSources, setPublishingSources] = useState(false);
@@ -802,6 +833,19 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     return matched;
   };
 
+  const noteJobFailure = (error) => {
+    setResearchError(error?.message || "Research failed.");
+    setResearchLimit(
+      error?.tokenLimit ? { secretId: error.secretId || "groq-web-search" } : null
+    );
+  };
+
+  const noteApiFailure = (err, fallback, defaultSecretId) => {
+    const failure = readApiFailure(err, fallback, defaultSecretId);
+    setResearchError(failure.message);
+    setResearchLimit(failure.tokenLimit ? { secretId: failure.secretId || defaultSecretId } : null);
+  };
+
   showJobRef.current = (job) => {
     if (!job?.jobId) return;
     const field = typeof job.field === "string" && job.field ? job.field : contentFieldRef.current;
@@ -811,7 +855,11 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     setJobField(field);
     setResearchStatus(status);
     setResearchResult(job.result ?? null);
-    setResearchError(status === "failed" ? job.error?.message || "Research failed." : "");
+    if (status === "failed") noteJobFailure(job.error);
+    else {
+      setResearchError("");
+      setResearchLimit(null);
+    }
     setResearchJobSnapshot({
       role: typeof job.role === "string" ? job.role : "",
       linksSummaryDraft: job.linksSummaryDraft ?? null,
@@ -968,13 +1016,14 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                 typeof job.linksSummaryDraft?.summary === "string" ? job.linksSummaryDraft.summary : "";
               setLinksSummaryText(draftSummary);
               setResearchError("");
+              setResearchLimit(null);
               return;
             }
             if (next === "failed") {
               statusRef.current = "failed";
               setResearchStatus("failed");
               setResearchResult(null);
-              setResearchError(job.error?.message || "Research failed.");
+              noteJobFailure(job.error);
               return;
             }
             if (next === "queued" || next === "running") {
@@ -1384,6 +1433,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     setEnhancingQuestions(true);
     setEnhanceSummary("");
     setResearchError("");
+    setResearchLimit(null);
     try {
       const res = await companyAPI.enhanceCompanyResearchQuestions(researchJobId, indexes);
       const updates = Array.isArray(res?.data?.items) ? res.data.items : [];
@@ -1394,7 +1444,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
           : "Those questions were already full statements."
       );
     } catch (err) {
-      setResearchError(apiErrorMessage(err, "Questions could not be enhanced."));
+      noteApiFailure(err, "Questions could not be enhanced.", "groq-admin");
     } finally {
       setEnhancingQuestions(false);
     }
@@ -1443,6 +1493,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     if (!researchJobId || !questionsFinalized || finalizedIndexes.length === 0) return;
     setGeneratingAnswers(true);
     setResearchError("");
+    setResearchLimit(null);
     try {
       const res = await companyAPI.generateCompanyResearchAnswers(researchJobId, finalizedIndexes);
       const updates = Array.isArray(res?.data?.items) ? res.data.items : [];
@@ -1459,7 +1510,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
       });
       setAnswersGenerated(true);
     } catch (err) {
-      setResearchError(apiErrorMessage(err, "Answers could not be generated."));
+      noteApiFailure(err, "Answers could not be generated.", "groq-admin");
     } finally {
       setGeneratingAnswers(false);
     }
@@ -1702,6 +1753,9 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
       ) : null}
       {researchError && researchError !== statusCopy ? (
         <p className="mt-2 text-sm text-red-500">{researchError}</p>
+      ) : null}
+      {researchError && researchLimit ? (
+        <ResearchLimitRecovery secretId={researchLimit.secretId} />
       ) : null}
 
       {showResult ? (

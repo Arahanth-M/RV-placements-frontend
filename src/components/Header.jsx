@@ -202,6 +202,12 @@ function buildPlatformAdminCornerLinks(base) {
       tab: "stats",
     },
     {
+      label: "Visitors",
+      path: pathUnderBase(base, "/admin/dashboard?tab=visitors"),
+      icon: FaUsers,
+      tab: "visitors",
+    },
+    {
       label: "Company prep content",
       path: pathUnderBase(base, "/data-entry"),
       icon: FaBuilding,

@@ -4,9 +4,14 @@ import GeneralResearchPanel, {
   RESEARCH_POLL_MS,
   RESEARCH_POLL_MAX_MS,
 } from "../../components/GeneralResearchPanel.jsx";
-import { companyAPI } from "../../utils/api";
+import { companyAPI, platformAdminAPI } from "../../utils/api";
 
 vi.mock("../../utils/api", () => ({
+  platformAdminAPI: {
+    getRuntimeSecrets: vi.fn(),
+    updateRuntimeSecret: vi.fn(),
+    updateRuntimeBudget: vi.fn(),
+  },
   companyAPI: {
     getCompanyNames: vi.fn(),
     getPlatformContent: vi.fn(),
@@ -415,6 +420,67 @@ describe("GeneralResearchPanel", () => {
       await vi.advanceTimersByTimeAsync(RESEARCH_POLL_MS * 3);
     });
     expect(companyAPI.getCompanyResearchStatus).toHaveBeenCalledTimes(calls);
+  });
+
+  it("shows the provider error and lets an admin replace the key when the token limit is hit", async () => {
+    platformAdminAPI.getRuntimeSecrets.mockResolvedValue({
+      data: {
+        keys: [
+          {
+            id: "groq-web-search",
+            label: "Research questions and experiences",
+            hint: "••••abcd",
+            source: "env",
+          },
+        ],
+        budgets: [
+          {
+            id: "research",
+            secretId: "groq-web-search",
+            label: "Question and experience research",
+            value: 8192,
+            min: 256,
+            max: 16384,
+            defaultValue: 8192,
+          },
+        ],
+      },
+    });
+    companyAPI.startCompanyResearch.mockResolvedValue({
+      data: { jobId: "job-limit", status: "queued" },
+    });
+    companyAPI.getCompanyResearchStatus.mockResolvedValue({
+      data: {
+        jobId: "job-limit",
+        status: "failed",
+        result: null,
+        error: {
+          code: "research_failed",
+          message: "Groq LLM request failed: Rate limit reached. tokens per minute exceeded.",
+          tokenLimit: true,
+          secretId: "groq-web-search",
+        },
+      },
+    });
+
+    renderPanel();
+    addRole("SDE");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByText("Groq LLM request failed: Rate limit reached. tokens per minute exceeded.")
+    ).toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByLabelText("Replacement for Research questions and experiences")).toBeInTheDocument();
+    expect(screen.getByLabelText("Question and experience research token budget")).toHaveValue(8192);
   });
 
   it("stops polling when the panel unmounts", async () => {
