@@ -17,8 +17,9 @@ import {
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 import ThemedSelect from "./ThemedSelect.jsx";
+import PlatformRuntimeSecretsPanel from "./PlatformRuntimeSecretsPanel.jsx";
 
-const TAB_KEYS = new Set(["stats", "submissions", "onboarding", "billing", "campus"]);
+const TAB_KEYS = new Set(["stats", "submissions", "onboarding", "billing", "campus", "keys"]);
 const ONBOARDING_STATUSES = [
   "demo_requested",
   "quotation_requested",
@@ -204,6 +205,14 @@ export default function PlatformAdminDashboard() {
         href: `${GENERAL_BASE}/data-entry`,
       },
       {
+        key: "keys",
+        title: "Research API keys",
+        description: "Replace Groq and Tavily keys when a token is used up.",
+        cta: "Manage keys",
+        accent: "border-l-amber-500",
+        ctaColor: "text-amber-600",
+      },
+      {
         key: "bank",
         title: "Interview question bank",
         description: "Import and tag the shared mock-interview question bank.",
@@ -346,6 +355,8 @@ export default function PlatformAdminDashboard() {
         {!loading && !error && activeTab === "campus" ? (
           <CampusDashboardPicker />
         ) : null}
+
+        {!loading && !error && activeTab === "keys" ? <PlatformRuntimeSecretsPanel /> : null}
       </div>
     </div>
   );

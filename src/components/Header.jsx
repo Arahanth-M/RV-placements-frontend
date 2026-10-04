@@ -207,6 +207,12 @@ function buildPlatformAdminCornerLinks(base) {
       icon: FaBuilding,
     },
     {
+      label: "Research API keys",
+      path: pathUnderBase(base, "/admin/dashboard?tab=keys"),
+      icon: FaLock,
+      tab: "keys",
+    },
+    {
       label: "Interview question bank",
       path: pathUnderBase(base, "/ai-interview-data-entry"),
       icon: FaComments,

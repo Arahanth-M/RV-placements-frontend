@@ -60,6 +60,7 @@ describe("prepPathCompanyFocus", () => {
     expect(href).toContain("role=Software");
     expect(href).toContain("difficulty=medium");
     expect(href).toContain("rounds=DSA");
+    expect(href).not.toContain("HR");
     expect(href).toContain("from=preppath");
   });
 

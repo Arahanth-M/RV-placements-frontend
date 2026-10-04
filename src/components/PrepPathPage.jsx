@@ -721,7 +721,9 @@ function PrepPathPlanView({ plan }) {
   const peerDemand = plan.peerDemand || null;
   const planKey = String(plan._id || `${plan.companyName}-${plan.role}-${plan.createdAt}`);
   const mockSuggestion = plan.mockSuggestion || null;
-  const mockRounds = Array.isArray(mockSuggestion?.rounds) ? mockSuggestion.rounds : [];
+  const mockRounds = (Array.isArray(mockSuggestion?.rounds) ? mockSuggestion.rounds : []).filter(
+    (round) => String(round || "").trim() !== "HR"
+  );
   const mockDifficulty = String(mockSuggestion?.difficulty || "medium");
   const mockDifficultyLabel =
     mockDifficulty.charAt(0).toUpperCase() + mockDifficulty.slice(1);

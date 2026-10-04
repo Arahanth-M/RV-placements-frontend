@@ -12,10 +12,14 @@ vi.mock("../../utils/api", () => ({
     getPlatformContent: vi.fn(),
     savePlatformContent: vi.fn(),
     startCompanyResearch: vi.fn(),
+    listCompanyResearchJobs: vi.fn(),
+    listCompanyFresherRoles: vi.fn(),
     getCompanyResearchStatus: vi.fn(),
     publishCompanyResearch: vi.fn(),
     publishCompanyResearchSources: vi.fn(),
     generateCompanyResearchAnswers: vi.fn(),
+    updateCompanyResearchItem: vi.fn(),
+    enhanceCompanyResearchQuestions: vi.fn(),
   },
 }));
 
@@ -62,30 +66,63 @@ function renderPanel() {
   return render(<GeneralResearchPanel companyId="company-1" companyName="Acme" />);
 }
 
+function addRole(name) {
+  fireEvent.change(screen.getByLabelText("Add a role"), { target: { value: name } });
+  fireEvent.click(screen.getByRole("button", { name: "Add role" }));
+}
+
 describe("GeneralResearchPanel", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     companyAPI.startCompanyResearch.mockReset();
+    companyAPI.listCompanyResearchJobs.mockReset();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({ data: { jobs: [] } });
+    companyAPI.listCompanyFresherRoles.mockReset();
+    companyAPI.listCompanyFresherRoles.mockResolvedValue({ data: { roles: [] } });
     companyAPI.getCompanyResearchStatus.mockReset();
     companyAPI.publishCompanyResearch.mockReset();
     companyAPI.publishCompanyResearchSources.mockReset();
     companyAPI.generateCompanyResearchAnswers.mockReset();
+    companyAPI.updateCompanyResearchItem.mockReset();
+    companyAPI.enhanceCompanyResearchQuestions.mockReset();
     companyAPI.savePlatformContent.mockReset();
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
+    sessionStorage.clear();
   });
 
   it("renders the research inputs and company name", () => {
     renderPanel();
     expect(screen.getByLabelText("Company")).toHaveValue("Acme");
-    expect(screen.getByLabelText("Role")).toHaveValue("");
+    expect(screen.getByLabelText("Add a role")).toHaveValue("");
     expect(screen.getByLabelText("Country")).toHaveValue("India");
     expect(screen.getByLabelText("Maximum sources")).toHaveValue(3);
-    expect(screen.getByLabelText("Search depth")).toHaveValue("basic");
-    expect(screen.getByRole("button", { name: "Research Interview Questions" })).toBeEnabled();
+    expect(screen.getByLabelText("Search depth")).toHaveTextContent("Basic");
+    expect(screen.getByRole("button", { name: "Research all roles" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Interview questions" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "OA questions" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Interview experiences" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|publish|reject/i })).not.toBeInTheDocument();
+  });
+
+  it("fills the role from public fresher-role suggestions", async () => {
+    companyAPI.listCompanyFresherRoles.mockResolvedValue({
+      data: { roles: ["Software Engineer", "Data Analyst"] },
+    });
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(companyAPI.listCompanyFresherRoles).toHaveBeenCalledWith("company-1", "Acme");
+    expect(screen.getByText("Usually recruits freshers for")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Software Engineer" }));
+    expect(screen.getByRole("button", { name: "Software Engineer" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Remove Software Engineer" })).toBeInTheDocument();
   });
 
   it("starts research with the interview-question payload and does not save company content", async () => {
@@ -97,22 +134,204 @@ describe("GeneralResearchPanel", () => {
     });
 
     renderPanel();
-    fireEvent.change(screen.getByLabelText("Role"), { target: { value: "SDE" } });
+    addRole("SDE");
+    addRole("Software Engineer");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Research Interview Questions" }));
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
     });
 
-    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
+    const payload = {
       companyId: "company-1",
       companyName: "Acme",
-      field: "interviewQuestions",
-      role: "SDE",
       country: "India",
       maxSources: 3,
       searchDepth: "basic",
+    };
+    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
+      ...payload,
+      field: "interviewQuestions",
+      role: "SDE",
     });
+    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
+      ...payload,
+      field: "interviewExperiences",
+      role: "SDE",
+    });
+    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
+      ...payload,
+      field: "onlineQuestions",
+      role: "SDE",
+    });
+    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
+      ...payload,
+      field: "interviewQuestions",
+      role: "Software Engineer",
+    });
+    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
+      ...payload,
+      field: "interviewExperiences",
+      role: "Software Engineer",
+    });
+    expect(companyAPI.startCompanyResearch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ field: "onlineQuestions", role: "Software Engineer" })
+    );
     expect(companyAPI.savePlatformContent).not.toHaveBeenCalled();
     expect(screen.getByText("Research queued...")).toBeInTheDocument();
+  });
+
+  it("restores saved research results when the company page opens again", async () => {
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-saved",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "SDE",
+            result: reviewResult,
+          },
+        ],
+      },
+    });
+
+    const view = renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(companyAPI.listCompanyResearchJobs).toHaveBeenCalledWith("company-1");
+    expect(screen.getByText("Research completed — review the results below.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    expect(screen.getByText("Implement an LRU Cache")).toBeInTheDocument();
+    expect(companyAPI.startCompanyResearch).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Implement an LRU Cache" }));
+    expect(screen.getByRole("checkbox", { name: "Select Implement an LRU Cache" })).toBeChecked();
+
+    view.unmount();
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    expect(screen.getByRole("checkbox", { name: "Select Implement an LRU Cache" })).toBeChecked();
+    expect(screen.getByText("Implement an LRU Cache")).toBeInTheDocument();
+  });
+
+  it("enhances a heading into a full question statement", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-saved",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            result: {
+              ...reviewResult,
+              items: [{ ...reviewResult.items[0], question: "LRU Cache" }],
+            },
+          },
+        ],
+      },
+    });
+    companyAPI.enhanceCompanyResearchQuestions.mockResolvedValue({
+      data: {
+        jobId: "job-saved",
+        updatedIndexes: [0],
+        items: [
+          {
+            index: 0,
+            question: "Design an LRU cache that supports get and put in O(1) time.",
+            sourceQuestion: "LRU Cache",
+          },
+        ],
+      },
+    });
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Enhance questions" }));
+
+    await waitFor(() => {
+      expect(companyAPI.enhanceCompanyResearchQuestions).toHaveBeenCalledWith("job-saved", [0]);
+    });
+    expect(
+      screen.getByText("Design an LRU cache that supports get and put in O(1) time.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Original: LRU Cache")).toBeInTheDocument();
+  });
+
+  it("lets the admin edit a generated question and its answer", async () => {
+    vi.useRealTimers();
+    const answered = {
+      ...reviewResult,
+      items: [
+        {
+          ...reviewResult.items[0],
+          answer: "Use a hash map and a doubly linked list.",
+          intuition: "O(1) get and put.",
+        },
+      ],
+    };
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-saved",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            result: answered,
+          },
+        ],
+      },
+    });
+    companyAPI.updateCompanyResearchItem.mockResolvedValue({
+      data: {
+        jobId: "job-saved",
+        index: 0,
+        item: {
+          ...answered.items[0],
+          question: "Design an LRU cache",
+          answer: "Hash map plus linked list.",
+        },
+      },
+    });
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit question" }));
+    fireEvent.change(screen.getByLabelText("Question text"), {
+      target: { value: "Design an LRU cache" },
+    });
+    fireEvent.change(screen.getByLabelText("Answer"), {
+      target: { value: "Hash map plus linked list." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save question" }));
+
+    await waitFor(() => {
+      expect(companyAPI.updateCompanyResearchItem).toHaveBeenCalledWith(
+        "job-saved",
+        0,
+        expect.objectContaining({
+          question: "Design an LRU cache",
+          answer: "Hash map plus linked list.",
+        })
+      );
+    });
+    expect(screen.getByText("Design an LRU cache")).toBeInTheDocument();
+    expect(screen.getByText("Hash map plus linked list.")).toBeInTheDocument();
   });
 
   it("polls after a job is created and stops on review", async () => {
@@ -128,8 +347,9 @@ describe("GeneralResearchPanel", () => {
       });
 
     renderPanel();
+    addRole("SDE");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Research Interview Questions" }));
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
     });
 
     await act(async () => {
@@ -143,13 +363,13 @@ describe("GeneralResearchPanel", () => {
     });
 
     expect(screen.getByText("Research completed — review the results below.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: /Interview questions/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
     expect(screen.getByText("Implement an LRU Cache")).toBeInTheDocument();
     expect(screen.getByText("I was asked to implement an LRU cache.")).toBeInTheDocument();
     expect(screen.getAllByText("GeeksforGeeks — Interview Experience").length).toBeGreaterThan(0);
     expect(screen.getByText("Search queries")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: /Interview questions/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
     expect(screen.getByText("Supported by 1 source")).toBeInTheDocument();
     expect(screen.getByText("Source A")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: /Research links/ }));
@@ -180,8 +400,9 @@ describe("GeneralResearchPanel", () => {
     });
 
     renderPanel();
+    addRole("SDE");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Research Interview Questions" }));
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -205,8 +426,9 @@ describe("GeneralResearchPanel", () => {
     });
 
     const view = renderPanel();
+    addRole("SDE");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Research Interview Questions" }));
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -233,8 +455,9 @@ describe("GeneralResearchPanel", () => {
     const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
 
     renderPanel();
+    addRole("SDE");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Research Interview Questions" }));
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -262,8 +485,9 @@ describe("GeneralResearchPanel", () => {
       data: { jobId: "job-review", status: "review", result },
     });
     renderPanel();
+    addRole("SDE");
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Research Interview Questions" }));
+      fireEvent.click(screen.getByRole("button", { name: "Research all roles" }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -294,7 +518,7 @@ describe("GeneralResearchPanel", () => {
     });
     expect(screen.getByText(/Inserted 1 link/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("tab", { name: /Interview questions/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
     expect(screen.getByRole("checkbox", { name: "Select Implement an LRU Cache" })).not.toBeChecked();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Implement an LRU Cache" }));

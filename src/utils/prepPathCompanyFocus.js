@@ -72,7 +72,7 @@ export function buildPrepPathMockInterviewHref(appPath, companyId, suggestion) {
   const rounds = (Array.isArray(suggestion?.rounds) ? suggestion.rounds : [])
     .map((round) => (typeof round === "string" ? round : round?.type))
     .map((type) => String(type || "").trim())
-    .filter(Boolean);
+    .filter((type) => type && type !== "HR");
   if (rounds.length) params.set("rounds", rounds.join(","));
   params.set("from", "preppath");
   return appPath(`/interviews?${params.toString()}`);

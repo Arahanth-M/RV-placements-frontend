@@ -103,7 +103,7 @@ export default function GeneralDataEntryPage() {
           ) : null}
 
           {!loadingDetail && !detailError ? (
-            <GeneralResearchPanel companyId={companyId} companyName={resolvedName} />
+            <GeneralResearchPanel key={companyId} companyId={companyId} companyName={resolvedName} />
           ) : null}
         </div>
       </div>

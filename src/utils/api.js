@@ -179,6 +179,19 @@ export const companyAPI = {
   /** Research + Groq answer generation can run for many minutes. */
   startCompanyResearch: (payload) =>
     API.post("/api/admin/platform/company-research", payload, { timeout: 120000 }),
+  listCompanyResearchJobs: (companyId) =>
+    API.get(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/company-research`,
+      { timeout: 60000 }
+    ),
+  listCompanyFresherRoles: (companyId, companyName) =>
+    API.get(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/fresher-roles`,
+      {
+        params: { companyName: String(companyName || "") },
+        timeout: 60000,
+      }
+    ),
   getCompanyResearchStatus: (jobId) =>
     API.get(`/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}`, {
       timeout: 60000,
@@ -200,6 +213,18 @@ export const companyAPI = {
       `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/links-summary-draft`,
       { summary },
       { timeout: 120000 }
+    ),
+  updateCompanyResearchItem: (jobId, index, patch) =>
+    API.put(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/items/${encodeURIComponent(String(index))}`,
+      patch,
+      { timeout: 120000 }
+    ),
+  enhanceCompanyResearchQuestions: (jobId, selectedIndexes) =>
+    API.post(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/enhance-questions`,
+      { selectedIndexes },
+      { timeout: 300000 }
     ),
   generateCompanyResearchAnswers: (jobId, selectedIndexes) =>
     API.post(
@@ -581,6 +606,11 @@ export const adminAPI = {
 
 export const platformAdminAPI = {
   getStats: () => API.get("/api/admin/platform/stats"),
+  getRuntimeSecrets: () => API.get("/api/admin/platform/runtime-secrets"),
+  updateRuntimeSecret: (id, value) =>
+    API.put(`/api/admin/platform/runtime-secrets/${encodeURIComponent(id)}`, { value }),
+  revertRuntimeSecret: (id) =>
+    API.put(`/api/admin/platform/runtime-secrets/${encodeURIComponent(id)}`, { revert: true }),
   getOnboarding: (config) => API.get("/api/admin/platform/onboarding", config),
   updateOnboarding: (id, body) =>
     API.patch(`/api/admin/platform/onboarding/${encodeURIComponent(id)}`, body),

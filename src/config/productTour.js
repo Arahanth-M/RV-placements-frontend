@@ -442,7 +442,7 @@ const STUDENT_TOUR_STEPS_BASE = [
     title: "Configure your mock interview",
     requiresAuth: true,
     description:
-      "Pick 1–4 rounds (DSA, System Design, SQL, CS Fundamentals, HR), and set difficulty for each. Drag rounds to reorder — at least one HR round is required.",
+      "Pick 1–4 rounds (DSA, System Design, SQL, CS Fundamentals), and set difficulty for each. Drag rounds to reorder. Behavioral practice is in Behavioural Coach.",
     side: "top",
     align: "center",
   },
