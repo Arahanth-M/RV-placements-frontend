@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tenantPath, toPostLoginAppPath, TENANT_BASE, GENERAL_BASE, generalPath } from '../constants/tenant.js';
+import {
+  tenantPath,
+  toPostLoginAppPath,
+  TENANT_BASE,
+  GENERAL_BASE,
+  GENERAL_POST_LOGIN_PATH,
+  generalPath,
+} from '../constants/tenant.js';
 import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
 import { canAccessRvceTenant, isPlatformAdminUser } from '../utils/collegeScope.js';
@@ -228,7 +235,9 @@ const AuthCallback = () => {
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
       const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral });
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      window.location.replace(safeRedirect || (useGeneral ? GENERAL_BASE : TENANT_BASE));
+      window.location.replace(
+        safeRedirect || (useGeneral ? GENERAL_POST_LOGIN_PATH : TENANT_BASE)
+      );
     }
     setIsProcessing(false);
   };

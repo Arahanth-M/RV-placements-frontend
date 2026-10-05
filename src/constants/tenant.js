@@ -5,6 +5,8 @@ export const TENANT_BASE = `/${TENANT_SLUG}`;
 /** Shared product shell for students whose college is not yet fully onboarded. */
 export const GENERAL_SLUG = "general";
 export const GENERAL_BASE = `/${GENERAL_SLUG}`;
+/** Default general-platform destination immediately after sign-in. */
+export const GENERAL_POST_LOGIN_PATH = `${GENERAL_BASE}/companystats`;
 
 /**
  * Prefix an in-app path with a shell base (`/rvce` or `/general`). Idempotent.
@@ -64,6 +66,24 @@ export function isAppShellPath(pathname) {
   return isTenantAppPath(pathname) || isGeneralAppPath(pathname);
 }
 
+/** Where to send users who dismiss the in-app login gate without signing in. */
+export function resolveLoginGateBackPath(pathname) {
+  const p = String(pathname || "");
+  if (isGeneralAppPath(p)) {
+    if (p.includes("/companies/")) {
+      return GENERAL_POST_LOGIN_PATH;
+    }
+    return GENERAL_BASE;
+  }
+  if (isTenantAppPath(p)) {
+    if (p.includes("/companies/")) {
+      return tenantPath("/companystats");
+    }
+    return TENANT_BASE;
+  }
+  return "/";
+}
+
 /** True when pathname is the app path or a nested path (e.g. /admin → /rvce/admin/...). */
 export function isTenantPrefixPath(pathname, appPath) {
   const base = tenantPath(appPath).split("?")[0];
@@ -97,11 +117,11 @@ export function toTenantAppPath(storedPath) {
 }
 
 /**
- * After login, send RVCE users to /rvce and everyone else to /general.
+ * After login, send RVCE users to /rvce and general users to company stats by default.
  * Honors a stored redirect when it already matches the correct shell.
  */
 export function toPostLoginAppPath(storedPath, { useGeneral = false } = {}) {
-  const home = useGeneral ? GENERAL_BASE : TENANT_BASE;
+  const home = useGeneral ? GENERAL_POST_LOGIN_PATH : TENANT_BASE;
   if (!storedPath || storedPath === "/") return home;
   const raw = String(storedPath);
   if (!raw.startsWith("/")) return home;

@@ -203,3 +203,23 @@ export function groupCompaniesByGeneralCategory(companies) {
   }
   return grouped;
 }
+
+/**
+ * Billing paywall on company cards applies only to signed-in users.
+ * Guests may browse cards; company detail routes still require login.
+ */
+export function isGeneralCompanyCardDetailLocked({
+  user,
+  cardAccess,
+  selectedCategory,
+  teaserCompanyIds,
+  companyId,
+}) {
+  if (!user) return false;
+  if (cardAccess?.allCards) return false;
+  if (cardAccess?.categories?.[selectedCategory]) return false;
+  if (String(teaserCompanyIds?.[selectedCategory] || "") === String(companyId)) {
+    return false;
+  }
+  return true;
+}

@@ -9,19 +9,23 @@ import {
 
 const TenantShellContext = createContext({
   base: TENANT_BASE,
+  homePath: TENANT_BASE,
   isGeneral: false,
   appPath: (path) => pathUnderBase(TENANT_BASE, path),
 });
 
-export function TenantShellProvider({ base, children }) {
+export function TenantShellProvider({ base, homePath, children }) {
   const value = useMemo(() => {
     const resolved = base === GENERAL_BASE ? GENERAL_BASE : TENANT_BASE;
+    const resolvedHome =
+      homePath != null && String(homePath).trim() !== "" ? homePath : resolved;
     return {
       base: resolved,
+      homePath: resolvedHome,
       isGeneral: resolved === GENERAL_BASE,
       appPath: (path) => pathUnderBase(resolved, path),
     };
-  }, [base]);
+  }, [base, homePath]);
 
   return (
     <TenantShellContext.Provider value={value}>{children}</TenantShellContext.Provider>

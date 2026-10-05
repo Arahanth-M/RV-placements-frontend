@@ -43,16 +43,16 @@ import {
   isPrefixUnderBase,
 } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
-import { LOGIN_INTENT_CAMPUS, LOGIN_INTENT_SPC } from "../utils/loginIntent.js";
 import { isPlatformAdminUser } from "../utils/collegeScope.js";
 import NotificationBell from "./NotificationBell";
 import NotificationSubscribeButton from "./NotificationSubscribeButton";
 import BrandLogo from "./BrandLogo.jsx";
+import PlatformLoginMenu from "./PlatformLoginMenu.jsx";
 import { useProductTour } from "../context/ProductTourContext";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
-function buildPrimaryLinks(base, isGeneral) {
-  const links = [{ label: "Home", path: base }];
+function buildPrimaryLinks(base, isGeneral, homePath) {
+  const links = [{ label: "Home", path: homePath || base }];
   if (!isGeneral) {
     links.push({ label: "Events", path: pathUnderBase(base, "/events") });
   }
@@ -339,14 +339,14 @@ const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
 
 const Header = () => {
   const placementFormEntryUrl = `${BASE_URL}/api/placement/form`;
-  const { user, isAdmin, isSuperAdmin, studentData, login, signup, logout, loading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, studentData, signup, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { base, isGeneral, appPath } = useTenantShell();
+  const { base, homePath, isGeneral, appPath } = useTenantShell();
   const primaryLinks = useMemo(
-    () => buildPrimaryLinks(base, isGeneral),
-    [base, isGeneral]
+    () => buildPrimaryLinks(base, isGeneral, homePath),
+    [base, isGeneral, homePath]
   );
   const studentCornerLinksBase = useMemo(
     () => buildStudentCornerLinks(base, isGeneral),
@@ -593,14 +593,12 @@ const Header = () => {
     return (
       <div className="relative" ref={accountMenuRef}>
         {!user ? (
-          <button
-            type="button"
-            onClick={() => setAccountMenuOpen((prev) => !prev)}
-            className={`${headerNavChipBase} ${headerChipIdle}`}
-          >
-            Login
-            <FaChevronDown className={`h-3 w-3 transition ${accountMenuOpen ? "rotate-180" : ""}`} />
-          </button>
+          <PlatformLoginMenu
+            disabled={loading}
+            align="right"
+            triggerClassName={`${headerNavChipBase} ${headerChipIdle}`}
+            triggerLabel="Login"
+          />
         ) : (
           <button
             type="button"
@@ -643,30 +641,8 @@ const Header = () => {
           </button>
         )}
 
-        {accountMenuOpen && (
+        {accountMenuOpen && user && (
           <DropdownMenu>
-            {!user ? (
-              <>
-                <button
-                  onClick={() => { setAccountMenuOpen(false); login(false, { intent: LOGIN_INTENT_CAMPUS }); }}
-                  className={dropdownItemClass}
-                >
-                  Login as Student
-                </button>
-                <button
-                  onClick={() => { setAccountMenuOpen(false); login(false, { intent: LOGIN_INTENT_SPC }); }}
-                  className={dropdownItemClass}
-                >
-                  Login as SPC
-                </button>
-                <button
-                  onClick={() => { setAccountMenuOpen(false); login(true); }}
-                  className={dropdownItemClass}
-                >
-                  Login as Admin
-                </button>
-              </>
-            ) : (
               <>
                 <div className="px-3 py-2 text-xs text-theme-secondary border-b border-theme break-words">
                   {user.email}
@@ -695,7 +671,6 @@ const Header = () => {
                   Logout
                 </button>
               </>
-            )}
           </DropdownMenu>
         )}
       </div>
@@ -728,7 +703,7 @@ const Header = () => {
       <header className="flex w-full min-w-0 items-center overflow-visible border-b border-theme bg-theme-card/95 shadow-md backdrop-blur-xl">
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 pl-2 pr-1.5 py-2 sm:gap-2.5 sm:pl-5 sm:pr-3 sm:py-2.5">
           <Link
-            to={base}
+            to={homePath || base}
             className={
               isGeneral
                 ? "flex h-9 max-w-[11rem] shrink-0 items-center rounded-xl border border-theme bg-theme-hero px-2.5 py-1 font-serif text-sm text-theme-primary tracking-tight sm:h-12 sm:max-w-none sm:px-3 sm:text-base"

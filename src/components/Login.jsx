@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   tenantPath,
   generalPath,
   toPostLoginAppPath,
-  GENERAL_BASE,
+  GENERAL_POST_LOGIN_PATH,
   isGeneralAppPath,
+  resolveLoginGateBackPath,
 } from "../constants/tenant.js";
 import {
   canAccessRvceTenant,
@@ -14,9 +15,17 @@ import {
 } from "../utils/collegeScope.js";
 import {
   LOGIN_INTENT_CAMPUS,
+  LOGIN_INTENT_GENERAL,
   LOGIN_INTENT_SPC,
   LOGIN_INTENT_PLATFORM_ADMIN,
 } from "../utils/loginIntent.js";
+import {
+  PageBackButton,
+  PageBackNavRow,
+  pageShellInnerClass,
+  pageShellOuterClass,
+} from "./PageBackNav.jsx";
+import PlatformLoginMenu from "./PlatformLoginMenu.jsx";
 
 const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 
@@ -45,17 +54,35 @@ const Login = () => {
   const { login, user, isAdmin, isSuperAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const isGeneralRoute = isGeneralAppPath(location.pathname);
   const isAdminRoute = location.pathname.includes("/admin");
-  const isPlatformAdminRoute = isGeneralAppPath(location.pathname) && isAdminRoute;
+  const isPlatformAdminRoute = isGeneralRoute && isAdminRoute;
   const spcAccessDenied = new URLSearchParams(location.search).get("reason") === "spc_access_denied";
 
-  const handleGoogleSignIn = ({ spc = false } = {}) => {
-    if (!isAdminRoute) {
-      const nextPath = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
-      if (nextPath.startsWith("/")) {
-        sessionStorage.setItem(LOGIN_REDIRECT_PATH_KEY, nextPath);
-      }
+  const backFallback = useMemo(
+    () => resolveLoginGateBackPath(location.pathname),
+    [location.pathname]
+  );
+
+  const handleBack = useCallback(() => {
+    const historyIdx = window.history.state?.idx;
+    if (typeof historyIdx === "number" && historyIdx > 0) {
+      navigate(-1);
+      return;
     }
+    navigate(backFallback);
+  }, [backFallback, navigate]);
+
+  const persistRedirectForLogin = useCallback(() => {
+    if (isAdminRoute) return;
+    const nextPath = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
+    if (nextPath.startsWith("/")) {
+      sessionStorage.setItem(LOGIN_REDIRECT_PATH_KEY, nextPath);
+    }
+  }, [isAdminRoute, location.hash, location.pathname, location.search]);
+
+  const handleGoogleSignIn = ({ spc = false } = {}) => {
+    persistRedirectForLogin();
 
     login(isAdminRoute, {
       intent: spc
@@ -64,9 +91,16 @@ const Login = () => {
           ? LOGIN_INTENT_PLATFORM_ADMIN
           : isAdminRoute
             ? null
-            : LOGIN_INTENT_CAMPUS,
+            : isGeneralRoute
+              ? LOGIN_INTENT_GENERAL
+              : LOGIN_INTENT_CAMPUS,
     });
   };
+
+  useEffect(() => {
+    if (user || isAdminRoute) return;
+    persistRedirectForLogin();
+  }, [user, isAdminRoute, persistRedirectForLogin]);
 
   useEffect(() => {
     if (!user) return;
@@ -75,7 +109,10 @@ const Login = () => {
       return;
     }
     if (!canAccessRvceTenant(user)) {
-      navigate(GENERAL_BASE, { replace: true });
+      const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+      const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral: true });
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      navigate(safeRedirect || GENERAL_POST_LOGIN_PATH, { replace: true });
       return;
     }
     if (isAdmin) {
@@ -89,56 +126,85 @@ const Login = () => {
   }, [user, isAdmin, isSuperAdmin, navigate]);
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center px-4 pt-8 pb-10 sm:px-6 sm:pt-10 lg:px-8 bg-theme-app text-theme-primary">
-      <div className="max-w-md w-full -translate-y-4 sm:-translate-y-6 space-y-6 bg-theme-card/95 border border-theme p-8 rounded-3xl shadow-2xl shadow-slate-950/20 backdrop-blur-md h-fit">
-        <div>
-          <h2 className="mt-2 text-center text-3xl font-extrabold text-theme-primary">Please log in to access this content</h2>
-          <p className="mt-3 text-center text-sm text-theme-secondary">
-            {isPlatformAdminRoute ? (
-              <>Sign in with a platform owner Google account to open the <strong className="text-theme-accent">/general</strong> admin console.</>
+    <div className={`min-h-[100dvh] ${pageShellOuterClass}`}>
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={handleBack} label="Back" />
+        </PageBackNavRow>
+
+        <div className="mx-auto w-full max-w-md">
+          <div className="space-y-6 bg-theme-card/95 border border-theme p-8 rounded-3xl shadow-2xl shadow-slate-950/20 backdrop-blur-md h-fit">
+          <div>
+            <h2 className="mt-2 text-center text-3xl font-extrabold text-theme-primary">
+              Please log in to access this content
+            </h2>
+            <p className="mt-3 text-center text-sm text-theme-secondary">
+              {isPlatformAdminRoute ? (
+                <>
+                  Sign in with a platform owner Google account to open the{" "}
+                  <strong className="text-theme-accent">/general</strong> admin console.
+                </>
+              ) : isGeneralRoute ? (
+                <>
+                  Sign in to unlock company details, AI mock interviews, PrepPath, and other
+                  general platform tools. Use the menu below to pick how you want to sign in.
+                </>
+              ) : (
+                <>
+                  Use your <strong className="text-theme-accent">@rvce.edu.in</strong> email to
+                  access the RVCE dashboard. Other students can log in from the home page to use
+                  the general platform.
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {spcAccessDenied && (
+              <div className="bg-red-100/90 dark:bg-red-900/25 border border-red-300 dark:border-red-700 rounded-xl p-4">
+                <p className="text-sm text-red-900 dark:text-red-200">
+                  <strong>Access denied:</strong> Not authorized as SPC.
+                </p>
+              </div>
+            )}
+            {isAdminRoute && (
+              <div className="bg-yellow-100/90 dark:bg-yellow-900/25 border border-yellow-300 dark:border-yellow-700 rounded-xl p-4">
+                <p className="text-sm text-yellow-900 dark:text-yellow-200">
+                  <strong>{isPlatformAdminRoute ? "Platform admin sign-in:" : "Admin sign-in:"}</strong>{" "}
+                  Only authorized admin accounts can access this section.
+                </p>
+              </div>
+            )}
+            {isGeneralRoute && !isAdminRoute ? (
+              <PlatformLoginMenu
+                align="center"
+                triggerLabel="Choose sign-in method"
+                triggerClassName="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-theme-accent hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
+              />
             ) : (
               <>
-                Use your <strong className="text-theme-accent">@rvce.edu.in</strong> email to access the RVCE dashboard.
-                Other students can log in from the home page to use the general platform.
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-theme-accent hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
+                >
+                  <GoogleIcon />
+                  Login with Google
+                </button>
+                {!isAdminRoute && (
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleSignIn({ spc: true })}
+                    className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-theme text-sm font-medium rounded-xl text-theme-primary bg-theme-hero hover:bg-theme-card focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
+                  >
+                    <GoogleIcon />
+                    Login as SPC
+                  </button>
+                )}
               </>
             )}
-          </p>
+          </div>
         </div>
-
-        <div className="space-y-4">
-          {spcAccessDenied && (
-            <div className="bg-red-100/90 dark:bg-red-900/25 border border-red-300 dark:border-red-700 rounded-xl p-4">
-              <p className="text-sm text-red-900 dark:text-red-200">
-                <strong>Access denied:</strong> Not authorized as SPC.
-              </p>
-            </div>
-          )}
-          {isAdminRoute && (
-            <div className="bg-yellow-100/90 dark:bg-yellow-900/25 border border-yellow-300 dark:border-yellow-700 rounded-xl p-4">
-              <p className="text-sm text-yellow-900 dark:text-yellow-200">
-                <strong>{isPlatformAdminRoute ? "Platform admin sign-in:" : "Admin sign-in:"}</strong>{" "}
-                Only authorized admin accounts can access this section.
-              </p>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-theme-accent hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
-          >
-            <GoogleIcon />
-            Login with Google
-          </button>
-          {!isAdminRoute && (
-            <button
-              type="button"
-              onClick={() => handleGoogleSignIn({ spc: true })}
-              className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-theme text-sm font-medium rounded-xl text-theme-primary bg-theme-hero hover:bg-theme-card focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-theme-accent transition-colors"
-            >
-              <GoogleIcon />
-              Login as SPC
-            </button>
-          )}
         </div>
       </div>
     </div>

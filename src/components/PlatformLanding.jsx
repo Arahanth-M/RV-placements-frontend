@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FaBook,
@@ -585,11 +585,11 @@ function LandingHero({ user, embedded = false }) {
               "inline-flex h-10 min-h-10 items-center justify-center rounded-xl border border-theme-accent/40 bg-theme-card/80 px-5 text-sm font-semibold leading-none text-theme-accent backdrop-blur-sm transition-colors hover:bg-theme-accent hover:text-white";
             return (
               <>
-                {embedded ? (
+                {embedded || !appHome ? (
                   <Link to={`${GENERAL_BASE}/companystats`} className={heroBtnClass}>
                     Explore companies
                   </Link>
-                ) : appHome ? (
+                ) : (
                   <Link to={appHome} className={heroBtnClass}>
                     {isPlatformAdmin
                       ? "Open platform admin"
@@ -597,7 +597,7 @@ function LandingHero({ user, embedded = false }) {
                         ? "Enter campus dashboard"
                         : "Open general dashboard"}
                   </Link>
-                ) : null}
+                )}
                 <a href="#solutions" className={heroBtnClass}>
                   See what you get
                 </a>
@@ -684,8 +684,7 @@ export default function PlatformLanding({ embedded = false }) {
   const [companyLogos, setCompanyLogos] = useState(FALLBACK_COMPANIES);
   const [stats, setStats] = useState(FALLBACK_STATS);
   const noticeReason = searchParams.get("reason");
-  const showRvceEmailNotice =
-    !embedded && noticeReason === "rvce_email_required";
+  const showRvceEmailNotice = noticeReason === "rvce_email_required";
   const showCampusNotOnboardedNotice = noticeReason === "campus_not_onboarded";
 
   useEffect(() => {
@@ -753,11 +752,6 @@ export default function PlatformLanding({ embedded = false }) {
       cancelled = true;
     };
   }, []);
-
-  const appHome = getAppHomePathForUser(user);
-  if (!embedded && !loading && appHome) {
-    return <Navigate to={appHome} replace />;
-  }
 
   const companiesForMarquee = companyLogos.slice(0, 12);
   const companyRowA = repeatForMarquee(companiesForMarquee, 3);

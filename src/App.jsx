@@ -164,7 +164,7 @@ function TenantAccessGate() {
   return <Outlet />;
 }
 
-/** `/general` for signed-in students outside an onboarded campus tenant.
+/** `/general` — public browse (company categories/cards, header nav); signed-in routing below.
  *  Platform owners may stay on `/general` even with a campus email. */
 function GeneralAccessGate() {
   const { user, loading, isSuperAdmin } = useAuth();
@@ -178,7 +178,7 @@ function GeneralAccessGate() {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Outlet />;
   }
 
   if (isSuperAdmin || isPlatformAdminUser(user)) {
@@ -196,11 +196,32 @@ function GeneralAccessGate() {
   return <Outlet />;
 }
 
-function AppShell({ base }) {
+/** Public marketing at `/` with app header; available to guests and signed-in users. */
+function PublicPlatformHomeShell() {
   const { isInterviewLocked } = useInterviewLock();
 
   return (
-    <TenantShellProvider base={base}>
+    <TenantShellProvider base={GENERAL_BASE} homePath="/">
+      <div className="flex min-h-screen flex-col bg-theme-app text-theme-primary">
+        {!isInterviewLocked && <Header />}
+        <main
+          className={`flex-grow pb-2 px-2 sm:px-4 md:px-6 ${
+            isInterviewLocked ? "pt-0" : "pt-3 sm:pt-5"
+          }`}
+        >
+          <PlatformLanding embedded />
+        </main>
+        {!isInterviewLocked && <PlatformFooter />}
+      </div>
+    </TenantShellProvider>
+  );
+}
+
+function AppShell({ base, homePath }) {
+  const { isInterviewLocked } = useInterviewLock();
+
+  return (
+    <TenantShellProvider base={base} homePath={homePath}>
       <div className="flex flex-col min-h-screen bg-theme-app text-theme-primary">
         {!isInterviewLocked && <Header />}
 
@@ -218,6 +239,13 @@ function AppShell({ base }) {
       </div>
     </TenantShellProvider>
   );
+}
+
+/** General shell: signed-in Home → `/general`; guests → public `/`. */
+function GeneralAppShell() {
+  const { user, loading } = useAuth();
+  const homePath = !loading && user ? GENERAL_BASE : "/";
+  return <AppShell base={GENERAL_BASE} homePath={homePath} />;
 }
 
 function StudentFeatureRoutes({
@@ -443,7 +471,7 @@ function TenantRoutes() {
 function GeneralRoutes() {
   return (
     <Route path={GENERAL_BASE} element={<GeneralAccessGate />}>
-      <Route element={<AppShell base={GENERAL_BASE} />}>
+      <Route element={<GeneralAppShell />}>
         <Route index element={<PlatformLanding embedded />} />
         <Route path="pricing" element={
             <ProtectedRoute>
@@ -540,7 +568,7 @@ function App() {
             <InterviewLockProvider>
               <ProductTourProvider>
                 <Routes>
-                  <Route path="/" element={<PlatformLanding />} />
+                  <Route path="/" element={<PublicPlatformHomeShell />} />
                   <Route path="/onboard" element={<CollegeOnboarding />} />
                   <Route element={<PublicLegalShell />}>
                     {LegalInfoRoutes()}

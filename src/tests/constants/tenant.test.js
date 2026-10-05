@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   TENANT_BASE,
   GENERAL_BASE,
+  GENERAL_POST_LOGIN_PATH,
   tenantPath,
   generalPath,
   isTenantAppPath,
@@ -9,6 +10,7 @@ import {
   isAppShellPath,
   toTenantAppPath,
   toPostLoginAppPath,
+  resolveLoginGateBackPath,
 } from "../../constants/tenant.js";
 
 describe("tenantPath", () => {
@@ -61,9 +63,22 @@ describe("toTenantAppPath", () => {
   });
 });
 
+describe("resolveLoginGateBackPath", () => {
+  it("returns sensible fallbacks for login gates", () => {
+    expect(resolveLoginGateBackPath("/general/companies/abc")).toBe(
+      GENERAL_POST_LOGIN_PATH
+    );
+    expect(resolveLoginGateBackPath("/general/interviews")).toBe(GENERAL_BASE);
+    expect(resolveLoginGateBackPath("/rvce/companies/abc")).toBe("/rvce/companystats");
+    expect(resolveLoginGateBackPath("/")).toBe("/");
+  });
+});
+
 describe("toPostLoginAppPath", () => {
-  it("sends non-onboarded users to /general", () => {
-    expect(toPostLoginAppPath("/", { useGeneral: true })).toBe("/general");
+  it("sends non-onboarded users to general company stats by default", () => {
+    expect(toPostLoginAppPath("/", { useGeneral: true })).toBe(
+      GENERAL_POST_LOGIN_PATH
+    );
     expect(toPostLoginAppPath("/rvce/interviews", { useGeneral: true })).toBe(
       "/general/interviews"
     );

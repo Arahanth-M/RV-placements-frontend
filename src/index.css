@@ -1721,6 +1721,100 @@ html, body, #root {
   height: 0.45rem;
 }
 
+/* PrepPath completion checks — custom box so light/dark match the themed inputs. */
+.prep-check {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.05rem;
+  flex: 0 0 auto;
+  border-radius: 0.3rem;
+  border: 1.5px solid var(--input-border);
+  background-color: var(--input-bg);
+  cursor: pointer;
+  padding: 0;
+  touch-action: manipulation;
+}
+
+@media (max-width: 639px) {
+  .prep-check {
+    width: 1.375rem;
+    height: 1.375rem;
+    margin-top: 0;
+  }
+}
+
+.prep-check:hover {
+  border-color: var(--accent);
+}
+
+.prep-check:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.prep-check[data-state="checked"],
+.prep-check[data-state="mixed"] {
+  border-color: var(--accent);
+  background-color: var(--accent);
+}
+
+.prep-check[data-state="checked"]::after {
+  content: "";
+  box-sizing: border-box;
+  width: 28%;
+  height: 50%;
+  margin-top: -8%;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.prep-check[data-state="mixed"]::after {
+  content: "";
+  width: 52%;
+  height: 2px;
+  border-radius: 1px;
+  background: #fff;
+}
+
+@media (max-width: 639px) {
+  .prep-progress-track {
+    height: 0.625rem;
+  }
+}
+
+.prep-item-done {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--text-muted) 85%, transparent);
+}
+
+.prep-progress-track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-hero);
+}
+
+.prep-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prep-progress-fill {
+    transition: none;
+  }
+}
+
 .filter-dropdown {
   width: 100%;
   min-height: 44px;

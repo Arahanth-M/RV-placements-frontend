@@ -22,7 +22,16 @@ import {
 } from "../utils/prepPathCompanyFocus.js";
 import { listStudyScheduleOptions } from "../utils/prepPathStudySchedule.js";
 import { resolvePrepResourceLink } from "../utils/prepPathResourceLinks.js";
-import { assignSubtopicsToDays } from "../utils/prepPathSlotSubtopics.js";
+import {
+  buildTrackedPrepDays,
+  checkState,
+  loadPrepProgress,
+  prepPlanStorageKey,
+  progressSummary,
+  toggleTrackedId,
+  toggleTrackedIds,
+  writePrepProgress,
+} from "../utils/prepPathProgress.js";
 import { PLATFORM_FRESHER_ROLES } from "../constants/interviewCatalog.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
@@ -40,6 +49,49 @@ const INPUT =
   "w-full rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary outline-none focus:border-theme-accent";
 
 const LABEL = "mb-1 block text-xs font-medium text-theme-secondary whitespace-nowrap";
+
+const PrepTrackContext = React.createContext({
+  completedIds: new Set(),
+  onToggleTopic: () => {},
+  onToggleLeaf: () => {},
+});
+
+function PrepCheck({ state, onToggle, label }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={state === "mixed" ? "mixed" : state === "checked"}
+      aria-label={label}
+      data-state={state}
+      onClick={onToggle}
+      className="prep-check"
+    />
+  );
+}
+
+function PrepPathProgressBar({ done, total, percent }) {
+  return (
+    <section className="w-full min-w-0 rounded-2xl border border-theme bg-theme-card px-4 py-3 sm:px-5">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-xs font-semibold text-theme-primary">Prep progress</p>
+        <p className="ml-auto text-right text-xs tabular-nums text-theme-secondary">
+          {done} of {total} complete · {percent}%
+        </p>
+      </div>
+      <div
+        className="prep-progress-track"
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="PrepPath completion"
+      >
+        <div className="prep-progress-fill" style={{ width: `${percent}%` }} />
+      </div>
+    </section>
+  );
+}
 
 /** Off-platform resource links — sky blue, distinct from accent (internal) links. */
 const PREP_PATH_EXTERNAL_LINK_CLASS =
@@ -374,6 +426,7 @@ function formatPlanDate(iso) {
 }
 
 function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, taskTitle }) {
+  const { completedIds, onToggleLeaf } = React.useContext(PrepTrackContext);
   const list = Array.isArray(items) ? items.filter((s) => s?.title) : [];
   if (!list.length) return null;
   return (
@@ -381,7 +434,7 @@ function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, ta
       <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-theme-muted">
         Subtopics to cover
       </p>
-      <ul className="space-y-2 border-l-2 border-theme-accent/50 pl-2.5">
+      <ul className="min-w-0 space-y-3 border-l-2 border-theme-accent/50 pl-2.5 sm:space-y-2">
       {list.map((sub, idx) => {
         const resolved =
           sub.isPlatformItem
@@ -406,8 +459,17 @@ function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, ta
         const showTopic =
           sub.topicTitle &&
           normTopicLabel(sub.topicTitle) !== normTopicLabel(dayFocus);
+        const done = Boolean(sub.trackId) && completedIds.has(sub.trackId);
         return (
-          <li key={sub.key || `${sub.title}-${idx}`} className="min-w-0 text-[11px] leading-snug">
+          <li key={sub.trackId || sub.key || `${sub.title}-${idx}`} className="flex min-w-0 items-start gap-2.5 text-[11px] leading-snug sm:gap-2">
+            {sub.trackId ? (
+              <PrepCheck
+                state={done ? "checked" : "unchecked"}
+                onToggle={() => onToggleLeaf(sub.trackId)}
+                label={`Mark ${sub.title} complete`}
+              />
+            ) : null}
+            <div className="min-w-0 flex-1">
             <div className="flex flex-col gap-0.5 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
               <div className="min-w-0">
                 {showTopic ? (
@@ -415,7 +477,15 @@ function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, ta
                     {sub.topicTitle}
                   </span>
                 ) : null}
-                <span className="break-words font-medium text-theme-primary">{sub.title}</span>
+                <button
+                  type="button"
+                  onClick={() => sub.trackId && onToggleLeaf(sub.trackId)}
+                  className={`inline-block max-w-full break-words bg-transparent p-0 text-left font-medium ${
+                    done ? "prep-item-done" : "text-theme-primary"
+                  }`}
+                >
+                  {sub.title}
+                </button>
                 {sub.notes && !sub.isPlatformItem ? (
                   <div className="mt-0.5 break-words text-[10px] text-theme-muted">{sub.notes}</div>
                 ) : sub.isPlatformItem && sub.notes ? (
@@ -448,6 +518,7 @@ function SlotSubtopicPoints({ items, dayFocus, companyId, appPath, isGeneral, ta
                 {linkTitle}
               </a>
             ) : null}
+            </div>
           </li>
         );
       })}
@@ -471,38 +542,66 @@ function DayTaskList({
   appPath,
   isGeneral,
 }) {
+  const { completedIds, onToggleTopic } = React.useContext(PrepTrackContext);
   const list = Array.isArray(tasks) ? tasks : [];
   return (
     <ul className="mt-2.5 space-y-3 text-xs text-theme-secondary">
-      {list.map((task, idx) => (
-        <li
-          key={`${day.day}-${idx}-${task.title}`}
-          className="rounded-lg border border-theme/50 bg-theme-card/60 px-2.5 py-2"
-        >
-          <span className="break-words font-medium text-theme-primary">{task.title}</span>
-          {task.minutes ? (
-            <span className="text-theme-muted"> · {task.minutes} min</span>
-          ) : null}
-          {task.resourceHint ? (
-            <div className="mt-0.5 break-words text-[10px] text-theme-muted">
-              {task.resourceHint}
+      {list.map((task, idx) => {
+        const topicState = checkState(task.leafIds, completedIds);
+        const topicDone = topicState === "checked";
+        return (
+          <li
+            key={task.trackId || `${day.day}-${idx}-${task.title}`}
+            className="min-w-0 rounded-lg border border-theme/50 bg-theme-card/60 px-2.5 py-2.5 sm:py-2"
+          >
+            <div className="flex min-w-0 items-start gap-2.5 sm:gap-2">
+              {Array.isArray(task.leafIds) && task.leafIds.length ? (
+                <PrepCheck
+                  state={topicState}
+                  onToggle={() => onToggleTopic(task.leafIds)}
+                  label={`Mark ${task.title} complete`}
+                />
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    Array.isArray(task.leafIds) && task.leafIds.length
+                      ? onToggleTopic(task.leafIds)
+                      : undefined
+                  }
+                  className={`inline-block max-w-full break-words bg-transparent p-0 text-left font-medium ${
+                    topicDone ? "prep-item-done" : "text-theme-primary"
+                  }`}
+                >
+                  {task.title}
+                </button>
+                {task.minutes ? (
+                  <span className="text-theme-muted"> · {task.minutes} min</span>
+                ) : null}
+                {task.resourceHint ? (
+                  <div className="mt-0.5 break-words text-[10px] text-theme-muted">
+                    {task.resourceHint}
+                  </div>
+                ) : null}
+                {task.notes ? (
+                  <div className="mt-0.5 break-words text-[10px] text-theme-secondary">
+                    {task.notes}
+                  </div>
+                ) : null}
+                <SlotSubtopicPoints
+                  items={task.subtopics}
+                  dayFocus={day.focus}
+                  companyId={companyId}
+                  appPath={appPath}
+                  isGeneral={isGeneral}
+                  taskTitle={task.title}
+                />
+              </div>
             </div>
-          ) : null}
-          {task.notes ? (
-            <div className="mt-0.5 break-words text-[10px] text-theme-secondary">
-              {task.notes}
-            </div>
-          ) : null}
-          <SlotSubtopicPoints
-            items={task.subtopics}
-            dayFocus={day.focus}
-            companyId={companyId}
-            appPath={appPath}
-            isGeneral={isGeneral}
-            taskTitle={task.title}
-          />
-        </li>
-      ))}
+          </li>
+        );
+      })}
       {!list.length ? <li className="text-theme-muted">{emptyLabel}</li> : null}
     </ul>
   );
@@ -669,8 +768,8 @@ function DayByDayFlowchart({ days, planKey, companyId }) {
               (slot.tasks || []).some((task) => (task.subtopics || []).length)
             )
           )
-            ? " · each task lists the subtopics to cover"
-            : ""}
+            ? " · each task lists the subtopics to cover · tick a topic or subtopic when you finish it"
+            : " · tick a topic when you finish it"}
         </p>
       </div>
 
@@ -703,17 +802,14 @@ function DayByDayFlowchart({ days, planKey, companyId }) {
   );
 }
 
-function PrepPathPlanView({ plan }) {
+function PrepPathPlanView({ plan, days = [] }) {
   const { isGeneral, appPath } = useTenantShell();
   if (!plan) return null;
   const companyId = String(plan.companyId || plan.company?._id || "").trim();
   const roadmap = plan.roadmap || {};
-  const days = Array.isArray(roadmap.days) ? roadmap.days : [];
-  const topics = Array.isArray(roadmap.topicSections) ? roadmap.topicSections : [];
   const companySignals = Array.isArray(roadmap.companySignals)
     ? roadmap.companySignals
     : [];
-  const studyLinks = Array.isArray(roadmap.studyLinks) ? roadmap.studyLinks : [];
   const motivationSlogans = Array.isArray(roadmap.motivationSlogans)
     ? roadmap.motivationSlogans
     : [];
@@ -727,29 +823,6 @@ function PrepPathPlanView({ plan }) {
   const mockDifficulty = String(mockSuggestion?.difficulty || "medium");
   const mockDifficultyLabel =
     mockDifficulty.charAt(0).toUpperCase() + mockDifficulty.slice(1);
-
-  /** Prefer per-subtopic links; for older plans, fall back to top-level studyLinks. */
-  const topicsWithLinks = (() => {
-    const hasAny = topics.some((t) =>
-      (t.subtopics || []).some((s) => s?.linkUrl || s?.link?.url)
-    );
-    if (hasAny || !studyLinks.length) return topics;
-    let i = 0;
-    return topics.map((t) => ({
-      ...t,
-      subtopics: (t.subtopics || []).map((s) => {
-        if (s?.linkUrl || s?.link?.url) return s;
-        const link = studyLinks[i % studyLinks.length];
-        i += 1;
-        return {
-          ...s,
-          linkTitle: link.title,
-          linkUrl: link.url,
-          linkWhy: link.why || "",
-        };
-      }),
-    }));
-  })();
 
   const signalLabel = (type) => {
     switch (String(type || "").toLowerCase()) {
@@ -943,7 +1016,7 @@ function PrepPathPlanView({ plan }) {
 
       {days.length > 0 ? (
         <DayByDayFlowchart
-          days={assignSubtopicsToDays(days, topicsWithLinks, { isGeneral })}
+          days={days}
           planKey={planKey}
           companyId={companyId}
         />
@@ -1078,6 +1151,55 @@ function PrepPathPage() {
   const studyOptions = useMemo(
     () => listStudyScheduleOptions(hoursPerDay),
     [hoursPerDay]
+  );
+
+  const planKey = prepPlanStorageKey(activePlan);
+  const tracked = useMemo(
+    () => buildTrackedPrepDays(activePlan, { isGeneral }),
+    [activePlan, isGeneral]
+  );
+  const leafKey = useMemo(
+    () => tracked.topics.map((topic) => topic.leafIds.join("\u0001")).join("\u0002"),
+    [tracked.topics]
+  );
+  const progressLoadKey = planKey ? `${planKey}::${leafKey}` : "";
+  const [completedIds, setCompletedIds] = useState(() => new Set());
+  const [progressLoadKeySeen, setProgressLoadKeySeen] = useState("");
+  if (progressLoadKey !== progressLoadKeySeen) {
+    setProgressLoadKeySeen(progressLoadKey);
+    setCompletedIds(planKey ? loadPrepProgress(planKey, tracked.topics) : new Set());
+  }
+  const progress = useMemo(
+    () => progressSummary(tracked.topics, completedIds),
+    [tracked.topics, completedIds]
+  );
+  const showProgress = Boolean(activePlan) && !studyPromptOpen && progress.total > 0;
+
+  const onToggleTopic = useCallback(
+    (leafIds) => {
+      if (!planKey || !Array.isArray(leafIds) || !leafIds.length) return;
+      setCompletedIds((prev) => {
+        const next = toggleTrackedIds(leafIds, prev);
+        writePrepProgress(planKey, next);
+        return next;
+      });
+    },
+    [planKey]
+  );
+  const onToggleLeaf = useCallback(
+    (id) => {
+      if (!planKey || !id) return;
+      setCompletedIds((prev) => {
+        const next = toggleTrackedId(id, prev);
+        writePrepProgress(planKey, next);
+        return next;
+      });
+    },
+    [planKey]
+  );
+  const trackValue = useMemo(
+    () => ({ completedIds, onToggleTopic, onToggleLeaf }),
+    [completedIds, onToggleTopic, onToggleLeaf]
   );
 
   const ensureCompanyNames = useCallback(async () => {
@@ -1575,6 +1697,14 @@ function PrepPathPage() {
               </form>
             </section>
 
+            {showProgress ? (
+              <PrepPathProgressBar
+                done={progress.done}
+                total={progress.total}
+                percent={progress.percent}
+              />
+            ) : null}
+
             {!isIdleEmpty ? (
             <div className="w-full pb-10">
               {studyPromptOpen ? (
@@ -1589,7 +1719,9 @@ function PrepPathPage() {
                   onSelect={onPickStudyOption}
                 />
               ) : activePlan ? (
-                <PrepPathPlanView plan={activePlan} />
+                <PrepTrackContext.Provider value={trackValue}>
+                  <PrepPathPlanView plan={activePlan} days={tracked.days} />
+                </PrepTrackContext.Provider>
               ) : null}
             </div>
             ) : null}

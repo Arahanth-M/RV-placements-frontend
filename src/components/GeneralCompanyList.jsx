@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaChevronRight, FaSearch } from "react-icons/fa";
 import CompanyCard from "./CompanyCard";
@@ -21,8 +21,15 @@ import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   GENERAL_COMPANY_CATEGORIES,
   groupCompaniesByGeneralCategory,
+  isGeneralCompanyCardDetailLocked,
   parseGeneralCompanyCategoryParam,
 } from "../utils/generalCompanyCategory.js";
+import {
+  COMPANY_LIST_SEARCH_PARAM,
+  parseCompanyListPageParam,
+  setCompanyListPageParam,
+  setCompanyListSearchParam,
+} from "../utils/companyListUrlState.js";
 
 const COMPANIES_PER_PAGE = 9;
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -50,12 +57,10 @@ function sortCompaniesByName(list) {
 export default function GeneralCompanyList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { base } = useTenantShell();
+  const { base, homePath } = useTenantShell();
   const { user } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [fetchDone, setFetchDone] = useState(false);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [helpfulStatusByCompanyId, setHelpfulStatusByCompanyId] = useState({});
   const [teaserCompanyIds, setTeaserCompanyIds] = useState({});
   const [cardAccess, setCardAccess] = useState({ allCards: false, categories: {} });
@@ -63,6 +68,49 @@ export default function GeneralCompanyList() {
   const selectedCategory = parseGeneralCompanyCategoryParam(searchParams.get("category"));
   const selectedCategoryMeta = GENERAL_COMPANY_CATEGORIES.find(
     (category) => category.id === selectedCategory
+  );
+  const search = selectedCategory ? searchParams.get(COMPANY_LIST_SEARCH_PARAM) || "" : "";
+  const page = selectedCategory
+    ? parseCompanyListPageParam(searchParams.get("page"))
+    : 1;
+
+  const updateCategoryListParams = useCallback(
+    (mutate) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (selectedCategory && !next.get("category")) {
+            next.set("category", selectedCategory);
+          }
+          mutate(next);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [selectedCategory, setSearchParams]
+  );
+
+  const setSearch = useCallback(
+    (value) => {
+      updateCategoryListParams((params) => {
+        setCompanyListSearchParam(params, value);
+        setCompanyListPageParam(params, 1);
+      });
+    },
+    [updateCategoryListParams]
+  );
+
+  const setPage = useCallback(
+    (updater) => {
+      updateCategoryListParams((params) => {
+        const current = parseCompanyListPageParam(params.get("page"));
+        const nextPage =
+          typeof updater === "function" ? updater(current) : updater;
+        setCompanyListPageParam(params, nextPage);
+      });
+    },
+    [updateCategoryListParams]
   );
 
   useEffect(() => {
@@ -131,15 +179,6 @@ export default function GeneralCompanyList() {
     safePage * COMPANIES_PER_PAGE
   );
 
-  useEffect(() => {
-    setPage(1);
-    setSearch("");
-  }, [selectedCategory]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
-
   const visibleIds = pageSlice.map((c) => c?._id).filter(Boolean);
   const visibleIdsKey = visibleIds.join("|");
 
@@ -186,7 +225,9 @@ export default function GeneralCompanyList() {
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton
-            onClick={() => (selectedCategory ? backToCategories() : navigate(base))}
+            onClick={() =>
+              selectedCategory ? backToCategories() : navigate(homePath || base)
+            }
             label={selectedCategory ? "Back to categories" : "Back"}
           />
         </PageBackNavRow>
@@ -282,12 +323,13 @@ export default function GeneralCompanyList() {
                         String(teaserCompanyIds[selectedCategory] || "") ===
                         String(company._id)
                       }
-                      detailLocked={
-                        !cardAccess.allCards &&
-                        !cardAccess.categories?.[selectedCategory] &&
-                        String(teaserCompanyIds[selectedCategory] || "") !==
-                          String(company._id)
-                      }
+                      detailLocked={isGeneralCompanyCardDetailLocked({
+                        user,
+                        cardAccess,
+                        selectedCategory,
+                        teaserCompanyIds,
+                        companyId: company._id,
+                      })}
                     />
                   ))
                 ) : (
