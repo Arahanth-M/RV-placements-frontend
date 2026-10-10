@@ -171,6 +171,7 @@ export const companyAPI = {
     return companyNamesPromise;
   },
 
+  getPlatformPrepCatalog: () => API.get("/api/companies/platform-prep-catalog"),
   getPlatformContent: (id) =>
     API.get(`/api/companies/platform-content/${encodeURIComponent(String(id || ""))}`),
   savePlatformContent: (id, payload) =>
@@ -220,16 +221,25 @@ export const companyAPI = {
       patch,
       { timeout: 120000 }
     ),
+  deleteCompanyResearchItem: (jobId, index) =>
+    API.delete(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/items/${encodeURIComponent(String(index))}`,
+      { timeout: 120000 }
+    ),
   enhanceCompanyResearchQuestions: (jobId, selectedIndexes) =>
     API.post(
       `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/enhance-questions`,
       { selectedIndexes },
       { timeout: 300000 }
     ),
-  generateCompanyResearchAnswers: (jobId, selectedIndexes) =>
+  generateCompanyResearchAnswers: (jobId, selectedIndexes, options = {}) =>
     API.post(
       `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/generate-answers`,
-      { selectedIndexes },
+      {
+        selectedIndexes,
+        regenerate: options?.regenerate === true,
+        ...(options?.language ? { language: options.language } : {}),
+      },
       { timeout: 900000 }
     ),
   publishCompanyResearch: (jobId, selectedIndexes) =>

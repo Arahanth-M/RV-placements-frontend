@@ -27,6 +27,9 @@ describe("OA questions by role", () => {
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("General MCQ")).toBeInTheDocument();
     expect(screen.queryByText("Analyst MCQ")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mcq-answer-1")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /View answer/i }));
+    expect(screen.getByTestId("mcq-answer-1")).toHaveTextContent("Correct Answer: B");
     expect(screen.getByRole("button", { name: /Question 1/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Question 2/ })).not.toBeInTheDocument();
 

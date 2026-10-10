@@ -214,7 +214,7 @@ export default function PlatformAdminDashboard() {
       {
         key: "companies",
         title: "Company prep content",
-        description: "Edit OA, interviews, and experiences on company_platform_content.",
+        description: "Edit OA, interviews, and experiences, grouped like Student Corner.",
         cta: "Open editor",
         accent: "border-l-emerald-500",
         ctaColor: "text-emerald-600",

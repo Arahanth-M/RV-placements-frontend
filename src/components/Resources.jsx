@@ -420,33 +420,6 @@ const Resources = () => {
           )}
         </div>
 
-        {/* ── Disclaimer ── */}
-        <div className="bg-slate-900/70 border border-slate-800"
-          style={{
-            marginTop: '2.5rem', borderRadius: '14px',
-            padding: '1.4rem 1.6rem', maxWidth: '720px',
-            marginLeft: 'auto', marginRight: 'auto',
-            display: 'flex', gap: '16px', alignItems: 'flex-start',
-          }}
-        >
-          <div style={{
-            width: 36, height: 36, borderRadius: 9,
-            background: '#3B2506', color: '#FBB543',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, fontSize: 16,
-          }}>📝</div>
-          <div>
-            <div style={{ fontSize: '15px', fontWeight: 500, marginBottom: '6px' }} className="text-slate-300">
-              Affiliate link disclaimer
-            </div>
-            <p className="text-slate-500" style={{ fontSize: '14px', lineHeight: 1.7 }}>
-              Some links are affiliate links — we may earn a small commission at no extra cost to you.
-              This helps us maintain and improve the platform. All resources are selected based on
-              educational value and quality.
-            </p>
-          </div>
-        </div>
-
         {/* ── CTA ── */}
         <div className="bg-slate-900/70 border border-slate-800"
           style={{ marginTop: '2.5rem', borderRadius: '16px', padding: '3rem', textAlign: 'center' }}

@@ -23,7 +23,9 @@ vi.mock("../../utils/api", () => ({
     publishCompanyResearch: vi.fn(),
     publishCompanyResearchSources: vi.fn(),
     generateCompanyResearchAnswers: vi.fn(),
+    generateCompanyResearchLinksSummary: vi.fn(),
     updateCompanyResearchItem: vi.fn(),
+    deleteCompanyResearchItem: vi.fn(),
     enhanceCompanyResearchQuestions: vi.fn(),
   },
 }));
@@ -88,7 +90,9 @@ describe("GeneralResearchPanel", () => {
     companyAPI.publishCompanyResearch.mockReset();
     companyAPI.publishCompanyResearchSources.mockReset();
     companyAPI.generateCompanyResearchAnswers.mockReset();
+    companyAPI.generateCompanyResearchLinksSummary.mockReset();
     companyAPI.updateCompanyResearchItem.mockReset();
+    companyAPI.deleteCompanyResearchItem.mockReset();
     companyAPI.enhanceCompanyResearchQuestions.mockReset();
     companyAPI.savePlatformContent.mockReset();
   });
@@ -108,14 +112,14 @@ describe("GeneralResearchPanel", () => {
     expect(screen.getByLabelText("Search depth")).toHaveTextContent("Basic");
     expect(screen.getByRole("button", { name: "Research all roles" })).toBeEnabled();
     expect(screen.getByRole("tab", { name: "Interview questions" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: "OA questions" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "OA questions" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Interview experiences" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|publish|reject/i })).not.toBeInTheDocument();
   });
 
   it("fills the role from public fresher-role suggestions", async () => {
     companyAPI.listCompanyFresherRoles.mockResolvedValue({
-      data: { roles: ["Software Engineer", "Data Analyst"] },
+      data: { roles: ["Software Engineer", "TBD", "Data Analyst"] },
     });
 
     renderPanel();
@@ -124,7 +128,9 @@ describe("GeneralResearchPanel", () => {
     });
 
     expect(companyAPI.listCompanyFresherRoles).toHaveBeenCalledWith("company-1", "Acme");
-    expect(screen.getByText("Usually recruits freshers for")).toBeInTheDocument();
+    expect(screen.getByText("RVCE visit roles and usual fresher roles")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "TBD" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Data Analyst" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Software Engineer" }));
     expect(screen.getByRole("button", { name: "Software Engineer" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Remove Software Engineer" })).toBeInTheDocument();
@@ -164,11 +170,6 @@ describe("GeneralResearchPanel", () => {
     });
     expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
       ...payload,
-      field: "onlineQuestions",
-      role: "SDE",
-    });
-    expect(companyAPI.startCompanyResearch).toHaveBeenCalledWith({
-      ...payload,
       field: "interviewQuestions",
       role: "Software Engineer",
     });
@@ -178,7 +179,7 @@ describe("GeneralResearchPanel", () => {
       role: "Software Engineer",
     });
     expect(companyAPI.startCompanyResearch).not.toHaveBeenCalledWith(
-      expect.objectContaining({ field: "onlineQuestions", role: "Software Engineer" })
+      expect.objectContaining({ field: "onlineQuestions" })
     );
     expect(companyAPI.savePlatformContent).not.toHaveBeenCalled();
     expect(screen.getByText("Research queued...")).toBeInTheDocument();
@@ -337,6 +338,105 @@ describe("GeneralResearchPanel", () => {
     });
     expect(screen.getByText("Design an LRU cache")).toBeInTheDocument();
     expect(screen.getByText("Hash map plus linked list.")).toBeInTheDocument();
+  });
+
+  it("lets the admin switch a generated question between coding and non-coding", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-saved",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            result: reviewResult,
+          },
+        ],
+      },
+    });
+    companyAPI.updateCompanyResearchItem.mockResolvedValue({
+      data: {
+        jobId: "job-saved",
+        index: 0,
+        item: { ...reviewResult.items[0], kind: "non_coding", form: "non_coding" },
+      },
+    });
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    expect(screen.getByText("Coding (DSA)")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mark as non-coding" }));
+
+    await waitFor(() => {
+      expect(companyAPI.updateCompanyResearchItem).toHaveBeenCalledWith("job-saved", 0, {
+        kind: "non_coding",
+      });
+    });
+    expect(screen.getByText("Non-coding")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark as coding" })).toBeInTheDocument();
+  });
+
+  it("lets the admin delete one question after answers are generated", async () => {
+    vi.useRealTimers();
+    const answered = {
+      ...reviewResult,
+      items: [
+        {
+          ...reviewResult.items[0],
+          question: "Leaders in an array",
+          answer: "Scan from the right.",
+        },
+        {
+          question: "Pairs with sum divisible by K",
+          kind: "coding",
+          answer: "Count remainders.",
+          evidence: "Hash the remainders.",
+          sourceUrl: "https://example.com/pairs",
+          sourceTitle: "Pairs",
+        },
+      ],
+    };
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-saved",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            result: answered,
+          },
+        ],
+      },
+    });
+    companyAPI.deleteCompanyResearchItem.mockResolvedValue({
+      data: {
+        jobId: "job-saved",
+        index: 0,
+        items: [answered.items[1]],
+      },
+    });
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+
+    expect(screen.getByRole("button", { name: "Delete Leaders in an array" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Pairs with sum divisible by K" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delete Leaders in an array" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete Leaders in an array" }));
+
+    await waitFor(() => {
+      expect(companyAPI.deleteCompanyResearchItem).toHaveBeenCalledWith("job-saved", 0);
+    });
+    expect(screen.queryByText("Leaders in an array")).not.toBeInTheDocument();
+    expect(screen.getByText("Pairs with sum divisible by K")).toBeInTheDocument();
   });
 
   it("polls after a job is created and stops on review", async () => {
@@ -680,6 +780,277 @@ describe("GeneralResearchPanel", () => {
     await waitFor(() => {
       expect(companyAPI.publishCompanyResearchSources).toHaveBeenCalledWith("job-published");
     });
+  });
+
+  function twoRoleJobs() {
+    return {
+      data: {
+        jobs: [
+          {
+            jobId: "job-sde",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "SDE",
+            result: reviewResult,
+          },
+          {
+            jobId: "job-analyst",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "Analyst",
+            result: {
+              ...reviewResult,
+              items: [{ ...reviewResult.items[0], question: "Explain indexing" }],
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  it("keeps answer generation running after switching roles", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue(twoRoleJobs());
+    let resolveAnswers;
+    companyAPI.generateCompanyResearchAnswers.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveAnswers = resolve;
+        })
+    );
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Implement an LRU Cache" }));
+    fireEvent.click(screen.getByRole("button", { name: "Finalize questions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add answers" }));
+
+    await waitFor(() => {
+      expect(companyAPI.generateCompanyResearchAnswers).toHaveBeenCalledWith("job-sde", [0]);
+    });
+    expect(screen.getByRole("button", { name: "Generating answers…" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Analyst" }));
+    expect(screen.getByRole("button", { name: "Show Analyst" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Generating answers…" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show SDE" })).toHaveTextContent(/^SDE…$/);
+
+    await act(async () => {
+      resolveAnswers({
+        data: {
+          jobId: "job-sde",
+          items: [{ index: 0, answer: "Use a hash map and a doubly linked list." }],
+        },
+      });
+    });
+
+    expect(screen.queryByText("Use a hash map and a doubly linked list.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show SDE" })).toHaveTextContent(/^SDE$/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show SDE" }));
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    expect(screen.getByText("Use a hash map and a doubly linked list.")).toBeInTheDocument();
+  });
+
+  it("keeps summary generation running after switching roles", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue(twoRoleJobs());
+    let resolveSummary;
+    companyAPI.generateCompanyResearchLinksSummary.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveSummary = resolve;
+        })
+    );
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate summary" }));
+    await waitFor(() => {
+      expect(companyAPI.generateCompanyResearchLinksSummary).toHaveBeenCalledWith("job-sde");
+    });
+    expect(screen.getByRole("button", { name: "Generating…" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Analyst" }));
+    expect(screen.getByRole("button", { name: "Show SDE" })).toHaveTextContent(/^SDE…$/);
+    expect(screen.getByLabelText("Research links summary")).toHaveValue("");
+
+    await act(async () => {
+      resolveSummary({
+        data: { summary: "Acme asks arrays, trees, and system design for SDE.", prepRoleKey: "sde" },
+      });
+    });
+
+    expect(screen.getByLabelText("Research links summary")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: "Show SDE" }));
+    expect(screen.getByLabelText("Research links summary")).toHaveValue(
+      "Acme asks arrays, trees, and system design for SDE."
+    );
+  });
+
+  it("regenerates one answer and leaves the other answers in place", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-sde",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "SDE",
+            result: {
+              ...reviewResult,
+              items: [
+                { ...reviewResult.items[0], kind: "non_coding", answer: "Old LRU answer." },
+                {
+                  ...reviewResult.items[0],
+                  kind: "non_coding",
+                  question: "Explain CAP theorem",
+                  answer: "Old CAP answer.",
+                },
+              ],
+            },
+          },
+          {
+            jobId: "job-analyst",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "Analyst",
+            result: {
+              ...reviewResult,
+              items: [{ ...reviewResult.items[0], question: "Explain indexing", answer: "Index answer." }],
+            },
+          },
+        ],
+      },
+    });
+    let resolveRegen;
+    companyAPI.generateCompanyResearchAnswers.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRegen = resolve;
+        })
+    );
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Regenerate answer for Implement an LRU Cache" }));
+    await waitFor(() => {
+      expect(companyAPI.generateCompanyResearchAnswers).toHaveBeenCalledWith("job-sde", [0], {
+        regenerate: true,
+      });
+    });
+    expect(screen.getByRole("button", { name: "Regenerate answer for Implement an LRU Cache" })).toHaveTextContent(
+      "Regenerating…"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Analyst" }));
+    expect(screen.getByRole("button", { name: "Show SDE" })).toHaveTextContent(/^SDE…$/);
+    expect(screen.queryByText("Rewritten LRU answer.")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveRegen({
+        data: {
+          items: [{ index: 0, answer: "Rewritten LRU answer." }],
+        },
+      });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Show SDE" }));
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+    expect(screen.getByText("Rewritten LRU answer.")).toBeInTheDocument();
+    expect(screen.getByText("Old CAP answer.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Regenerate answer for Explain CAP theorem" })).toHaveTextContent(
+      "Regenerate answer"
+    );
+  });
+
+  it("regenerates one coding language and leaves the other languages in place", async () => {
+    vi.useRealTimers();
+    companyAPI.listCompanyResearchJobs.mockResolvedValue({
+      data: {
+        jobs: [
+          {
+            jobId: "job-sde",
+            status: "review",
+            field: "interviewQuestions",
+            companyId: "company-1",
+            companyName: "Acme",
+            role: "SDE",
+            result: {
+              ...reviewResult,
+              items: [
+                {
+                  ...reviewResult.items[0],
+                  kind: "coding",
+                  answer: "Use a hash map and a doubly linked list.",
+                  solutions: {
+                    cpp: "int oldCpp() { return 1; }",
+                    java: "int oldJava() { return 1; }",
+                    python: "def old_python():\n    return 1",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+    companyAPI.generateCompanyResearchAnswers.mockResolvedValue({
+      data: {
+        items: [
+          {
+            index: 0,
+            answer: "Use a hash map and a doubly linked list.",
+            solutions: {
+              cpp: "int oldCpp() { return 1; }",
+              java: "int oldJava() { return 1; }",
+              python: "def rewritten_python():\n    return 2",
+            },
+          },
+        ],
+      },
+    });
+
+    renderPanel();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Interview questions \(/ }));
+
+    expect(screen.getByRole("button", { name: "Regenerate C++ for Implement an LRU Cache" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Regenerate Java for Implement an LRU Cache" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Regenerate Python for Implement an LRU Cache" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Regenerate answer for Implement an LRU Cache" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Regenerate Python for Implement an LRU Cache" }));
+    await waitFor(() => {
+      expect(companyAPI.generateCompanyResearchAnswers).toHaveBeenCalledWith("job-sde", [0], {
+        regenerate: true,
+        language: "python",
+      });
+    });
+    expect(screen.getByText(/rewritten_python/)).toBeInTheDocument();
+    expect(screen.getByText(/oldCpp/)).toBeInTheDocument();
+    expect(screen.getByText(/oldJava/)).toBeInTheDocument();
   });
 });
 

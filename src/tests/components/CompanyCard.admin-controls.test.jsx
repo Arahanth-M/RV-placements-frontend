@@ -136,7 +136,7 @@ describe("CompanyCard admin got in controls", () => {
     expect(screen.getByText("Views")).toBeInTheDocument();
   });
 
-  it("places last updated above views on the left of the card", async () => {
+  it("keeps views in the footer and hides last updated on the card", async () => {
     render(
       <MemoryRouter>
         <CompanyCard
@@ -152,15 +152,14 @@ describe("CompanyCard admin got in controls", () => {
     );
 
     const views = await screen.findByLabelText("1240 views");
-    const lastUpdated = screen.getByText(/Last updated on:/i);
-    const left = lastUpdated.closest(".card-footer-left");
+    const focus = screen.getByText(/Top focus areas/i);
 
-    expect(left).toBeTruthy();
-    expect(left).toContainElement(views);
-    expect(left).toContainElement(lastUpdated);
+    expect(screen.queryByTestId("company-card-last-updated")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Last updated on:/i)).not.toBeInTheDocument();
     expect(
-      lastUpdated.compareDocumentPosition(views) & Node.DOCUMENT_POSITION_FOLLOWING
+      focus.compareDocumentPosition(views) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+    expect(views.closest(".card-footer")).not.toBeNull();
     expect(views.closest(".card-footer-actions")).toBeNull();
   });
 
