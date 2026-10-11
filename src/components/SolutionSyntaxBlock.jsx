@@ -44,7 +44,8 @@ export default function SolutionSyntaxBlock({ code, toolbar = null, className = 
           lineHeight: 1.55,
           maxWidth: "100%",
           border: "none",
-          ...(theme === "dark" ? { background: "#1e1e1e" } : {}),
+          background: theme === "dark" ? "#1e1e1e" : "#f8f8f8",
+          color: theme === "dark" ? "#d4d4d4" : "#24292e",
         }}
         codeTagProps={{
           style: {

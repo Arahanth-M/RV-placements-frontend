@@ -3,7 +3,6 @@ export const CAMPUS_INTERVIEW_ROUND_TYPES = [
   "System Design",
   "SQL",
   "CS Fundamentals",
-  "HR",
 ];
 
 export const PLATFORM_EXCLUSIVE_INTERVIEW_ROUND_TYPES = [
@@ -23,7 +22,6 @@ export const PLATFORM_INTERVIEW_ROUND_TYPES = [
   "Web Dev",
   "SQL",
   "CS Fundamentals",
-  "HR",
   ...PLATFORM_EXCLUSIVE_INTERVIEW_ROUND_TYPES,
 ];
 

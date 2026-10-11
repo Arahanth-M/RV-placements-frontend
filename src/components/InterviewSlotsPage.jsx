@@ -46,7 +46,7 @@ function formatSelectedDayLabel(dateKey) {
   }).format(new Date(utcNoon));
 }
 
-function InterviewSlotsPage() {
+function InterviewSlotsPage({ embedded = false } = {}) {
   const navigate = useNavigate();
   const { base, appPath, isGeneral } = useTenantShell();
   const [bookings, setBookings] = useState([]);
@@ -190,22 +190,21 @@ function InterviewSlotsPage() {
     }
   };
 
-  return (
-    <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
-      <PageHeroFontStyles />
-      <div className={pageShellInnerClass}>
-        <PageBackNavRow>
-          <PageBackButton onClick={() => navigate(base)} label="Back" />
-        </PageBackNavRow>
-
-        <div className="mx-auto max-w-5xl">
-          <PageHeroHeader
-            subtitle="See how many slots are booked each day, and manage your own DSA interview hours (IST)."
-            subtitleClassName="text-theme-secondary"
-            subtitleMaxWidth="600px"
-          >
-            Interview <em style={{ color: "#818CF8", fontStyle: "italic" }}>slots</em>
-          </PageHeroHeader>
+  const body = (
+        <div className={embedded ? "mx-auto max-w-5xl" : "mx-auto max-w-5xl"}>
+          {!embedded ? (
+            <PageHeroHeader
+              subtitle="See how many slots are booked each day, and manage your own DSA interview hours (IST)."
+              subtitleClassName="text-theme-secondary"
+              subtitleMaxWidth="600px"
+            >
+              Interview <em style={{ color: "#818CF8", fontStyle: "italic" }}>slots</em>
+            </PageHeroHeader>
+          ) : (
+            <p className="mb-5 text-sm text-theme-secondary">
+              See how many slots are booked each day, and manage your own DSA interview hours (IST).
+            </p>
+          )}
 
           <div className="mb-6 flex flex-wrap gap-3">
             <button
@@ -355,6 +354,31 @@ function InterviewSlotsPage() {
             </div>
           )}
         </div>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {body}
+        <InterviewSlotBookModal
+          open={bookModalOpen}
+          onClose={closeModal}
+          rescheduleBookingId={rescheduleId}
+          initialSlots={availabilitySlots}
+          onBooked={() => loadPageData({ silent: true })}
+        />
+      </>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={() => navigate(base)} label="Back" />
+        </PageBackNavRow>
+        {body}
       </div>
 
       <InterviewSlotBookModal

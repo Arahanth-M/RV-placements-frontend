@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import InterviewAnalytics from "./InterviewAnalytics";
+import InterviewSlotsPage from "./InterviewSlotsPage";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import {
   InterviewQuestionAnswerBlock,
   CompanyInterviewReadinessCard,
 } from "./InterviewHistoryAnswer";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   PageBackButton,
@@ -17,6 +18,13 @@ import {
   pageShellInnerClass,
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+
+function normalizeAiInterviewsTab(raw, { allowSlots }) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (allowSlots && (value === "slots" || value === "slot")) return "slots";
+  if (value === "analytics") return "analytics";
+  return "sessions";
+}
 
 const toSafeString = (value) =>
   typeof value === "string" ? value.trim() : "";
@@ -131,16 +139,40 @@ function InterviewSessionsPagination({
   );
 }
 
-function AIInterviews() {
+function AIInterviews({ embedded = false, hideSlotsTab = false } = {}) {
   const { user } = useAuth();
   const { base, isGeneral } = useTenantShell();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const allowSlots = !hideSlotsTab;
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("sessions");
+  const [activeTab, setActiveTabState] = useState(() =>
+    normalizeAiInterviewsTab(searchParams.get("tab"), { allowSlots })
+  );
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const setActiveTab = useCallback(
+    (tabId) => {
+      const nextTab = normalizeAiInterviewsTab(tabId, { allowSlots });
+      setActiveTabState(nextTab);
+      if (embedded) return;
+      const next = new URLSearchParams(searchParams);
+      if (nextTab === "sessions") next.delete("tab");
+      else next.set("tab", nextTab);
+      setSearchParams(next, { replace: true });
+    },
+    [allowSlots, embedded, searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    if (embedded) return;
+    setActiveTabState(
+      normalizeAiInterviewsTab(searchParams.get("tab"), { allowSlots })
+    );
+  }, [allowSlots, embedded, searchParams]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -229,15 +261,9 @@ function AIInterviews() {
     navigate(base);
   };
 
-  return (
-    <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
-      <PageHeroFontStyles />
-      <div className={pageShellInnerClass}>
-        <PageBackNavRow>
-          <PageBackButton onClick={handleBack} label="Back" />
-        </PageBackNavRow>
-
-        <div className="mx-auto max-w-6xl">
+  const hubBody = (
+        <div className={embedded ? "" : "mx-auto max-w-6xl"}>
+      {!embedded ? (
       <div data-tour="ai-interviews-hero">
       <PageHeroHeader
         subtitle="Track your progress, review feedback, and analyze your performance in AI-driven interviews."
@@ -247,10 +273,11 @@ function AIInterviews() {
         Mock <em style={{ color: '#818CF8', fontStyle: 'italic' }}>Interviews</em>
       </PageHeroHeader>
       </div>
+      ) : null}
 
       {/* Tab Navigation */}
       <div
-        className="flex gap-2 mb-6 p-1 bg-theme-card border border-theme rounded-xl w-fit"
+        className={`flex gap-2 mb-6 p-1 bg-theme-card border border-theme rounded-xl w-fit ${embedded ? "" : ""}`}
         data-tour="ai-interviews-tabs"
       >
         <button
@@ -263,6 +290,18 @@ function AIInterviews() {
         >
           My Interviews
         </button>
+        {allowSlots ? (
+          <button
+            onClick={() => setActiveTab("slots")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              activeTab === "slots"
+                ? "bg-theme-hero text-theme-accent shadow-md"
+                : "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav"
+            }`}
+          >
+            Interview slots
+          </button>
+        ) : null}
         <button
           onClick={() => setActiveTab("analytics")}
           className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
@@ -275,6 +314,7 @@ function AIInterviews() {
         </button>
       </div>
 
+      {activeTab !== "slots" ? (
       <div
         className="mb-6 rounded-xl border border-dashed border-theme-accent/35 bg-theme-hero/60 px-4 py-3 text-sm text-theme-secondary"
         data-tour="ai-interviews-start"
@@ -284,8 +324,14 @@ function AIInterviews() {
           ? "Student Corner → AI mock interviews → pick a company → customize your interview → Start Interview."
           : 'Company Stats → open a company → click on "Explore AI interview" button which is located at bottom right → Customize your interview → Start Interview.'}
       </div>
+      ) : null}
+
+      {activeTab === "slots" && allowSlots ? (
+        <InterviewSlotsPage embedded />
+      ) : null}
 
       {/* Error/Loading Content */}
+      {activeTab !== "slots" ? (
       <div className="mb-6">
         {loading && (
           <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
@@ -299,9 +345,10 @@ function AIInterviews() {
           </div>
         )}
       </div>
+      ) : null}
 
       {/* Tab Content */}
-      {!loading && !error && (
+      {activeTab !== "slots" && !loading && !error && (
         <div className="space-y-6">
           <div
             className={activeTab === "analytics" ? "" : "hidden"}
@@ -363,6 +410,20 @@ function AIInterviews() {
         </div>
       )}
         </div>
+  );
+
+  if (embedded) {
+    return hubBody;
+  }
+
+  return (
+    <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
+      <PageHeroFontStyles />
+      <div className={pageShellInnerClass}>
+        <PageBackNavRow>
+          <PageBackButton onClick={handleBack} label="Back" />
+        </PageBackNavRow>
+        {hubBody}
       </div>
     </div>
   );

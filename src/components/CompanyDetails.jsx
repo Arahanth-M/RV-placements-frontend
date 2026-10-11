@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FaCheck, FaPaperPlane } from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
@@ -22,6 +22,7 @@ import {
 import { GENERAL_BASE, isGeneralAppPath, toTenantAppPath } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
+  applyCompanyDetailTabParam,
   copyPrepPathFocusParams,
   readCompanyFocusFromLocation,
 } from "../utils/prepPathCompanyFocus.js";
@@ -694,6 +695,21 @@ function CompanyDetails() {
     }
   }, [company, activeTab, placementYearLoading]);
 
+  const syncTabToUrl = useCallback(
+    (nextTab, { clearFocus = true } = {}) => {
+      if (!id) return;
+      const params = new URLSearchParams(location.search || "");
+      applyCompanyDetailTabParam(params, nextTab);
+      if (clearFocus) params.delete("focus");
+      const q = params.toString();
+      navigate(appPath(`/companies/${id}${q ? `?${q}` : ""}`), {
+        replace: true,
+        state: location.state ?? {},
+      });
+    },
+    [appPath, id, location.search, location.state, navigate]
+  );
+
   const handleRefresh = () => {
     if (!id || isRefreshing) return;
     if (user?.betaAccess === false) return;
@@ -1022,6 +1038,7 @@ function CompanyDetails() {
     }
     setActiveTab(nextTab);
     setOpenDropdownTab(null);
+    syncTabToUrl(nextTab);
   };
 
   // Called when user clicks a year-tab button
@@ -1050,7 +1067,7 @@ function CompanyDetails() {
     setOpenDropdownTab((prev) => (prev === tabId ? null : tabId));
   };
 
-  const navigatePlacementYear = (year) => {
+  const navigatePlacementYear = (year, tabOverride) => {
     const params = new URLSearchParams();
     params.set("year", String(year));
     const ctx = readPlacementListContext(location, id);
@@ -1078,6 +1095,7 @@ function CompanyDetails() {
     const pCluster = readPlacementClusterFromLocation(location);
     if (pCluster) params.set("placementCluster", pCluster);
     copyPrepPathFocusParams(location.search, params);
+    applyCompanyDetailTabParam(params, tabOverride || activeTab);
     navigate(appPath(`/companies/${id}?${params.toString()}`), {
       replace: true,
       state: location.state ?? {},
@@ -1088,7 +1106,7 @@ function CompanyDetails() {
   const handleYearPick = (tabId, year) => {
     setOpenDropdownTab(null);
     setActiveTab(tabId);
-    navigatePlacementYear(year);
+    navigatePlacementYear(year, tabId);
   };
 
   return (

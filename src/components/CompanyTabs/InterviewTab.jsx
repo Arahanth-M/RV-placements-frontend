@@ -893,7 +893,7 @@ function InterviewTab({
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
                                 embedded
-                                richTextVariant="dark"
+                                richTextVariant="theme"
                                 platformAdminCodeDisplay={isGeneral}
                               />
                             </div>
@@ -932,7 +932,7 @@ function InterviewTab({
                               ) : (
                                 <PrepSolutionBody
                                   code={solutions[index]}
-                                  richTextVariant="dark"
+                                  richTextVariant="theme"
                                   toolbar={
                                     <button
                                       type="button"

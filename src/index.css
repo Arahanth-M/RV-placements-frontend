@@ -985,13 +985,28 @@ select.spc-field-control {
 
 [data-theme="light"] .company-tab-content .bg-slate-900\/70,
 [data-theme="light"] .company-tab-content .bg-slate-900\/40,
+[data-theme="light"] .company-tab-content .bg-slate-900\/80,
 [data-theme="light"] .company-tab-content .bg-slate-800\/80,
 [data-theme="light"] .company-tab-content .bg-slate-800\/95,
 [data-theme="light"] .company-tab-content .bg-slate-800\/60,
 [data-theme="light"] .company-tab-content .bg-slate-800\/40,
 [data-theme="light"] .company-tab-content .bg-slate-800,
-[data-theme="light"] .company-tab-content .bg-slate-900 {
+[data-theme="light"] .company-tab-content .bg-slate-900,
+[data-theme="light"] .company-tab-content .bg-slate-950,
+[data-theme="light"] .company-tab-content .bg-slate-950\/50,
+[data-theme="light"] .company-tab-content .bg-slate-950\/40 {
   background: var(--bg-card) !important;
+}
+
+/* Fenced code in answers: keep a readable input surface in light mode */
+[data-theme="light"] .company-tab-content .prep-rich-text pre {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="light"] .company-tab-content .prep-rich-text pre code {
+  color: inherit !important;
 }
 
 /* Preserve gradient utility usage while translating slate stops in light theme */

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaCopy, FaExternalLinkAlt, FaUsers, FaVideo } from "react-icons/fa";
+import { FaCopy, FaExternalLinkAlt, FaTimes, FaUsers, FaVideo } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
 import { interviewAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
@@ -16,8 +16,8 @@ import {
 const SESSION_TYPE_OPTIONS = [
   {
     id: "mock_interview",
-    label: "Mock interview",
-    blurb: "Peer interview practice (2 people).",
+    label: "Peer Interview",
+    blurb: "Practice interviewing with a fellow student (2 people).",
     defaultMax: 2,
     maxCap: 2,
     joinNotePrompt: "Why do you want to join in this mock?",
@@ -54,7 +54,16 @@ function joinNoteMetaForType(sessionType) {
 
 const TAB_BROWSE = "browse";
 const TAB_CREATE = "create";
-const TAB_MINE = "mine";
+const TAB_ALL = "all";
+
+const ROLE_FILTER_ALL = "all";
+const ROLE_FILTER_HOSTING = "hosting";
+const ROLE_FILTER_JOINED = "joined";
+const ROLE_FILTER_PENDING = "pending";
+
+const STATUS_FILTER_ALL = "all";
+const STATUS_FILTER_ACTIVE = "active";
+const STATUS_FILTER_ENDED = "ended";
 
 /** IST is UTC+05:30 (no DST). */
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
@@ -134,9 +143,18 @@ function defaultEndLocalFromStart(startLocal) {
 
 function statusBadgeClass(status) {
   if (status === "open") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  if (status === "requested") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+  }
   if (status === "full") return "border-theme-accent/30 bg-theme-accent/10 text-theme-accent";
   if (status === "cancelled") return "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300";
   return "border-theme bg-theme-hero text-theme-secondary";
+}
+
+/** Viewer-facing label — pending joiners see "requested" instead of "open". */
+function displaySessionStatus(session) {
+  if (session?.isPendingRequest) return "requested";
+  return session?.status || "";
 }
 
 function MeetLinkCard({ session }) {
@@ -200,6 +218,10 @@ function MeetLinkCard({ session }) {
         </button>
       </div>
       <p className="text-[11px] text-theme-secondary">{message}</p>
+      <p className="text-[11px] text-theme-secondary">
+        Don&apos;t share this link. Approved people are added as Meet guests; others should have to
+        knock (or be blocked) depending on Google&apos;s access settings.
+      </p>
     </div>
   );
 }
@@ -266,10 +288,10 @@ function SessionCard({
         </div>
         <span
           className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold capitalize ${statusBadgeClass(
-            session.status
+            displaySessionStatus(session)
           )}`}
         >
-          {session.status}
+          {displaySessionStatus(session)}
         </span>
       </div>
 
@@ -415,10 +437,14 @@ export default function PeerSessionsPage() {
   const [openSessions, setOpenSessions] = useState([]);
   const [mySessions, setMySessions] = useState([]);
   const [filterType, setFilterType] = useState("");
+  const [allFilterType, setAllFilterType] = useState("");
+  const [allRoleFilter, setAllRoleFilter] = useState(ROLE_FILTER_ALL);
+  const [allStatusFilter, setAllStatusFilter] = useState(STATUS_FILTER_ACTIVE);
   const [codeQuery, setCodeQuery] = useState("");
   const [codeResult, setCodeResult] = useState(null);
   const [joinTarget, setJoinTarget] = useState(null);
   const [joinNote, setJoinNote] = useState("");
+  const [joinFormError, setJoinFormError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -447,10 +473,35 @@ export default function PeerSessionsPage() {
     }
   }, [tab]);
 
-  const loadLists = useCallback(async () => {
+  const applySessionUpdate = useCallback((session) => {
+    if (!session?.id) return;
+    setMySessions((prev) => {
+      const idx = prev.findIndex((s) => s.id === session.id);
+      if (idx < 0) return [session, ...prev];
+      const next = prev.slice();
+      next[idx] = session;
+      return next;
+    });
+    setOpenSessions((prev) => {
+      const idx = prev.findIndex((s) => s.id === session.id);
+      if (idx < 0) return prev;
+      // Accepted / full sessions leave the open browse list for non-hosts.
+      if (session.isJoined || session.status !== "open") {
+        return prev.filter((s) => s.id !== session.id);
+      }
+      const next = prev.slice();
+      next[idx] = session;
+      return next;
+    });
+    setCodeResult((prev) => (prev?.id === session.id ? session : prev));
+  }, []);
+
+  const loadLists = useCallback(async ({ silent = false } = {}) => {
     if (!user?.userId && !user?._id) return;
-    setLoading(true);
-    setError("");
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const [openRes, mineRes] = await Promise.all([
         interviewAPI.listOpenPeerSessions({
@@ -461,17 +512,59 @@ export default function PeerSessionsPage() {
       setOpenSessions(Array.isArray(openRes?.data?.sessions) ? openRes.data.sessions : []);
       setMySessions(Array.isArray(mineRes?.data?.sessions) ? mineRes.data.sessions : []);
     } catch (err) {
-      setError(
-        err?.response?.data?.error || err?.message || "Could not load peer sessions."
-      );
+      if (!silent) {
+        setError(
+          err?.response?.data?.error || err?.message || "Could not load peer sessions."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [user?.userId, user?._id, filterType]);
 
   useEffect(() => {
     loadLists();
   }, [loadLists]);
+
+  // Poll so: (1) requesters see Accept, (2) organizers see new join requests — without Refresh.
+  const hasPendingJoin = useMemo(
+    () => mySessions.some((s) => s?.isPendingRequest),
+    [mySessions]
+  );
+  const isHostingOpenSession = useMemo(
+    () =>
+      mySessions.some(
+        (s) => s?.isHost && (s.status === "open" || s.status === "full")
+      ),
+    [mySessions]
+  );
+  const shouldLivePoll = hasPendingJoin || isHostingOpenSession;
+
+  useEffect(() => {
+    if (!shouldLivePoll) return undefined;
+    const id = window.setInterval(() => {
+      loadLists({ silent: true });
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [shouldLivePoll, loadLists]);
+
+  const filteredAllSessions = useMemo(() => {
+    return mySessions.filter((session) => {
+      if (allFilterType && session.sessionType !== allFilterType) return false;
+      if (allRoleFilter === ROLE_FILTER_HOSTING && !session.isHost) return false;
+      if (allRoleFilter === ROLE_FILTER_JOINED && !(session.isJoined && !session.isHost)) {
+        return false;
+      }
+      if (allRoleFilter === ROLE_FILTER_PENDING && !session.isPendingRequest) return false;
+      const status = String(session.status || "");
+      if (allStatusFilter === STATUS_FILTER_ACTIVE) {
+        if (status !== "open" && status !== "full") return false;
+      } else if (allStatusFilter === STATUS_FILTER_ENDED) {
+        if (status !== "completed" && status !== "cancelled") return false;
+      }
+      return true;
+    });
+  }, [mySessions, allFilterType, allRoleFilter, allStatusFilter]);
 
   const createSession = async (e) => {
     e.preventDefault();
@@ -501,7 +594,7 @@ export default function PeerSessionsPage() {
       const start = defaultSlotLocal();
       setSlotLocal(start);
       setSlotEndLocal(defaultEndLocalFromStart(start));
-      setTab(TAB_MINE);
+      setTab(TAB_ALL);
       await loadLists();
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not create session.");
@@ -543,12 +636,14 @@ export default function PeerSessionsPage() {
   const openJoinRequest = (session) => {
     setJoinTarget(session);
     setJoinNote("");
+    setJoinFormError("");
     setError("");
   };
 
   const closeJoinRequest = () => {
     setJoinTarget(null);
     setJoinNote("");
+    setJoinFormError("");
   };
 
   const submitJoinRequest = async (e) => {
@@ -556,20 +651,24 @@ export default function PeerSessionsPage() {
     if (!joinTarget?.id) return;
     const note = String(joinNote || "").trim();
     if (note.length < 8) {
-      setError("Add a short note for the host (at least 8 characters).");
+      setJoinFormError("Add a short note for the host (at least 8 characters).");
       return;
     }
     setBusyId(joinTarget.id);
-    setError("");
+    setJoinFormError("");
     try {
-      await interviewAPI.requestJoinPeerSession({ sessionId: joinTarget.id, note });
+      const { data } = await interviewAPI.requestJoinPeerSession({
+        sessionId: joinTarget.id,
+        note,
+      });
       closeJoinRequest();
       setCodeResult(null);
-      setTab(TAB_MINE);
-      await loadLists();
+      if (data?.session) applySessionUpdate(data.session);
+      setTab(TAB_ALL);
+      await loadLists({ silent: true });
     } catch (err) {
       const data = err?.response?.data;
-      setError(
+      setJoinFormError(
         data?.error ||
           data?.errors?.[0] ||
           data?.message ||
@@ -587,8 +686,9 @@ export default function PeerSessionsPage() {
     setBusyId(sessionId);
     setError("");
     try {
-      await interviewAPI.cancelPeerSession(sessionId);
-      await loadLists();
+      const { data } = await interviewAPI.cancelPeerSession(sessionId);
+      if (data?.session) applySessionUpdate(data.session);
+      else await loadLists({ silent: true });
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not cancel.");
     } finally {
@@ -600,8 +700,9 @@ export default function PeerSessionsPage() {
     setBusyId(sessionId);
     setError("");
     try {
-      await interviewAPI.leavePeerSession(sessionId);
-      await loadLists();
+      const { data } = await interviewAPI.leavePeerSession(sessionId);
+      if (data?.session) applySessionUpdate(data.session);
+      else await loadLists({ silent: true });
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not leave.");
     } finally {
@@ -613,8 +714,9 @@ export default function PeerSessionsPage() {
     setBusyId(sessionId);
     setError("");
     try {
-      await interviewAPI.cancelPeerJoinRequest(sessionId);
-      await loadLists();
+      const { data } = await interviewAPI.cancelPeerJoinRequest(sessionId);
+      if (data?.session) applySessionUpdate(data.session);
+      else await loadLists({ silent: true });
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not cancel request.");
     } finally {
@@ -626,8 +728,9 @@ export default function PeerSessionsPage() {
     setBusyId(`${sessionId}:accept:${requesterUserId}`);
     setError("");
     try {
-      await interviewAPI.acceptPeerJoinRequest(sessionId, requesterUserId);
-      await loadLists();
+      const { data } = await interviewAPI.acceptPeerJoinRequest(sessionId, requesterUserId);
+      if (data?.session) applySessionUpdate(data.session);
+      else await loadLists({ silent: true });
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not accept request.");
     } finally {
@@ -639,8 +742,9 @@ export default function PeerSessionsPage() {
     setBusyId(`${sessionId}:reject:${requesterUserId}`);
     setError("");
     try {
-      await interviewAPI.rejectPeerJoinRequest(sessionId, requesterUserId);
-      await loadLists();
+      const { data } = await interviewAPI.rejectPeerJoinRequest(sessionId, requesterUserId);
+      if (data?.session) applySessionUpdate(data.session);
+      else await loadLists({ silent: true });
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Could not decline request.");
     } finally {
@@ -659,7 +763,7 @@ export default function PeerSessionsPage() {
   const tabs = [
     { id: TAB_BROWSE, label: "Browse for sessions" },
     { id: TAB_CREATE, label: "Host a session" },
-    { id: TAB_MINE, label: "My sessions" },
+    { id: TAB_ALL, label: "All sessions" },
   ];
 
   return (
@@ -670,7 +774,7 @@ export default function PeerSessionsPage() {
           <PageBackButton onClick={() => navigate(appPath("/"))} label="Back" />
         </PageBackNavRow>
 
-        <PageHeroHeader subtitle="Book an online Google Meet session (auto-created) — mock interviews, study groups, or doubts. Times are in IST. Others request to join; you accept. The Meet link unlocks for accepted members during the session window. Share your session code from My sessions.">
+        <PageHeroHeader subtitle="Book an online Google Meet session (auto-created) — mock interviews, study groups, or doubts. Times are in IST. Others request to join; you accept. The Meet link unlocks for accepted members during the session window. Share your session code from All sessions.">
           Peer{" "}
           <span className="italic text-theme-accent">sessions</span>
         </PageHeroHeader>
@@ -683,51 +787,85 @@ export default function PeerSessionsPage() {
           ) : null}
 
           {joinTarget ? (
-            <section className="rounded-2xl border border-theme-accent/40 bg-theme-card p-5 space-y-3">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-lg font-semibold text-theme-primary">Request to join</h2>
-                  <p className="mt-1 text-sm text-theme-secondary">
-                    {joinTarget.sessionTypeLabel || joinTarget.sessionType} · {joinTarget.topic}
-                  </p>
-                </div>
+            <div
+              className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4 py-6"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="peer-join-request-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && busyId !== joinTarget.id) {
+                  closeJoinRequest();
+                }
+              }}
+            >
+              <div className="relative w-full max-w-md max-h-[min(90vh,560px)] overflow-y-auto rounded-2xl border border-theme bg-theme-card shadow-2xl p-5 sm:p-6">
                 <button
                   type="button"
                   onClick={closeJoinRequest}
-                  className="text-sm font-semibold text-theme-secondary hover:text-theme-accent"
+                  disabled={busyId === joinTarget.id}
+                  className="absolute right-3 top-3 rounded-lg p-2 text-theme-secondary hover:text-theme-primary disabled:opacity-50"
+                  aria-label="Close"
                 >
-                  Cancel
+                  <FaTimes className="h-4 w-4" />
                 </button>
+
+                <h2
+                  id="peer-join-request-title"
+                  className="text-lg font-semibold text-theme-primary pr-8"
+                >
+                  Request to join
+                </h2>
+                <p className="mt-1 text-sm text-theme-secondary">
+                  {joinTarget.sessionTypeLabel || joinTarget.sessionType} · {joinTarget.topic}
+                </p>
+
+                <form onSubmit={submitJoinRequest} className="mt-4 space-y-3">
+                  <label className="block text-sm font-semibold text-theme-primary">
+                    {joinNoteMetaForType(joinTarget.sessionType).joinNotePrompt}
+                    <textarea
+                      value={joinNote}
+                      onChange={(e) => {
+                        setJoinNote(e.target.value);
+                        if (joinFormError) setJoinFormError("");
+                      }}
+                      rows={3}
+                      maxLength={400}
+                      required
+                      minLength={8}
+                      autoFocus
+                      placeholder={
+                        joinNoteMetaForType(joinTarget.sessionType).joinNotePlaceholder
+                      }
+                      className="mt-1.5 w-full rounded-xl border border-theme bg-theme-hero px-3 py-2.5 text-sm font-normal outline-none focus:border-theme-accent resize-y"
+                    />
+                    <span className="mt-1 block text-[11px] font-normal text-theme-secondary">
+                      Shared with the host when they review your request ·{" "}
+                      {joinNote.trim().length}/400
+                    </span>
+                  </label>
+                  {joinFormError ? (
+                    <p className="text-sm text-red-600 dark:text-red-300">{joinFormError}</p>
+                  ) : null}
+                  <div className="flex flex-wrap justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={closeJoinRequest}
+                      disabled={busyId === joinTarget.id}
+                      className="rounded-xl border border-theme px-4 py-2.5 text-sm font-semibold text-theme-secondary hover:text-theme-primary disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={busyId === joinTarget.id || joinNote.trim().length < 8}
+                      className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                    >
+                      {busyId === joinTarget.id ? "Sending request…" : "Send request"}
+                    </button>
+                  </div>
+                </form>
               </div>
-              <form onSubmit={submitJoinRequest} className="space-y-3">
-                <label className="block text-sm font-semibold text-theme-primary">
-                  {joinNoteMetaForType(joinTarget.sessionType).joinNotePrompt}
-                  <textarea
-                    value={joinNote}
-                    onChange={(e) => setJoinNote(e.target.value)}
-                    rows={3}
-                    maxLength={400}
-                    required
-                    minLength={8}
-                    placeholder={joinNoteMetaForType(joinTarget.sessionType).joinNotePlaceholder}
-                    className="mt-1.5 w-full rounded-xl border border-theme bg-theme-hero px-3 py-2.5 text-sm font-normal outline-none focus:border-theme-accent resize-y"
-                  />
-                  <span className="mt-1 block text-[11px] font-normal text-theme-secondary">
-                    Shared with the host when they review your request · {joinNote.trim().length}/400
-                  </span>
-                </label>
-                {error ? (
-                  <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
-                ) : null}
-                <button
-                  type="submit"
-                  disabled={busyId === joinTarget.id || joinNote.trim().length < 8}
-                  className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-                >
-                  {busyId === joinTarget.id ? "Sending request…" : "Send request"}
-                </button>
-              </form>
-            </section>
+            </div>
           ) : null}
 
           <div className="flex flex-wrap gap-2">
@@ -866,7 +1004,7 @@ export default function PeerSessionsPage() {
               <p className="mt-1 text-sm text-theme-secondary">
                 Open to any signed-in student. A Google Meet link is created automatically. Others
                 request to join; you accept. After booking, find your session code under{" "}
-                <span className="font-semibold text-theme-primary">My sessions</span> to share.
+                <span className="font-semibold text-theme-primary">All sessions</span> to share.
               </p>
 
               <form onSubmit={createSession} className="mt-5 space-y-4">
@@ -978,10 +1116,69 @@ export default function PeerSessionsPage() {
             </section>
           ) : null}
 
-          {tab === TAB_MINE ? (
+          {tab === TAB_ALL ? (
             <section className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-theme bg-theme-card px-3 py-3">
+                <label className="text-sm font-semibold text-theme-primary">
+                  Type
+                  <select
+                    value={allFilterType}
+                    onChange={(e) => setAllFilterType(e.target.value)}
+                    className="ml-2 rounded-lg border border-theme bg-theme-hero px-2 py-1.5 text-sm font-normal"
+                  >
+                    <option value="">All types</option>
+                    {SESSION_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm font-semibold text-theme-primary">
+                  Role
+                  <select
+                    value={allRoleFilter}
+                    onChange={(e) => setAllRoleFilter(e.target.value)}
+                    className="ml-2 rounded-lg border border-theme bg-theme-hero px-2 py-1.5 text-sm font-normal"
+                  >
+                    <option value={ROLE_FILTER_ALL}>All</option>
+                    <option value={ROLE_FILTER_HOSTING}>Hosting</option>
+                    <option value={ROLE_FILTER_JOINED}>Joined</option>
+                    <option value={ROLE_FILTER_PENDING}>Pending request</option>
+                  </select>
+                </label>
+                <label className="text-sm font-semibold text-theme-primary">
+                  Status
+                  <select
+                    value={allStatusFilter}
+                    onChange={(e) => setAllStatusFilter(e.target.value)}
+                    className="ml-2 rounded-lg border border-theme bg-theme-hero px-2 py-1.5 text-sm font-normal"
+                  >
+                    <option value={STATUS_FILTER_ALL}>All</option>
+                    <option value={STATUS_FILTER_ACTIVE}>Active</option>
+                    <option value={STATUS_FILTER_ENDED}>Ended</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => loadLists()}
+                  className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-secondary hover:text-theme-accent"
+                >
+                  Refresh
+                </button>
+                {shouldLivePoll ? (
+                  <span className="text-[11px] text-theme-secondary">
+                    {hasPendingJoin && isHostingOpenSession
+                      ? "Live updates — join requests & approvals"
+                      : hasPendingJoin
+                        ? "Waiting for host approval… auto-updates"
+                        : "Live updates — new join requests appear here"}
+                  </span>
+                ) : null}
+              </div>
+
               {loading ? (
-                <p className="text-sm text-theme-secondary">Loading your sessions…</p>
+                <p className="text-sm text-theme-secondary">Loading sessions…</p>
               ) : mySessions.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-theme px-4 py-8 text-center">
                   <p className="text-sm font-semibold text-theme-primary">No sessions yet</p>
@@ -989,8 +1186,15 @@ export default function PeerSessionsPage() {
                     Host one or join an open session from Browse.
                   </p>
                 </div>
+              ) : filteredAllSessions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-theme px-4 py-8 text-center">
+                  <p className="text-sm font-semibold text-theme-primary">No sessions match filters</p>
+                  <p className="mt-1 text-sm text-theme-secondary">
+                    Try another type, role, or status filter.
+                  </p>
+                </div>
               ) : (
-                mySessions.map((session) => (
+                filteredAllSessions.map((session) => (
                   <SessionCard
                     key={session.id}
                     session={session}

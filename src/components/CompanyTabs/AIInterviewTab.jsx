@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
@@ -1202,10 +1203,6 @@ function AIInterviewTab({
     }
     if (isGeneral && !PLATFORM_FRESHER_ROLES.includes(selectedRole)) {
       return "Select the fresher role you are preparing for.";
-    }
-    const hrCount = normalizedCustomRounds.filter((round) => round.type === "HR").length;
-    if (!isGeneral && hrCount < 1) {
-      return "At least one HR round is mandatory.";
     }
     const hardSystemDesignCount = normalizedCustomRounds.filter(
       (round) => round.type === "System Design" && round.difficulty === "hard"
@@ -3875,6 +3872,15 @@ function AIInterviewTab({
             ) : null}
           </div>
         </div>
+        <p className="mt-4 text-sm text-theme-secondary">
+          Want STAR-style behavioral practice instead to help in HR rounds?{" "}
+          <Link
+            to={appPath("/behavioral-coach")}
+            className="font-semibold text-theme-accent underline-offset-2 hover:underline"
+          >
+            Open Behavioral coach
+          </Link>
+        </p>
         </div>
       )}
       </div>

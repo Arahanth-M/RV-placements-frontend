@@ -39,7 +39,7 @@ export default function LanguageSolutionPanel({
   copied = false,
   onCopy,
   embedded = false,
-  richTextVariant = "dark",
+  richTextVariant = "theme",
   platformAdminCodeDisplay = false,
 }) {
   const sols = formattedSolutions(solutions);
