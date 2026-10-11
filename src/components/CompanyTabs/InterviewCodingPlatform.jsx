@@ -187,8 +187,7 @@ function InterviewCodingRulesModal({
                 output — you do not read stdin or print the answer.
               </li>
               <li>
-                Each DSA (coding) round asks at most 2 coding questions per interview. Each HR
-                round asks exactly 1 behavioral question.
+                Each DSA (coding) round asks at most 2 coding questions per interview.
               </li>
             </ul>
           </section>

@@ -15,6 +15,10 @@ export function prepRoleLabelsWithContent(company = {}) {
 
   addKeys(company.onlineQuestions_prepRoleKey);
   addKeys(company.interviewQuestions_prepRoleKey);
+  for (const item of company.mcqQuestions || []) {
+    const key = String(item?.prepRoleKey ?? "").trim();
+    if (key) keysWithContent.add(key);
+  }
   for (const source of company.researchSources || []) {
     const key = String(source?.prepRoleKey ?? "").trim();
     if (key) keysWithContent.add(key);
@@ -30,6 +34,13 @@ export function prepRoleLabelsWithContent(company = {}) {
   return catalog.map((row) => String(row?.label || row?.key || "").trim()).filter(Boolean);
 }
 
+function countClientQuestions(items) {
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    if (typeof item === "string") return item.trim().length > 0;
+    return String(item?.question ?? "").trim().length > 0;
+  }).length;
+}
+
 export function buildGeneralCompanyPrepSummary(company = {}) {
   const roles = prepRoleLabelsWithContent(company);
   const rolesLine = roles.length ? roles.join(", ") : "Not tagged by role yet";
@@ -38,7 +49,9 @@ export function buildGeneralCompanyPrepSummary(company = {}) {
   );
   const coverage = formatPlatformPrepCoverage(
     company.platformPrepCoverage || {
-      oa: (company.onlineQuestions || []).length,
+      oa:
+        countClientQuestions(company.onlineQuestions) +
+        countClientQuestions(company.mcqQuestions),
       interview: (company.interviewQuestions || []).length,
       experiences: (company.interviewProcess || []).length,
     }
@@ -52,7 +65,22 @@ export function buildGeneralCompanyPrepSummary(company = {}) {
     rolesLine,
     updatedLine: updated ? `Last updated ${updated}` : "Last updated —",
     countsLine: `${oa} ${oaLabel} · ${interview} ${iqLabel} · ${experiences} ${exprLabel}`,
-    /** Compact single-line copy for grid cards (matches legacy list cards). */
+    /** Compact single-line copy when a card has no role breakdown. */
     countsLineCard: coverage.line,
+    /** Per-role compact lines for grid cards. */
+    roleCoverage: roleCoverageFromCompany(company),
   };
+}
+
+function roleCoverageFromCompany(company = {}) {
+  const raw = company.platformPrepCoverageByRole;
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw
+    .map((row) => {
+      const key = String(row?.key ?? "").trim();
+      const label = String(row?.label || "").trim() || (key || "General");
+      const coverage = formatPlatformPrepCoverage(row);
+      return { key, label, line: coverage.line };
+    })
+    .filter((row) => row.label);
 }

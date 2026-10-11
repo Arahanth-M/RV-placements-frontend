@@ -17,7 +17,6 @@ import {
   normalizeTotalGotInByYear,
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
-import { formatExperienceMonth } from "../utils/parseExperienceStoredEntry.js";
 import PaywallModal from "./PaywallPanel.jsx";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
 
@@ -105,11 +104,6 @@ function CompanyCard({
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const viewCount = Math.max(0, Number(company.views) || 0);
-  const lastUpdatedMonth = formatExperienceMonth(
-    isGeneral
-      ? company.platformContentUpdatedAt || company.contentUpdatedAt || company.createdAt
-      : company.contentUpdatedAt || company.createdAt
-  );
   const isTrending = company.trending === true;
   // Update local state when company prop changes
   useEffect(() => {
@@ -531,7 +525,7 @@ function CompanyCard({
         <div className="card-divider my-4 border-t border-theme opacity-50" aria-hidden="true" />
 
         <div className="card-footer flex items-end justify-between gap-2 overflow-hidden">
-          {!hidePlacementGotInCounts || lastUpdatedMonth || isAdmin ? (
+          {!hidePlacementGotInCounts || isAdmin ? (
             <div className="card-footer-left flex min-w-0 flex-1 flex-col items-start justify-end gap-1">
               {!hidePlacementGotInCounts ? (
                 <div className="flex items-center gap-2 shrink-0 min-w-0">
@@ -568,11 +562,6 @@ function CompanyCard({
                     </div>
                   )}
                 </div>
-              ) : null}
-              {lastUpdatedMonth ? (
-                <p className="card-last-updated min-w-0 whitespace-nowrap text-left text-[10px] font-medium leading-tight text-theme-muted sm:text-[11px]">
-                  Last updated on: {lastUpdatedMonth}
-                </p>
               ) : null}
               {isAdmin ? (
                 <span

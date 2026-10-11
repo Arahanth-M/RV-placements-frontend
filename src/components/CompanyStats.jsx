@@ -69,6 +69,10 @@ import { sortCompaniesByVisitDate } from "../utils/visitDateSort.js";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 import { COLLEGE_ID_RVITM, collegeIdFromUser } from "../utils/collegeScope.js";
 import { TENANT_BASE } from "../constants/tenant.js";
+import {
+  parseCompanyListPageParam,
+  setCompanyListPageParam,
+} from "../utils/companyListUrlState.js";
 
 /** Category hub tiles: fewer logos + smaller fetches = faster first paint. */
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -351,9 +355,10 @@ function CompanyStats() {
   const [clusterBranchPage, setClusterBranchPage] = useState(1);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tierQuery = searchParams.get("tier");
   const clusterParam = normalizeClusterParam(searchParams.get("cluster"));
+  const listPageFromUrl = parseCompanyListPageParam(searchParams.get("page"));
   const { user, isAdmin } = useAuth();
   const [adminViewsRefreshKey, setAdminViewsRefreshKey] = useState(0);
   const companyCacheScope = `${isPlacementHubCluster(clusterParam) ? clusterParam : "all"}:${isAdmin ? "admin" : "viewer"}`;
@@ -520,6 +525,81 @@ function CompanyStats() {
     if (userScopedValue !== null) return userScopedValue;
     return sessionStorage.getItem(key);
   };
+
+  const syncListPageToUrl = useCallback(
+    (pageNum) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          setCompanyListPageParam(next, pageNum);
+          return next.toString() === prev.toString() ? prev : next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  useEffect(() => {
+    if (location.pathname !== PATH_COMPANY_STATS || !isPlacementTierParam(tierQuery)) {
+      return;
+    }
+    const p = listPageFromUrl;
+    if (tierQuery === PLACEMENT_TIER_DREAM) {
+      setDreamPage((prev) => (prev === p ? prev : p));
+    } else if (tierQuery === PLACEMENT_TIER_OPEN_DREAM) {
+      setOpenDreamPage((prev) => (prev === p ? prev : p));
+    } else if (tierQuery === PLACEMENT_TIER_INTERNSHIP_ONLY) {
+      setInternshipOnlyPage((prev) => (prev === p ? prev : p));
+    } else if (tierQuery === PLACEMENT_TIER_SUMMER_INTERNSHIP) {
+      setSummerInternshipPage((prev) => (prev === p ? prev : p));
+    } else if (tierQuery === PLACEMENT_TIER_OFF_CAMPUS) {
+      setOffCampusPage((prev) => (prev === p ? prev : p));
+    }
+  }, [tierQuery, listPageFromUrl, location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname !== PATH_COMPANY_STATS || !isPlacementTierParam(tierQuery)) {
+      return;
+    }
+    const pageByTier = {
+      [PLACEMENT_TIER_DREAM]: dreamPage,
+      [PLACEMENT_TIER_OPEN_DREAM]: openDreamPage,
+      [PLACEMENT_TIER_INTERNSHIP_ONLY]: internshipOnlyPage,
+      [PLACEMENT_TIER_SUMMER_INTERNSHIP]: summerInternshipPage,
+      [PLACEMENT_TIER_OFF_CAMPUS]: offCampusPage,
+    };
+    syncListPageToUrl(pageByTier[tierQuery] ?? 1);
+  }, [
+    tierQuery,
+    dreamPage,
+    openDreamPage,
+    internshipOnlyPage,
+    summerInternshipPage,
+    offCampusPage,
+    location.pathname,
+    syncListPageToUrl,
+  ]);
+
+  useEffect(() => {
+    if (
+      location.pathname !== PATH_COMPANY_CATEGORY ||
+      clusterParam !== "__legacy_ec_me_flat_list__"
+    ) {
+      return;
+    }
+    setClusterBranchPage((prev) => (prev === listPageFromUrl ? prev : listPageFromUrl));
+  }, [clusterParam, listPageFromUrl, location.pathname]);
+
+  useEffect(() => {
+    if (
+      location.pathname !== PATH_COMPANY_CATEGORY ||
+      clusterParam !== "__legacy_ec_me_flat_list__"
+    ) {
+      return;
+    }
+    syncListPageToUrl(clusterBranchPage);
+  }, [clusterBranchPage, clusterParam, location.pathname, syncListPageToUrl]);
 
   useEffect(() => {
     const persistPlacementCardsYear = (year) => {
@@ -829,9 +909,9 @@ function CompanyStats() {
 
   // Restore company cards state if coming back from company details
   useEffect(() => {
-    if (!user) return;
-    
     if (isPlacementCardsYear && getStoredValue('fromCompanyCards') === 'true') {
+      const hasUrlPage =
+        searchParams.get("page") != null && String(searchParams.get("page")).trim() !== "";
       const storedSearch = getStoredValue('companystats_search');
       const storedDreamCategory = getStoredValue('companystats_dream_category');
       const storedOpenDreamCategory = getStoredValue('companystats_open_dream_category');
@@ -895,11 +975,13 @@ function CompanyStats() {
             (storedTier === PLACEMENT_TIER_OFF_CAMPUS ? legacyStoredCategory : "all")
         ),
       });
-      setDreamPage(pageFromSession(storedDreamPage, storedDreamListCount));
-      setOpenDreamPage(pageFromSession(storedOpenDreamPage, storedOpenDreamListCount));
-      setInternshipOnlyPage(pageFromSession(storedInternshipOnlyPage, storedInternListCount));
-      setSummerInternshipPage(pageFromSession(storedSummerInternshipPage, storedSummerListCount));
-      setOffCampusPage(pageFromSession(storedOffCampusPage, storedOffListCount));
+      if (!hasUrlPage) {
+        setDreamPage(pageFromSession(storedDreamPage, storedDreamListCount));
+        setOpenDreamPage(pageFromSession(storedOpenDreamPage, storedOpenDreamListCount));
+        setInternshipOnlyPage(pageFromSession(storedInternshipOnlyPage, storedInternListCount));
+        setSummerInternshipPage(pageFromSession(storedSummerInternshipPage, storedSummerListCount));
+        setOffCampusPage(pageFromSession(storedOffCampusPage, storedOffListCount));
+      }
 
       if (storedTier) {
         setPlacementTier(storedTier);
@@ -908,11 +990,11 @@ function CompanyStats() {
       // Clear the flag after restoring
       sessionStorage.removeItem(getStorageKey('fromCompanyCards'));
     }
-  }, [isPlacementCardsYear, selectedYear, user]);
+  }, [isPlacementCardsYear, selectedYear, user, searchParams]);
 
   // Store company cards state whenever it changes (for restoring after navigation)
   useEffect(() => {
-    if (isPlacementCardsYear && user && user.userId) {
+    if (isPlacementCardsYear) {
       sessionStorage.setItem(getStorageKey('companystats_search'), search);
       sessionStorage.setItem(getStorageKey('companystats_cgpa_filter'), cgpaFilter);
       sessionStorage.setItem(

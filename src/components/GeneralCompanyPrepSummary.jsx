@@ -8,11 +8,31 @@ export default function GeneralCompanyPrepSummary({
   variant = "detail",
   className = "",
 }) {
-  const { rolesLine, updatedLine, countsLine, countsLineCard } =
+  const { rolesLine, updatedLine, countsLine, countsLineCard, roleCoverage } =
     buildGeneralCompanyPrepSummary(company);
   const compact = variant === "card";
 
   if (compact) {
+    if (roleCoverage.length > 0) {
+      return (
+        <ul
+          className={`mb-4 w-full min-w-0 space-y-2.5 ${className}`.trim()}
+          data-testid="company-prep-coverage"
+        >
+          {roleCoverage.map((row) => (
+            <li key={`${row.key}::${row.label}`} className="min-w-0">
+              <p className="truncate text-xs font-semibold text-theme-primary sm:text-sm">
+                {row.label}
+              </p>
+              <p className="text-[clamp(9px,3.2cqi,11px)] leading-snug tracking-tight text-theme-secondary tabular-nums break-words [overflow-wrap:anywhere] sm:text-xs">
+                {row.line}
+              </p>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
     return (
       <p
         className={`mb-4 w-full min-w-0 text-[clamp(9px,3.2cqi,11px)] sm:text-xs leading-snug tracking-tight text-theme-secondary tabular-nums break-words [overflow-wrap:anywhere] ${className}`.trim()}

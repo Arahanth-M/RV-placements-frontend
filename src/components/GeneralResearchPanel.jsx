@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { companyAPI } from "../utils/api";
+import ResearchLimitRecovery from "./ResearchLimitRecovery.jsx";
 import PrepRichText from "./PrepRichText.jsx";
 import PlatformGeneratedSolutionView from "./platform/PlatformGeneratedSolutionView.jsx";
 import SpcThemeSelect from "./SpcThemeSelect.jsx";
@@ -34,10 +35,95 @@ function Field({ label, children }) {
 }
 
 function apiErrorMessage(err, fallback) {
-  const data = err?.response?.data?.error;
-  if (typeof data === "string" && data.trim()) return data.trim();
-  if (data && typeof data.message === "string" && data.message.trim()) return data.message.trim();
-  return fallback;
+  return readApiFailure(err, fallback).message;
+}
+
+function readApiFailure(err, fallback, defaultSecretId = "") {
+  const data = err?.response?.data;
+  const error = data?.error;
+  const message =
+    typeof error === "string" && error.trim()
+      ? error.trim()
+      : error && typeof error.message === "string" && error.message.trim()
+        ? error.message.trim()
+        : typeof data?.message === "string" && data.message.trim()
+          ? data.message.trim()
+          : fallback;
+  const tokenLimit = error?.tokenLimit === true || looksLikeTokenLimit(message);
+  return {
+    message,
+    tokenLimit,
+    secretId: tokenLimit ? error?.secretId || defaultSecretId : "",
+  };
+}
+
+function looksLikeTokenLimit(value) {
+  const lower = String(value || "").toLowerCase();
+  return (
+    lower.includes("rate limit") ||
+    lower.includes("rate_limit") ||
+    lower.includes("tokens per minute") ||
+    lower.includes("tokens per day") ||
+    lower.includes("token limit") ||
+    lower.includes("too many requests") ||
+    lower.includes("quota") ||
+    /\btpm\b/.test(lower) ||
+    /\b429\b/.test(lower)
+  );
+}
+
+function uiStorageKey(companyId, jobId) {
+  return `lmpp-company-research:${companyId}:${jobId}`;
+}
+
+function readUiState(companyId, jobId) {
+  if (typeof sessionStorage === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(uiStorageKey(companyId, jobId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeUiState(companyId, jobId, state) {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(uiStorageKey(companyId, jobId), JSON.stringify(state));
+  } catch {
+    // The research job itself is stored on the server.
+  }
+}
+
+function integerList(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((index) => Number.isInteger(index) && index >= 0);
+}
+
+function indexesWithAnswers(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item, index) => (item && (item.answer || item.solutions) ? index : -1))
+    .filter((index) => index >= 0);
+}
+
+function shiftIndexesAfterRemoval(indexes, removed) {
+  return indexes
+    .filter((value) => value !== removed)
+    .map((value) => (value > removed ? value - 1 : value));
+}
+
+function mergeAnswerUpdates(items, updates) {
+  const next = Array.isArray(items) ? [...items] : [];
+  for (const row of Array.isArray(updates) ? updates : []) {
+    const index = row?.index;
+    if (typeof index !== "number" || index < 0 || index >= next.length) continue;
+    const { index: _drop, ...rest } = row;
+    next[index] = { ...next[index], ...rest };
+  }
+  return next;
 }
 
 function httpUrl(value) {
@@ -54,6 +140,13 @@ function kindLabel(kind) {
   return typeof kind === "string" ? kind : "";
 }
 
+function interviewQuestionType(item) {
+  const form = String(item?.form || "").trim().toLowerCase();
+  if (form === "coding" || form === "sql" || form === "mcq" || form === "non_coding") return form;
+  if (item?.kind === "coding" || item?.kind === "sql" || item?.kind === "mcq") return item.kind;
+  return "non_coding";
+}
+
 function oaFormLabel(item) {
   const form = item?.form || item?.kind;
   return kindLabel(form);
@@ -64,6 +157,35 @@ const OA_ROLE_OPTIONS = [
   { value: "Analyst", label: "Analyst" },
   { value: "Data Scientist", label: "Data Scientist" },
 ];
+
+const MAX_SELECTED_ROLES = 6;
+
+function normalizeRole(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function roleIdentity(value) {
+  return normalizeRole(value).toLowerCase();
+}
+
+function canonicalRole(value) {
+  const text = normalizeRole(value);
+  const match = OA_ROLE_OPTIONS.find((option) => option.value.toLowerCase() === text.toLowerCase());
+  return match ? match.value : text;
+}
+
+function isSelectableResearchRole(value) {
+  const text = normalizeRole(value);
+  if (!text) return false;
+  const key = text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (key === "tbd" || key === "tba" || key === "tbc" || key === "na") return false;
+  const lower = text.toLowerCase();
+  return lower !== "to be decided" && lower !== "to be determined" && lower !== "n/a";
+}
+
+function slotKey(field, role) {
+  return `${field}:${roleIdentity(role)}`;
+}
 
 function SourceLink({ url, children }) {
   const href = httpUrl(url);
@@ -129,6 +251,208 @@ export function ResearchSources({ sources }) {
   );
 }
 
+function regeneratingLanguagesFor(keys, index) {
+  const prefix = `${index}:`;
+  const languages = new Set();
+  if (!keys) return languages;
+  for (const key of keys) {
+    const text = String(key);
+    if (text.startsWith(prefix)) languages.add(text.slice(prefix.length));
+  }
+  return languages;
+}
+
+function hasCodingSolutions(item) {
+  const solutions = item?.solutions;
+  if (solutions && typeof solutions === "object") {
+    if (["cpp", "java", "python"].some((key) => String(solutions[key] || "").trim())) return true;
+  }
+  return item?.form === "coding" || item?.kind === "coding";
+}
+
+function ResearchItemEditor({
+  item,
+  mode,
+  showAnswers,
+  saving,
+  onSave,
+  onCancel,
+  idPrefix = "item",
+}) {
+  const isExperience = mode === "experience";
+  const isMcq = item?.form === "mcq" && Array.isArray(item?.mcqMetadata?.options);
+  const isCoding = hasCodingSolutions(item);
+  const [question, setQuestion] = useState(item?.question || "");
+  const [content, setContent] = useState(item?.content || "");
+  const [answer, setAnswer] = useState(item?.answer || "");
+  const [intuition, setIntuition] = useState(item?.intuition || "");
+  const [options, setOptions] = useState(() =>
+    isMcq ? item.mcqMetadata.options.map((opt) => ({ id: opt.id, text: opt.text || "" })) : []
+  );
+  const [correctOptionId, setCorrectOptionId] = useState(item?.mcqMetadata?.correctOptionId || "");
+  const [solutions, setSolutions] = useState({
+    cpp: item?.solutions?.cpp || "",
+    java: item?.solutions?.java || "",
+    python: item?.solutions?.python || "",
+  });
+
+  const save = async () => {
+    const patch = isExperience
+      ? { content }
+      : {
+          question,
+          ...(isMcq ? { options, correctOptionId } : {}),
+          ...(showAnswers
+            ? {
+                answer,
+                intuition,
+                ...(isCoding ? { solutions } : {}),
+              }
+            : {}),
+        };
+    const ok = await onSave(patch);
+    if (ok) onCancel();
+  };
+
+  return (
+    <div className="space-y-3">
+      {isExperience ? (
+        <div>
+          <label className={labelClass} htmlFor={`${idPrefix}-experience`}>
+            Experience writeup
+          </label>
+          <textarea
+            id={`${idPrefix}-experience`}
+            className={`${inputClass} min-h-[160px]`}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            aria-label="Experience writeup"
+          />
+        </div>
+      ) : (
+        <div>
+          <label className={labelClass} htmlFor={`${idPrefix}-question`}>
+            Question
+          </label>
+          <textarea
+            id={`${idPrefix}-question`}
+            className={`${inputClass} min-h-[100px]`}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            aria-label="Question text"
+          />
+        </div>
+      )}
+      {isMcq ? (
+        <div className="space-y-2">
+          {options.map((opt, optionIndex) => (
+            <div key={opt.id}>
+              <label className={labelClass} htmlFor={`${idPrefix}-option-${opt.id}`}>
+                Option {opt.id}
+              </label>
+              <input
+                id={`${idPrefix}-option-${opt.id}`}
+                className={inputClass}
+                value={opt.text}
+                aria-label={`Option ${opt.id}`}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  setOptions((current) =>
+                    current.map((row, rowIndex) => (rowIndex === optionIndex ? { ...row, text } : row))
+                  );
+                }}
+              />
+            </div>
+          ))}
+          <div>
+            <label className={labelClass} htmlFor={`${idPrefix}-correct`}>
+              Correct option
+            </label>
+            <select
+              id={`${idPrefix}-correct`}
+              className={inputClass}
+              value={correctOptionId}
+              aria-label="Correct option"
+              onChange={(e) => setCorrectOptionId(e.target.value)}
+            >
+              <option value="">Not set</option>
+              {options.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.id}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ) : null}
+      {showAnswers && !isExperience ? (
+        <>
+          <div>
+            <label className={labelClass} htmlFor={`${idPrefix}-answer`}>
+              Answer
+            </label>
+            <textarea
+              id={`${idPrefix}-answer`}
+              className={`${inputClass} min-h-[120px]`}
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              aria-label="Answer"
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor={`${idPrefix}-intuition`}>
+              Intuition
+            </label>
+            <textarea
+              id={`${idPrefix}-intuition`}
+              className={`${inputClass} min-h-[80px]`}
+              value={intuition}
+              onChange={(e) => setIntuition(e.target.value)}
+              aria-label="Intuition"
+            />
+          </div>
+          {isCoding ? (
+            ["cpp", "java", "python"].map((language) => (
+              <div key={language}>
+                <label className={labelClass} htmlFor={`${idPrefix}-solution-${language}`}>
+                  {language === "cpp" ? "C++" : language === "java" ? "Java" : "Python"} solution
+                </label>
+                <textarea
+                  id={`${idPrefix}-solution-${language}`}
+                  className={`${inputClass} min-h-[120px] font-mono`}
+                  value={solutions[language]}
+                  aria-label={language === "cpp" ? "C++ solution" : language === "java" ? "Java solution" : "Python solution"}
+                  onChange={(e) =>
+                    setSolutions((current) => ({ ...current, [language]: e.target.value }))
+                  }
+                />
+              </div>
+            ))
+          ) : null}
+        </>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => void save()}
+          className="rounded-lg bg-theme-accent px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+        >
+          {saving ? "Saving…" : isExperience ? "Save experience" : "Save question"}
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={onCancel}
+          className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
+        >
+          Cancel edit
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ResearchQuestions({
   items,
   itemIndexes,
@@ -139,6 +463,12 @@ export function ResearchQuestions({
   selectable = true,
   heading = "Interview question",
   hideSourceLinks = false,
+  canEdit = false,
+  savingIndex = null,
+  onSaveEdit,
+  onDelete,
+  onRegenerateAnswer,
+  regeneratingIndexes,
 }) {
   if (!Array.isArray(items) || items.length === 0) return null;
   const rows = itemIndexes
@@ -150,10 +480,78 @@ export function ResearchQuestions({
         const supporting = Array.isArray(item?.supportingSources) ? item.supportingSources : [];
         const questionLabel = item?.question || `Question ${index + 1}`;
         return (
-          <article
+          <QuestionCard
             key={`${item?.sourceUrl || "question"}-${index}`}
-            className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4"
-          >
+            index={index}
+            item={item}
+            heading={heading}
+            questionLabel={questionLabel}
+            supporting={supporting}
+            selectable={selectable}
+            selectedIndexes={selectedIndexes}
+            onToggle={onToggle}
+            disabled={disabled}
+            showAnswers={showAnswers}
+            hideSourceLinks={hideSourceLinks}
+            canEdit={canEdit}
+            saving={savingIndex === index}
+            onSaveEdit={onSaveEdit}
+            onDelete={onDelete}
+            onRegenerateAnswer={onRegenerateAnswer}
+            regenerating={Boolean(regeneratingIndexes?.has(String(index)))}
+            regeneratingLanguages={regeneratingLanguagesFor(regeneratingIndexes, index)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function QuestionCard({
+  index,
+  item,
+  heading,
+  questionLabel,
+  supporting,
+  selectable,
+  selectedIndexes,
+  onToggle,
+  disabled,
+  showAnswers,
+  hideSourceLinks,
+  canEdit,
+  saving,
+  onSaveEdit,
+  onDelete,
+  onRegenerateAnswer,
+  regenerating = false,
+  regeneratingLanguages,
+}) {
+  const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const canDelete = showAnswers && canEdit && typeof onDelete === "function";
+  const questionType = interviewQuestionType(item);
+  const canSwitchQuestionType = canEdit && (questionType === "coding" || questionType === "non_coding");
+  const switchTypeLabel = questionType === "coding" ? "Mark as non-coding" : "Mark as coding";
+  if (editing) {
+    return (
+      <article className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4">
+        <ResearchItemEditor
+          item={item}
+          mode="question"
+          showAnswers={showAnswers}
+          saving={saving}
+          idPrefix={`question-${index}`}
+          onCancel={() => setEditing(false)}
+          onSave={(patch) => onSaveEdit(index, patch)}
+        />
+      </article>
+    );
+  }
+  return (
+      <article className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-3">
             {selectable ? (
               <label className="flex items-center gap-2 text-sm text-theme-primary">
                 <input
@@ -168,9 +566,79 @@ export function ResearchQuestions({
             ) : null}
             <p className="text-xs font-medium uppercase tracking-wide text-theme-secondary">{heading}</p>
             <p className="text-sm font-semibold text-theme-primary">{item?.question || ""}</p>
+            {item?.sourceQuestion && item.sourceQuestion !== item.question ? (
+              <p className="text-xs text-theme-secondary">Original: {item.sourceQuestion}</p>
+            ) : null}
+          </div>
+          {canEdit || canDelete ? (
+            <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+              {canSwitchQuestionType ? (
+                <button
+                  type="button"
+                  disabled={disabled || saving}
+                  onClick={() =>
+                    onSaveEdit(index, {
+                      kind: questionType === "coding" ? "non_coding" : "coding",
+                    })
+                  }
+                  className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
+                >
+                  {saving ? "Saving…" : switchTypeLabel}
+                </button>
+              ) : null}
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary"
+                >
+                  Edit question
+                </button>
+              ) : null}
+              {canDelete ? (
+                confirmingDelete ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={disabled || saving}
+                      onClick={() => {
+                        void onDelete(index).then((ok) => {
+                          if (!ok) setConfirmingDelete(false);
+                        });
+                      }}
+                      aria-label={`Confirm delete ${questionLabel}`}
+                      className="rounded-lg border border-red-500/50 px-3 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-60 dark:text-red-400"
+                    >
+                      {saving ? "Deleting…" : "Confirm delete"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => setConfirmingDelete(false)}
+                      className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={disabled || saving}
+                    onClick={() => setConfirmingDelete(true)}
+                    aria-label={`Delete ${questionLabel}`}
+                    className="rounded-lg border border-red-500/50 px-3 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-60 dark:text-red-400"
+                  >
+                    Delete
+                  </button>
+                )
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        <div className="space-y-3">
             <p className="text-xs text-theme-secondary">
-              Form{" "}
-              <span className="font-medium text-theme-primary">{oaFormLabel(item)}</span>
+              Type{" "}
+              <span className="font-medium text-theme-primary">{kindLabel(questionType) || oaFormLabel(item)}</span>
             </p>
             {item?.form === "mcq" && Array.isArray(item?.mcqMetadata?.options) ? (
               <ul className="list-none space-y-1 text-sm text-theme-secondary">
@@ -213,17 +681,36 @@ export function ResearchQuestions({
                 ) : null}
               </>
             ) : null}
-            {showAnswers ? (
-              <PlatformGeneratedSolutionView
-                answer={item?.answer}
-                solutions={item?.solutions}
-                intuition={item?.intuition}
-              />
+        {showAnswers ? (
+          <div className="space-y-3">
+            <PlatformGeneratedSolutionView
+              answer={item?.answer}
+              solutions={item?.solutions}
+              intuition={item?.intuition}
+              questionLabel={questionLabel}
+              onRegenerateLanguage={
+                hasCodingSolutions(item) && typeof onRegenerateAnswer === "function"
+                  ? (language) => onRegenerateAnswer(index, language)
+                  : undefined
+              }
+              regeneratingLanguages={regeneratingLanguages}
+              regenerateDisabled={disabled}
+            />
+            {typeof onRegenerateAnswer === "function" && !hasCodingSolutions(item) ? (
+              <button
+                type="button"
+                disabled={disabled || regenerating}
+                onClick={() => onRegenerateAnswer(index)}
+                aria-label={`Regenerate answer for ${questionLabel}`}
+                className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
+              >
+                {regenerating ? "Regenerating…" : "Regenerate answer"}
+              </button>
             ) : null}
-          </article>
-        );
-      })}
-    </div>
+          </div>
+        ) : null}
+        </div>
+      </article>
   );
 }
 
@@ -234,6 +721,9 @@ export function ResearchExperiences({
   onToggle,
   disabled,
   selectable = true,
+  canEdit = false,
+  savingIndex = null,
+  onSaveEdit,
 }) {
   if (!Array.isArray(items) || items.length === 0) return null;
   const rows = itemIndexes
@@ -241,60 +731,109 @@ export function ResearchExperiences({
     : items.map((item, index) => ({ index, item }));
   return (
     <div className="space-y-3">
-      {rows.map(({ index, item }) => {
-        const supporting = Array.isArray(item?.supportingSources) ? item.supportingSources : [];
-        return (
-          <article
-            key={`${item?.sourceUrl || "experience"}-${index}`}
-            className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4"
-          >
-            {selectable ? (
-              <label className="flex items-center gap-2 text-sm text-theme-primary">
-                <input
-                  type="checkbox"
-                  checked={selectedIndexes.has(index)}
-                  disabled={disabled}
-                  onChange={() => onToggle(index)}
-                  aria-label={`Select experience ${index + 1}`}
-                />
-                Select
-              </label>
-            ) : null}
-            <p className="text-xs font-medium uppercase tracking-wide text-theme-secondary">
-              Interview experience
-              {item?.summarized ? " · Summarized" : ""}
-            </p>
-            <PrepRichText variant="theme">{item?.content || ""}</PrepRichText>
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                Evidence
-              </p>
-              <p className="whitespace-pre-wrap text-sm text-theme-primary">{item?.evidence || ""}</p>
-            </div>
-            <div className="text-sm text-theme-secondary">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide">Source</p>
-              <SourceLink url={item?.sourceUrl}>{item?.sourceTitle || item?.sourceUrl}</SourceLink>
-            </div>
-            {supporting.length > 0 ? (
-              <div>
-                <p className="mb-1 text-xs font-medium text-theme-secondary">
-                  Supported by {supporting.length} {supporting.length === 1 ? "source" : "sources"}
-                </p>
-                <ul className="list-disc space-y-1 pl-5 text-sm">
-                  {supporting.map((source, sourceIndex) => (
-                    <li key={`${source?.sourceUrl || "support"}-${sourceIndex}`}>
-                      <SourceLink url={source?.sourceUrl}>
-                        {source?.sourceTitle || source?.sourceUrl}
-                      </SourceLink>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </article>
-        );
-      })}
+      {rows.map(({ index, item }) => (
+        <ExperienceCard
+          key={`${item?.sourceUrl || "experience"}-${index}`}
+          index={index}
+          item={item}
+          selectable={selectable}
+          selectedIndexes={selectedIndexes}
+          onToggle={onToggle}
+          disabled={disabled}
+          canEdit={canEdit}
+          saving={savingIndex === index}
+          onSaveEdit={onSaveEdit}
+        />
+      ))}
     </div>
+  );
+}
+
+function ExperienceCard({
+  index,
+  item,
+  selectable,
+  selectedIndexes,
+  onToggle,
+  disabled,
+  canEdit,
+  saving,
+  onSaveEdit,
+}) {
+  const [editing, setEditing] = useState(false);
+  const supporting = Array.isArray(item?.supportingSources) ? item.supportingSources : [];
+  if (editing) {
+    return (
+      <article className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4">
+        <ResearchItemEditor
+          item={item}
+          mode="experience"
+          showAnswers={false}
+          saving={saving}
+          idPrefix={`experience-${index}`}
+          onCancel={() => setEditing(false)}
+          onSave={(patch) => onSaveEdit(index, patch)}
+        />
+      </article>
+    );
+  }
+  return (
+    <article className="space-y-3 rounded-xl border border-theme bg-theme-hero/30 p-3 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-3">
+          {selectable ? (
+            <label className="flex items-center gap-2 text-sm text-theme-primary">
+              <input
+                type="checkbox"
+                checked={selectedIndexes.has(index)}
+                disabled={disabled}
+                onChange={() => onToggle(index)}
+                aria-label={`Select experience ${index + 1}`}
+              />
+              Select
+            </label>
+          ) : null}
+          <p className="text-xs font-medium uppercase tracking-wide text-theme-secondary">
+            Interview experience
+            {item?.summarized ? " · Summarized" : ""}
+          </p>
+        </div>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="shrink-0 rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary"
+          >
+            Edit experience
+          </button>
+        ) : null}
+      </div>
+      <PrepRichText variant="theme">{item?.content || ""}</PrepRichText>
+      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+          Evidence
+        </p>
+        <p className="whitespace-pre-wrap text-sm text-theme-primary">{item?.evidence || ""}</p>
+      </div>
+      <div className="text-sm text-theme-secondary">
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide">Source</p>
+        <SourceLink url={item?.sourceUrl}>{item?.sourceTitle || item?.sourceUrl}</SourceLink>
+      </div>
+      {supporting.length > 0 ? (
+        <div>
+          <p className="mb-1 text-xs font-medium text-theme-secondary">
+            Supported by {supporting.length} {supporting.length === 1 ? "source" : "sources"}
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-sm">
+            {supporting.map((source, sourceIndex) => (
+              <li key={`${source?.sourceUrl || "support"}-${sourceIndex}`}>
+                <SourceLink url={source?.sourceUrl}>{source?.sourceTitle || source?.sourceUrl}</SourceLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -327,24 +866,26 @@ function ReviewTabs({ active, onChange, sourceCount, questionCount }) {
 
 const CONTENT_FIELDS = [
   { id: "interviewQuestions", label: "Interview questions", action: "Research interview questions" },
-  { id: "onlineQuestions", label: "OA questions", action: "Research OA questions" },
   { id: "interviewExperiences", label: "Interview experiences", action: "Research interview experiences" },
 ];
 
 function contentCopy(field) {
-  if (field === "onlineQuestions") {
-    return "Research OA questions for SDE, Analyst, or Data Scientist. Questions are normalized to coding (DSA), SQL, or MCQ. Links are not saved. Finalize, generate answers, then publish.";
-  }
   if (field === "interviewExperiences") {
-    return "Research interview experiences for this company. The full writeup is kept unless it is longer than 12,000 characters, in which case a summary is saved. Source links are published to Quick Links with the experiences.";
+    return "Interview experiences stay with the role they were researched for. The full writeup is kept unless it is longer than 12,000 characters, in which case a summary is saved.";
   }
-  return "Approve research links and interview questions separately. Finalize your question list, generate answers, then publish questions to the company.";
+  return "Interview questions stay with the role they were researched for. Finalize the list, generate answers, then publish.";
 }
 
 export default function GeneralResearchPanel({ companyId, companyName }) {
   const [contentField, setContentField] = useState("interviewQuestions");
   const [jobField, setJobField] = useState("");
-  const [role, setRole] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [roleDraft, setRoleDraft] = useState("");
+  const [viewRole, setViewRole] = useState("");
+  const [jobsBySlot, setJobsBySlot] = useState({});
+  const [fresherRoles, setFresherRoles] = useState([]);
+  const [pollKey, setPollKey] = useState("");
+  const [fresherRolesLoading, setFresherRolesLoading] = useState(false);
   const [country, setCountry] = useState("India");
   const [maxSources, setMaxSources] = useState(3);
   const [searchDepth, setSearchDepth] = useState("basic");
@@ -353,36 +894,240 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   const [researchStatus, setResearchStatus] = useState("");
   const [researchResult, setResearchResult] = useState(null);
   const [researchError, setResearchError] = useState("");
+  const [researchLimit, setResearchLimit] = useState(null);
   const [selectedIndexes, setSelectedIndexes] = useState(() => new Set());
   const [reviewTab, setReviewTab] = useState("sources");
   const [publishingSources, setPublishingSources] = useState(false);
   const [sourcesPublishSummary, setSourcesPublishSummary] = useState(null);
   const [questionsFinalized, setQuestionsFinalized] = useState(false);
   const [finalizedIndexes, setFinalizedIndexes] = useState([]);
-  const [generatingAnswers, setGeneratingAnswers] = useState(false);
+  const [backgroundWork, setBackgroundWork] = useState({});
+  const [enhancingQuestions, setEnhancingQuestions] = useState(false);
+  const [enhanceSummary, setEnhanceSummary] = useState("");
   const [answersGenerated, setAnswersGenerated] = useState(false);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishSummary, setPublishSummary] = useState(null);
   const [researchJobSnapshot, setResearchJobSnapshot] = useState(null);
   const [linksSummaryText, setLinksSummaryText] = useState("");
-  const [generatingLinksSummary, setGeneratingLinksSummary] = useState(false);
   const [savingLinksSummary, setSavingLinksSummary] = useState(false);
+  const [savingItemIndex, setSavingItemIndex] = useState(null);
   const statusRef = useRef("");
   const deadlineRef = useRef({ id: "", at: 0 });
   const generationRef = useRef(0);
+  const jobsBySlotRef = useRef({});
+  const contentFieldRef = useRef(contentField);
+  const viewRoleRef = useRef(viewRole);
+  const researchJobIdRef = useRef("");
+  const showJobRef = useRef(() => {});
+  const clearJobRef = useRef(() => {});
+  const skipFieldResetRef = useRef(true);
+  const deadlinesRef = useRef({});
+  const backgroundWorkRef = useRef({});
+  const regenerateChainRef = useRef({});
+  contentFieldRef.current = contentField;
+  viewRoleRef.current = viewRole;
+  researchJobIdRef.current = researchJobId;
+
+  const generatingAnswers = Boolean(backgroundWork[researchJobId]?.answers);
+  const generatingLinksSummary = Boolean(backgroundWork[researchJobId]?.summary);
+  const regeneratingIndexes = new Set(backgroundWork[researchJobId]?.regenerating || []);
+
+  const setJobWork = (jobId, patch) => {
+    const id = String(jobId || "");
+    if (!id) return;
+    const prev = backgroundWorkRef.current[id] || {};
+    const nextJob = { ...prev, ...patch };
+    const next = { ...backgroundWorkRef.current };
+    const regenerating = Array.isArray(nextJob.regenerating) ? nextJob.regenerating : [];
+    if (!nextJob.answers && !nextJob.summary && regenerating.length === 0) delete next[id];
+    else next[id] = nextJob;
+    backgroundWorkRef.current = next;
+    setBackgroundWork(next);
+  };
+
+  const patchStoredJob = (jobId, patcher) => {
+    const id = String(jobId || "");
+    if (!id) return null;
+    const next = { ...jobsBySlotRef.current };
+    let updated = null;
+    for (const [key, row] of Object.entries(next)) {
+      if (row?.jobId !== id) continue;
+      updated = patcher(row);
+      next[key] = updated;
+    }
+    if (!updated) return null;
+    jobsBySlotRef.current = next;
+    setJobsBySlot(next);
+    return updated;
+  };
+
+  const stillViewingJob = (jobId) => researchJobIdRef.current === String(jobId || "");
+
+  const rememberJob = (job) => {
+    if (!job?.jobId || !job?.field) return;
+    const key = slotKey(job.field, job.role);
+    const next = {
+      ...jobsBySlotRef.current,
+      [key]: { ...jobsBySlotRef.current[key], ...job, field: job.field },
+    };
+    jobsBySlotRef.current = next;
+    setJobsBySlot(next);
+  };
+
+  const mergePolledJob = (job) => {
+    const jobId = String(job?.jobId || "");
+    if (!jobId) return null;
+    const next = { ...jobsBySlotRef.current };
+    let matched = null;
+    for (const [key, row] of Object.entries(next)) {
+      if (row?.jobId !== jobId) continue;
+      matched = {
+        ...row,
+        ...job,
+        field: job.field || row.field,
+        role: job.role || row.role,
+        result: job.result ?? row.result,
+      };
+      next[key] = matched;
+    }
+    if (!matched) return null;
+    jobsBySlotRef.current = next;
+    setJobsBySlot(next);
+    return matched;
+  };
+
+  const noteJobFailure = (error) => {
+    setResearchError(error?.message || "Research failed.");
+    setResearchLimit(
+      error?.tokenLimit ? { secretId: error.secretId || "groq-web-search" } : null
+    );
+  };
+
+  const noteApiFailure = (err, fallback, defaultSecretId) => {
+    const failure = readApiFailure(err, fallback, defaultSecretId);
+    setResearchError(failure.message);
+    setResearchLimit(failure.tokenLimit ? { secretId: failure.secretId || defaultSecretId } : null);
+  };
+
+  showJobRef.current = (job) => {
+    if (!job?.jobId) return;
+    const field = typeof job.field === "string" && job.field ? job.field : contentFieldRef.current;
+    const status = typeof job.status === "string" ? job.status : "";
+    rememberJob({ ...job, field });
+    statusRef.current = status;
+    setJobField(field);
+    setResearchStatus(status);
+    setResearchResult(job.result ?? null);
+    if (status === "failed") noteJobFailure(job.error);
+    else if (job.backgroundError) {
+      setResearchError(job.backgroundError);
+      setResearchLimit(job.backgroundLimit || null);
+    } else {
+      setResearchError("");
+      setResearchLimit(null);
+    }
+    setResearchJobSnapshot({
+      role: typeof job.role === "string" ? job.role : "",
+      linksSummaryDraft: job.linksSummaryDraft ?? null,
+    });
+    const draftSummary =
+      typeof job.linksSummaryDraft?.summary === "string" ? job.linksSummaryDraft.summary : "";
+    const ui = readUiState(companyId, job.jobId);
+    const items = Array.isArray(job.result?.items) ? job.result.items : [];
+    const answered = indexesWithAnswers(items);
+    const canReview = status === "review" || status === "published";
+    const finalizedFromUi = integerList(ui?.finalizedIndexes);
+    const questionsFinal = canReview && (Boolean(ui?.questionsFinalized) || answered.length > 0);
+    setResearchStarting(false);
+    setSelectedIndexes(new Set(integerList(ui?.selectedIndexes)));
+    setReviewTab(
+      ui?.reviewTab === "questions" || ui?.reviewTab === "sources"
+        ? ui.reviewTab
+        : field === "interviewQuestions"
+          ? "sources"
+          : "questions"
+    );
+    setPublishingSources(false);
+    setSourcesPublishSummary(
+      ui?.sourcesPublishSummary ||
+        (job.sourcesPublication
+          ? {
+              insertedSourceCount: Number(job.sourcesPublication.insertedSourceCount) || 0,
+              duplicateSourceCount: Number(job.sourcesPublication.duplicateSourceCount) || 0,
+            }
+          : null)
+    );
+    setQuestionsFinalized(questionsFinal);
+    setFinalizedIndexes(questionsFinal ? (finalizedFromUi.length ? finalizedFromUi : answered) : []);
+    setAnswersGenerated(canReview && (Boolean(ui?.answersGenerated) || answered.length > 0));
+    setConfirmingPublish(false);
+    setPublishing(false);
+    setPublishSummary(
+      ui?.publishSummary ||
+        (job.publication
+          ? {
+              insertedCount: Number(job.publication.insertedCount) || 0,
+              duplicateCount: Number(job.publication.duplicateCount) || 0,
+            }
+          : null)
+    );
+    setLinksSummaryText(typeof ui?.linksSummaryText === "string" ? ui.linksSummaryText : draftSummary);
+    setSavingLinksSummary(false);
+    if (typeof job.role === "string" && job.role.trim()) setViewRole(job.role);
+    const nextJobId = String(job.jobId);
+    researchJobIdRef.current = nextJobId;
+    setResearchJobId(nextJobId);
+  };
+
+  clearJobRef.current = () => {
+    statusRef.current = "";
+    setResearchStarting(false);
+    researchJobIdRef.current = "";
+    setResearchJobId("");
+    setResearchStatus("");
+    setResearchResult(null);
+    setResearchError("");
+    setSelectedIndexes(new Set());
+    setReviewTab(contentFieldRef.current === "interviewQuestions" ? "sources" : "questions");
+    setPublishingSources(false);
+    setSourcesPublishSummary(null);
+    setQuestionsFinalized(false);
+    setFinalizedIndexes([]);
+    setAnswersGenerated(false);
+    setConfirmingPublish(false);
+    setPublishing(false);
+    setPublishSummary(null);
+    setResearchJobSnapshot(null);
+    setLinksSummaryText("");
+    setSavingLinksSummary(false);
+    setJobField("");
+    researchJobIdRef.current = "";
+    setResearchJobId("");
+  };
 
   useEffect(() => {
     statusRef.current = researchStatus;
   }, [researchStatus]);
 
+  const runningJobIds = () =>
+    [
+      ...new Set(
+        Object.values(jobsBySlotRef.current)
+          .filter((job) => job?.status === "queued" || job?.status === "running")
+          .map((job) => job.jobId)
+          .filter(Boolean)
+      ),
+    ].sort();
+
+  const syncPollKey = () => {
+    const next = runningJobIds().join(",");
+    setPollKey((current) => (current === next ? current : next));
+  };
+
   useEffect(() => {
-    if (!researchJobId) return undefined;
-    const jobId = researchJobId;
-    const generation = generationRef.current;
-    if (deadlineRef.current.id !== jobId) {
-      deadlineRef.current = { id: jobId, at: Date.now() + RESEARCH_POLL_MAX_MS };
-    }
+    const ids = pollKey.split(",").filter(Boolean);
+    if (ids.length === 0) return undefined;
     let cancelled = false;
     let timer = 0;
 
@@ -392,58 +1137,73 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     };
 
     const poll = async () => {
-      if (cancelled || generationRef.current !== generation) return;
-      const current = statusRef.current;
-      if (current && current !== "queued" && current !== "running") {
+      if (cancelled) return;
+      const pending = runningJobIds();
+      if (pending.length === 0) {
         stop();
         return;
       }
-      if (Date.now() >= deadlineRef.current.at) {
-        if (generationRef.current !== generation) return;
-        statusRef.current = "timed_out";
-        setResearchStatus("timed_out");
-        stop();
-        return;
-      }
-      try {
-        const res = await companyAPI.getCompanyResearchStatus(jobId);
-        if (cancelled || generationRef.current !== generation) return;
-        const job = res?.data || {};
-        if (job.jobId && job.jobId !== jobId) return;
-        const next = typeof job.status === "string" ? job.status : "";
-        if (next === "review") {
-          statusRef.current = "review";
-          setResearchStatus("review");
-          setResearchResult(job.result ?? null);
-          if (typeof job.field === "string" && job.field) setJobField(job.field);
-          setResearchJobSnapshot({
-            role: typeof job.role === "string" ? job.role : "",
-            linksSummaryDraft: job.linksSummaryDraft ?? null,
-          });
-          const draftSummary =
-            typeof job.linksSummaryDraft?.summary === "string"
-              ? job.linksSummaryDraft.summary
-              : "";
-          setLinksSummaryText(draftSummary);
-          setResearchError("");
-          stop();
-          return;
-        }
-        if (next === "failed") {
-          statusRef.current = "failed";
-          setResearchStatus("failed");
-          setResearchResult(null);
-          setResearchError(job.error?.message || "Research failed.");
-          stop();
-          return;
-        }
-        if (next === "queued" || next === "running") {
-          statusRef.current = next;
-          setResearchStatus(next);
-        }
-      } catch {
-        // Keep polling until the deadline. A single status read can fail transiently.
-      }
+      await Promise.all(
+        pending.map(async (jobId) => {
+          if (!deadlinesRef.current[jobId]) {
+            deadlinesRef.current[jobId] = Date.now() + RESEARCH_POLL_MAX_MS;
+          }
+          if (Date.now() >= deadlinesRef.current[jobId]) {
+            mergePolledJob({ jobId, status: "timed_out", result: null });
+            if (researchJobIdRef.current === jobId) {
+              statusRef.current = "timed_out";
+              setResearchStatus("timed_out");
+            }
+            return;
+          }
+          try {
+            const res = await companyAPI.getCompanyResearchStatus(jobId);
+            if (cancelled) return;
+            const job = res?.data || {};
+            if (job.jobId && job.jobId !== jobId) return;
+            const merged = mergePolledJob(job);
+            if (researchJobIdRef.current !== jobId) return;
+            const visibleSlot =
+              Object.values(jobsBySlotRef.current).find(
+                (row) =>
+                  row?.jobId === jobId &&
+                  row.field === contentFieldRef.current &&
+                  roleIdentity(row.role) === roleIdentity(viewRoleRef.current)
+              ) || merged;
+            const next = typeof job.status === "string" ? job.status : "";
+            if (next === "review") {
+              statusRef.current = "review";
+              setResearchStatus("review");
+              setResearchResult(job.result ?? visibleSlot?.result ?? null);
+              if (visibleSlot?.field) setJobField(visibleSlot.field);
+              setResearchJobSnapshot({
+                role: visibleSlot?.role || job.role || "",
+                linksSummaryDraft: job.linksSummaryDraft ?? visibleSlot?.linksSummaryDraft ?? null,
+              });
+              const draftSummary =
+                typeof job.linksSummaryDraft?.summary === "string" ? job.linksSummaryDraft.summary : "";
+              setLinksSummaryText(draftSummary);
+              setResearchError("");
+              setResearchLimit(null);
+              return;
+            }
+            if (next === "failed") {
+              statusRef.current = "failed";
+              setResearchStatus("failed");
+              setResearchResult(null);
+              noteJobFailure(job.error);
+              return;
+            }
+            if (next === "queued" || next === "running") {
+              statusRef.current = next;
+              setResearchStatus(next);
+            }
+          } catch {
+            // Keep polling until the deadline. A single status read can fail transiently.
+          }
+        })
+      );
+      if (!cancelled && runningJobIds().length === 0) stop();
     };
 
     timer = window.setInterval(() => {
@@ -454,14 +1214,152 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     return () => {
       stop();
     };
-  }, [researchJobId]);
+  }, [pollKey]);
+
+  useEffect(() => {
+    const id = String(companyId || "").trim();
+    const name = String(companyName || "").trim();
+    if (!id || !name) return undefined;
+    let cancelled = false;
+    setFresherRolesLoading(true);
+    (async () => {
+      try {
+        const res = await companyAPI.listCompanyFresherRoles(id, name);
+        if (cancelled) return;
+        const roles = Array.isArray(res?.data?.roles) ? res.data.roles : [];
+        setFresherRoles(
+          roles
+            .map((item) => String(item || "").trim())
+            .filter(isSelectableResearchRole)
+        );
+      } catch {
+        if (!cancelled) setFresherRoles([]);
+      } finally {
+        if (!cancelled) setFresherRolesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId, companyName]);
+
+  useEffect(() => {
+    const id = String(companyId || "").trim();
+    if (!id) return undefined;
+    let cancelled = false;
+    const generation = generationRef.current;
+    (async () => {
+      try {
+        const res = await companyAPI.listCompanyResearchJobs(id);
+        if (cancelled || generationRef.current !== generation) return;
+        const jobs = Array.isArray(res?.data?.jobs) ? res.data.jobs : [];
+        const map = {};
+        const restoredRoles = [];
+        for (const job of jobs) {
+          if (!job?.jobId || !job?.field || job.field === "onlineQuestions") continue;
+          map[slotKey(job.field, job.role)] = job;
+          const name = canonicalRole(job.role);
+          if (name && !restoredRoles.some((role) => roleIdentity(role) === roleIdentity(name))) {
+            restoredRoles.push(name);
+          }
+        }
+        jobsBySlotRef.current = map;
+        setJobsBySlot(map);
+        if (restoredRoles.length > 0) setSelectedRoles(restoredRoles);
+        const visible =
+          map[slotKey(contentFieldRef.current, viewRoleRef.current)] ||
+          Object.values(map).find((job) => job.field === contentFieldRef.current) ||
+          Object.values(map)[0] ||
+          null;
+        if (visible) {
+          skipFieldResetRef.current = true;
+          showJobRef.current(visible);
+        }
+      } catch {
+        // The company page still lets the admin start a new research run.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [companyId]);
+
+  useEffect(() => {
+    if (skipFieldResetRef.current) {
+      skipFieldResetRef.current = false;
+      return;
+    }
+    const jobs = Object.values(jobsBySlotRef.current).filter((job) => job?.field === contentField);
+    const job =
+      jobs.find((row) => roleIdentity(row.role) === roleIdentity(viewRole)) || jobs[0] || null;
+    if (!job) {
+      clearJobRef.current();
+      return;
+    }
+    if (job.jobId === researchJobIdRef.current && job.field === contentField) return;
+    showJobRef.current(job);
+  }, [contentField, viewRole]);
+
+  useEffect(() => {
+    if (!companyId || !researchJobId) return;
+    writeUiState(companyId, researchJobId, {
+      selectedIndexes: [...selectedIndexes],
+      reviewTab,
+      questionsFinalized,
+      finalizedIndexes,
+      answersGenerated,
+      linksSummaryText,
+      sourcesPublishSummary,
+      publishSummary,
+    });
+  }, [
+    companyId,
+    researchJobId,
+    selectedIndexes,
+    reviewTab,
+    questionsFinalized,
+    finalizedIndexes,
+    answersGenerated,
+    linksSummaryText,
+    sourcesPublishSummary,
+    publishSummary,
+  ]);
+
+  const addRole = (raw) => {
+    const name = canonicalRole(raw);
+    if (!name) return;
+    if (selectedRoles.some((role) => roleIdentity(role) === roleIdentity(name))) {
+      setRoleDraft("");
+      setViewRole(name);
+      return;
+    }
+    if (selectedRoles.length >= MAX_SELECTED_ROLES) {
+      setResearchError(`You can research up to ${MAX_SELECTED_ROLES} roles at once.`);
+      return;
+    }
+    setResearchError("");
+    setSelectedRoles((current) =>
+      current.some((role) => roleIdentity(role) === roleIdentity(name)) ? current : [...current, name]
+    );
+    setRoleDraft("");
+    setViewRole(name);
+  };
+
+  const removeRole = (name) => {
+    setSelectedRoles((current) => current.filter((role) => roleIdentity(role) !== roleIdentity(name)));
+  };
 
   const startResearch = async () => {
     const company = String(companyName || "").trim();
     const id = String(companyId || "").trim();
     const sources = Number(maxSources);
+    const roles = selectedRoles.map((role) => canonicalRole(role)).filter(Boolean);
     if (!id || !company) {
       setResearchError("Company name is required.");
+      return;
+    }
+    if (roles.length === 0) {
+      setResearchError("Add at least one role.");
       return;
     }
     if (!Number.isInteger(sources) || sources < 1 || sources > MAX_SOURCES) {
@@ -472,54 +1370,88 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
       setResearchError("Search depth must be basic or advanced.");
       return;
     }
-    if (contentField === "onlineQuestions" && !String(role || "").trim()) {
-      setResearchError("Choose a role: SDE, Analyst, or Data Scientist.");
-      return;
+
+    const runs = [];
+    for (const roleName of roles) {
+      runs.push({ field: "interviewQuestions", role: roleName });
+      runs.push({ field: "interviewExperiences", role: roleName });
     }
 
     generationRef.current += 1;
+    const generation = generationRef.current;
     setResearchStarting(true);
     setResearchError("");
     setResearchResult(null);
     setResearchStatus("");
+    researchJobIdRef.current = "";
     setResearchJobId("");
     setSelectedIndexes(new Set());
-    setReviewTab(contentField === "interviewQuestions" ? "sources" : "questions");
+    setReviewTab("sources");
     setPublishingSources(false);
     setSourcesPublishSummary(null);
     setQuestionsFinalized(false);
     setFinalizedIndexes([]);
-    setGeneratingAnswers(false);
     setAnswersGenerated(false);
     setConfirmingPublish(false);
     setPublishing(false);
     setPublishSummary(null);
     setResearchJobSnapshot(null);
     setLinksSummaryText("");
-    setGeneratingLinksSummary(false);
     setSavingLinksSummary(false);
     statusRef.current = "";
-    setJobField(contentField);
-    const generation = generationRef.current;
+    if (
+      contentFieldRef.current !== "interviewQuestions" ||
+      roleIdentity(viewRoleRef.current) !== roleIdentity(roles[0])
+    ) {
+      skipFieldResetRef.current = true;
+    }
+    setContentField("interviewQuestions");
+    setViewRole(roles[0]);
+    setJobField("interviewQuestions");
     try {
-      const res = await companyAPI.startCompanyResearch({
-        companyId: id,
-        companyName: company,
-        field: contentField,
-        role: String(role || "").trim(),
-        country: String(country || "").trim(),
-        maxSources: sources,
-        searchDepth,
-      });
-      const jobId = res?.data?.jobId;
+      const started = await Promise.allSettled(
+        runs.map(async (run) => {
+          const res = await companyAPI.startCompanyResearch({
+            companyId: id,
+            companyName: company,
+            field: run.field,
+            role: run.role,
+            country: String(country || "").trim(),
+            maxSources: sources,
+            searchDepth,
+          });
+          const jobId = res?.data?.jobId;
+          if (!jobId) return null;
+          return {
+            jobId: String(jobId),
+            status: res.data.status || "queued",
+            field: run.field,
+            companyId: id,
+            companyName: company,
+            role: run.role,
+            result: null,
+          };
+        })
+      );
       if (generationRef.current !== generation) return;
-      if (!jobId) {
+      const queued = started
+        .filter((row) => row.status === "fulfilled" && row.value)
+        .map((row) => row.value);
+      if (queued.length === 0) {
         setResearchError("Research could not be started.");
         return;
       }
-      statusRef.current = res.data.status || "queued";
-      setResearchStatus(statusRef.current);
-      setResearchJobId(String(jobId));
+      for (const job of queued) rememberJob(job);
+      const visible =
+        queued.find(
+          (job) => job.field === "interviewQuestions" && roleIdentity(job.role) === roleIdentity(roles[0])
+        ) || queued[0];
+      statusRef.current = visible.status;
+      setResearchStatus(visible.status);
+      setResearchJobId(visible.jobId);
+      setJobField(visible.field);
+      setResearchJobSnapshot({ role: visible.role, linksSummaryDraft: null });
+      syncPollKey();
     } catch (err) {
       if (generationRef.current === generation) {
         setResearchError(apiErrorMessage(err, "Research could not be started."));
@@ -532,10 +1464,9 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   const reviewField = jobField || contentField;
   const savesLinks = reviewField === "interviewQuestions";
   const isExperience = reviewField === "interviewExperiences";
-  const selectedContent =
-    CONTENT_FIELDS.find((row) => row.id === contentField) || CONTENT_FIELDS[0];
   const questions = Array.isArray(researchResult?.items) ? researchResult.items : [];
   const published = researchStatus === "published";
+  const sourcesPublished = Boolean(sourcesPublishSummary);
   const statusCopy = STATUS_COPY[researchStatus] || "";
   const statusIsError = researchStatus === "failed" || researchStatus === "timed_out";
   const showResult = (researchStatus === "review" || published) && researchResult;
@@ -566,32 +1497,54 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   };
 
   const activeResearchRole =
-    String(researchJobSnapshot?.role || role || "").trim() || "General (all roles)";
+    String(researchJobSnapshot?.role || viewRole || "").trim() || "General (all roles)";
 
   const generateLinksSummary = async () => {
-    if (!researchJobId || published) return;
-    setGeneratingLinksSummary(true);
-    setResearchError("");
+    const jobId = String(researchJobId || "");
+    if (!jobId || sourcesPublished) return;
+    const roleName = String(viewRole || "").trim();
+    setJobWork(jobId, { summary: true });
+    if (stillViewingJob(jobId)) setResearchError("");
     try {
-      const res = await companyAPI.generateCompanyResearchLinksSummary(researchJobId);
+      const res = await companyAPI.generateCompanyResearchLinksSummary(jobId);
       const summary = String(res?.data?.summary || "").trim();
+      const draft = {
+        prepRoleKey: res?.data?.prepRoleKey ?? "",
+        summary,
+      };
+      patchStoredJob(jobId, (row) => ({
+        ...row,
+        backgroundError: "",
+        backgroundLimit: null,
+        linksSummaryDraft: draft,
+      }));
+      const previousUi = readUiState(companyId, jobId) || {};
+      writeUiState(companyId, jobId, { ...previousUi, linksSummaryText: summary });
+      if (!stillViewingJob(jobId)) return;
       if (summary) setLinksSummaryText(summary);
       setResearchJobSnapshot((current) => ({
-        role: current?.role ?? String(role || "").trim(),
-        linksSummaryDraft: {
-          prepRoleKey: res?.data?.prepRoleKey ?? "",
-          summary,
-        },
+        role: current?.role ?? roleName,
+        linksSummaryDraft: draft,
       }));
     } catch (err) {
-      setResearchError(apiErrorMessage(err, "Links summary could not be generated."));
+      const failure = readApiFailure(err, "Links summary could not be generated.");
+      if (stillViewingJob(jobId)) {
+        setResearchError(failure.message);
+        setResearchLimit(failure.tokenLimit ? { secretId: failure.secretId } : null);
+      } else {
+        patchStoredJob(jobId, (row) => ({
+          ...row,
+          backgroundError: failure.message,
+          backgroundLimit: failure.tokenLimit ? { secretId: failure.secretId } : null,
+        }));
+      }
     } finally {
-      setGeneratingLinksSummary(false);
+      setJobWork(jobId, { summary: false });
     }
   };
 
   const saveLinksSummaryDraft = async () => {
-    if (!researchJobId || published) return;
+    if (!researchJobId || sourcesPublished) return;
     const summary = String(linksSummaryText || "").trim();
     if (!summary) {
       setResearchError("Write or generate a summary before saving.");
@@ -602,7 +1555,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     try {
       const res = await companyAPI.saveCompanyResearchLinksSummaryDraft(researchJobId, summary);
       setResearchJobSnapshot((current) => ({
-        role: current?.role ?? String(role || "").trim(),
+        role: current?.role ?? String(viewRole || "").trim(),
         linksSummaryDraft: {
           prepRoleKey: res?.data?.prepRoleKey ?? "",
           summary: res?.data?.summary ?? summary,
@@ -616,19 +1569,87 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   };
 
   const approveAllLinks = async () => {
-    if (!researchJobId || published) return;
+    if (!researchJobId || sourcesPublished) return;
     setPublishingSources(true);
     setResearchError("");
     try {
       const res = await companyAPI.publishCompanyResearchSources(researchJobId);
-      setSourcesPublishSummary({
+      const summary = {
         insertedSourceCount: Number(res?.data?.insertedSourceCount) || 0,
         duplicateSourceCount: Number(res?.data?.duplicateSourceCount) || 0,
-      });
+      };
+      setSourcesPublishSummary(summary);
+      const jobId = researchJobIdRef.current;
+      const nextMap = { ...jobsBySlotRef.current };
+      for (const [key, row] of Object.entries(nextMap)) {
+        if (row?.jobId !== jobId) continue;
+        nextMap[key] = {
+          ...row,
+          sourcesPublication: {
+            publishedAt: new Date().toISOString(),
+            insertedSourceCount: summary.insertedSourceCount,
+            duplicateSourceCount: summary.duplicateSourceCount,
+          },
+        };
+      }
+      jobsBySlotRef.current = nextMap;
+      setJobsBySlot(nextMap);
     } catch (err) {
       setResearchError(apiErrorMessage(err, "Research links could not be approved."));
     } finally {
       setPublishingSources(false);
+    }
+  };
+
+  const applyEnhancedQuestions = (updates) => {
+    setResearchResult((current) => {
+      if (!current || !Array.isArray(current.items)) return current;
+      const items = [...current.items];
+      for (const row of updates) {
+        const index = row?.index;
+        if (typeof index !== "number" || index < 0 || index >= items.length) continue;
+        items[index] = {
+          ...items[index],
+          question: row.question || items[index].question,
+          sourceQuestion: row.sourceQuestion || items[index].sourceQuestion,
+        };
+      }
+      const next = { ...current, items };
+      const jobId = researchJobIdRef.current;
+      const nextMap = { ...jobsBySlotRef.current };
+      for (const [key, row] of Object.entries(nextMap)) {
+        if (row?.jobId === jobId) nextMap[key] = { ...row, result: next };
+      }
+      jobsBySlotRef.current = nextMap;
+      return next;
+    });
+  };
+
+  const enhanceQuestions = async () => {
+    if (!researchJobId || published || isExperience) return;
+    const indexes = questionsFinalized
+      ? finalizedIndexes
+      : selectedIndexes.size > 0
+        ? [...selectedIndexes].sort((a, b) => a - b)
+        : questions.map((_, index) => index);
+    if (indexes.length === 0) return;
+    setEnhancingQuestions(true);
+    setEnhanceSummary("");
+    setResearchError("");
+    setResearchLimit(null);
+    try {
+      const res = await companyAPI.enhanceCompanyResearchQuestions(researchJobId, indexes);
+      const updates = Array.isArray(res?.data?.items) ? res.data.items : [];
+      applyEnhancedQuestions(updates);
+      setEnhanceSummary(
+        updates.length > 0
+          ? `Enhanced ${updates.length} ${updates.length === 1 ? "question" : "questions"} into full statements.`
+          : "Those questions were already full statements."
+      );
+    } catch (err) {
+      noteApiFailure(err, "Questions could not be enhanced.", "groq-admin");
+    } finally {
+      setEnhancingQuestions(false);
     }
   };
 
@@ -641,30 +1662,162 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     setAnswersGenerated(false);
   };
 
-  const addAnswers = async () => {
-    if (!researchJobId || !questionsFinalized || finalizedIndexes.length === 0) return;
-    setGeneratingAnswers(true);
+  const saveResearchItem = async (index, patch) => {
+    if (!researchJobId || published) return false;
+    setSavingItemIndex(index);
     setResearchError("");
     try {
-      const res = await companyAPI.generateCompanyResearchAnswers(researchJobId, finalizedIndexes);
-      const updates = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const res = await companyAPI.updateCompanyResearchItem(researchJobId, index, patch);
+      const saved = res?.data?.item;
       setResearchResult((current) => {
         if (!current || !Array.isArray(current.items)) return current;
-        const items = [...current.items];
-        for (const row of updates) {
-          const index = row?.index;
-          if (typeof index !== "number" || index < 0 || index >= items.length) continue;
-          const { index: _drop, ...rest } = row;
-          items[index] = { ...items[index], ...rest };
+        const items = current.items.map((row, rowIndex) =>
+          rowIndex === index ? saved || { ...row, ...patch } : row
+        );
+        const next = { ...current, items };
+        const jobId = researchJobIdRef.current;
+        const nextMap = { ...jobsBySlotRef.current };
+        for (const [key, row] of Object.entries(nextMap)) {
+          if (row?.jobId === jobId) nextMap[key] = { ...row, result: next };
         }
-        return { ...current, items };
+        jobsBySlotRef.current = nextMap;
+        return next;
       });
+      return true;
+    } catch (err) {
+      setResearchError(apiErrorMessage(err, "This item could not be saved."));
+      return false;
+    } finally {
+      setSavingItemIndex(null);
+    }
+  };
+
+  const deleteResearchItem = async (index) => {
+    if (!researchJobId || published) return false;
+    setSavingItemIndex(index);
+    setResearchError("");
+    try {
+      const res = await companyAPI.deleteCompanyResearchItem(researchJobId, index);
+      const items = Array.isArray(res?.data?.items) ? res.data.items : null;
+      if (!items) return false;
+      setResearchResult((current) => {
+        if (!current) return current;
+        const next = { ...current, items };
+        const jobId = researchJobIdRef.current;
+        const nextMap = { ...jobsBySlotRef.current };
+        for (const [key, row] of Object.entries(nextMap)) {
+          if (row?.jobId === jobId) nextMap[key] = { ...row, result: next };
+        }
+        jobsBySlotRef.current = nextMap;
+        return next;
+      });
+      setFinalizedIndexes((current) => shiftIndexesAfterRemoval(current, index));
+      setSelectedIndexes((current) => new Set(shiftIndexesAfterRemoval([...current], index)));
+      return true;
+    } catch (err) {
+      setResearchError(apiErrorMessage(err, "This question could not be deleted."));
+      return false;
+    } finally {
+      setSavingItemIndex(null);
+    }
+  };
+
+  const addAnswers = async () => {
+    const jobId = String(researchJobId || "");
+    const indexes = [...finalizedIndexes];
+    if (!jobId || !questionsFinalized || indexes.length === 0) return;
+    setJobWork(jobId, { answers: true });
+    if (stillViewingJob(jobId)) {
+      setResearchError("");
+      setResearchLimit(null);
+    }
+    try {
+      const res = await companyAPI.generateCompanyResearchAnswers(jobId, indexes);
+      const updates = Array.isArray(res?.data?.items) ? res.data.items : [];
+      const updated = patchStoredJob(jobId, (row) => ({
+        ...row,
+        backgroundError: "",
+        backgroundLimit: null,
+        result: {
+          ...(row.result || {}),
+          items: mergeAnswerUpdates(row.result?.items, updates),
+        },
+      }));
+      if (!stillViewingJob(jobId)) return;
+      if (updated?.result) setResearchResult(updated.result);
       setAnswersGenerated(true);
     } catch (err) {
-      setResearchError(apiErrorMessage(err, "Answers could not be generated."));
+      const failure = readApiFailure(err, "Answers could not be generated.", "groq-admin");
+      if (stillViewingJob(jobId)) {
+        setResearchError(failure.message);
+        setResearchLimit(failure.tokenLimit ? { secretId: failure.secretId || "groq-admin" } : null);
+      } else {
+        patchStoredJob(jobId, (row) => ({
+          ...row,
+          backgroundError: failure.message,
+          backgroundLimit: failure.tokenLimit
+            ? { secretId: failure.secretId || "groq-admin" }
+            : null,
+        }));
+      }
     } finally {
-      setGeneratingAnswers(false);
+      setJobWork(jobId, { answers: false });
     }
+  };
+
+  const regenerateAnswer = (index, language = "") => {
+    const jobId = String(researchJobId || "");
+    const solutionLanguage = ["cpp", "java", "python"].includes(language) ? language : "";
+    const workKey = solutionLanguage ? `${index}:${solutionLanguage}` : String(index);
+    if (!jobId || published || !Number.isInteger(index) || index < 0) return;
+    const current = backgroundWorkRef.current[jobId]?.regenerating || [];
+    if (current.includes(workKey)) return;
+    setJobWork(jobId, { regenerating: [...current, workKey] });
+    const run = async () => {
+      try {
+        const res = await companyAPI.generateCompanyResearchAnswers(jobId, [index], {
+          regenerate: true,
+          ...(solutionLanguage ? { language: solutionLanguage } : {}),
+        });
+        const updates = Array.isArray(res?.data?.items) ? res.data.items : [];
+        const updated = patchStoredJob(jobId, (row) => ({
+          ...row,
+          backgroundError: "",
+          backgroundLimit: null,
+          result: {
+            ...(row.result || {}),
+            items: mergeAnswerUpdates(row.result?.items, updates),
+          },
+        }));
+        if (stillViewingJob(jobId)) {
+          if (updated?.result) setResearchResult(updated.result);
+          setResearchError("");
+          setResearchLimit(null);
+        }
+      } catch (err) {
+        const failure = readApiFailure(err, "This answer could not be regenerated.", "groq-admin");
+        if (stillViewingJob(jobId)) {
+          setResearchError(failure.message);
+          setResearchLimit(failure.tokenLimit ? { secretId: failure.secretId || "groq-admin" } : null);
+        } else {
+          patchStoredJob(jobId, (row) => ({
+            ...row,
+            backgroundError: failure.message,
+            backgroundLimit: failure.tokenLimit
+              ? { secretId: failure.secretId || "groq-admin" }
+              : null,
+          }));
+        }
+      } finally {
+        const pending = backgroundWorkRef.current[jobId]?.regenerating || [];
+        setJobWork(jobId, { regenerating: pending.filter((value) => value !== workKey) });
+      }
+    };
+    const previous = regenerateChainRef.current[jobId] || Promise.resolve();
+    const next = previous.then(run, run);
+    regenerateChainRef.current[jobId] = next.finally(() => {
+      if (regenerateChainRef.current[jobId] === next) delete regenerateChainRef.current[jobId];
+    });
   };
 
   const confirmPublish = async () => {
@@ -675,6 +1828,13 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
       const res = await companyAPI.publishCompanyResearch(researchJobId, finalizedIndexes);
       setResearchStatus("published");
       statusRef.current = "published";
+      const publishedId = researchJobId;
+      const publishedSlots = { ...jobsBySlotRef.current };
+      for (const [key, row] of Object.entries(publishedSlots)) {
+        if (row?.jobId === publishedId) publishedSlots[key] = { ...row, status: "published" };
+      }
+      jobsBySlotRef.current = publishedSlots;
+      setJobsBySlot(publishedSlots);
       setPublishSummary({
         insertedCount: Number(res?.data?.insertedCount) || 0,
         duplicateCount: Number(res?.data?.duplicateCount) || 0,
@@ -687,46 +1847,108 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     }
   };
 
+  const runningCount = Object.values(jobsBySlot).filter(
+    (job) => job?.status === "queued" || job?.status === "running"
+  ).length;
+  const rolesForTab = [];
+  const addTabRole = (roleName) => {
+    const name = canonicalRole(roleName);
+    if (!name) return;
+    if (rolesForTab.some((item) => roleIdentity(item) === roleIdentity(name))) return;
+    rolesForTab.push(name);
+  };
+  for (const roleName of selectedRoles) addTabRole(roleName);
+  for (const job of Object.values(jobsBySlot)) {
+    if (job?.field === contentField) addTabRole(job.role);
+  }
+
   return (
     <section className={sectionCardClass}>
       <h2 className="text-lg font-semibold text-theme-primary">AI research</h2>
-      <p className="mt-1 text-sm text-theme-secondary">{contentCopy(contentField)}</p>
+      <p className="mt-1 text-sm text-theme-secondary">
+        One run researches interview questions and interview experiences for every role you add. Each role stays separate. OA questions are added directly, not through research.
+      </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field label="Content">
-          <SpcThemeSelect
-            name="content"
-            value={contentField}
-            onChange={(e) => setContentField(e.target.value)}
-            ariaLabel="Content"
-            buttonClassName={selectButtonClass}
-            options={CONTENT_FIELDS.map((row) => ({ value: row.id, label: row.label }))}
-          />
-        </Field>
         <Field label="Company">
           <input className={inputClass} value={companyName || ""} readOnly aria-label="Company" />
         </Field>
-        <Field label="Role">
-          {contentField === "onlineQuestions" ? (
-            <SpcThemeSelect
-              name="oaRole"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              ariaLabel="OA role"
-              buttonClassName={selectButtonClass}
-              placeholder="Select role"
-              options={OA_ROLE_OPTIONS}
-            />
-          ) : (
-            <input
-              className={inputClass}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              placeholder="Software Engineer"
-              aria-label="Role"
-            />
-          )}
-        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Roles">
+            {fresherRolesLoading && fresherRoles.length === 0 ? (
+              <p className="mb-2 text-xs text-theme-secondary">Looking up usual fresher roles…</p>
+            ) : null}
+            {fresherRoles.length > 0 ? (
+              <div className="mb-2">
+                <p className="mb-1 text-xs text-theme-secondary">
+                  RVCE visit roles and usual fresher roles
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {fresherRoles.map((name) => {
+                    const selected = selectedRoles.some((role) => roleIdentity(role) === roleIdentity(name));
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        aria-pressed={selected}
+                        className={`rounded-full border px-3 py-1.5 text-xs ${
+                          selected
+                            ? "border-theme-accent bg-theme-accent text-white"
+                            : "border-theme bg-theme-card text-theme-primary"
+                        }`}
+                        onClick={() => (selected ? removeRole(name) : addRole(name))}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {selectedRoles.length > 0 ? (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {selectedRoles.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex max-w-full items-center gap-1 rounded-full border border-theme bg-theme-card px-3 py-1 text-xs text-theme-primary"
+                  >
+                    <span className="truncate">{name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${name}`}
+                      className="px-1 text-sm leading-none"
+                      onClick={() => removeRole(name)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                className={`${inputClass} min-w-0 flex-1`}
+                value={roleDraft}
+                onChange={(e) => setRoleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addRole(roleDraft);
+                  }
+                }}
+                placeholder="Software Engineer"
+                aria-label="Add a role"
+              />
+              <button
+                type="button"
+                className="shrink-0 rounded-xl border border-theme px-4 py-2 text-sm font-semibold text-theme-primary"
+                onClick={() => addRole(roleDraft)}
+              >
+                Add role
+              </button>
+            </div>
+          </Field>
+        </div>
         <Field label="Country">
           <input
             className={inputClass}
@@ -765,10 +1987,64 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
         type="button"
         disabled={researchStarting}
         onClick={startResearch}
-        className="mt-4 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 w-full rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto"
       >
-        {researchStarting ? "Starting…" : selectedContent.action}
+        {researchStarting ? "Starting…" : "Research all roles"}
       </button>
+
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Research content">
+        {CONTENT_FIELDS.map((row) => (
+          <button
+            key={row.id}
+            type="button"
+            role="tab"
+            aria-selected={contentField === row.id}
+            onClick={() => setContentField(row.id)}
+            className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${
+              contentField === row.id
+                ? "bg-theme-accent text-white"
+                : "border border-theme text-theme-primary"
+            }`}
+          >
+            {row.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-sm text-theme-secondary">{contentCopy(contentField)}</p>
+      {rolesForTab.length > 0 ? (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Roles for this tab">
+          {rolesForTab.map((name) => {
+            const active = roleIdentity(name) === roleIdentity(viewRole);
+            const slot = jobsBySlot[slotKey(contentField, name)];
+            const slotWork = backgroundWork[slot?.jobId] || {};
+            const pending =
+              slot?.status === "queued" ||
+              slot?.status === "running" ||
+              Boolean(slotWork.answers) ||
+              Boolean(slotWork.summary) ||
+              (Array.isArray(slotWork.regenerating) && slotWork.regenerating.length > 0);
+            return (
+              <button
+                key={name}
+                type="button"
+                aria-label={`Show ${name}`}
+                aria-pressed={active}
+                onClick={() => setViewRole(name)}
+                className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  active
+                    ? "border-theme-accent bg-theme-accent text-white"
+                    : "border-theme text-theme-primary"
+                }`}
+              >
+                {pending ? `${name}…` : name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {runningCount > 1 ? (
+        <p className="mt-3 text-sm text-theme-secondary">{runningCount} research runs in progress.</p>
+      ) : null}
 
       {statusCopy ? (
         <p
@@ -780,6 +2056,9 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
       ) : null}
       {researchError && researchError !== statusCopy ? (
         <p className="mt-2 text-sm text-red-500">{researchError}</p>
+      ) : null}
+      {researchError && researchLimit ? (
+        <ResearchLimitRecovery secretId={researchLimit.secretId} />
       ) : null}
 
       {showResult ? (
@@ -819,7 +2098,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={published || generatingLinksSummary || sourceList.length === 0}
+                    disabled={sourcesPublished || generatingLinksSummary || sourceList.length === 0}
                     onClick={generateLinksSummary}
                     className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
                   >
@@ -827,7 +2106,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                   </button>
                   <button
                     type="button"
-                    disabled={published || savingLinksSummary || !String(linksSummaryText || "").trim()}
+                    disabled={sourcesPublished || savingLinksSummary || !String(linksSummaryText || "").trim()}
                     onClick={saveLinksSummaryDraft}
                     className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
                   >
@@ -837,7 +2116,7 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
               </div>
               <button
                 type="button"
-                disabled={published || publishingSources || sourceList.length === 0}
+                disabled={sourcesPublished || publishingSources || sourceList.length === 0}
                 onClick={approveAllLinks}
                 className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
@@ -881,7 +2160,26 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                   >
                     {isExperience ? "Finalize experiences" : "Finalize questions"}
                   </button>
+                  {isExperience ? null : (
+                    <button
+                      type="button"
+                      disabled={published || publishing || enhancingQuestions || questions.length === 0}
+                      onClick={enhanceQuestions}
+                      className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
+                    >
+                      {enhancingQuestions ? "Enhancing…" : "Enhance questions"}
+                    </button>
+                  )}
                 </div>
+              ) : null}
+              {enhanceSummary ? (
+                <p className="text-sm text-emerald-500">{enhanceSummary}</p>
+              ) : null}
+              {!isExperience && !questionsFinalized && questions.length > 0 ? (
+                <p className="text-xs text-theme-secondary">
+                  Enhance turns headings and one-word topics into full question statements. Selected
+                  questions are enhanced. If none are selected, every question in this list is enhanced.
+                </p>
               ) : null}
               {questionsFinalized ? (
                 <p className="text-sm text-theme-secondary">
@@ -904,6 +2202,9 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                   onToggle={toggleQuestion}
                   disabled={published || publishing}
                   selectable={!questionsFinalized}
+                  canEdit={!published && !publishing}
+                  savingIndex={savingItemIndex}
+                  onSaveEdit={saveResearchItem}
                 />
               ) : (
                 <ResearchQuestions
@@ -914,25 +2215,45 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                   disabled={published || publishing}
                   selectable={!questionsFinalized}
                   showAnswers={questionsFinalized && answersGenerated}
-                  heading={reviewField === "onlineQuestions" ? "OA question" : "Interview question"}
-                  hideSourceLinks={reviewField === "onlineQuestions"}
+                  heading="Interview question"
+                  canEdit={!published && !publishing}
+                  savingIndex={savingItemIndex}
+                  onSaveEdit={saveResearchItem}
+                  onDelete={questionsFinalized && answersGenerated ? deleteResearchItem : undefined}
+                  onRegenerateAnswer={regenerateAnswer}
+                  regeneratingIndexes={regeneratingIndexes}
                 />
               )}
               {questionsFinalized ? (
                 <div className="space-y-3">
                   {isExperience ? null : (
-                    <button
-                      type="button"
-                      disabled={published || generatingAnswers || publishing}
-                      onClick={addAnswers}
-                      className="rounded-xl border border-theme px-4 py-2 text-sm font-semibold text-theme-primary disabled:opacity-60"
-                    >
-                      {generatingAnswers ? "Generating answers…" : "Add answers"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={published || enhancingQuestions || generatingAnswers || publishing}
+                        onClick={enhanceQuestions}
+                        className="rounded-xl border border-theme px-4 py-2 text-sm font-semibold text-theme-primary disabled:opacity-60"
+                      >
+                        {enhancingQuestions ? "Enhancing…" : "Enhance questions"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={published || generatingAnswers || publishing || enhancingQuestions}
+                        onClick={addAnswers}
+                        className="rounded-xl border border-theme px-4 py-2 text-sm font-semibold text-theme-primary disabled:opacity-60"
+                      >
+                        {generatingAnswers ? "Generating answers…" : "Add answers"}
+                      </button>
+                    </div>
                   )}
                   <button
                     type="button"
-                    disabled={published || publishing || (!isExperience && !answersGenerated)}
+                    disabled={
+                      published ||
+                      publishing ||
+                      finalizedIndexes.length === 0 ||
+                      (!isExperience && !answersGenerated)
+                    }
                     onClick={() => setConfirmingPublish(true)}
                     className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                   >
@@ -950,13 +2271,9 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
                           ? finalizedIndexes.length === 1
                             ? "interview experience"
                             : "interview experiences"
-                          : reviewField === "onlineQuestions"
-                            ? finalizedIndexes.length === 1
-                              ? "OA question"
-                              : "OA questions"
-                            : finalizedIndexes.length === 1
-                              ? "interview question"
-                              : "interview questions"}{" "}
+                          : finalizedIndexes.length === 1
+                            ? "interview question"
+                            : "interview questions"}{" "}
                         to this company?
                       </p>
                       <div className="mt-3 flex gap-2">

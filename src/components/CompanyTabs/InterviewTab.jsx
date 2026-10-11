@@ -89,7 +89,6 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { PrepRoleChromeDark } from "../PrepRoleChrome.jsx";
 import {
   buildPrepRoleTabs,
-  hasRoleScopedPrepContent,
   itemMatchesPrepRoleTab,
   pickDefaultPrepRoleTab,
 } from "../../utils/prepRoleTabs.js";
@@ -194,17 +193,15 @@ function InterviewTab({
     [interviewQuestions, interviewPrepRoleKeys]
   );
   const interviewRoleTabs = useMemo(
-    () => buildPrepRoleTabs(prepRoles, interviewRoleItemKeys, { excludeGeneralTab: true }),
+    () => buildPrepRoleTabs(prepRoles, interviewRoleItemKeys),
     [prepRoles, interviewRoleItemKeys]
   );
   const showInterviewRoleChrome =
-    isGeneral && hasRoleScopedPrepContent(prepRoles, interviewRoleItemKeys);
+    isGeneral && interviewQuestions.some((q) => questionTextIsPresent(q));
 
   const effectiveInterviewPrepRoleKey = useMemo(() => {
     if (!showInterviewRoleChrome) return "";
-    const preferred = pickDefaultPrepRoleTab(prepRoles, interviewRoleItemKeys, {
-      excludeGeneralTab: true,
-    });
+    const preferred = pickDefaultPrepRoleTab(prepRoles, interviewRoleItemKeys);
     if (activeInterviewPrepRoleKey === null) return preferred;
     const candidate = interviewRoleTabs.some((tab) => tab.key === activeInterviewPrepRoleKey)
       ? activeInterviewPrepRoleKey
@@ -716,16 +713,11 @@ function InterviewTab({
   const experiencePrepRoles = prepRoles.filter((row) =>
     experienceRoleItemKeys.includes(String(row?.key ?? ""))
   );
-  const experienceRoleTabs = buildPrepRoleTabs(experiencePrepRoles, experienceRoleItemKeys, {
-    excludeGeneralTab: true,
-  });
-  const showExperienceRoleChrome =
-    isGeneral && experienceRoleItemKeys.some((key) => key !== "");
+  const experienceRoleTabs = buildPrepRoleTabs(experiencePrepRoles, experienceRoleItemKeys);
+  const showExperienceRoleChrome = isGeneral && interviewProcess.length > 0;
   const effectiveExperiencePrepRoleKey = (() => {
     if (!showExperienceRoleChrome) return "";
-    const preferred = pickDefaultPrepRoleTab(experiencePrepRoles, experienceRoleItemKeys, {
-      excludeGeneralTab: true,
-    });
+    const preferred = pickDefaultPrepRoleTab(experiencePrepRoles, experienceRoleItemKeys);
     if (activeExperiencePrepRoleKey === null) return preferred;
     return experienceRoleTabs.some((tab) => tab.key === activeExperiencePrepRoleKey)
       ? activeExperiencePrepRoleKey
@@ -742,6 +734,7 @@ function InterviewTab({
       typeof q === "string" ? q : String(q?.question || q || "")
     );
     if (qIdx >= 0) {
+      setActiveInterviewPrepRoleKey(String(interviewPrepRoleKeys[qIdx] ?? ""));
       setOpenIndexQ(qIdx);
       setFocusedProcessIndex(-1);
       scrollFocusNode(questionRowRefs.current[qIdx]);
@@ -753,6 +746,7 @@ function InterviewTab({
       (p) => p?.content || p
     );
     if (pIdx >= 0) {
+      setActiveExperiencePrepRoleKey(String(interviewProcess[pIdx]?.prepRoleKey ?? ""));
       setFocusedProcessIndex(pIdx);
       scrollFocusNode(processRowRefs.current[pIdx]);
     }
@@ -768,7 +762,7 @@ function InterviewTab({
           activeKey={effectiveInterviewPrepRoleKey}
           onChange={setActiveInterviewPrepRoleKey}
           ariaLabel="Interview question roles"
-          excludeGeneralTab
+          excludeGeneralTab={false}
           switching={roleSwitching}
         />
       ) : null}
@@ -983,7 +977,7 @@ function InterviewTab({
           activeKey={effectiveExperiencePrepRoleKey}
           onChange={setActiveExperiencePrepRoleKey}
           ariaLabel="Interview experience roles"
-          excludeGeneralTab
+          excludeGeneralTab={false}
         />
       ) : null}
       {showExperienceSection ? (
@@ -1047,6 +1041,10 @@ function InterviewTab({
               );
             })}
           </div>
+        ) : interviewProcess.length > 0 && showExperienceRoleChrome ? (
+          <p className="text-sm text-theme-secondary">
+            No interview experiences for this role. Choose another role tab above.
+          </p>
         ) : (
           <ExperienceEmptyState
             message="No interview experiences yet. Share the rounds you faced so others can prepare."

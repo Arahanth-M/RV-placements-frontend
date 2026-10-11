@@ -51,8 +51,8 @@ export const GENERAL_COMPANY_CATEGORIES = [
   },
   {
     id: GENERAL_COMPANY_CATEGORY_OTHERS,
-    label: "Others",
-    subtitle: "Companies that don’t fit the groups above",
+    label: "Miscellaneous companies",
+    subtitle: "Extra bonus companies",
   },
 ];
 
@@ -202,4 +202,24 @@ export function groupCompaniesByGeneralCategory(companies) {
     grouped[id].push(company);
   }
   return grouped;
+}
+
+/**
+ * Billing paywall on company cards applies only to signed-in users.
+ * Guests may browse cards; company detail routes still require login.
+ */
+export function isGeneralCompanyCardDetailLocked({
+  user,
+  cardAccess,
+  selectedCategory,
+  teaserCompanyIds,
+  companyId,
+}) {
+  if (!user) return false;
+  if (cardAccess?.allCards) return false;
+  if (cardAccess?.categories?.[selectedCategory]) return false;
+  if (String(teaserCompanyIds?.[selectedCategory] || "") === String(companyId)) {
+    return false;
+  }
+  return true;
 }

@@ -37,6 +37,15 @@ import {
 /** Languages shown in the mock-interview coding picker (backend may still support more). */
 const INTERVIEW_UI_CODING_LANGUAGES = ["python", "cpp", "java"];
 
+/** Behavioral practice lives in Behavioural Coach, so mock interviews do not offer HR. */
+const MOCK_INTERVIEW_EXCLUDED_ROUND_TYPES = new Set(["HR"]);
+const CAMPUS_MOCK_INTERVIEW_ROUND_TYPES = CAMPUS_INTERVIEW_ROUND_TYPES.filter(
+  (type) => !MOCK_INTERVIEW_EXCLUDED_ROUND_TYPES.has(type)
+);
+const PLATFORM_MOCK_INTERVIEW_ROUND_TYPES = PLATFORM_INTERVIEW_ROUND_TYPES.filter(
+  (type) => !MOCK_INTERVIEW_EXCLUDED_ROUND_TYPES.has(type)
+);
+
 function filterInterviewUiCodingLanguages(langs) {
   const allowed = new Set(INTERVIEW_UI_CODING_LANGUAGES);
   const filtered = (Array.isArray(langs) ? langs : []).filter((l) => allowed.has(l));
@@ -900,7 +909,11 @@ function roundsFromMockPrefill(rounds, difficulty) {
   const types = (Array.isArray(rounds) ? rounds : [])
     .map((round) => (typeof round === "string" ? round : round?.type))
     .map((type) => String(type || "").trim())
-    .filter((type) => PLATFORM_INTERVIEW_ROUND_TYPES.includes(type))
+    .filter(
+      (type) =>
+        PLATFORM_INTERVIEW_ROUND_TYPES.includes(type) &&
+        !MOCK_INTERVIEW_EXCLUDED_ROUND_TYPES.has(type)
+    )
     .slice(0, MAX_CUSTOM_ROUNDS);
   if (!types.length) return null;
   const level = INTERVIEW_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
@@ -1033,8 +1046,8 @@ function AIInterviewTab({
   pendingQuestionFeedbackRef.current = pendingQuestionFeedback;
   const quitConfirmResolverRef = useRef(null);
   const availableRoundTypes = isGeneral
-    ? PLATFORM_INTERVIEW_ROUND_TYPES
-    : CAMPUS_INTERVIEW_ROUND_TYPES;
+    ? PLATFORM_MOCK_INTERVIEW_ROUND_TYPES
+    : CAMPUS_MOCK_INTERVIEW_ROUND_TYPES;
 
   const [roundFocusMeta, setRoundFocusMeta] = useState({});
 
@@ -1124,7 +1137,8 @@ function AIInterviewTab({
       );
 
       if (!cancelled) {
-        setRoundFocusMeta(nextMeta);
+        const nextKey = JSON.stringify(nextMeta);
+        setRoundFocusMeta((prev) => (JSON.stringify(prev) === nextKey ? prev : nextMeta));
       }
     };
 

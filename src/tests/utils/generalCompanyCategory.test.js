@@ -11,6 +11,7 @@ import {
   GENERAL_COMPANY_CATEGORY_STARTUP,
   classifyGeneralCompanyCategory,
   groupCompaniesByGeneralCategory,
+  isGeneralCompanyCardDetailLocked,
   parseGeneralCompanyCategoryParam,
 } from "../../utils/generalCompanyCategory.js";
 
@@ -61,6 +62,8 @@ describe("classifyGeneralCompanyCategory", () => {
       GENERAL_COMPANY_CATEGORY_SEMICONDUCTORS
     );
   });
+
+  it("maps enterprise software variants", () => {
     expect(classifyGeneralCompanyCategory("Enterprise Software")).toBe(
       GENERAL_COMPANY_CATEGORY_ENTERPRISE
     );
@@ -134,5 +137,39 @@ describe("groupCompaniesByGeneralCategory", () => {
     expect(grouped.service.map((c) => c._id)).toEqual(["2"]);
     expect(grouped.others.map((c) => c._id)).toEqual(["3"]);
     expect(companies).toHaveLength(3);
+  });
+});
+
+describe("isGeneralCompanyCardDetailLocked", () => {
+  const category = GENERAL_COMPANY_CATEGORY_PRODUCT;
+  const companyId = "abc123";
+  const lockedArgs = {
+    user: { userId: "u1" },
+    cardAccess: { allCards: false, categories: {} },
+    selectedCategory: category,
+    teaserCompanyIds: {},
+    companyId,
+  };
+
+  it("never locks cards for guests", () => {
+    expect(
+      isGeneralCompanyCardDetailLocked({
+        ...lockedArgs,
+        user: null,
+      })
+    ).toBe(false);
+  });
+
+  it("locks for signed-in users without category or teaser access", () => {
+    expect(isGeneralCompanyCardDetailLocked(lockedArgs)).toBe(true);
+  });
+
+  it("unlocks teaser company in category", () => {
+    expect(
+      isGeneralCompanyCardDetailLocked({
+        ...lockedArgs,
+        teaserCompanyIds: { [category]: companyId },
+      })
+    ).toBe(false);
   });
 });

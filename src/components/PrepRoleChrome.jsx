@@ -1,5 +1,5 @@
 import PrepRoleSubTabs from "./PrepRoleSubTabs.jsx";
-import { buildPrepRoleTabs, hasRoleScopedPrepContent } from "../utils/prepRoleTabs.js";
+import { buildPrepRoleTabs } from "../utils/prepRoleTabs.js";
 
 /**
  * Always surfaces prep role on General company pages (badge or tabs).
@@ -17,8 +17,6 @@ export default function PrepRoleChrome({
   variant = "theme",
   switching = false,
 }) {
-  if (!hasRoleScopedPrepContent(prepRoles, itemRoleKeys)) return null;
-
   const tabOptions = { requireGeneralContent, excludeGeneralTab };
   const tabs = buildPrepRoleTabs(prepRoles, itemRoleKeys, tabOptions);
   if (tabs.length === 0) return null;

@@ -18,6 +18,10 @@ export default function PlatformGeneratedSolutionView({
   intuition = "",
   fallbackCode = "",
   richTextVariant = "theme",
+  questionLabel = "",
+  onRegenerateLanguage,
+  regeneratingLanguages,
+  regenerateDisabled = false,
 }) {
   const answerText = String(answer || "").trim();
   const intuitionText = formatSolutionCode(intuition);
@@ -56,8 +60,15 @@ export default function PlatformGeneratedSolutionView({
         </div>
       ) : null}
 
-      {hasLang ? (
-        <PlatformCodingSolutions solutions={solutions} richTextVariant={richTextVariant} />
+      {hasLang || typeof onRegenerateLanguage === "function" ? (
+        <PlatformCodingSolutions
+          solutions={solutions}
+          showAllLanguages={typeof onRegenerateLanguage === "function"}
+          onRegenerate={onRegenerateLanguage}
+          regeneratingLanguages={regeneratingLanguages}
+          disabled={regenerateDisabled}
+          questionLabel={questionLabel}
+        />
       ) : fallback ? (
         <div className="overflow-hidden rounded-xl border border-theme bg-theme-card p-2 sm:p-3">
           <PrepSolutionBody code={fallback} richTextVariant={richTextVariant} />
