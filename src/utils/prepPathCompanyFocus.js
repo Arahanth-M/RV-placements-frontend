@@ -12,6 +12,24 @@ export const PREP_PATH_COMPANY_TABS = new Set([
   "coding",
 ]);
 
+/** All company-detail tabs that may be restored from `?tab=` after refresh. */
+export const COMPANY_DETAIL_TABS = new Set([
+  "about",
+  "general",
+  "stats",
+  "recruitment",
+  "oa",
+  "coding",
+  "interview",
+  "interviewquestions",
+  "interviewexperience",
+  "internship",
+  "mustdo",
+  "quicklinks",
+  "offcampus",
+  "aiinterview",
+]);
+
 export function tabForPrepEvidence(sourceType, { isGeneral = false } = {}) {
   switch (String(sourceType || "").trim().toLowerCase()) {
     case "oa":
@@ -130,11 +148,23 @@ export function readCompanyFocusFromLocation(location) {
   }
   const tab = String(params.get("tab") || "").trim();
   return {
-    tab: PREP_PATH_COMPANY_TABS.has(tab) ? tab : "",
+    tab: COMPANY_DETAIL_TABS.has(tab) ? tab : "",
     focus: String(params.get("focus") || "").trim(),
     fromPrepPath:
       location?.state?.fromPrepPath === true || params.get("from") === "preppath",
   };
+}
+
+/** Persist the active company tab in the URL so refresh stays on the same tab. */
+export function applyCompanyDetailTabParam(params, tabId) {
+  if (!params) return params;
+  const tab = String(tabId || "").trim();
+  if (!tab || tab === "about" || !COMPANY_DETAIL_TABS.has(tab)) {
+    params.delete("tab");
+    return params;
+  }
+  params.set("tab", tab);
+  return params;
 }
 
 export function copyPrepPathFocusParams(fromSearch, intoParams) {

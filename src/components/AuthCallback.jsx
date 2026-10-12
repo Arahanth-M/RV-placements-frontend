@@ -19,6 +19,7 @@ import {
 } from '../utils/loginIntent.js';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
+const CAMPUS_FEATURES_TOPUP_FRESH_LOGIN_KEY = 'campusFeaturesTopupFreshLogin';
 const LOGIN_PROFILE_STATUS_KEY = "loginProfileStatus";
 const LOGIN_PROFILE_STATUS_HAS_PROFILE = "has_profile";
 const LOGIN_PROFILE_STATUS_NO_PROFILE = "no_profile";
@@ -203,9 +204,16 @@ const AuthCallback = () => {
     sessionStorage.removeItem(LOGIN_INTENT_KEY);
     if (admin) {
       sessionStorage.removeItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY);
+      sessionStorage.removeItem(CAMPUS_FEATURES_TOPUP_FRESH_LOGIN_KEY);
       sessionStorage.removeItem(LOGIN_PROFILE_STATUS_KEY);
     } else {
       sessionStorage.setItem(PLACEMENT_POPUP_FRESH_LOGIN_KEY, '1');
+      // Campus tenant only — top-up modal mounts under TENANT_BASE AppShell.
+      if (!useGeneral) {
+        sessionStorage.setItem(CAMPUS_FEATURES_TOPUP_FRESH_LOGIN_KEY, '1');
+      } else {
+        sessionStorage.removeItem(CAMPUS_FEATURES_TOPUP_FRESH_LOGIN_KEY);
+      }
       const profileStatus =
         hasStudentProfile === true
           ? LOGIN_PROFILE_STATUS_HAS_PROFILE

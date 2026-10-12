@@ -105,6 +105,7 @@ export const authAPI = {
     }),
   submitCollegeOnboarding: (payload) =>
     API.post('/api/auth/college-onboarding', payload),
+  getCollegeFeatures: () => API.get('/api/auth/college-features'),
 };
 
 export const companyAPI = {
@@ -627,6 +628,10 @@ export const platformAdminAPI = {
   getOnboarding: (config) => API.get("/api/admin/platform/onboarding", config),
   updateOnboarding: (id, body) =>
     API.patch(`/api/admin/platform/onboarding/${encodeURIComponent(id)}`, body),
+  getCollegeFeatures: (collegeId) =>
+    API.get(`/api/admin/platform/colleges/${encodeURIComponent(collegeId)}/features`),
+  putCollegeFeatures: (collegeId, body) =>
+    API.put(`/api/admin/platform/colleges/${encodeURIComponent(collegeId)}/features`, body),
   getBillingOrders: (config) => API.get("/api/admin/platform/billing/orders", config),
   getSubmissions: (config) => API.get("/api/admin/platform/submissions", config),
   getSubmission: (id) => API.get(`/api/admin/platform/submissions/${id}`),
@@ -733,9 +738,6 @@ export const notificationAPI = {
   markAllAsSeen: () => API.put('/api/notifications/mark-all-seen'),
   deleteNotification: (id) => API.delete(`/api/notifications/${id}`),
   clearAllNotifications: () => API.delete('/api/notifications'),
-  getSubscriptionStatus: () => API.get('/api/notifications/subscription'),
-  subscribe: () => API.post('/api/notifications/subscription'),
-  unsubscribe: () => API.delete('/api/notifications/subscription'),
 };
 
 /** Student-owned drive calendar (visits / deadlines / checklists + reminders). */
@@ -1125,6 +1127,10 @@ export const practiceChallengeAPI = {
   getWeek: () => interviewHttp.get("/api/practice-challenges/week"),
   getById: (challengeId) =>
     interviewHttp.get(`/api/practice-challenges/${encodeURIComponent(challengeId)}`),
+  getHistory: (params = {}) =>
+    interviewHttp.get("/api/practice-challenges/history", {
+      params: { kind: params.kind, limit: params.limit },
+    }),
   runPreview: (challengeId, questionId, { code, language }) =>
     interviewHttp.post(
       `/api/practice-challenges/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/run-preview`,

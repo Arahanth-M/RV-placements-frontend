@@ -31,7 +31,7 @@ export default function PrepSolutionBody({
   code,
   language,
   toolbar = null,
-  richTextVariant = "dark",
+  richTextVariant = "theme",
   className = "",
 }) {
   const formatted = formatSolutionCode(code);

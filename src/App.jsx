@@ -32,11 +32,10 @@ import Developers from "./components/Developers";
 import StudentProfilePage from "./components/StudentProfilePage";
 import MySubmissionsPage from "./components/MySubmissionsPage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
+import CampusFeaturesTopup from "./components/CampusFeaturesTopup";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
 import GeneralMockInterviewPage from "./components/GeneralMockInterviewPage";
-import InterviewAnalyticsPage from "./components/InterviewAnalyticsPage";
-import InterviewSlotsPage from "./components/InterviewSlotsPage";
 import PrepPathPage from "./components/PrepPathPage";
 import BehavioralCoachPage from "./components/BehavioralCoachPage";
 import PeerSessionsPage from "./components/PeerSessionsPage";
@@ -235,7 +234,12 @@ function AppShell({ base, homePath }) {
 
         {!isInterviewLocked &&
           (base === GENERAL_BASE ? <PlatformFooter /> : <Footer />)}
-        {!isInterviewLocked && base === TENANT_BASE ? <PlacementPopupWrapper /> : null}
+        {!isInterviewLocked && base === TENANT_BASE ? (
+          <>
+            <CampusFeaturesTopup />
+            <PlacementPopupWrapper />
+          </>
+        ) : null}
       </div>
     </TenantShellProvider>
   );
@@ -383,11 +387,7 @@ function TenantRoutes() {
         {StudentFeatureRoutes()}
         <Route
           path="interview-slots"
-          element={
-            <ProtectedRoute>
-              <InterviewSlotsPage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to={`${TENANT_BASE}/interviews?tab=slots`} replace />}
         />
         <Route
           path="events"
@@ -520,19 +520,11 @@ function GeneralRoutes() {
         })}
         <Route
           path="interview-slots"
-          element={
-            <ProtectedRoute>
-              <InterviewSlotsPage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to={`${GENERAL_BASE}/interviews?tab=slots`} replace />}
         />
         <Route
           path="interview-analytics"
-          element={
-            <ProtectedRoute>
-              <InterviewAnalyticsPage />
-            </ProtectedRoute>
-          }
+          element={<Navigate to={`${GENERAL_BASE}/interviews?tab=analytics`} replace />}
         />
       </Route>
     </Route>

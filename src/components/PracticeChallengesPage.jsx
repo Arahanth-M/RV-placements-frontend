@@ -6,6 +6,11 @@ import { practiceChallengeAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import InterviewCodeWorkspace from "./CompanyTabs/InterviewCodeWorkspace.jsx";
 import {
+  buildCppStubFromInterviewDraft,
+  resolvePythonInterviewStub,
+} from "../utils/cppInterviewStub.js";
+import { getJavaGraderContractHints } from "../utils/javaInterviewStub.js";
+import {
   PageBackButton,
   PageBackNavRow,
   PageHeroFontStyles,
@@ -16,18 +21,56 @@ import {
 
 const TAB_TODAY = "today";
 const TAB_WEEK = "week";
+const TAB_HISTORY = "history";
 const TAB_BOARD = "board";
 
-function starterForLanguage(starterCode, language) {
-  if (!starterCode) return "";
-  if (typeof starterCode === "string") return starterCode;
+/**
+ * Prefer per-language starter from metadata; otherwise generate a stub for that language.
+ * Never reuse a Python `def ...` template for C++/Java.
+ */
+function starterForLanguage(starterCode, language, functionSignature = "") {
   const lang = String(language || "python").toLowerCase();
-  const aliases = [lang, lang === "cpp" ? "c++" : "", lang === "python" ? "py" : ""].filter(Boolean);
-  for (const key of aliases) {
-    if (starterCode[key]) return String(starterCode[key]);
+
+  if (starterCode != null && typeof starterCode === "object" && !Array.isArray(starterCode)) {
+    const aliases = [lang, lang === "cpp" ? "c++" : "", lang === "python" ? "py" : ""].filter(
+      Boolean
+    );
+    for (const key of aliases) {
+      if (starterCode[key]) return String(starterCode[key]);
+    }
   }
-  const first = Object.values(starterCode).find((v) => typeof v === "string" && v.trim());
-  return first ? String(first) : "";
+
+  const raw =
+    typeof starterCode === "string"
+      ? starterCode.trim()
+      : "";
+
+  if (lang === "python") {
+    if (raw) return raw;
+    return resolvePythonInterviewStub(starterCode, functionSignature);
+  }
+
+  // Object/string starters that are clearly Python must not be shown for cpp/java.
+  if (raw && !/\bdef\s+\w+\s*\(/.test(raw)) {
+    return raw;
+  }
+
+  if (lang === "cpp") {
+    return buildCppStubFromInterviewDraft(functionSignature);
+  }
+
+  if (lang === "java") {
+    const hints = getJavaGraderContractHints(functionSignature);
+    if (hints?.kind === "design" && hints.designClassName) {
+      return `public class ${hints.designClassName} {\n    // implement design operations\n}\n`;
+    }
+    if (hints?.kind === "function" && hints.classMethodDecl) {
+      return `public class Solution {\n    ${hints.classMethodDecl} {\n        // TODO\n    }\n}\n`;
+    }
+    return "public class Solution {\n    // TODO\n}\n";
+  }
+
+  return raw;
 }
 
 function formatWindow(opensAt, closesAt) {
@@ -42,16 +85,28 @@ function formatWindow(opensAt, closesAt) {
   }
 }
 
-function ResultPanel({ execution, score, mode }) {
+function ResultPanel({ execution, score, bestScore, keptBest, mode }) {
   if (!execution) return null;
   const results = Array.isArray(execution.results) ? execution.results : [];
+  const showBest =
+    bestScore != null && Number(bestScore) !== Number(score);
   return (
     <div className="rounded-xl border border-theme bg-theme-hero/70 px-4 py-3 space-y-2">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span className="font-semibold text-theme-primary capitalize">{mode}</span>
         <span className="text-theme-secondary">Status: {execution.status || "—"}</span>
         {score != null ? (
-          <span className="font-semibold text-theme-accent">Score: {score}/100</span>
+          <span className="font-semibold text-theme-accent">
+            {mode === "submit" ? "This run" : "Score"}: {score}/100
+          </span>
+        ) : null}
+        {showBest ? (
+          <span className="font-semibold text-theme-primary">Best: {bestScore}/100</span>
+        ) : null}
+        {keptBest ? (
+          <span className="text-xs text-theme-secondary">
+            Previous best kept (this run did not improve it)
+          </span>
         ) : null}
         {execution.visiblePassedCount != null ? (
           <span className="text-theme-secondary">
@@ -93,17 +148,13 @@ function ResultPanel({ execution, score, mode }) {
 }
 
 function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
-  const langs = useMemo(() => {
-    const raw = Array.isArray(problem?.supportedLanguages) ? problem.supportedLanguages : [];
-    const normalized = raw
-      .map((l) => String(l || "").toLowerCase())
-      .map((l) => (l === "c++" || l === "cplusplus" ? "cpp" : l === "py" ? "python" : l))
-      .filter((l) => ["python", "cpp", "java"].includes(l));
-    return normalized.length ? [...new Set(normalized)] : ["python", "cpp", "java"];
-  }, [problem?.supportedLanguages]);
+  // Always offer the full runner set (no DB metadata filter).
+  const langs = useMemo(() => ["python", "cpp", "java"], []);
 
   const [language, setLanguage] = useState(langs[0] || "python");
-  const [code, setCode] = useState(() => starterForLanguage(problem?.starterCode, langs[0] || "python"));
+  const [code, setCode] = useState(() =>
+    starterForLanguage(problem?.starterCode, langs[0] || "python", problem?.functionSignature)
+  );
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [lastRun, setLastRun] = useState(null);
@@ -111,7 +162,9 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
   useEffect(() => {
     const nextLang = langs.includes(language) ? language : langs[0] || "python";
     setLanguage(nextLang);
-    setCode(starterForLanguage(problem?.starterCode, nextLang));
+    setCode(
+      starterForLanguage(problem?.starterCode, nextLang, problem?.functionSignature)
+    );
     setLastRun(null);
     setError("");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when problem changes
@@ -126,7 +179,9 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
       const { data } = await api(challenge.id, problem.questionId, { code, language });
       setLastRun({
         mode,
-        score: data.score ?? data.bestScore,
+        score: data.score,
+        bestScore: data.bestScore,
+        keptBest: Boolean(data.keptBest),
         execution: data.execution,
       });
       if (data.challenge && typeof onChallengeUpdate === "function") {
@@ -178,7 +233,15 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
               onChange={(e) => {
                 const next = e.target.value;
                 setLanguage(next);
-                setCode(starterForLanguage(problem?.starterCode, next));
+                setCode(
+                  starterForLanguage(
+                    problem?.starterCode,
+                    next,
+                    problem?.functionSignature
+                  )
+                );
+                setLastRun(null);
+                setError("");
               }}
               className="ml-2 rounded-lg border border-theme bg-theme-hero px-2 py-1.5 text-sm font-normal"
             >
@@ -212,6 +275,7 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
         </div>
 
         <InterviewCodeWorkspace
+          key={`${problem?.questionId || "q"}:${language}`}
           value={code}
           onChange={setCode}
           language={language}
@@ -224,7 +288,13 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
           <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
         ) : null}
         {lastRun ? (
-          <ResultPanel execution={lastRun.execution} score={lastRun.score} mode={lastRun.mode} />
+          <ResultPanel
+            execution={lastRun.execution}
+            score={lastRun.score}
+            bestScore={lastRun.bestScore}
+            keptBest={lastRun.keptBest}
+            mode={lastRun.mode}
+          />
         ) : null}
       </div>
     </div>
@@ -243,6 +313,10 @@ export default function PracticeChallengesPage() {
   const [boardPeriod, setBoardPeriod] = useState("weekly");
   const [board, setBoard] = useState(null);
   const [me, setMe] = useState(null);
+  const [historyKind, setHistoryKind] = useState("all");
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [expandedHistoryKey, setExpandedHistoryKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -289,6 +363,25 @@ export default function PracticeChallengesPage() {
     }
   }, [user?.userId, user?._id, boardPeriod]);
 
+  const loadHistory = useCallback(async () => {
+    if (!user?.userId && !user?._id) return;
+    setHistoryLoading(true);
+    setError("");
+    try {
+      const { data } = await practiceChallengeAPI.getHistory({
+        kind: historyKind === "all" ? undefined : historyKind,
+        limit: 30,
+      });
+      setHistory(Array.isArray(data?.entries) ? data.entries : []);
+    } catch (err) {
+      const d = err?.response?.data;
+      setError(d?.error || d?.message || err?.message || "Could not load history.");
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [user?.userId, user?._id, historyKind]);
+
   useEffect(() => {
     loadChallenges();
   }, [loadChallenges]);
@@ -296,6 +389,10 @@ export default function PracticeChallengesPage() {
   useEffect(() => {
     if (tab === TAB_BOARD) loadBoard();
   }, [tab, loadBoard]);
+
+  useEffect(() => {
+    if (tab === TAB_HISTORY) loadHistory();
+  }, [tab, loadHistory]);
 
   const todayProblem = today?.problems?.[0] || null;
   const weekProblem =
@@ -312,6 +409,7 @@ export default function PracticeChallengesPage() {
   const tabs = [
     { id: TAB_TODAY, label: "Today" },
     { id: TAB_WEEK, label: "This week" },
+    { id: TAB_HISTORY, label: "History" },
     { id: TAB_BOARD, label: "Leaderboard" },
   ];
 
@@ -352,7 +450,7 @@ export default function PracticeChallengesPage() {
             ))}
           </div>
 
-          {loading && tab !== TAB_BOARD ? (
+          {loading && tab !== TAB_BOARD && tab !== TAB_HISTORY ? (
             <p className="text-sm text-theme-secondary">Loading challenges…</p>
           ) : null}
 
@@ -420,6 +518,131 @@ export default function PracticeChallengesPage() {
                 </>
               ) : (
                 <p className="text-sm text-theme-secondary">No weekly challenge available.</p>
+              )}
+            </section>
+          ) : null}
+
+          {tab === TAB_HISTORY ? (
+            <section className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="text-sm font-semibold text-theme-primary">
+                  Show
+                  <select
+                    value={historyKind}
+                    onChange={(e) => setHistoryKind(e.target.value)}
+                    className="ml-2 rounded-lg border border-theme bg-theme-hero px-2 py-1.5 text-sm font-normal"
+                  >
+                    <option value="all">All</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="daily">Daily</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => loadHistory()}
+                  className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-secondary hover:text-theme-accent"
+                >
+                  Refresh
+                </button>
+              </div>
+              <p className="text-xs text-theme-secondary">
+                Every submission is listed. Leaderboard points still use your best score per problem.
+              </p>
+              {historyLoading ? (
+                <p className="text-sm text-theme-secondary">Loading history…</p>
+              ) : history.length === 0 ? (
+                <p className="text-sm text-theme-secondary">
+                  No past submissions yet. Solve a daily or weekly challenge to build history.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {history.map((entry) => (
+                    <div
+                      key={entry.challengeId}
+                      className="rounded-2xl border border-theme bg-theme-card overflow-hidden"
+                    >
+                      <div className="border-b border-theme bg-theme-hero/50 px-4 py-3">
+                        <p className="text-sm font-semibold text-theme-primary capitalize">
+                          {entry.kind} · {entry.periodKey}
+                        </p>
+                        <p className="text-xs text-theme-secondary mt-0.5">
+                          {formatWindow(entry.opensAt, entry.closesAt)}
+                          {entry.myPoints != null ? ` · Best total ${entry.myPoints} pts` : ""}
+                        </p>
+                      </div>
+                      <ul className="divide-y divide-theme">
+                        {(entry.problems || []).map((p) => {
+                          const problemKey = `${entry.challengeId}:${p.questionId}`;
+                          const submissions = Array.isArray(p.submissions) ? p.submissions : [];
+                          return (
+                            <li key={problemKey} className="px-4 py-3 space-y-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-theme-primary">{p.title}</p>
+                                <p className="text-xs text-theme-secondary mt-0.5">
+                                  {p.difficulty || "—"} · Best {p.bestScore ?? 0}/100 ·{" "}
+                                  {p.submissionCount ?? submissions.length} submission
+                                  {(p.submissionCount ?? submissions.length) === 1 ? "" : "s"}
+                                </p>
+                              </div>
+                              <ul className="space-y-2">
+                                {submissions.map((s, idx) => {
+                                  const key = s.attemptId || `${problemKey}:${idx}`;
+                                  const open = expandedHistoryKey === key;
+                                  const isBest =
+                                    Number(s.score) === Number(p.bestScore) &&
+                                    Number(p.bestScore) > 0;
+                                  return (
+                                    <li
+                                      key={key}
+                                      className="rounded-xl border border-theme bg-theme-hero/40 px-3 py-2"
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setExpandedHistoryKey((prev) =>
+                                            prev === key ? "" : key
+                                          )
+                                        }
+                                        className="flex w-full items-start justify-between gap-3 text-left"
+                                      >
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-semibold text-theme-primary">
+                                            Attempt #{submissions.length - idx}
+                                            {isBest ? " · best" : ""} · {s.score}/100 ·{" "}
+                                            {s.language}
+                                          </p>
+                                          <p className="text-[11px] text-theme-secondary mt-0.5">
+                                            {s.submittedAt
+                                              ? new Date(s.submittedAt).toLocaleString("en-IN", {
+                                                  timeZone: "Asia/Kolkata",
+                                                  dateStyle: "medium",
+                                                  timeStyle: "short",
+                                                })
+                                              : "—"}
+                                          </p>
+                                        </div>
+                                        <span className="shrink-0 text-xs font-semibold text-theme-accent">
+                                          {open ? "Hide code" : "View code"}
+                                        </span>
+                                      </button>
+                                      {open ? (
+                                        <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-theme bg-theme-card p-3 text-xs font-mono text-theme-primary whitespace-pre-wrap">
+                                          {s.code?.trim()
+                                            ? s.code
+                                            : "// No code saved for this attempt"}
+                                        </pre>
+                                      ) : null}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
           ) : null}

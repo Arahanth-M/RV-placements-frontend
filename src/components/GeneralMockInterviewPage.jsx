@@ -6,6 +6,8 @@ import { useInterviewLock } from "../utils/InterviewLockContext";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { parsePrepPathMockPrefill } from "../utils/prepPathCompanyFocus.js";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
+import AIInterviews from "./AIInterviews";
+import InterviewSlotsPage from "./InterviewSlotsPage";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -14,6 +16,19 @@ import {
   pageShellInnerClass,
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
+
+const HUB_TABS = [
+  { id: "mock", label: "Mock interview" },
+  { id: "slots", label: "Interview slots" },
+  { id: "analytics", label: "Interview analytics" },
+];
+
+function normalizeHubTab(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (value === "slots" || value === "slot") return "slots";
+  if (value === "analytics" || value === "analytics-page") return "analytics";
+  return "mock";
+}
 
 function GeneralMockInterviewPage() {
   const { base } = useTenantShell();
@@ -25,6 +40,7 @@ function GeneralMockInterviewPage() {
   const [search, setSearch] = useState("");
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
 
+  const activeTab = normalizeHubTab(searchParams.get("tab"));
   const selectedId = String(searchParams.get("companyId") || "").trim();
   const mockPrefill = useMemo(
     () => parsePrepPathMockPrefill(searchParams),
@@ -95,6 +111,16 @@ function GeneralMockInterviewPage() {
     [searchParams, setSearchParams]
   );
 
+  const setHubTab = useCallback(
+    (tabId) => {
+      const next = new URLSearchParams(searchParams);
+      if (tabId === "mock") next.delete("tab");
+      else next.set("tab", tabId);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
   return (
     <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
       <PageHeroFontStyles />
@@ -116,89 +142,129 @@ function GeneralMockInterviewPage() {
           ) : null}
 
           {!isInterviewLocked ? (
-            <section className="mb-5 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-base font-semibold text-theme-primary">Company</h2>
-                  <p className="mt-1 text-sm text-theme-secondary">
-                    Search by name, then configure rounds and start.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative mt-4">
-                <label htmlFor="mock-company-search" className="sr-only">
-                  Search companies
-                </label>
-                <FaSearch
-                  className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-theme-muted"
-                  aria-hidden
-                />
-                <input
-                  id="mock-company-search"
-                  type="search"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={selectedCompany ? selectedCompany.name : search}
-                  onChange={(e) => {
-                    if (selectedId) selectCompany("");
-                    setSearch(e.target.value);
-                  }}
-                  placeholder="Type a company name…"
-                  className="w-full rounded-xl border border-theme-input bg-theme-input py-2.5 pl-10 pr-4 text-sm text-theme-primary placeholder-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
-                />
-
-                {showSuggestions ? (
-                  <ul
-                    className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-theme bg-theme-card py-1 shadow-xl"
-                    role="listbox"
-                    aria-label="Company suggestions"
+            <div
+              className="mb-6 flex w-fit flex-wrap gap-2 rounded-xl border border-theme bg-theme-card p-1"
+              role="tablist"
+              aria-label="AI mock interview sections"
+            >
+              {HUB_TABS.map((tab) => {
+                const selected = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setHubTab(tab.id)}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                      selected
+                        ? "bg-theme-hero text-theme-accent shadow-md"
+                        : "text-theme-secondary hover:bg-theme-nav hover:text-theme-primary"
+                    }`}
                   >
-                    {filtered.slice(0, 40).map((company) => (
-                      <li key={String(company._id)} role="option">
-                        <button
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setSearch("");
-                            selectCompany(company._id);
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-theme-primary hover:bg-theme-nav"
-                        >
-                          <FaBuilding className="h-3.5 w-3.5 shrink-0 text-theme-muted" aria-hidden />
-                          <span className="truncate">{company.name}</span>
-                        </button>
-                      </li>
-                    ))}
-                    {filtered.length === 0 ? (
-                      <li className="px-3 py-3 text-sm text-theme-muted">
-                        No companies match that search.
-                      </li>
-                    ) : null}
-                  </ul>
-                ) : null}
-              </div>
-
-              {loadError ? (
-                <p className="mt-2 text-sm text-red-400">{loadError}</p>
-              ) : null}
-
-              {fromPrepPath && selectedCompany ? (
-                <p className="mt-3 text-xs text-theme-muted">
-                  PrepPath suggested this mock. You can still change role, difficulty, or
-                  rounds before starting.
-                </p>
-              ) : null}
-            </section>
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           ) : null}
 
-          <AIInterviewTab
-            company={selectedCompany}
-            setupLocked={!selectedCompany}
-            onInterviewLockChange={setIsInterviewLocked}
-            onForceExitToGeneral={() => setIsInterviewLocked(false)}
-            initialMockPlan={initialMockPlan}
-          />
+          {activeTab === "slots" && !isInterviewLocked ? (
+            <InterviewSlotsPage embedded />
+          ) : null}
+
+          {activeTab === "analytics" && !isInterviewLocked ? (
+            <AIInterviews embedded hideSlotsTab />
+          ) : null}
+
+          {activeTab === "mock" || isInterviewLocked ? (
+            <>
+              {!isInterviewLocked ? (
+                <section className="mb-5 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-base font-semibold text-theme-primary">Company</h2>
+                      <p className="mt-1 text-sm text-theme-secondary">
+                        Search by name, then configure rounds and start.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-4">
+                    <label htmlFor="mock-company-search" className="sr-only">
+                      Search companies
+                    </label>
+                    <FaSearch
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-theme-muted"
+                      aria-hidden
+                    />
+                    <input
+                      id="mock-company-search"
+                      type="search"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={selectedCompany ? selectedCompany.name : search}
+                      onChange={(e) => {
+                        if (selectedId) selectCompany("");
+                        setSearch(e.target.value);
+                      }}
+                      placeholder="Type a company name…"
+                      className="w-full rounded-xl border border-theme-input bg-theme-input py-2.5 pl-10 pr-4 text-sm text-theme-primary placeholder-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                    />
+
+                    {showSuggestions ? (
+                      <ul
+                        className="absolute z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-theme bg-theme-card py-1 shadow-xl"
+                        role="listbox"
+                        aria-label="Company suggestions"
+                      >
+                        {filtered.slice(0, 40).map((company) => (
+                          <li key={String(company._id)} role="option">
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                setSearch("");
+                                selectCompany(company._id);
+                              }}
+                              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm text-theme-primary hover:bg-theme-nav"
+                            >
+                              <FaBuilding className="h-3.5 w-3.5 shrink-0 text-theme-muted" aria-hidden />
+                              <span className="truncate">{company.name}</span>
+                            </button>
+                          </li>
+                        ))}
+                        {filtered.length === 0 ? (
+                          <li className="px-3 py-3 text-sm text-theme-muted">
+                            No companies match that search.
+                          </li>
+                        ) : null}
+                      </ul>
+                    ) : null}
+                  </div>
+
+                  {loadError ? (
+                    <p className="mt-2 text-sm text-red-400">{loadError}</p>
+                  ) : null}
+
+                  {fromPrepPath && selectedCompany ? (
+                    <p className="mt-3 text-xs text-theme-muted">
+                      PrepPath suggested this mock. You can still change role, difficulty, or
+                      rounds before starting.
+                    </p>
+                  ) : null}
+                </section>
+              ) : null}
+
+              <AIInterviewTab
+                company={selectedCompany}
+                setupLocked={!selectedCompany}
+                onInterviewLockChange={setIsInterviewLocked}
+                onForceExitToGeneral={() => setIsInterviewLocked(false)}
+                initialMockPlan={initialMockPlan}
+              />
+            </>
+          ) : null}
         </div>
       </div>
     </div>

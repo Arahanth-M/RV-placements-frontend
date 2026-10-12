@@ -480,16 +480,14 @@ function CompanyCard({
           />
         ) : (
           <>
-            {isGeneral ? null : (
-            <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0" data-tour="company-card-business-model">
+            {/* <div className="company-info flex flex-col gap-1 min-h-[3.5rem] flex-shrink-0" data-tour="company-card-business-model">
               <span className="font-semibold text-theme-secondary text-sm">Business Model:</span>
               <span className="text-theme-muted text-xs sm:text-sm line-clamp-2 leading-relaxed break-words">
                 {company.business_model || "Innovative solutions and high-quality services."}
               </span>
-            </div>
-            )}
+            </div> */}
 
-            <div className="mt-1 flex flex-col gap-2 min-h-[4rem]" data-tour="company-card-focus-areas">
+            <div className="mt-5 pt-1 flex flex-col gap-2 min-h-[4rem]" data-tour="company-card-focus-areas">
               {company.focusTags && company.focusTags.length > 0 ? (
                 <>
                   <span className="font-semibold text-theme-secondary text-[10px] uppercase tracking-wider">

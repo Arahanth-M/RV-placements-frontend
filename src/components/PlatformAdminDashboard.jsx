@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { platformAdminAPI } from "../utils/api";
 import { GENERAL_BASE } from "../constants/tenant.js";
 import { CAMPUS_ADMIN_SITES } from "../utils/collegeScope.js";
+import { ONBOARDING_FEATURES } from "../constants/collegeOnboarding.js";
 import { GENERAL_COMPANY_CATEGORIES } from "../utils/generalCompanyCategory.js";
 import AdminSubmissionsTab from "./AdminSubmissionsTab";
 import DashboardNavCard, { DashboardNavGrid } from "./DashboardNavCard.jsx";
@@ -523,26 +524,159 @@ function CampusDashboardPicker() {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-base font-semibold text-theme-primary">Campus admin platforms</h3>
-        <p className="mt-1 text-sm text-theme-secondary">
-          Choose a college to open its campus admin dashboard.
-        </p>
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-theme-primary">Campus admin platforms</h3>
+          <p className="mt-1 text-sm text-theme-secondary">
+            Choose a college to open its campus admin dashboard.
+          </p>
+        </div>
+        <DashboardNavGrid aria-label="Campus admin platforms">
+          {CAMPUS_ADMIN_SITES.map((campus) => (
+            <DashboardNavCard
+              key={campus.id}
+              title={campus.name}
+              description={campus.description}
+              cta="Open campus admin"
+              accent="border-l-slate-500"
+              ctaColor="text-slate-500"
+              onClick={() => navigate(campus.href)}
+            />
+          ))}
+        </DashboardNavGrid>
       </div>
-      <DashboardNavGrid aria-label="Campus admin platforms">
+
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-theme-primary">Campus subscribed features</h3>
+          <p className="mt-1 text-sm text-theme-secondary">
+            Features shown to students on campus login. Changing this list will show the top-up
+            again for students who dismissed it.
+          </p>
+        </div>
         {CAMPUS_ADMIN_SITES.map((campus) => (
-          <DashboardNavCard
-            key={campus.id}
-            title={campus.name}
-            description={campus.description}
-            cta="Open campus admin"
-            accent="border-l-slate-500"
-            ctaColor="text-slate-500"
-            onClick={() => navigate(campus.href)}
-          />
+          <CampusFeaturesEditor key={campus.id} campus={campus} />
         ))}
-      </DashboardNavGrid>
+      </div>
+    </div>
+  );
+}
+
+function CampusFeaturesEditor({ campus }) {
+  const [selected, setSelected] = useState([]);
+  const [catalog, setCatalog] = useState(ONBOARDING_FEATURES);
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [savedMsg, setSavedMsg] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const { data } = await platformAdminAPI.getCollegeFeatures(campus.id);
+      setSelected(Array.isArray(data?.selectedFeatures) ? data.selectedFeatures : []);
+      if (Array.isArray(data?.catalog) && data.catalog.length) {
+        setCatalog(data.catalog);
+      }
+      setUpdatedAt(data?.featuresUpdatedAt || null);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Could not load campus features.");
+    } finally {
+      setLoading(false);
+    }
+  }, [campus.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const toggle = (featureId) => {
+    setSelected((prev) =>
+      prev.includes(featureId) ? prev.filter((id) => id !== featureId) : [...prev, featureId]
+    );
+    setSavedMsg("");
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    setSavedMsg("");
+    try {
+      const { data } = await platformAdminAPI.putCollegeFeatures(campus.id, {
+        collegeName: campus.name,
+        selectedFeatures: selected,
+      });
+      setSelected(Array.isArray(data?.selectedFeatures) ? data.selectedFeatures : selected);
+      setUpdatedAt(data?.featuresUpdatedAt || null);
+      setSavedMsg("Saved. Students will see this list on campus login.");
+    } catch (err) {
+      setError(err?.response?.data?.error || "Could not save campus features.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-semibold text-theme-primary">{campus.name}</h4>
+          <p className="text-xs text-theme-secondary mt-0.5">
+            {updatedAt
+              ? `Last updated ${new Date(updatedAt).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}`
+              : "No features saved yet"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving || loading}
+          className="rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save features"}
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-theme-secondary">Loading features…</p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {catalog.map((feature) => {
+            const checked = selected.includes(feature.id);
+            return (
+              <label
+                key={feature.id}
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
+                  checked
+                    ? "border-theme-accent/50 bg-theme-accent/5"
+                    : "border-theme bg-theme-hero/40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(feature.id)}
+                  className="mt-1"
+                />
+                <span className="min-w-0">
+                  <span className="font-semibold text-theme-primary block">{feature.title}</span>
+                  <span className="text-xs text-theme-secondary">{feature.text}</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
+      {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
+      {savedMsg ? <p className="text-sm text-theme-accent">{savedMsg}</p> : null}
     </div>
   );
 }

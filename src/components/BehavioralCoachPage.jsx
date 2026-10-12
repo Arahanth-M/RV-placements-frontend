@@ -155,33 +155,45 @@ function composeAnswer(parts, focusId) {
   return lines.join("\n\n");
 }
 
+const PLACEHOLDER_PART_RE =
+  /^(test|tests|testing|asdf|qwer|zxcv|n\/?a|na|nil|none|idk|tbd|todo|ok|okay|yes|no|hi|hello|abc|xyz|sample|dummy)[\s.!?]*$/i;
+
+function isWeakPart(text, minChars) {
+  const t = String(text || "").trim();
+  if (t.length < minChars) return true;
+  if (PLACEHOLDER_PART_RE.test(t)) return true;
+  const words = t.toLowerCase().split(/[^a-z0-9']+/).filter((w) => w.length >= 2);
+  if (words.length > 0 && words.every((w) => PLACEHOLDER_PART_RE.test(w))) return true;
+  return false;
+}
+
 function answerPartsReady(parts, focusId) {
   if (isWhyCompanyFocus(focusId)) {
     return (
-      (parts.motivation || "").trim().length >= 5 &&
-      (parts.fit || "").trim().length >= 5 &&
-      (parts.evidence || "").trim().length >= 5 &&
-      (parts.aspiration || "").trim().length >= 4
+      !isWeakPart(parts.motivation, 24) &&
+      !isWeakPart(parts.fit, 24) &&
+      !isWeakPart(parts.evidence, 24) &&
+      !isWeakPart(parts.aspiration, 18)
     );
   }
   return (
-    (parts.situation || "").trim().length >= 5 &&
-    (parts.task || "").trim().length >= 3 &&
-    (parts.action || "").trim().length >= 5 &&
-    (parts.result || "").trim().length >= 3
+    !isWeakPart(parts.situation, 24) &&
+    !isWeakPart(parts.task, 16) &&
+    !isWeakPart(parts.action, 24) &&
+    !isWeakPart(parts.result, 16)
   );
 }
 
 function missingAnswerFields(parts, focusId) {
   const fields = fieldsForFocus(focusId);
   const mins = isWhyCompanyFocus(focusId)
-    ? { motivation: 5, fit: 5, evidence: 5, aspiration: 4 }
-    : { situation: 5, task: 3, action: 5, result: 3, reflection: 0 };
+    ? { motivation: 24, fit: 24, evidence: 24, aspiration: 18 }
+    : { situation: 24, task: 16, action: 24, result: 16, reflection: 0 };
   return fields
     .filter((field) => {
       if (!field.required) return false;
-      const min = mins[field.key] ?? 5;
-      return (parts[field.key] || "").trim().length < min;
+      const min = mins[field.key] ?? 24;
+      return isWeakPart(parts[field.key], min);
     })
     .map((field) => field.label);
 }

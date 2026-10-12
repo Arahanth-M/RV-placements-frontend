@@ -8,7 +8,6 @@ import {
   FaMoon,
   FaGraduationCap,
   FaChartBar,
-  FaChartLine,
   FaBook,
   FaComments,
   FaTrophy,
@@ -45,7 +44,6 @@ import {
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { isPlatformAdminUser } from "../utils/collegeScope.js";
 import NotificationBell from "./NotificationBell";
-import NotificationSubscribeButton from "./NotificationSubscribeButton";
 import BrandLogo from "./BrandLogo.jsx";
 import PlatformLoginMenu from "./PlatformLoginMenu.jsx";
 import { useProductTour } from "../context/ProductTourContext";
@@ -91,16 +89,6 @@ function buildStudentCornerLinks(base, isGeneral) {
         path: pathUnderBase(base, "/drive-calendar"),
         icon: FaCalendarCheck,
       },
-      {
-        label: "Interview slots",
-        path: pathUnderBase(base, "/interview-slots"),
-        icon: FaCalendarAlt,
-      },
-      {
-        label: "Interview Analytics",
-        path: pathUnderBase(base, "/interview-analytics"),
-        icon: FaChartLine,
-      },
       { label: "PrepPath", path: pathUnderBase(base, "/prep-path"), icon: FaMapMarkedAlt },
       { label: "Pricing", path: pathUnderBase(base, "/pricing"), icon: FaLock },
       { label: "Resources", path: pathUnderBase(base, "/resources"), icon: FaBook },
@@ -141,11 +129,6 @@ function buildStudentCornerLinks(base, isGeneral) {
       label: "Drive calendar",
       path: pathUnderBase(base, "/drive-calendar"),
       icon: FaCalendarCheck,
-    },
-    {
-      label: "Interview slots",
-      path: pathUnderBase(base, "/interview-slots"),
-      icon: FaCalendarAlt,
     },
     { label: "PrepPath", path: pathUnderBase(base, "/prep-path"), icon: FaMapMarkedAlt },
     { label: "Resources", path: pathUnderBase(base, "/resources"), icon: FaBook },
@@ -944,7 +927,6 @@ const Header = () => {
 
             {user && (
               <div className="shrink-0 flex items-center gap-1.5" data-tour="header-notifications">
-                <NotificationSubscribeButton />
                 <NotificationBell />
               </div>
             )}
@@ -967,7 +949,6 @@ const Header = () => {
             className="absolute left-0 right-0 top-full z-[60] max-h-[min(75vh,calc(100dvh-4.5rem))] overflow-y-auto overscroll-contain border-b border-theme bg-theme-card shadow-lg md:hidden"
             aria-label="Mobile menu"
           >
-            {user && <NotificationSubscribeButton variant="menu" />}
             {user && canStartTour && (
               <button
                 type="button"

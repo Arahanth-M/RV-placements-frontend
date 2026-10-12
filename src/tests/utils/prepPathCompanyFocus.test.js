@@ -53,7 +53,7 @@ describe("prepPathCompanyFocus", () => {
     const href = buildPrepPathMockInterviewHref((p) => `/general${p}`, "abc123", {
       role: "Software Engineer (SDE)",
       difficulty: "medium",
-      rounds: ["DSA", "CS Fundamentals", "HR"],
+      rounds: ["DSA", "CS Fundamentals"],
     });
     expect(href).toContain("/general/interviews?");
     expect(href).toContain("companyId=abc123");
@@ -67,12 +67,12 @@ describe("prepPathCompanyFocus", () => {
   it("parses interviews-hub prefill params", () => {
     expect(
       parsePrepPathMockPrefill(
-        "?companyId=abc&role=Frontend+Engineer&difficulty=easy&rounds=DSA,HR&from=preppath"
+        "?companyId=abc&role=Frontend+Engineer&difficulty=easy&rounds=DSA,SQL&from=preppath"
       )
     ).toEqual({
       role: "Frontend Engineer",
       difficulty: "easy",
-      rounds: ["DSA", "HR"],
+      rounds: ["DSA", "SQL"],
       fromPrepPath: true,
     });
   });
