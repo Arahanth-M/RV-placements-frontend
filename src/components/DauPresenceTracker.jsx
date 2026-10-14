@@ -69,8 +69,9 @@ export default function DauPresenceTracker() {
       return undefined;
     }
 
-    lastSentAtRef.current = Date.now();
     lastActivityAtRef.current = Date.now();
+    // Backdate so the first ping credits ~one interval (otherwise deltaMs is 0 right after mount).
+    lastSentAtRef.current = Date.now() - HEARTBEAT_MS;
 
     const markActivity = () => {
       const now = Date.now();
@@ -115,6 +116,8 @@ export default function DauPresenceTracker() {
     };
 
     registerDauPresenceFlush(() => ping({ flush: true, keepalive: true, force: true }));
+
+    void ping({ flush: false, keepalive: false });
 
     const intervalId = window.setInterval(maybeTick, HEARTBEAT_MS);
     window.addEventListener("pointerdown", markActivity, { passive: true });

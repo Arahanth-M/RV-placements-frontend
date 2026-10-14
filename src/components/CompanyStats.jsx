@@ -329,6 +329,8 @@ function CompanyStats() {
   const [companiesFetchDone, setCompaniesFetchDone] = useState(false);
   const isPlacementCardsYear = isPlacementDetailVisitYear(selectedYear);
   const [search, setSearch] = useState("");
+  /** Whitespace-only queries must not filter (avoids false empty lists + category bounce). */
+  const trimmedSearch = useMemo(() => String(search ?? "").trim(), [search]);
   /** Empty string = filter off. When set, keep companies with no cutoff or minCgpa ≤ this value. */
   const [cgpaFilter, setCgpaFilter] = useState("");
   const [tierCategories, setTierCategories] = useState({
@@ -417,11 +419,14 @@ function CompanyStats() {
   const openPlacementTierList = useCallback((tier) => {
     const resolvedCardsYear = getPersistedPlacementCardsYear();
     setSelectedYear(resolvedCardsYear);
+    if (trimmedSearch !== search) {
+      setSearch(trimmedSearch);
+    }
     setPlacementTier(tier);
     const baseUrl = companystatsTierListUrl(tier);
     const nextCluster = isPlacementHubCluster(clusterParam) ? clusterParam : PLACEMENT_CLUSTER_CS;
     navigate(`${baseUrl}&cluster=${encodeURIComponent(nextCluster)}`);
-  }, [navigate, user?.userId, clusterParam]);
+  }, [navigate, user?.userId, clusterParam, trimmedSearch, search]);
 
   const visitSortYear =
     isPlacementDetailVisitYear(selectedYear) ? selectedYear : DEFAULT_PLACEMENT_DETAIL_YEAR;
@@ -495,12 +500,12 @@ function CompanyStats() {
         .filter((c) =>
           String(c?.name || "")
             .toLowerCase()
-            .includes(search.toLowerCase())
+            .includes(trimmedSearch.toLowerCase())
         )
         .filter((c) =>
           companyPassesCgpaFilter(c, parsedCgpaFilter, placementTier, activeCategory)
         ),
-    [ecMeClusterCompanies, search, parsedCgpaFilter, placementTier, activeCategory]
+    [ecMeClusterCompanies, trimmedSearch, parsedCgpaFilter, placementTier, activeCategory]
   );
   const ecMeTotalPages = Math.max(1, Math.ceil(ecMeFilteredCompanies.length / companiesPerPage));
   const ecMeSlice = ecMeFilteredCompanies.slice(
@@ -1104,7 +1109,7 @@ function CompanyStats() {
 
   // Filter companies (only for 2026)
   const filteredCompanies = clusterScopedCompanies
-    .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((c) => c.name.toLowerCase().includes(trimmedSearch.toLowerCase()))
     .filter((c) =>
       companyPassesCgpaFilter(c, parsedCgpaFilter, placementTier, activeCategory)
     )
@@ -1379,11 +1384,12 @@ function CompanyStats() {
   useEffect(() => {
     if (!companiesFetchDone || !isPlacementCardsYear || !placementTier) return;
     if (location.pathname !== PATH_COMPANY_STATS) return;
-    if (String(search || "").trim()) return;
+    if (trimmedSearch) return;
     if (tierListConfig.pool.length > 0) return;
     const cluster =
       effectiveClusterParam ||
       (isNonCsStrictHubCluster(clusterParam) ? clusterParam : PLACEMENT_CLUSTER_CS);
+    setSearch("");
     setPlacementTier(null);
     navigate(companystatsClusterCategoryUrl(cluster), { replace: true });
   }, [
@@ -1391,7 +1397,7 @@ function CompanyStats() {
     isPlacementCardsYear,
     placementTier,
     location.pathname,
-    search,
+    trimmedSearch,
     tierListConfig.pool.length,
     navigate,
     effectiveClusterParam,

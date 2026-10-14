@@ -136,9 +136,10 @@ export default function AdminTrendingCardsTab() {
         <div className="mb-5 text-center">
           <h2 className="text-2xl font-semibold text-theme-accent">Trending company cards</h2>
           <p className="mx-auto mt-1 max-w-2xl text-sm text-theme-secondary">
-            Pin a company card as trending for 24 hours. This is stored in Redis only — company
-            visit records in Mongo are not changed. Cards also show trending automatically when
-            profile views spike.
+            Pin a company card as trending for 24 hours. The hub shows one card per company
+            in each cluster, so a pin on any visit in that cluster marks that card. This is
+            stored in Redis only — company visit records in Mongo are not changed. Cards also
+            show trending automatically when profile views spike.
           </p>
         </div>
 
