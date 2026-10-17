@@ -99,6 +99,11 @@ import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
 import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransition.js";
 import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
+import {
+  platformQuestionEditDraft,
+  platformQuestionEditPayload,
+} from "../../utils/platformQuestionEdit.js";
 import PrepSolutionBody from "../PrepSolutionBody";
 import PlatformAdminCodeBlock from "../platform/PlatformAdminCodeBlock.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
@@ -159,6 +164,7 @@ function InterviewTab({
   const [editIQIndex, setEditIQIndex] = useState(null);
   const [editIQQuestion, setEditIQQuestion] = useState("");
   const [editIQSolution, setEditIQSolution] = useState("");
+  const [platformDraft, setPlatformDraft] = useState(null);
   const [editIPIndex, setEditIPIndex] = useState(null);
   const [editIPContent, setEditIPContent] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -508,8 +514,27 @@ function InterviewTab({
     }
   };
 
+  const closeEditIQ = () => {
+    setEditIQIndex(null);
+    setEditIQQuestion("");
+    setEditIQSolution("");
+    setPlatformDraft(null);
+  };
+
   const handleEditIQ = (index, questionText, solutionText) => {
     setEditIQIndex(index);
+    if (isGeneral) {
+      setPlatformDraft(
+        platformQuestionEditDraft({
+          question: questionText,
+          solutions: company?.interviewQuestions_solutions?.[index],
+          intuition: company?.interviewQuestions_intuition?.[index],
+          explanation: company?.interviewQuestions_explanation?.[index],
+        })
+      );
+      return;
+    }
+    setPlatformDraft(null);
     setEditIQQuestion(questionText || "");
     setEditIQSolution(solutionText || "");
   };
@@ -519,16 +544,13 @@ function InterviewTab({
     if (editIQIndex == null || !company?._id) return;
     setActionLoading(true);
     try {
-      await contentAdmin.updateInterviewQuestion(
-        company._id,
-        editIQIndex,
-        { question: editIQQuestion, solution: editIQSolution },
-        adminOpts
-      );
+      const body =
+        isGeneral && platformDraft
+          ? platformQuestionEditPayload(platformDraft)
+          : { question: editIQQuestion, solution: editIQSolution };
+      await contentAdmin.updateInterviewQuestion(company._id, editIQIndex, body, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
-      setEditIQIndex(null);
-      setEditIQQuestion("");
-      setEditIQSolution("");
+      closeEditIQ();
     } catch (err) {
       console.error(err);
       alert("Failed to update question.");
@@ -847,11 +869,15 @@ function InterviewTab({
                       const intuition = String(
                         company.interviewQuestions_intuition?.[index] || ""
                       ).trim();
+                      const explanation = String(
+                        company.interviewQuestions_explanation?.[index] || ""
+                      ).trim();
                       const hasLang =
                         Boolean(String(langSol?.cpp || "").trim()) ||
                         Boolean(String(langSol?.java || "").trim()) ||
                         Boolean(String(langSol?.python || "").trim()) ||
-                        Boolean(intuition);
+                        Boolean(intuition) ||
+                        Boolean(explanation);
                       const fallback = solutions[index];
                       const hasAny = hasLang || Boolean(String(fallback || "").trim());
                       if (!hasAny) {
@@ -883,6 +909,7 @@ function InterviewTab({
                               <LanguageSolutionPanel
                                 solutions={langSol}
                                 intuition={intuition}
+                                explanation={explanation}
                                 fallbackCode={fallback}
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
@@ -1174,8 +1201,19 @@ function InterviewTab({
         </div>
       )}
 
+      {isGeneral && editIQIndex !== null && platformDraft ? (
+        <PlatformQuestionEditModal
+          title={`Edit Interview Question ${editIQIndex + 1}`}
+          draft={platformDraft}
+          onChange={setPlatformDraft}
+          onSubmit={handleSaveEditIQ}
+          onCancel={closeEditIQ}
+          saving={actionLoading}
+        />
+      ) : null}
+
       {/* Edit Interview Question modal (admin) */}
-      {editIQIndex !== null && (
+      {!isGeneral && editIQIndex !== null && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
             <h3 className="text-lg font-semibold mb-4 text-amber-400">Edit Interview Question {editIQIndex + 1}</h3>
@@ -1194,7 +1232,7 @@ function InterviewTab({
                 className="w-full p-3 border border-slate-600 rounded-lg bg-slate-900 text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <div className="flex justify-end gap-2">
-                <button type="button" className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700" onClick={() => { setEditIQIndex(null); setEditIQQuestion(""); setEditIQSolution(""); }}>Cancel</button>
+                <button type="button" className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700" onClick={closeEditIQ}>Cancel</button>
                 <button type="submit" disabled={actionLoading} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50">{actionLoading ? "Saving…" : "Save"}</button>
               </div>
             </form>

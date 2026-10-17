@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
+import { consumeTestEmailFeature } from "../../utils/testEmailAccess.js";
 import { useTheme } from "../../utils/ThemeContext";
 import { interviewAPI } from "../../utils/api";
 import { useTenantShell } from "../../context/TenantShellContext.jsx";
@@ -932,7 +933,7 @@ function AIInterviewTab({
   registerInterviewExitHandler,
   initialMockPlan = null,
 }) {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const { isGeneral, appPath } = useTenantShell();
   const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState("");
@@ -1526,9 +1527,15 @@ function AIInterviewTab({
             : {}
         );
         if (cancelled) return;
+        const testMockAnyCompany =
+          user?.testEmailAccess?.active === true && user.testEmailAccess.mockRemaining !== 0;
+        const companyCardLock =
+          data?.feature === "company_detail" ||
+          String(data?.message || "").includes("first card in each category");
         const blocked =
           data?.canStart === false &&
-          (data?.reason === "INTERVIEW_LIMIT_REACHED" || data?.reason === "PAYWALL");
+          (data?.reason === "INTERVIEW_LIMIT_REACHED" || data?.reason === "PAYWALL") &&
+          !(testMockAnyCompany && companyCardLock);
         setInterviewLimitReached(blocked);
         setInterviewLimitMessage(
           blocked ? data?.message || MESSAGES.INTERVIEW_LIMIT_REACHED : ""
@@ -1546,7 +1553,15 @@ function AIInterviewTab({
     return () => {
       cancelled = true;
     };
-  }, [user?.userId, user?.betaAccess, status, isGeneral, company?._id]);
+  }, [
+    user?.userId,
+    user?.betaAccess,
+    user?.testEmailAccess?.active,
+    user?.testEmailAccess?.mockRemaining,
+    status,
+    isGeneral,
+    company?._id,
+  ]);
 
   const handleCustomRoundCountChange = useCallback((nextCountRaw) => {
     const nextCount = Math.min(
@@ -2136,6 +2151,7 @@ function AIInterviewTab({
           : {}),
       });
 
+      if (isGeneral) consumeTestEmailFeature(user, setUser, "mockRemaining");
       setSessionId(data.sessionId || "");
       setQuestion(data.question || "");
       setQuestionUrl(String(data.questionUrl || "").trim());
@@ -2187,6 +2203,14 @@ function AIInterviewTab({
       setInterviewPlanPreviewOpen(false);
       const code = err?.response?.data?.code;
       if (code === "INTERVIEW_LIMIT_REACHED" || code === "PAYWALL") {
+        const testMockAnyCompany =
+          user?.testEmailAccess?.active === true && user.testEmailAccess.mockRemaining !== 0;
+        const companyCardLock =
+          err?.response?.data?.feature === "company_detail" ||
+          String(err?.response?.data?.error || "").includes("first card in each category");
+        if (testMockAnyCompany && companyCardLock) {
+          return;
+        }
         const msg = err?.response?.data?.error || MESSAGES.INTERVIEW_LIMIT_REACHED;
         setInterviewLimitReached(true);
         setInterviewLimitMessage(msg);

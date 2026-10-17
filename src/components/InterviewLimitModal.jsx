@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import BrandLogo from "./BrandLogo.jsx";
 import { MESSAGES } from "../utils/constants";
 import { billingAPI, companyAPI } from "../utils/api";
+import { useAuth } from "../utils/AuthContext";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   GENERAL_COMPANY_CATEGORIES,
@@ -87,6 +88,10 @@ export default function InterviewLimitModal({
 }) {
   const navigate = useNavigate();
   const { appPath } = useTenantShell();
+  const { user } = useAuth();
+  const testEmailPicksAnyCompany = user?.testEmailAccess?.active === true;
+  const testMockStillAvailable =
+    testEmailPicksAnyCompany && user.testEmailAccess.mockRemaining !== 0;
   const [requestFeedback, setRequestFeedback] = useState("");
   const [freeMockRemaining, setFreeMockRemaining] = useState(null);
   const [teaserCompanies, setTeaserCompanies] = useState([]);
@@ -119,7 +124,7 @@ export default function InterviewLimitModal({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !upgradePath) return undefined;
+    if (!open || !upgradePath || testEmailPicksAnyCompany) return undefined;
     let cancelled = false;
     setTeasersLoading(true);
     (async () => {
@@ -162,14 +167,17 @@ export default function InterviewLimitModal({
     return () => {
       cancelled = true;
     };
-  }, [open, upgradePath]);
+  }, [open, upgradePath, testEmailPicksAnyCompany]);
 
   if (!open) return null;
 
   const body =
     (message && String(message).trim()) || MESSAGES.INTERVIEW_LIMIT_REACHED;
   const isPending = limitRequestStatus === "pending";
-  const freeMockAvailable = Boolean(upgradePath) && (freeMockRemaining == null || freeMockRemaining > 0);
+  const freeMockAvailable =
+    Boolean(upgradePath) &&
+    !testEmailPicksAnyCompany &&
+    (freeMockRemaining == null || freeMockRemaining > 0);
 
   const handleRequest = async () => {
     if (!onRequestAccess || isPending || requesting) return;
@@ -223,7 +231,7 @@ export default function InterviewLimitModal({
         </div>
         <p className="text-sm sm:text-base text-theme-secondary leading-relaxed">{body}</p>
 
-        {upgradePath ? (
+        {upgradePath && !testMockStillAvailable ? (
           <div className="flex flex-col gap-3">
             {freeMockAvailable ? (
               <button

@@ -52,4 +52,15 @@ describe("platform admin tenant access", () => {
     expect(getAppHomePathForUser(generalStudent)).toBe("/general");
     expect(getProductHomePathForUser(generalStudent)).toBe("/general");
   });
+
+  it("keeps an active test email on the public platform", () => {
+    const testEmail = {
+      email: "student@rvce.edu.in",
+      testEmailAccess: { active: true },
+    };
+    expect(isOnboardedInstitutionUser(testEmail)).toBe(false);
+    expect(canAccessRvceTenant(testEmail)).toBe(false);
+    expect(canAccessGeneralTenant(testEmail)).toBe(true);
+    expect(getAppHomePathForUser(testEmail)).toBe("/general");
+  });
 });

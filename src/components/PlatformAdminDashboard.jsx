@@ -19,6 +19,7 @@ import {
 } from "./PageBackNav.jsx";
 import ThemedSelect from "./ThemedSelect.jsx";
 import PlatformRuntimeSecretsPanel from "./PlatformRuntimeSecretsPanel.jsx";
+import TestEmailPanel from "./TestEmailPanel.jsx";
 
 const TAB_KEYS = new Set([
   "stats",
@@ -28,6 +29,7 @@ const TAB_KEYS = new Set([
   "billing",
   "campus",
   "keys",
+  "test-email",
 ]);
 const ONBOARDING_STATUSES = [
   "demo_requested",
@@ -259,6 +261,14 @@ export default function PlatformAdminDashboard() {
         badgeLabel: "open",
       },
       {
+        key: "test-email",
+        title: "Set test emailId",
+        description: "Give an email a timed window to try each feature once.",
+        cta: "Set test email",
+        accent: "border-l-cyan-500",
+        ctaColor: "text-cyan-600",
+      },
+      {
         key: "billing",
         title: "Billing & access",
         description: "Premium users, plans unlocked, and amounts paid.",
@@ -376,6 +386,8 @@ export default function PlatformAdminDashboard() {
         ) : null}
 
         {!loading && !error && activeTab === "keys" ? <PlatformRuntimeSecretsPanel /> : null}
+
+        {!loading && !error && activeTab === "test-email" ? <TestEmailPanel /> : null}
       </div>
     </div>
   );

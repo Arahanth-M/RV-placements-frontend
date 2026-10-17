@@ -58,6 +58,9 @@ describe('Constants', () => {
     it('should have correct submission messages', () => {
       expect(MESSAGES.SUBMISSION_SUCCESS).toBe('Submission received and pending approval.')
       expect(MESSAGES.SUBMISSION_ERROR).toBe('Something went wrong. Try again.')
+      expect(MESSAGES.SUBMISSION_CONTRIBUTION_NOTE).toContain('RVians')
+      expect(MESSAGES.SUBMISSION_CONTRIBUTION_NOTE_GENERAL).toContain('students')
+      expect(MESSAGES.SUBMISSION_CONTRIBUTION_NOTE_GENERAL).not.toContain('RVian')
     })
 
     it('should have validation error messages', () => {

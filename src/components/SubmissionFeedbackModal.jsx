@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { isGeneralAppPath } from "../constants/tenant.js";
 import { MESSAGES } from "../utils/constants";
 
 /**
@@ -25,9 +27,14 @@ export default function SubmissionFeedbackModal({
     };
   }, [open, onClose]);
 
+  const { pathname } = useLocation();
+
   if (!open) return null;
 
   const isSuccess = variant === "success";
+  const contributionNote = isGeneralAppPath(pathname)
+    ? MESSAGES.SUBMISSION_CONTRIBUTION_NOTE_GENERAL
+    : MESSAGES.SUBMISSION_CONTRIBUTION_NOTE;
   const primary =
     (statusMessage && String(statusMessage).trim()) ||
     (isSuccess ? MESSAGES.SUBMISSION_SUCCESS : MESSAGES.SUBMISSION_ERROR);
@@ -69,7 +76,7 @@ export default function SubmissionFeedbackModal({
             </p>
             {isSuccess && (
               <p className="mt-3 text-sm leading-relaxed text-theme-secondary border-t border-theme pt-3">
-                {MESSAGES.SUBMISSION_CONTRIBUTION_NOTE}
+                {contributionNote}
               </p>
             )}
           </div>

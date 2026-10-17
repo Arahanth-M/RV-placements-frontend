@@ -14,6 +14,8 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { companyAPI, prepPathAPI } from "../utils/api";
+import { useAuth } from "../utils/AuthContext";
+import { consumeTestEmailFeature } from "../utils/testEmailAccess.js";
 import {
   buildPrepPathCompanyHref,
   buildPrepPathMockInterviewHref,
@@ -1102,6 +1104,7 @@ function PrepPathPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isGeneral, appPath } = useTenantShell();
+  const { user, setUser } = useAuth();
   const suggestRootRef = useRef(null);
   const companiesLoadPromiseRef = useRef(null);
 
@@ -1428,6 +1431,7 @@ function PrepPathPage() {
         ...(isGeneral ? { scope: "platform" } : {}),
       });
       const plan = res?.data?.plan || null;
+      if (isGeneral) consumeTestEmailFeature(user, setUser, "prepRemaining");
       if (res?.data?.peerDemand) setFormPeerDemand(res.data.peerDemand);
       if (res?.data?.quota) setQuota(res.data.quota);
       const plansRes = await prepPathAPI.listPlans();

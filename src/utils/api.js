@@ -672,6 +672,11 @@ export const platformAdminAPI = {
     API.delete(`/api/admin/platform/companies/${companyId}/research-sources`, {
       data: { url },
     }),
+  getTestEmails: () => API.get("/api/admin/platform/test-emails"),
+  setTestEmail: (email, durationHours) =>
+    API.put("/api/admin/platform/test-emails", { email, durationHours }),
+  revokeTestEmail: (email) =>
+    API.delete("/api/admin/platform/test-emails", { data: { email } }),
 };
 
 /** Campus visit admin vs /general platform content admin. */

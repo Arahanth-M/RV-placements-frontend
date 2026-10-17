@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { useAuth } from "../utils/AuthContext";
+import { consumeTestEmailFeature } from "../utils/testEmailAccess.js";
 import { interviewAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { getFocusOptionsForRoundType } from "../constants/interviewRoundFocus.js";
@@ -373,7 +374,9 @@ function CoachWaitOverlay({ mode, tipIndex }) {
 
 export default function BehavioralCoachPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, setUser, loading: authLoading } = useAuth();
+  const behavioralLocked =
+    user?.testEmailAccess?.active === true && user.testEmailAccess.behavioralRemaining === 0;
   const { appPath } = useTenantShell();
 
   const [phase, setPhase] = useState(PHASE_PICK);
@@ -464,6 +467,7 @@ export default function BehavioralCoachPage() {
 
   const startPractice = async (focusOverride) => {
     if (!user?.userId && !user?._id) return;
+    if (behavioralLocked) return;
     const nextFocus =
       typeof focusOverride === "string" && focusOverride.trim()
         ? focusOverride.trim()
@@ -473,6 +477,7 @@ export default function BehavioralCoachPage() {
     setError("");
     try {
       const { data } = await interviewAPI.startBehavioralCoach({ focus: nextFocus });
+      consumeTestEmailFeature(user, setUser, "behavioralRemaining");
       setFocus(nextFocus);
       setPracticeId(data.practiceId || "");
       setQuestion(data.question || "");
@@ -481,6 +486,9 @@ export default function BehavioralCoachPage() {
       setResult(null);
       setPhase(PHASE_ANSWER);
     } catch (err) {
+      if (err?.response?.data?.code === "TEST_EMAIL_LIMIT") {
+        consumeTestEmailFeature(user, setUser, "behavioralRemaining");
+      }
       setError(
         err?.response?.data?.error ||
           err?.message ||
@@ -605,11 +613,11 @@ export default function BehavioralCoachPage() {
               </div>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || behavioralLocked}
                 onClick={() => startPractice()}
                 className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
-                {busy ? "Generating question…" : "Get a question"}
+                {busy ? "Generating question…" : behavioralLocked ? "Session used" : "Get a question"}
               </button>
             </section>
           ) : null}

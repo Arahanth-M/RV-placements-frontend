@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaTrophy, FaPlay, FaPaperPlane, FaFire } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
+import { consumeTestEmailFeature } from "../utils/testEmailAccess.js";
 import { practiceChallengeAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import InterviewCodeWorkspace from "./CompanyTabs/InterviewCodeWorkspace.jsx";
@@ -148,6 +149,9 @@ function ResultPanel({ execution, score, bestScore, keptBest, mode }) {
 }
 
 function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
+  const { user, setUser } = useAuth();
+  const challengeLocked =
+    user?.testEmailAccess?.active === true && user.testEmailAccess.challengeRemaining === 0;
   // Always offer the full runner set (no DB metadata filter).
   const langs = useMemo(() => ["python", "cpp", "java"], []);
 
@@ -172,11 +176,13 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
 
   const run = async (mode) => {
     if (!challenge?.id || !problem?.questionId) return;
+    if (mode === "submit" && challengeLocked) return;
     setBusy(mode);
     setError("");
     try {
       const api = mode === "submit" ? practiceChallengeAPI.submit : practiceChallengeAPI.runPreview;
       const { data } = await api(challenge.id, problem.questionId, { code, language });
+      if (mode === "submit") consumeTestEmailFeature(user, setUser, "challengeRemaining");
       setLastRun({
         mode,
         score: data.score,
@@ -189,6 +195,9 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
       }
     } catch (err) {
       const d = err?.response?.data;
+      if (mode === "submit" && d?.code === "TEST_EMAIL_LIMIT") {
+        consumeTestEmailFeature(user, setUser, "challengeRemaining");
+      }
       setError(d?.error || d?.errors?.[0] || d?.message || err?.message || "Run failed.");
     } finally {
       setBusy("");
@@ -264,12 +273,12 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
             </button>
             <button
               type="button"
-              disabled={Boolean(busy) || !code.trim()}
+              disabled={Boolean(busy) || !code.trim() || challengeLocked}
               onClick={() => run("submit")}
               className="inline-flex items-center gap-1.5 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
             >
               <FaPaperPlane className="h-3 w-3" />
-              {busy === "submit" ? "Submitting…" : "Submit"}
+              {busy === "submit" ? "Submitting…" : challengeLocked ? "Challenge used" : "Submit"}
             </button>
           </div>
         </div>
@@ -281,7 +290,9 @@ function ProblemWorkspace({ challenge, problem, onChallengeUpdate }) {
           language={language}
           minHeightPx={320}
           disabled={Boolean(busy)}
-          onSubmitShortcut={() => run("submit")}
+          onSubmitShortcut={() => {
+            if (!challengeLocked) run("submit");
+          }}
         />
 
         {error ? (

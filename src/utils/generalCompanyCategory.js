@@ -1,3 +1,5 @@
+import { isPlatformAdminUser } from "./collegeScope.js";
+
 export const GENERAL_COMPANY_CATEGORY_FINTECH = "fintech";
 export const GENERAL_COMPANY_CATEGORY_ECOMMERCE = "ecommerce";
 export const GENERAL_COMPANY_CATEGORY_AIML_CYBER = "aiml-cyber";
@@ -207,6 +209,7 @@ export function groupCompaniesByGeneralCategory(companies) {
 /**
  * Billing paywall on company cards applies only to signed-in users.
  * Guests may browse cards; company detail routes still require login.
+ * Platform-admin sessions are unlocked for every card.
  */
 export function isGeneralCompanyCardDetailLocked({
   user,
@@ -216,6 +219,7 @@ export function isGeneralCompanyCardDetailLocked({
   companyId,
 }) {
   if (!user) return false;
+  if (isPlatformAdminUser(user)) return false;
   if (cardAccess?.allCards) return false;
   if (cardAccess?.categories?.[selectedCategory]) return false;
   if (String(teaserCompanyIds?.[selectedCategory] || "") === String(companyId)) {

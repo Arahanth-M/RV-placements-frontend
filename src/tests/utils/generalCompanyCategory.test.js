@@ -164,6 +164,15 @@ describe("isGeneralCompanyCardDetailLocked", () => {
     expect(isGeneralCompanyCardDetailLocked(lockedArgs)).toBe(true);
   });
 
+  it("unlocks every card for a platform admin session", () => {
+    expect(
+      isGeneralCompanyCardDetailLocked({
+        ...lockedArgs,
+        user: { userId: "admin", isSuperAdmin: true, adminScope: "platform" },
+      })
+    ).toBe(false);
+  });
+
   it("unlocks teaser company in category", () => {
     expect(
       isGeneralCompanyCardDetailLocked({

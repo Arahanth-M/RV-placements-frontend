@@ -24,8 +24,9 @@ function formattedSolutions(solutions) {
   };
 }
 
-function pickDefaultTab(sols, hasIntuition) {
+function pickDefaultTab(sols, hasIntuition, hasExplanation) {
   if (hasIntuition) return "intuition";
+  if (hasExplanation) return "explanation";
   return LANGS.find((lang) => sols[lang.id])?.id || "cpp";
 }
 
@@ -35,6 +36,7 @@ function pickDefaultTab(sols, hasIntuition) {
 export default function LanguageSolutionPanel({
   solutions,
   intuition = "",
+  explanation = "",
   fallbackCode = "",
   copied = false,
   onCopy,
@@ -44,18 +46,21 @@ export default function LanguageSolutionPanel({
 }) {
   const sols = formattedSolutions(solutions);
   const intuitionText = formatSolutionCode(intuition);
+  const explanationText = formatSolutionCode(explanation);
   const hasIntuition = Boolean(intuitionText);
+  const hasExplanation = Boolean(explanationText);
   const availableLangs = LANGS.filter((lang) => sols[lang.id]);
   const tabs = [
     ...(hasIntuition ? [{ id: "intuition", label: "Intuition" }] : []),
+    ...(hasExplanation ? [{ id: "explanation", label: "Explanation" }] : []),
     ...availableLangs,
   ];
-  const [tab, setTab] = useState(() => pickDefaultTab(sols, hasIntuition));
+  const [tab, setTab] = useState(() => pickDefaultTab(sols, hasIntuition, hasExplanation));
   const active = tabs.some((item) => item.id === tab)
     ? tab
-    : pickDefaultTab(sols, hasIntuition);
-  const code =
-    active === "intuition" ? "" : sols[active] || formatSolutionCode(fallbackCode);
+    : pickDefaultTab(sols, hasIntuition, hasExplanation);
+  const prose = active === "intuition" ? intuitionText : active === "explanation" ? explanationText : "";
+  const code = prose ? "" : sols[active] || formatSolutionCode(fallbackCode);
 
   if (!tabs.length && !formatSolutionCode(fallbackCode)) return null;
 
@@ -95,18 +100,18 @@ export default function LanguageSolutionPanel({
           })}
         </div>
       ) : null}
-      {active === "intuition" && intuitionText ? (
+      {prose ? (
         <div className="border-theme bg-theme-card p-4 sm:p-5">
-          {looksLikeMarkdownProse(intuitionText) ? (
-            <PrepRichText variant={richTextVariant}>{intuitionText}</PrepRichText>
+          {looksLikeMarkdownProse(prose) ? (
+            <PrepRichText variant={richTextVariant}>{prose}</PrepRichText>
           ) : (
             <p className="whitespace-pre-wrap text-sm leading-7 text-theme-secondary sm:text-base sm:leading-8">
-              {intuitionText}
+              {prose}
             </p>
           )}
         </div>
       ) : code ? (
-        platformAdminCodeDisplay && active !== "intuition" ? (
+        platformAdminCodeDisplay && active !== "intuition" && active !== "explanation" ? (
           <PlatformAdminCodeBlock
             code={solutions?.[active] ?? fallbackCode}
             language={active}

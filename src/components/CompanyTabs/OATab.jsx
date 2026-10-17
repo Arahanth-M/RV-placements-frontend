@@ -282,6 +282,11 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
+import {
+  platformQuestionEditDraft,
+  platformQuestionEditPayload,
+} from "../../utils/platformQuestionEdit.js";
 import PrepSolutionBody from "../PrepSolutionBody";
 import PlatformAdminCodeBlock from "../platform/PlatformAdminCodeBlock.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
@@ -321,6 +326,7 @@ function OATab({
   const [editIndex, setEditIndex] = useState(null);
   const [editQuestion, setEditQuestion] = useState("");
   const [editSolution, setEditSolution] = useState("");
+  const [platformDraft, setPlatformDraft] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [activeOaPrepRoleKey, setActiveOaPrepRoleKey] = useState(null);
@@ -392,8 +398,27 @@ function OATab({
     }));
   };
 
+  const closeEditOA = () => {
+    setEditIndex(null);
+    setEditQuestion("");
+    setEditSolution("");
+    setPlatformDraft(null);
+  };
+
   const handleEditOA = (index, questionText, solutionText) => {
     setEditIndex(index);
+    if (isGeneral) {
+      setPlatformDraft(
+        platformQuestionEditDraft({
+          question: questionText,
+          solutions: safeCompany.onlineQuestions_solutions?.[index],
+          intuition: safeCompany.onlineQuestions_intuition?.[index],
+          explanation: safeCompany.onlineQuestions_explanation?.[index],
+        })
+      );
+      return;
+    }
+    setPlatformDraft(null);
     setEditQuestion(questionText || "");
     setEditSolution(solutionText || "");
   };
@@ -403,16 +428,13 @@ function OATab({
     if (editIndex == null || !safeCompany._id) return;
     setActionLoading(true);
     try {
-      await contentAdmin.updateOAQuestion(
-        safeCompany._id,
-        editIndex,
-        { question: editQuestion, solution: editSolution },
-        adminOpts
-      );
+      const body =
+        isGeneral && platformDraft
+          ? platformQuestionEditPayload(platformDraft)
+          : { question: editQuestion, solution: editSolution };
+      await contentAdmin.updateOAQuestion(safeCompany._id, editIndex, body, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
-      setEditIndex(null);
-      setEditQuestion("");
-      setEditSolution("");
+      closeEditOA();
     } catch (err) {
       console.error(err);
       alert("Failed to update question.");
@@ -864,11 +886,15 @@ function OATab({
                       const intuition = String(
                         safeCompany.onlineQuestions_intuition?.[index] || ""
                       ).trim();
+                      const explanation = String(
+                        safeCompany.onlineQuestions_explanation?.[index] || ""
+                      ).trim();
                       const hasLang =
                         Boolean(String(langSol?.cpp || "").trim()) ||
                         Boolean(String(langSol?.java || "").trim()) ||
                         Boolean(String(langSol?.python || "").trim()) ||
-                        Boolean(intuition);
+                        Boolean(intuition) ||
+                        Boolean(explanation);
                       const fallback = solutions[index];
                       const hasAny = hasLang || Boolean(String(fallback || "").trim());
                       if (!hasAny) {
@@ -896,6 +922,7 @@ function OATab({
                               <LanguageSolutionPanel
                                 solutions={langSol}
                                 intuition={intuition}
+                                explanation={explanation}
                                 fallbackCode={fallback}
                                 copied={copiedIndex === index}
                                 onCopy={(code) => handleCopySolution(code, index)}
@@ -1041,8 +1068,19 @@ function OATab({
         </div>
       )}
 
+      {isGeneral && editIndex !== null && platformDraft ? (
+        <PlatformQuestionEditModal
+          title={`Edit OA Question ${editIndex + 1}`}
+          draft={platformDraft}
+          onChange={setPlatformDraft}
+          onSubmit={handleSaveEditOA}
+          onCancel={closeEditOA}
+          saving={actionLoading}
+        />
+      ) : null}
+
       {/* Modal to edit OA question (admin) */}
-      {editIndex !== null && (
+      {!isGeneral && editIndex !== null && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-slate-800 border border-slate-700 p-6 rounded-xl w-96 max-w-[90vw]">
             <h3 className="text-lg font-semibold mb-4 text-amber-400">Edit OA Question {editIndex + 1}</h3>
@@ -1064,7 +1102,7 @@ function OATab({
                 <button
                   type="button"
                   className="px-4 py-2 border border-slate-600 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
-                  onClick={() => { setEditIndex(null); setEditQuestion(""); setEditSolution(""); }}
+                  onClick={closeEditOA}
                 >
                   Cancel
                 </button>

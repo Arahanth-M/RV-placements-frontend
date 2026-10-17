@@ -149,7 +149,9 @@ function AIInterviews({ embedded = false, hideSlotsTab = false } = {}) {
   const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTabState] = useState(() =>
-    normalizeAiInterviewsTab(searchParams.get("tab"), { allowSlots })
+    embedded
+      ? "sessions"
+      : normalizeAiInterviewsTab(searchParams.get("tab"), { allowSlots })
   );
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);

@@ -53,9 +53,14 @@ export function isPlatformAdminUser(user) {
  * @param {{ email?: unknown, isSuperAdmin?: unknown, adminScope?: unknown }|null|undefined} user
  * @returns {boolean}
  */
+function isActiveTestEmailUser(user) {
+  return user?.testEmailAccess?.active === true;
+}
+
 export function canAccessRvceTenant(user) {
   if (!user) return false;
   if (isPlatformAdminUser(user)) return true;
+  if (isActiveTestEmailUser(user)) return false;
   return isRvceEmail(user.email);
 }
 
@@ -66,6 +71,7 @@ export function canAccessRvceTenant(user) {
  * @returns {boolean}
  */
 export function isOnboardedInstitutionUser(user) {
+  if (isActiveTestEmailUser(user)) return false;
   return Boolean(user && isRvceEmail(user.email));
 }
 

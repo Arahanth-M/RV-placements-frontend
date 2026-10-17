@@ -32,6 +32,7 @@ import {
   FaInbox,
   FaCreditCard,
   FaGlobe,
+  FaEnvelope,
 } from "react-icons/fa";
 import { adminAPI, platformAdminAPI } from "../utils/api";
 import { BASE_URL, RESUME_BUILDER_ENABLED } from "../utils/constants";
@@ -217,6 +218,12 @@ function buildPlatformAdminCornerLinks(base) {
       path: pathUnderBase(base, "/admin/dashboard?tab=onboarding"),
       icon: FaUniversity,
       tab: "onboarding",
+    },
+    {
+      label: "Set test emailId",
+      path: pathUnderBase(base, "/admin/dashboard?tab=test-email"),
+      icon: FaEnvelope,
+      tab: "test-email",
     },
     {
       label: "Billing",

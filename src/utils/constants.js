@@ -108,9 +108,12 @@ export const MESSAGES = {
   BACKEND_PORT_ERROR: (port) =>
     `❌ Error: ${createError()}\n\nPlease check if the backend server is running on port ${port}.`,
   SUBMISSION_SUCCESS: "Submission received and pending approval.",
-  /** Shown in the submission success dialog alongside the server status message. */
+  /** Campus (`/rvce`) success dialog note. */
   SUBMISSION_CONTRIBUTION_NOTE:
     "Your contribution is highly valued. Thousands of RVians will benefit from your response.",
+  /** `/general` is open to students from any college. */
+  SUBMISSION_CONTRIBUTION_NOTE_GENERAL:
+    "Your contribution is highly valued. Thousands of students will benefit from your response.",
   SUBMISSION_ERROR: "Something went wrong. Try again.",
   INTERVIEW_LIMIT_REACHED:
     "You can take one AI mock interview every 7 days. Please try again later.",
