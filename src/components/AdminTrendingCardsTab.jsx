@@ -113,6 +113,13 @@ export default function AdminTrendingCardsTab() {
     try {
       const res = await adminAPI.pinTrendingCard(visitId);
       setMessage(res.data?.message || "Marked trending for 24 hours.");
+      const pinned = res.data?.item;
+      if (pinned?.visitId) {
+        setItems((prev) => {
+          const rest = prev.filter((row) => row.visitId !== pinned.visitId);
+          return [pinned, ...rest];
+        });
+      }
       await loadPinned();
     } catch (err) {
       setError(err.response?.data?.error || "Failed to mark trending.");
