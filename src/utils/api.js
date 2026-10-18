@@ -1126,32 +1126,37 @@ export const interviewAPI = {
     interviewHttp.post(`/api/interview/peer-sessions/${encodeURIComponent(sessionId)}/leave`),
 };
 
-/** Daily / weekly DSA practice challenges (interview backend — uses code judge). */
+/**
+ * Daily / weekly DSA practice challenges.
+ * Under /api/interview so production nginx forwards the call to the interview host.
+ */
+const PRACTICE_CHALLENGE_PREFIX = "/api/interview/practice-challenges";
+
 export const practiceChallengeAPI = {
-  getToday: () => interviewHttp.get("/api/practice-challenges/today"),
-  getWeek: () => interviewHttp.get("/api/practice-challenges/week"),
+  getToday: () => interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/today`),
+  getWeek: () => interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/week`),
   getById: (challengeId) =>
-    interviewHttp.get(`/api/practice-challenges/${encodeURIComponent(challengeId)}`),
+    interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/${encodeURIComponent(challengeId)}`),
   getHistory: (params = {}) =>
-    interviewHttp.get("/api/practice-challenges/history", {
+    interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/history`, {
       params: { kind: params.kind, limit: params.limit },
     }),
   runPreview: (challengeId, questionId, { code, language }) =>
     interviewHttp.post(
-      `/api/practice-challenges/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/run-preview`,
+      `${PRACTICE_CHALLENGE_PREFIX}/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/run-preview`,
       { code, language },
       { timeout: 120000 }
     ),
   submit: (challengeId, questionId, { code, language }) =>
     interviewHttp.post(
-      `/api/practice-challenges/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/submit`,
+      `${PRACTICE_CHALLENGE_PREFIX}/${encodeURIComponent(challengeId)}/problems/${encodeURIComponent(questionId)}/submit`,
       { code, language },
       { timeout: 120000 }
     ),
   getLeaderboard: (period = "weekly") =>
-    interviewHttp.get("/api/practice-challenges/leaderboard", { params: { period } }),
+    interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/leaderboard`, { params: { period } }),
   getMyRank: (period = "weekly") =>
-    interviewHttp.get("/api/practice-challenges/leaderboard/me", { params: { period } }),
+    interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/leaderboard/me`, { params: { period } }),
 };
 
 export default API;
