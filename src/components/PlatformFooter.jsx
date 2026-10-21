@@ -10,7 +10,12 @@ import { getProductHomePathForUser } from "../utils/collegeScope.js";
 import { GENERAL_LEGAL_PATHS, PUBLIC_LEGAL_PATHS } from "./legal/legalMeta.js";
 
 function hashHref(pathname, hash) {
-  return pathname === "/" ? `#${hash}` : `/#${hash}`;
+  const path = String(pathname || "");
+  if (path === "/" || path === "") return `#${hash}`;
+  if (path === GENERAL_BASE || path.startsWith(`${GENERAL_BASE}/`)) {
+    return `${GENERAL_BASE}#${hash}`;
+  }
+  return `/#${hash}`;
 }
 
 function FooterHeading({ children }) {
@@ -56,7 +61,7 @@ export default function PlatformFooter() {
   const exploreItems = [
     { label: "Challenges", href: hashHref(pathname, "challenges") },
     { label: "Solutions", href: hashHref(pathname, "solutions") },
-    { label: "Institutions", href: hashHref(pathname, "institutions") },
+    { label: "Testimonials", href: hashHref(pathname, "testimonials") },
     onOnboard
       ? { label: "Back to home", to: homePath }
       : { label: "Enrol your college", to: "/onboard" },

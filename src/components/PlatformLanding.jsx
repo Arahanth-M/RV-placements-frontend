@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FaBook,
@@ -86,21 +86,6 @@ const FALLBACK_COMPANIES = [
   { name: "IBM" },
   { name: "Accenture" },
   { name: "Walmart" },
-];
-
-const INSTITUTIONS = [
-  {
-    name: "RV College of Engineering",
-    short: "RVCE",
-    city: "Bengaluru",
-    domain: "rvce.edu.in",
-  },
-  {
-    name: "RV Institute of Technology and Management",
-    short: "RVITM",
-    city: "Bengaluru",
-    domain: "rvitm.edu.in",
-  },
 ];
 
 /** Sample quotes for the general dashboard home (rotated randomly on each visit). */
@@ -707,9 +692,6 @@ function LandingHeader({ user, loading }) {
           <a href="#companies" className="hover:text-theme-accent transition-colors">
             Companies
           </a>
-          <a href="#institutions" className="hover:text-theme-accent transition-colors">
-            Institutions
-          </a>
           <a href="#testimonials" className="hover:text-theme-accent transition-colors">
             Testimonials
           </a>
@@ -747,14 +729,10 @@ function LandingHeader({ user, loading }) {
 /** Public product home. College dashboard lives under /rvce; /general reuses this page embedded. */
 export default function PlatformLanding({ embedded = false }) {
   const { user, loading } = useAuth();
-  const { pathname } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [companyLogos, setCompanyLogos] = useState(FALLBACK_COMPANIES);
   const [stats, setStats] = useState(FALLBACK_STATS);
   const [featuredTestimonials] = useState(() => shuffleTestimonials(STUDENT_TESTIMONIALS, 6));
-  const isGeneralDashboardHome =
-    pathname === GENERAL_BASE || pathname === `${GENERAL_BASE}/`;
-  const showInstitutions = !isGeneralDashboardHome;
   const noticeReason = searchParams.get("reason");
   const showRvceEmailNotice = noticeReason === "rvce_email_required";
   const showCampusNotOnboardedNotice = noticeReason === "campus_not_onboarded";
@@ -828,9 +806,6 @@ export default function PlatformLanding({ embedded = false }) {
   const companiesForMarquee = companyLogos.slice(0, 12);
   const companyRowA = repeatForMarquee(companiesForMarquee, 3);
   const companyRowB = repeatForMarquee([...companiesForMarquee].reverse(), 3);
-  const institutionRowA = showInstitutions ? repeatForMarquee(INSTITUTIONS, 8) : [];
-  const institutionRowB = showInstitutions ? repeatForMarquee([...INSTITUTIONS].reverse(), 8) : [];
-
   return (
     <div
       id="top"
@@ -1006,34 +981,6 @@ export default function PlatformLanding({ embedded = false }) {
           </div>
         </section>
 
-        {showInstitutions ? (
-          <section
-            id="institutions"
-            className="py-8 sm:py-10 overflow-hidden scroll-mt-24"
-            aria-labelledby="landing-institutions-heading"
-          >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
-              <SectionIntro
-                title="Campus"
-                titleAccent="Institutions"
-                id="landing-institutions-heading"
-              />
-            </div>
-            <div className="flex flex-col gap-5">
-              <LogoMarquee items={institutionRowA} secondsPerTile={5.5}>
-                {(college, idx) => (
-                  <InstitutionTile key={`${college.short}-a-${idx}`} college={college} />
-                )}
-              </LogoMarquee>
-              <LogoMarquee items={institutionRowB} reverse secondsPerTile={6}>
-                {(college, idx) => (
-                  <InstitutionTile key={`${college.short}-b-${idx}`} college={college} />
-                )}
-              </LogoMarquee>
-            </div>
-          </section>
-        ) : null}
-
         <section
           id="testimonials"
           className="py-8 sm:py-10 overflow-hidden bg-theme-hero border-y border-theme scroll-mt-24"
@@ -1104,22 +1051,3 @@ function TestimonialCard({ testimonial }) {
   );
 }
 
-function InstitutionTile({ college }) {
-  return (
-    <div className="inline-flex items-center gap-4 mx-4 sm:mx-6 h-[5.5rem] w-[18.5rem] sm:w-[22rem] rounded-2xl border border-theme bg-theme-card px-4 py-3 flex-shrink-0">
-      <CompanyLogo
-        company={{ name: college.short, domain: college.domain }}
-        pixelSize={80}
-        className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl object-contain bg-white p-1 border border-theme flex-shrink-0"
-        alt={`${college.name} logo`}
-      />
-      <div className="min-w-0 text-left whitespace-normal">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-theme-accent">{college.short}</p>
-        <p className="text-sm sm:text-base font-bold text-theme-primary leading-snug truncate">
-          {college.name}
-        </p>
-        <p className="text-xs text-theme-secondary">{college.city}</p>
-      </div>
-    </div>
-  );
-}
