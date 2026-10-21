@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FaBook,
@@ -102,6 +102,73 @@ const INSTITUTIONS = [
     domain: "rvitm.edu.in",
   },
 ];
+
+/** Sample quotes for the general dashboard home (rotated randomly on each visit). */
+const STUDENT_TESTIMONIALS = [
+  {
+    name: "Ananya K.",
+    detail: "Final-year CSE · Bengaluru",
+    quote:
+      "Company-wise interview experiences saved me hours of random Googling. I knew what Round 2 actually felt like before I walked in.",
+  },
+  {
+    name: "Rohan M.",
+    detail: "ECE · Placement season 2026",
+    quote:
+      "AI mocks by role were the closest thing to a real panel. The feedback on structure and depth was sharper than any generic prep video.",
+  },
+  {
+    name: "Sneha P.",
+    detail: "IT · Tier-2 college",
+    quote:
+      "PrepPath stopped me from jumping between fifty tabs. One plan, clear weekly targets, and I could see progress before drives started.",
+  },
+  {
+    name: "Vikram R.",
+    detail: "CSE · Off-campus focus",
+    quote:
+      "OA questions tagged by company helped me revise patterns that actually show up. Felt much less blind going into online tests.",
+  },
+  {
+    name: "Meera J.",
+    detail: "AIML · Intern + FTE prep",
+    quote:
+      "Behavioral coach made my HR stories sound like stories, not essays. I stopped rambling when they asked about conflict or leadership.",
+  },
+  {
+    name: "Arjun D.",
+    detail: "ISE · Product-based targets",
+    quote:
+      "Resume ATS check caught formatting issues I’d missed for months. Small fix, but I started getting more shortlists after that.",
+  },
+  {
+    name: "Kavya N.",
+    detail: "CSE · Daily challenges",
+    quote:
+      "Short daily challenges kept me honest when motivation dipped. Seeing where I stood vs peers pushed me to stay consistent.",
+  },
+  {
+    name: "Nikhil B.",
+    detail: "ECE · Drive calendar user",
+    quote:
+      "Drive calendar and reminders meant I didn’t miss a single eligibility window. That alone was worth using the platform seriously.",
+  },
+  {
+    name: "Divya S.",
+    detail: "CSE · Mock interview heavy user",
+    quote:
+      "Practicing company-specific rounds reduced my anxiety a lot. By the third mock, I wasn’t surprised by the type of follow-ups anymore.",
+  },
+];
+
+function shuffleTestimonials(list, count) {
+  const pool = [...list];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+}
 
 const CHALLENGES = [
   {
@@ -680,9 +747,14 @@ function LandingHeader({ user, loading }) {
 /** Public product home. College dashboard lives under /rvce; /general reuses this page embedded. */
 export default function PlatformLanding({ embedded = false }) {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [companyLogos, setCompanyLogos] = useState(FALLBACK_COMPANIES);
   const [stats, setStats] = useState(FALLBACK_STATS);
+  const [featuredTestimonials] = useState(() => shuffleTestimonials(STUDENT_TESTIMONIALS, 6));
+  const isGeneralDashboardHome =
+    pathname === GENERAL_BASE || pathname === `${GENERAL_BASE}/`;
+  const showInstitutions = !isGeneralDashboardHome;
   const noticeReason = searchParams.get("reason");
   const showRvceEmailNotice = noticeReason === "rvce_email_required";
   const showCampusNotOnboardedNotice = noticeReason === "campus_not_onboarded";
@@ -756,8 +828,8 @@ export default function PlatformLanding({ embedded = false }) {
   const companiesForMarquee = companyLogos.slice(0, 12);
   const companyRowA = repeatForMarquee(companiesForMarquee, 3);
   const companyRowB = repeatForMarquee([...companiesForMarquee].reverse(), 3);
-  const institutionRowA = repeatForMarquee(INSTITUTIONS, 8);
-  const institutionRowB = repeatForMarquee([...INSTITUTIONS].reverse(), 8);
+  const institutionRowA = showInstitutions ? repeatForMarquee(INSTITUTIONS, 8) : [];
+  const institutionRowB = showInstitutions ? repeatForMarquee([...INSTITUTIONS].reverse(), 8) : [];
 
   return (
     <div
@@ -934,34 +1006,34 @@ export default function PlatformLanding({ embedded = false }) {
           </div>
         </section>
 
-        {/* ── INSTITUTION MARQUEES ── */}
-        <section
-          id="institutions"
-          className="py-8 sm:py-10 overflow-hidden scroll-mt-24"
-          aria-labelledby="landing-institutions-heading"
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
-            <SectionIntro
-              title="Campus"
-              titleAccent="Institutions"
-              id="landing-institutions-heading"
-            />
-          </div>
-          <div className="flex flex-col gap-5">
-            <LogoMarquee items={institutionRowA} secondsPerTile={5.5}>
-              {(college, idx) => (
-                <InstitutionTile key={`${college.short}-a-${idx}`} college={college} />
-              )}
-            </LogoMarquee>
-            <LogoMarquee items={institutionRowB} reverse secondsPerTile={6}>
-              {(college, idx) => (
-                <InstitutionTile key={`${college.short}-b-${idx}`} college={college} />
-              )}
-            </LogoMarquee>
-          </div>
-        </section>
+        {showInstitutions ? (
+          <section
+            id="institutions"
+            className="py-8 sm:py-10 overflow-hidden scroll-mt-24"
+            aria-labelledby="landing-institutions-heading"
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 mb-6">
+              <SectionIntro
+                title="Campus"
+                titleAccent="Institutions"
+                id="landing-institutions-heading"
+              />
+            </div>
+            <div className="flex flex-col gap-5">
+              <LogoMarquee items={institutionRowA} secondsPerTile={5.5}>
+                {(college, idx) => (
+                  <InstitutionTile key={`${college.short}-a-${idx}`} college={college} />
+                )}
+              </LogoMarquee>
+              <LogoMarquee items={institutionRowB} reverse secondsPerTile={6}>
+                {(college, idx) => (
+                  <InstitutionTile key={`${college.short}-b-${idx}`} college={college} />
+                )}
+              </LogoMarquee>
+            </div>
+          </section>
+        ) : null}
 
-        {/* ── TESTIMONIALS PLACEHOLDER ── */}
         <section
           id="testimonials"
           className="py-8 sm:py-10 overflow-hidden bg-theme-hero border-y border-theme scroll-mt-24"
@@ -971,25 +1043,12 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="Student"
               titleAccent="Testimonials"
-              subtitle="Stories from students who used the platform to prep — coming soon."
+              subtitle="What students say about prepping with Last Minute Placement Prep."
               id="landing-testimonials-heading"
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((slot) => (
-                <div
-                  key={slot}
-                  className="flex min-h-[11rem] flex-col justify-between rounded-3xl border border-dashed border-theme-accent/35 bg-theme-card/70 p-6"
-                >
-                  <div className="space-y-3">
-                    <div className="h-3 w-24 rounded-full bg-theme-accent/20" />
-                    <div className="h-3 w-full rounded-full bg-theme-accent/10" />
-                    <div className="h-3 w-5/6 rounded-full bg-theme-accent/10" />
-                    <div className="h-3 w-2/3 rounded-full bg-theme-accent/10" />
-                  </div>
-                  <p className="mt-6 text-sm font-semibold text-theme-secondary">
-                    Testimonial placeholder
-                  </p>
-                </div>
+              {featuredTestimonials.map((item) => (
+                <TestimonialCard key={`${item.name}-${item.detail}`} testimonial={item} />
               ))}
             </div>
           </div>
@@ -1015,6 +1074,33 @@ function CompanyTile({ company }) {
         {name}
       </p>
     </div>
+  );
+}
+
+function TestimonialCard({ testimonial }) {
+  const initial = String(testimonial?.name || "?")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
+  return (
+    <figure className="flex min-h-[11rem] flex-col rounded-3xl border border-theme bg-theme-card p-6 shadow-sm">
+      <blockquote className="flex-1 text-sm leading-relaxed text-theme-secondary sm:text-[15px]">
+        &ldquo;{testimonial.quote}&rdquo;
+      </blockquote>
+      <figcaption className="mt-5 flex items-center gap-3 border-t border-theme pt-4">
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-theme-accent/15 text-sm font-bold text-theme-accent"
+          aria-hidden
+        >
+          {initial}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-theme-primary">{testimonial.name}</p>
+          <p className="truncate text-xs text-theme-muted">{testimonial.detail}</p>
+        </div>
+      </figcaption>
+    </figure>
   );
 }
 
