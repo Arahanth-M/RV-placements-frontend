@@ -38,6 +38,7 @@ export function applyBasicIndent(code, language = "") {
   const lines = String(code ?? "").split("\n");
   let depth = 0;
   const out = [];
+  const pyStack = [];
   const unit = lang === "python" ? "    " : "  ";
 
   for (const rawLine of lines) {
@@ -52,21 +53,59 @@ export function applyBasicIndent(code, language = "") {
       continue;
     }
 
-    if (lang === "python" && /^(elif|else|except|finally)\b/.test(trimmed)) {
-      depth = Math.max(0, depth - 1);
+    if (lang === "python" && /^if\s+__name__\b/.test(trimmed)) {
+      pyStack.length = 0;
+      depth = 0;
+    } else if (lang === "python" && /^(elif|else)\b/.test(trimmed)) {
+      const hasIf = pyStack.includes("if") || pyStack.includes("elif");
+      const match = hasIf ? ["if", "elif"] : ["for", "while", "try"];
+      while (pyStack.length && !match.includes(pyStack[pyStack.length - 1])) pyStack.pop();
+      if (match.includes(pyStack[pyStack.length - 1])) pyStack.pop();
+      depth = pyStack.length;
+    } else if (lang === "python" && /^(except|finally)\b/.test(trimmed)) {
+      while (pyStack.length && pyStack[pyStack.length - 1] !== "try") pyStack.pop();
+      if (pyStack[pyStack.length - 1] === "try") pyStack.pop();
+      depth = pyStack.length;
     }
 
     if (/^[}\])]/.test(trimmed)) {
       depth = Math.max(0, depth - 1);
     }
 
+    if (lang === "python" && /^def\s+/.test(trimmed)) {
+      const prev = out.filter((line) => line.trim()).at(-1) || "";
+      const prevOpens = /:\s*(#.*)?$/.test(prev.trim());
+      if (!prevOpens) {
+        while (pyStack[pyStack.length - 1] === "def" || pyStack[pyStack.length - 1] === "block") {
+          pyStack.pop();
+        }
+      }
+      depth = pyStack.length;
+    } else if (lang === "python" && /^class\s+/.test(trimmed)) {
+      pyStack.length = 0;
+      depth = 0;
+    }
+
     out.push(`${unit.repeat(depth)}${trimmed}`);
 
     if (lang === "python") {
-      if (/:\s*$/.test(trimmed)) {
-        depth += 1;
-      } else if (/^(return|pass|break|continue)\b/.test(trimmed)) {
-        depth = Math.max(0, depth - 1);
+      if (/:\s*(#.*)?$/.test(trimmed)) {
+        if (/^class\s+/.test(trimmed)) pyStack.push("class");
+        else if (/^def\s+/.test(trimmed)) pyStack.push("def");
+        else if (/^if\b/.test(trimmed)) pyStack.push("if");
+        else if (/^elif\b/.test(trimmed)) pyStack.push("elif");
+        else if (/^else\b/.test(trimmed)) pyStack.push("else");
+        else if (/^for\b/.test(trimmed)) pyStack.push("for");
+        else if (/^while\b/.test(trimmed)) pyStack.push("while");
+        else if (/^try\b/.test(trimmed)) pyStack.push("try");
+        else if (/^except\b/.test(trimmed)) pyStack.push("except");
+        else if (/^with\b/.test(trimmed)) pyStack.push("with");
+        else pyStack.push("block");
+        depth = pyStack.length;
+      } else if (/^(return|pass|break|continue|raise)\b/.test(trimmed)) {
+        const top = pyStack[pyStack.length - 1];
+        if (top && top !== "def" && top !== "class") pyStack.pop();
+        depth = pyStack.length;
       }
     } else if (/\{\s*$/.test(trimmed)) {
       depth += 1;

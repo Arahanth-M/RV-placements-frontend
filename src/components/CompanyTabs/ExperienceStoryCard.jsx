@@ -19,11 +19,18 @@ function proseParagraphs(text) {
     .filter(Boolean);
 }
 
-function ExpandableBody({ text, className = "", forceExpanded = false, showFull = false }) {
+function ExpandableBody({
+  text,
+  className = "",
+  forceExpanded = false,
+  showFull = false,
+  variant = "theme",
+}) {
   const [expanded, setExpanded] = useState(forceExpanded);
   const value = String(text || "").trim();
   if (!value) return null;
 
+  const isDark = variant === "dark";
   const needsToggle = !showFull && value.length > PREVIEW_CHARS;
   const shown =
     !needsToggle || expanded || forceExpanded ? value : `${value.slice(0, PREVIEW_CHARS).trim()}…`;
@@ -35,7 +42,9 @@ function ExpandableBody({ text, className = "", forceExpanded = false, showFull 
         {paragraphs.map((paragraph, index) => (
           <p
             key={index}
-            className="break-words text-sm leading-7 text-theme-secondary"
+            className={`break-words text-sm leading-relaxed sm:text-[15px] sm:leading-7 ${
+              isDark ? "text-slate-300" : "text-theme-secondary"
+            }`}
           >
             {paragraph}
           </p>
@@ -45,7 +54,9 @@ function ExpandableBody({ text, className = "", forceExpanded = false, showFull 
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 text-xs font-semibold text-theme-accent hover:underline"
+          className={`mt-2 text-xs font-semibold hover:underline ${
+            isDark ? "text-indigo-400" : "text-theme-accent"
+          }`}
         >
           {expanded ? "Show less" : "Read more"}
         </button>
@@ -60,13 +71,20 @@ function roundNumber(label, index) {
   return String(value).padStart(2, "0");
 }
 
-function ExperienceFooter({ isAnonymous, submittedBy }) {
+function ExperienceFooter({ isAnonymous, submittedBy, variant = "theme" }) {
   const name = String(submittedBy?.name || "").trim();
   const showName = !isAnonymous && Boolean(name);
+  const isDark = variant === "dark";
 
   if (isAnonymous) {
     return (
-      <span className="inline-flex items-center rounded-full border border-theme bg-theme-card px-2.5 py-0.5 text-[11px] font-semibold text-theme-muted">
+      <span
+        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${
+          isDark
+            ? "border-slate-600 bg-slate-800/80 text-slate-400"
+            : "border-theme bg-theme-card text-theme-muted"
+        }`}
+      >
         Anonymous
       </span>
     );
@@ -75,15 +93,99 @@ function ExperienceFooter({ isAnonymous, submittedBy }) {
   if (!showName) return null;
 
   return (
-    <span className="inline-flex items-center gap-2 text-xs text-theme-secondary">
+    <span
+      className={`inline-flex items-center gap-2 text-xs ${
+        isDark ? "text-slate-400" : "text-theme-secondary"
+      }`}
+    >
       <span
-        className="flex h-6 w-6 items-center justify-center rounded-full bg-theme-accent/15 text-[11px] font-bold text-theme-accent"
+        className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+          isDark
+            ? "bg-indigo-500/20 text-indigo-300"
+            : "bg-theme-accent/15 text-theme-accent"
+        }`}
         aria-hidden
       >
         {authorInitial(name)}
       </span>
-      <span className="font-medium text-theme-primary">{name}</span>
+      <span className={`font-medium ${isDark ? "text-slate-200" : "text-theme-primary"}`}>
+        {name}
+      </span>
     </span>
+  );
+}
+
+function InterviewExperienceCard({
+  narrative,
+  content,
+  adminActions,
+  highlighted,
+  forceExpanded,
+  showFull,
+}) {
+  const rounds = narrative.rounds;
+
+  return (
+    <article
+      className={`relative min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60 p-4 sm:p-5 ${
+        highlighted ? "ring-2 ring-indigo-500/80" : ""
+      }`}
+    >
+      {adminActions ? (
+        <div className="absolute right-2 top-2 flex shrink-0 items-start gap-0.5 sm:right-3 sm:top-3">
+          {adminActions}
+        </div>
+      ) : null}
+
+      <div className={`min-w-0 space-y-6 ${adminActions ? "pr-12 sm:pr-14" : ""}`}>
+        {narrative.intro ? (
+          <ExpandableBody
+            text={narrative.intro}
+            forceExpanded={forceExpanded}
+            showFull={showFull}
+            variant="dark"
+          />
+        ) : null}
+
+        {rounds.length > 0 ? (
+          <ol className="m-0 list-none space-y-6 p-0">
+            {rounds.map((round, index) => (
+              <li
+                key={`${round.label}-${index}`}
+                className="border-l-2 border-indigo-400/90 pl-4 sm:pl-5"
+              >
+                <p className="text-xs font-bold uppercase tracking-wide text-indigo-400">
+                  {round.label}
+                </p>
+                {round.subtitle ? (
+                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-200">
+                    {round.subtitle}
+                  </p>
+                ) : null}
+                {round.body ? (
+                  <ExpandableBody
+                    text={round.body}
+                    className={round.subtitle ? "mt-2" : "mt-1.5"}
+                    forceExpanded={forceExpanded}
+                    showFull={showFull}
+                    variant="dark"
+                  />
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        ) : !narrative.intro ? (
+          <div className="border-l-2 border-indigo-400/90 pl-4 sm:pl-5">
+            <ExpandableBody
+              text={plainExperienceText(content)}
+              forceExpanded={forceExpanded}
+              showFull={showFull}
+              variant="dark"
+            />
+          </div>
+        ) : null}
+      </div>
+    </article>
   );
 }
 
@@ -98,26 +200,58 @@ export function ExperienceStoryCard({
   highlighted = false,
   forceExpanded = false,
   showFull = false,
+  variant = "theme",
+  /** When false, hides contributor name and anonymous badge (interview experiences). */
+  showContributor = true,
 }) {
   const narrative = useMemo(
     () => splitExperienceNarrative(content),
     [content]
   );
-  const showAuthor = isAnonymous || Boolean(String(submittedBy?.name || "").trim());
+  const isDark = variant === "dark";
+
+  if (isDark) {
+    return (
+      <InterviewExperienceCard
+        narrative={narrative}
+        content={content}
+        adminActions={adminActions}
+        highlighted={highlighted}
+        forceExpanded={forceExpanded}
+        showFull={showFull}
+      />
+    );
+  }
+
+  const showAuthor =
+    showContributor &&
+    (isAnonymous || Boolean(String(submittedBy?.name || "").trim()));
 
   const rounds = narrative.rounds;
 
+  const articleClass = `overflow-hidden rounded-xl border border-theme bg-theme-hero ${
+    highlighted ? "ring-2 ring-theme-accent" : ""
+  }`;
+
+  const dividerClass = "border-theme";
+  const roundIndexClass =
+    "mt-0.5 text-xs font-semibold tabular-nums tracking-wide text-theme-muted";
+  const roundLabelClass =
+    "text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted";
+  const roundSubtitleClass = "mt-1 text-sm font-semibold leading-6 text-theme-primary";
+
   return (
-    <article
-      className={`overflow-hidden rounded-xl border border-theme bg-theme-hero ${
-        highlighted ? "ring-2 ring-theme-accent" : ""
-      }`}
-    >
+    <article className={articleClass}>
       {narrative.intro || adminActions ? (
         <div className="flex items-start justify-between gap-3 px-4 py-4 sm:px-5 sm:py-5">
           <div className="min-w-0 flex-1">
             {narrative.intro ? (
-              <ExpandableBody text={narrative.intro} forceExpanded={forceExpanded} showFull={showFull} />
+              <ExpandableBody
+                text={narrative.intro}
+                forceExpanded={forceExpanded}
+                showFull={showFull}
+                variant={variant}
+              />
             ) : null}
           </div>
           {adminActions ? (
@@ -127,23 +261,17 @@ export function ExperienceStoryCard({
       ) : null}
 
       {rounds.length > 0 ? (
-        <ol className={narrative.intro || adminActions ? "border-t border-theme" : ""}>
+        <ol className={narrative.intro || adminActions ? `border-t ${dividerClass}` : ""}>
           {rounds.map((round, index) => (
             <li
               key={`${round.label}-${index}`}
-              className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 border-t border-theme px-4 py-4 first:border-t-0 sm:grid-cols-[2.75rem_minmax(0,1fr)] sm:gap-4 sm:px-5 sm:py-5"
+              className={`grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 border-t ${dividerClass} px-4 py-4 first:border-t-0 sm:grid-cols-[2.75rem_minmax(0,1fr)] sm:gap-4 sm:px-5 sm:py-5`}
             >
-              <span className="mt-0.5 text-xs font-semibold tabular-nums tracking-wide text-theme-muted">
-                {roundNumber(round.label, index)}
-              </span>
+              <span className={roundIndexClass}>{roundNumber(round.label, index)}</span>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-theme-muted">
-                  {round.label}
-                </p>
+                <p className={roundLabelClass}>{round.label}</p>
                 {round.subtitle ? (
-                  <p className="mt-1 text-sm font-semibold leading-6 text-theme-primary">
-                    {round.subtitle}
-                  </p>
+                  <p className={roundSubtitleClass}>{round.subtitle}</p>
                 ) : null}
                 {round.body ? (
                   <ExpandableBody
@@ -151,6 +279,7 @@ export function ExperienceStoryCard({
                     className={round.subtitle ? "mt-2" : "mt-1.5"}
                     forceExpanded={forceExpanded}
                     showFull={showFull}
+                    variant={variant}
                   />
                 ) : null}
               </div>
@@ -163,6 +292,7 @@ export function ExperienceStoryCard({
             text={plainExperienceText(content)}
             forceExpanded={forceExpanded}
             showFull={showFull}
+            variant={variant}
           />
           {adminActions ? (
             <div className="flex shrink-0 items-start gap-1">{adminActions}</div>
@@ -171,8 +301,12 @@ export function ExperienceStoryCard({
       ) : null}
 
       {showAuthor ? (
-        <div className="flex items-center justify-end border-t border-theme px-4 py-3 sm:px-5">
-          <ExperienceFooter isAnonymous={isAnonymous} submittedBy={submittedBy} />
+        <div className={`flex items-center justify-end border-t ${dividerClass} px-4 py-3 sm:px-5`}>
+          <ExperienceFooter
+            isAnonymous={isAnonymous}
+            submittedBy={submittedBy}
+            variant={variant}
+          />
         </div>
       ) : null}
     </article>
@@ -185,31 +319,50 @@ export function ExperienceSectionHeader({
   count,
   addLabel,
   onAdd,
+  variant = "theme",
 }) {
+  const isDark = variant === "dark";
+
   return (
     <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        {kicker ? (
+        {kicker && !isDark ? (
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-theme-accent">
             {kicker}
           </p>
         ) : null}
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold text-theme-primary sm:text-xl">{title}</h2>
+        <div className={`flex flex-wrap items-center gap-2 ${kicker && !isDark ? "mt-1" : ""}`}>
+          <h2
+            className={`text-lg font-semibold sm:text-xl ${
+              isDark ? "text-indigo-400" : "text-theme-primary"
+            }`}
+          >
+            {title}
+          </h2>
           {count > 0 ? (
-            <span className="rounded-full border border-theme bg-theme-card px-2 py-0.5 text-xs font-semibold tabular-nums text-theme-secondary">
+            <span
+              className={`rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                isDark
+                  ? "border-slate-600 bg-slate-800/80 text-slate-300"
+                  : "border-theme bg-theme-card text-theme-secondary"
+              }`}
+            >
               {count}
             </span>
           ) : null}
         </div>
       </div>
-      {count > 0 ? (
+      {count > 0 || isDark ? (
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-theme bg-theme-card px-3 py-2 text-xs font-semibold text-theme-primary transition-colors hover:bg-theme-nav sm:w-auto sm:text-sm"
+          className={
+            isDark
+              ? "inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition-all hover:bg-indigo-700 sm:w-auto sm:text-sm"
+              : "inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-theme bg-theme-card px-3 py-2 text-xs font-semibold text-theme-primary transition-colors hover:bg-theme-nav sm:w-auto sm:text-sm"
+          }
         >
-          <FaPlus className="h-3 w-3 text-theme-accent" aria-hidden />
+          <FaPlus className={`h-3 w-3 ${isDark ? "" : "text-theme-accent"}`} aria-hidden />
           {addLabel}
         </button>
       ) : null}
@@ -217,15 +370,27 @@ export function ExperienceSectionHeader({
   );
 }
 
-export function ExperienceEmptyState({ message, actionLabel, onAction }) {
+export function ExperienceEmptyState({ message, actionLabel, onAction, variant = "theme" }) {
+  const isDark = variant === "dark";
+
   return (
-    <div className="rounded-2xl border border-dashed border-theme bg-theme-hero px-4 py-10 text-center">
-      <p className="text-sm text-theme-secondary">{message}</p>
+    <div
+      className={
+        isDark
+          ? "rounded-lg border border-dashed border-slate-600 bg-slate-800/40 px-4 py-10 text-center"
+          : "rounded-2xl border border-dashed border-theme bg-theme-hero px-4 py-10 text-center"
+      }
+    >
+      <p className={`text-sm ${isDark ? "text-slate-400" : "text-theme-secondary"}`}>{message}</p>
       {onAction ? (
         <button
           type="button"
           onClick={onAction}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          className={
+            isDark
+              ? "mt-4 inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              : "mt-4 inline-flex items-center gap-1.5 rounded-xl bg-theme-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          }
         >
           <FaPlus className="h-3 w-3" aria-hidden />
           {actionLabel}

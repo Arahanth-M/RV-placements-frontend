@@ -76,11 +76,6 @@ function buildStudentCornerLinks(base, isGeneral) {
         icon: FaUserFriends,
       },
       {
-        label: "Peer sessions",
-        path: pathUnderBase(base, "/peer-sessions"),
-        icon: FaUsers,
-      },
-      {
         label: "Challenges",
         path: pathUnderBase(base, "/challenges"),
         icon: FaTrophy,
@@ -115,11 +110,6 @@ function buildStudentCornerLinks(base, isGeneral) {
       label: "Behavioral coach",
       path: pathUnderBase(base, "/behavioral-coach"),
       icon: FaUserFriends,
-    },
-    {
-      label: "Peer sessions",
-      path: pathUnderBase(base, "/peer-sessions"),
-      icon: FaUsers,
     },
     {
       label: "Challenges",

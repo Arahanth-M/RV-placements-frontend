@@ -1008,13 +1008,13 @@ function InterviewTab({
         />
       ) : null}
       {showExperienceSection ? (
-      <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
         <ExperienceSectionHeader
-          kicker="Experiences"
           title="Interview Process"
           count={visibleInterviewProcess.length}
           addLabel="Add Interview Process"
           onAdd={() => setShowAddProcessModal(true)}
+          variant="dark"
         />
 
         {visibleInterviewProcess.length > 0 ? (
@@ -1022,8 +1022,6 @@ function InterviewTab({
             {interviewProcess.map((process, index) => {
               if (!experienceVisible(process)) return null;
               const processContent = process.content || process;
-              const isAnonymous = process.isAnonymous === true || process.isAnonymous === "true";
-              const submittedBy = process.submittedBy || null;
 
               return (
                 <div
@@ -1035,18 +1033,17 @@ function InterviewTab({
                 <ExperienceStoryCard
                   key={index}
                   content={processContent}
-                  isAnonymous={isAnonymous}
-                  submittedBy={submittedBy}
                   highlighted={focusedProcessIndex === index}
                   forceExpanded={focusedProcessIndex === index}
-                  showFull
+                  variant="dark"
+                  showContributor={false}
                   adminActions={
                     isAdmin ? (
                       <>
                         <button
                           type="button"
                           onClick={() => handleEditIP(index, processContent)}
-                          className="rounded-md p-2 text-amber-400 transition-colors hover:bg-theme-nav"
+                          className="rounded-md p-2 text-amber-400 transition-colors hover:bg-slate-700"
                           title="Edit entry"
                         >
                           <FaEdit className="h-4 w-4" />
@@ -1055,7 +1052,7 @@ function InterviewTab({
                           type="button"
                           onClick={() => handleDeleteIP(index)}
                           disabled={actionLoading}
-                          className="rounded-md p-2 text-red-400 transition-colors hover:bg-theme-nav disabled:opacity-50"
+                          className="rounded-md p-2 text-red-400 transition-colors hover:bg-slate-700 disabled:opacity-50"
                           title="Delete entry"
                         >
                           <FaTrash className="h-4 w-4" />
@@ -1069,7 +1066,7 @@ function InterviewTab({
             })}
           </div>
         ) : interviewProcess.length > 0 && showExperienceRoleChrome ? (
-          <p className="text-sm text-theme-secondary">
+          <p className="text-sm text-slate-400">
             No interview experiences for this role. Choose another role tab above.
           </p>
         ) : (
@@ -1077,6 +1074,7 @@ function InterviewTab({
             message="No interview experiences yet. Share the rounds you faced so others can prepare."
             actionLabel="Add Interview Process"
             onAction={() => setShowAddProcessModal(true)}
+            variant="dark"
           />
         )}
       </div>

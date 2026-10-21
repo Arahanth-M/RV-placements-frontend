@@ -52,4 +52,15 @@ describe("formatSolutionCode", () => {
     expect(out).toContain("def main():");
     expect(out.split("\n").length).toBeGreaterThan(2);
   });
+
+  it("does not split Python type annotations or backtick docstrings", () => {
+    const oneLine =
+      'class DependencyGraph: """An edge `A -> B` means that `A` depends on `B` for module-level edges.""" def add_edge(self, src: str, dst: str) -> None: self.adj[src].add(dst) self.nodes.update([src, dst]) def add_node(self, node: str) -> None: self.nodes.add(node)';
+    const out = reflowSpacedSourceCode(oneLine, "python");
+    expect(out).toContain("def add_edge(self, src: str, dst: str) -> None:");
+    expect(out).toContain("def add_node(self, node: str) -> None:");
+    expect(out).toContain("`A` depends on `B` for module-level edges.");
+    expect(out).not.toMatch(/src:\n/);
+    expect(out).not.toMatch(/\nfor module-level/);
+  });
 });

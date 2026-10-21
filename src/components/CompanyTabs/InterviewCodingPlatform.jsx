@@ -332,10 +332,17 @@ function InterviewCodingTestPanel({
   collapsed,
   onToggleCollapsed,
 }) {
+  const [caseTab, setCaseTab] = useState("visible");
   const visibleResults = useMemo(() => {
     if (!execution || !Array.isArray(execution.results)) return [];
     return execution.results.filter((r) => r && r.isHidden !== true);
   }, [execution]);
+
+  const hiddenResults = useMemo(() => {
+    if (!execution || !Array.isArray(execution.hiddenTestResults)) return [];
+    return execution.hiddenTestResults.filter((row) => row && typeof row === "object");
+  }, [execution]);
+  const hiddenTabCount = Math.max(hiddenCount, hiddenResults.length);
 
   const visiblePassed = visibleResults.filter((r) => r.passed).length;
   const globalError =
@@ -360,14 +367,22 @@ function InterviewCodingTestPanel({
     <div className={`icp-test-panel${collapsed ? " collapsed" : ""}`}>
       <div className="icp-test-header">
         <span className="icp-test-header-title">Test cases</span>
-        <span className="icp-test-tab active">
+        <button
+          type="button"
+          className={`icp-test-tab${caseTab === "visible" ? " active" : ""}`}
+          aria-pressed={caseTab === "visible"}
+          onClick={() => setCaseTab("visible")}
+        >
           Visible ({Array.isArray(visibleTestCases) ? visibleTestCases.length : 0})
-        </span>
-        {hiddenCount > 0 ? (
-          <span className="icp-test-tab">Hidden ({hiddenCount})</span>
-        ) : (
-          <span className="icp-test-tab">Hidden</span>
-        )}
+        </button>
+        <button
+          type="button"
+          className={`icp-test-tab${caseTab === "hidden" ? " active" : ""}`}
+          aria-pressed={caseTab === "hidden"}
+          onClick={() => setCaseTab("hidden")}
+        >
+          {hiddenTabCount > 0 ? `Hidden (${hiddenTabCount})` : "Hidden"}
+        </button>
         <button
           type="button"
           className="icp-hdivider-btn ms-auto"
@@ -396,7 +411,7 @@ function InterviewCodingTestPanel({
             </div>
           ) : null}
 
-          {!loading && visibleHintList.length > 0 ? (
+          {!loading && caseTab === "visible" && visibleHintList.length > 0 ? (
             <ul className="icp-test-hints">
               {visibleHintList.map((hint, idx) => (
                 <li key={`icp-hint-${idx}`}>{hint}</li>
@@ -405,7 +420,49 @@ function InterviewCodingTestPanel({
           ) : null}
 
           <div className="icp-test-list">
-            {Array.isArray(visibleTestCases) && visibleTestCases.length > 0 ? (
+            {caseTab === "hidden" ? (
+              hiddenResults.length > 0 ? (
+                hiddenResults.map((row, idx) => {
+                  const passed = Boolean(row.passed);
+                  const caseNumber = Number(row.caseNumber) > 0 ? Number(row.caseNumber) : idx + 1;
+                  return (
+                    <div
+                      key={`icp-hidden-${caseNumber}`}
+                      className={`icp-test-row${passed ? " pass" : " fail"}`}
+                    >
+                      <div className="icp-test-row-main">
+                        <p className="icp-test-row-label">Hidden case {caseNumber}</p>
+                        {!passed ? (
+                          <>
+                            <p className="icp-test-row-input mt-1">
+                              Input: {formatTestValue(row.input)}
+                            </p>
+                            <p className="icp-test-row-input mt-1">
+                              Expected: {formatTestValue(row.expectedOutput)}
+                            </p>
+                            <p className="icp-test-row-input mt-1">
+                              Actual: {formatTestValue(row.actualOutput)}
+                            </p>
+                            {row.error ? (
+                              <p className="icp-test-row-input mt-1 text-[#f87171]">
+                                {globalError && String(row.error).trim() === globalError
+                                  ? "Did not run — fix the compilation error above."
+                                  : row.error}
+                              </p>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </div>
+                      <span className={`icp-test-status${passed ? " pass" : " fail"}`}>
+                        {passed ? "Passed" : "Failed"}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : loading ? null : (
+                <p className="icp-test-run-summary">Hidden cases show here after you submit.</p>
+              )
+            ) : Array.isArray(visibleTestCases) && visibleTestCases.length > 0 ? (
               visibleTestCases.map((testcase, idx) => {
                 const runRow = visibleResults[idx];
                 const ran = Boolean(runRow);
@@ -444,7 +501,7 @@ function InterviewCodingTestPanel({
             )}
           </div>
 
-          {execution && !loading && visibleResults.length > 0 ? (
+          {caseTab === "visible" && execution && !loading && visibleResults.length > 0 ? (
             <p className="icp-test-run-summary">
               Visible:{" "}
               <strong>
@@ -452,7 +509,7 @@ function InterviewCodingTestPanel({
               </strong>
               {hints?.summary ? ` · ${hints.summary}` : null}
             </p>
-          ) : execution && !loading && compileOrGlobalFailure ? (
+          ) : caseTab === "visible" && execution && !loading && compileOrGlobalFailure ? (
             <p className="icp-test-run-summary">
               {hints?.summary || "Tests did not run because of a compilation or grader-contract error."}
             </p>

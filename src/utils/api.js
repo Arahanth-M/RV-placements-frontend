@@ -1153,10 +1153,6 @@ export const practiceChallengeAPI = {
       { code, language },
       { timeout: 120000 }
     ),
-  getLeaderboard: (period = "weekly") =>
-    interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/leaderboard`, { params: { period } }),
-  getMyRank: (period = "weekly") =>
-    interviewHttp.get(`${PRACTICE_CHALLENGE_PREFIX}/leaderboard/me`, { params: { period } }),
 };
 
 export default API;

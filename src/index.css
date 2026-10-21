@@ -998,6 +998,16 @@ select.spc-field-control {
   background: var(--bg-card) !important;
 }
 
+/* Inline `code` stays in the sentence. Global `pre, code` uses pre-wrap, which
+   was pushing backtick spans onto their own lines. */
+.prep-rich-text :not(pre) > code {
+  display: inline;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  vertical-align: baseline;
+}
+
 /* Fenced code in answers: keep a readable input surface in light mode */
 [data-theme="light"] .company-tab-content .prep-rich-text pre {
   background: var(--input-bg) !important;

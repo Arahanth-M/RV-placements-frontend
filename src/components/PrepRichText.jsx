@@ -68,12 +68,18 @@ export default function PrepRichText({ children, variant = "dark", className = "
           ul: ({ children: c }) => <div className="mb-3 space-y-2">{c}</div>,
           ol: ({ children: c }) => <div className="mb-3 space-y-2">{c}</div>,
           li: ({ children: c }) => <div className="leading-relaxed">{c}</div>,
-          code: ({ inline, className: codeClass, children: c }) =>
-            inline ? (
-              <code className={v.codeInline}>{c}</code>
-            ) : (
+          code: ({ className: codeClass, children: c }) => {
+            const text = Array.isArray(c) ? c.join("") : String(c ?? "");
+            // react-markdown 10 no longer passes `inline`. Fenced blocks have a
+            // language class or a trailing newline; `code` spans stay on one line.
+            const fenced = Boolean(codeClass) || text.includes("\n");
+            if (!fenced) {
+              return <code className={`${v.codeInline} inline whitespace-normal`}>{c}</code>;
+            }
+            return (
               <code className={`block font-mono whitespace-pre-wrap ${codeClass || ""}`}>{c}</code>
-            ),
+            );
+          },
           pre: ({ children: c }) => <pre className={v.pre}>{c}</pre>,
           table: ({ children: c }) => (
             <div className={v.tableWrap}>
