@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import { Provider } from "react-redux";
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useSearchParams, Link } from "react-router-dom";
 import appStore from "./utils/appStore";
 import { AuthProvider, useAuth } from "./utils/AuthContext";
 import { ThemeProvider } from "./utils/ThemeContext";
@@ -64,14 +64,13 @@ import { RESUME_BUILDER_ENABLED } from "./utils/constants";
 import {
   TENANT_BASE,
   GENERAL_BASE,
+  GENERAL_POST_LOGIN_PATH,
   isAppShellPath,
   tenantPath,
 } from "./constants/tenant.js";
 import {
   canAccessRvceTenant,
-  canAccessGeneralTenant,
   isPlatformAdminUser,
-  isOnboardedInstitutionUser,
 } from "./utils/collegeScope.js";
 import { TenantShellProvider } from "./context/TenantShellContext.jsx";
 
@@ -110,6 +109,7 @@ function LegalInfoRoutes() {
 
 const PUBLIC_ROOT_PATHS = new Set([
   "/",
+  "/login",
   "/onboard",
   "/about",
   "/terms",
@@ -157,16 +157,20 @@ function TenantAccessGate() {
   }
 
   if (!canAccessRvceTenant(user) && !isSuperAdmin && !isPlatformAdminUser(user)) {
-    return <Navigate to={GENERAL_BASE} replace />;
+    return (
+      <Navigate
+        to={`${GENERAL_POST_LOGIN_PATH}?reason=campus_not_onboarded`}
+        replace
+      />
+    );
   }
 
   return <Outlet />;
 }
 
-/** `/general` — public browse (company categories/cards, header nav); signed-in routing below.
- *  Platform owners may stay on `/general` even with a campus email. */
+/** `/general` is open to guests and to signed-in campus or general accounts. */
 function GeneralAccessGate() {
-  const { user, loading, isSuperAdmin } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -174,22 +178,6 @@ function GeneralAccessGate() {
         Loading…
       </div>
     );
-  }
-
-  if (!user) {
-    return <Outlet />;
-  }
-
-  if (isSuperAdmin || isPlatformAdminUser(user)) {
-    return <Outlet />;
-  }
-
-  if (isOnboardedInstitutionUser(user)) {
-    return <Navigate to={TENANT_BASE} replace />;
-  }
-
-  if (!canAccessGeneralTenant(user)) {
-    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;
@@ -216,6 +204,32 @@ function PublicPlatformHomeShell() {
   );
 }
 
+/** `/login` keeps the same public header as the home page. */
+function PublicLoginShell() {
+  const { isInterviewLocked } = useInterviewLock();
+
+  return (
+    <TenantShellProvider base={GENERAL_BASE} homePath="/">
+      <div className="flex min-h-screen flex-col bg-theme-app text-theme-primary">
+        {!isInterviewLocked && <Header />}
+        <main className="flex-grow">
+          <Login />
+        </main>
+      </div>
+    </TenantShellProvider>
+  );
+}
+
+function CampusNotOnboardedBanner() {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get("reason") !== "campus_not_onboarded") return null;
+  return (
+    <div className="mb-3 rounded-xl border border-theme-accent/30 bg-theme-accent/10 px-4 py-3 text-center text-sm text-theme-primary">
+      Your college is still not onboarded. You&apos;re in the general dashboard.
+    </div>
+  );
+}
+
 function AppShell({ base, homePath }) {
   const { isInterviewLocked } = useInterviewLock();
 
@@ -229,6 +243,7 @@ function AppShell({ base, homePath }) {
             isInterviewLocked ? "pt-0" : "pt-3 sm:pt-5"
           }`}
         >
+          {base === GENERAL_BASE ? <CampusNotOnboardedBanner /> : null}
           <Outlet />
         </main>
 
@@ -561,6 +576,7 @@ function App() {
               <ProductTourProvider>
                 <Routes>
                   <Route path="/" element={<PublicPlatformHomeShell />} />
+                  <Route path="/login" element={<PublicLoginShell />} />
                   <Route path="/onboard" element={<CollegeOnboarding />} />
                   <Route element={<PublicLegalShell />}>
                     {LegalInfoRoutes()}

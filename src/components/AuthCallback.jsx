@@ -16,6 +16,7 @@ import {
   LOGIN_INTENT_KEY,
   LOGIN_INTENT_SPC,
   LOGIN_INTENT_CAMPUS,
+  LOGIN_INTENT_GENERAL,
 } from '../utils/loginIntent.js';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
@@ -58,6 +59,7 @@ const AuthCallback = () => {
             const useGeneral = !canAccessRvceTenant(fetchedUserData) && !platformAdmin;
 
             const loginIntent = sessionStorage.getItem(LOGIN_INTENT_KEY);
+            const campusUnlisted = urlParams.get("campus") === "unlisted";
             const signupFlag = urlParams.get('signup') === 'success';
 
             if (useGeneral && (loginIntent === LOGIN_INTENT_SPC || (adminFlag && !platformAdmin))) {
@@ -92,12 +94,12 @@ const AuthCallback = () => {
             
             // Skip student data fetch for admin users
             if (adminFlag) {
-              handleLoginComplete(fetchedUserData, signupFlag, adminFlag, loginIntent, null);
+              handleLoginComplete(fetchedUserData, signupFlag, adminFlag, loginIntent, null, campusUnlisted);
               return;
             }
             
             // Fetch student profile strictly by authenticated email
-            await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag, loginIntent);
+            await fetchStudentProfileByEmail(fetchedUserData, signupFlag, adminFlag, loginIntent, campusUnlisted);
           } else {
             console.error('No user data received after authentication');
             navigate(TENANT_BASE, { replace: true });
@@ -164,7 +166,7 @@ const AuthCallback = () => {
   }, [navigate, refreshUser, logout]);
 
   // Strictly email-based profile fetch — no name matching
-  const fetchStudentProfileByEmail = async (user, signup, admin, loginIntent) => {
+  const fetchStudentProfileByEmail = async (user, signup, admin, loginIntent, campusUnlisted) => {
     let hasStudentProfile = false;
     try {
       const userId = user?.userId || user?._id;
@@ -195,10 +197,10 @@ const AuthCallback = () => {
       // Proceed without student data — user can still use other features
     }
     
-    handleLoginComplete(user, signup, admin, loginIntent, hasStudentProfile);
+    handleLoginComplete(user, signup, admin, loginIntent, hasStudentProfile, campusUnlisted);
   };
 
-  const handleLoginComplete = (user, signup, admin, loginIntent, hasStudentProfile) => {
+  const handleLoginComplete = (user, signup, admin, loginIntent, hasStudentProfile, campusUnlisted) => {
     const userId = user?.userId || user?._id;
     const useGeneral = !canAccessRvceTenant(user);
     sessionStorage.removeItem(LOGIN_INTENT_KEY);
@@ -236,9 +238,18 @@ const AuthCallback = () => {
     } else if (loginIntent === LOGIN_INTENT_SPC) {
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
       window.location.replace(tenantPath("/spc-dashboard"));
-    } else if (loginIntent === LOGIN_INTENT_CAMPUS && useGeneral) {
+    } else if (
+      useGeneral &&
+      (campusUnlisted || loginIntent === LOGIN_INTENT_CAMPUS)
+    ) {
       sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      window.location.replace(`${GENERAL_BASE}?reason=campus_not_onboarded`);
+      window.location.replace(`${GENERAL_POST_LOGIN_PATH}?reason=campus_not_onboarded`);
+    } else if (loginIntent === LOGIN_INTENT_CAMPUS) {
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      window.location.replace(TENANT_BASE);
+    } else if (loginIntent === LOGIN_INTENT_GENERAL) {
+      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      window.location.replace(GENERAL_POST_LOGIN_PATH);
     } else {
       const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
       const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral });

@@ -19,6 +19,7 @@ export default function PaywallModal({
   pricingPath,
   categoryId,
   feature,
+  children,
 }) {
   useEffect(() => {
     if (!open) return undefined;
@@ -47,7 +48,7 @@ export default function PaywallModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl border-2 border-theme bg-theme-card p-6 shadow-2xl sm:p-8"
+        className="w-full max-w-md max-h-[min(90vh,40rem)] overflow-y-auto rounded-2xl border-2 border-theme bg-theme-card p-6 shadow-2xl sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start gap-3">
@@ -67,6 +68,7 @@ export default function PaywallModal({
           </div>
         </div>
         <p className="text-sm leading-relaxed text-theme-secondary sm:text-base">{message}</p>
+        {children}
         <div className="mt-6 flex flex-col-reverse gap-3 border-t border-theme pt-4 sm:flex-row sm:justify-end">
           <button
             type="button"
