@@ -208,7 +208,7 @@ function Home() {
       text: "Get the performance analysis in the interviews along with the strengths and weaknesses.",
     },
     {
-      title: "Company Stats",
+      title: "Company Prep Hub",
       text: "Previous year's company stats and the number of students placed in each company.",
     },
   ];

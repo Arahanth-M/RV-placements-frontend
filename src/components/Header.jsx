@@ -67,7 +67,7 @@ function buildStudentCornerLinks(base, isGeneral) {
     base === TENANT_BASE ? PATH_COMPANY_STATS : pathUnderBase(base, "/companystats");
   if (isGeneral) {
     const links = [
-      { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
+      { label: "Company Prep Hub", path: companyStatsPath, icon: FaChartBar },
       {
         label: "AI mock interviews",
         path: pathUnderBase(base, "/interviews"),
@@ -77,6 +77,11 @@ function buildStudentCornerLinks(base, isGeneral) {
         label: "Behavioral coach",
         path: pathUnderBase(base, "/behavioral-coach"),
         icon: FaUserFriends,
+      },
+      {
+        label: "Peer sessions",
+        path: pathUnderBase(base, "/peer-sessions"),
+        icon: FaUsers,
       },
       {
         label: "Challenges",
@@ -107,12 +112,17 @@ function buildStudentCornerLinks(base, isGeneral) {
     return links;
   }
   const links = [
-    { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
+    { label: "Company Prep Hub", path: companyStatsPath, icon: FaChartBar },
     { label: "AI Interviews", path: pathUnderBase(base, "/interviews"), icon: FaComments },
     {
       label: "Behavioral coach",
       path: pathUnderBase(base, "/behavioral-coach"),
       icon: FaUserFriends,
+    },
+    {
+      label: "Peer sessions",
+      path: pathUnderBase(base, "/peer-sessions"),
+      icon: FaUsers,
     },
     {
       label: "Challenges",
