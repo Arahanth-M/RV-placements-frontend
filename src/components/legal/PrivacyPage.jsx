@@ -13,6 +13,7 @@ export default function PrivacyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       subtitle={`How ${LEGAL_BRAND} collects, uses, and stores personal data.`}
+      lastUpdated="25 October 2026"
     >
       <LegalSection title="Data we collect">
         <ul className="list-disc space-y-1 pl-5">
@@ -33,18 +34,31 @@ export default function PrivacyPage() {
 
       <LegalSection title="How we use and store it">
         <p>
-          Data is stored on cloud infrastructure (including MongoDB hosting and application
-          servers). Access is limited to operators who need it to run the service. We retain
-          account and billing records for as long as your account is active and as required for
-          tax, dispute, and legal compliance, then delete or anonymise them where practicable.
+          The platform is hosted on servers operated by Hetzner. Personal data and platform
+          content are stored and processed on that infrastructure, together with our database
+          hosting, so we can run the service. Access is limited to operators who need it to run
+          the service. We retain account and billing records for as long as your account is
+          active and as required for tax, dispute, and legal compliance, then delete or anonymise
+          them where practicable.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Permitted use of platform content">
+        <p>
+          Company profiles, interview material, statistics, and other content on this platform are
+          provided solely to support an individual’s own placement preparation. You may use that
+          content for your personal learning and interview preparation. You may not copy,
+          reproduce, republish, sublicense, or resell any of it, in whole or in part, for payment
+          or other commercial gain.
         </p>
       </LegalSection>
 
       <LegalSection title="Third-party services">
         <ul className="list-disc space-y-1 pl-5">
+          <li>Hetzner — hosting of the platform.</li>
           <li>Razorpay — payment processing and checkout.</li>
           <li>Google — optional sign-in.</li>
-          <li>Cloud database and hosting providers for application data.</li>
+          <li>Cloud database providers for application data.</li>
           <li>AI model providers used to generate mock interview and PrepPath content.</li>
         </ul>
         <p>

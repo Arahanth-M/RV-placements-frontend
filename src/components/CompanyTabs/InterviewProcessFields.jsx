@@ -6,6 +6,7 @@ const fieldClass =
 export function blankInterviewRound() {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: "",
     title: "",
     details: "",
   };
@@ -17,6 +18,7 @@ export default function InterviewProcessFields({
   rounds,
   onRoundsChange,
   error = "",
+  showRoundType = false,
 }) {
   const updateRound = (id, patch) => {
     onRoundsChange(rounds.map((round) => (round.id === id ? { ...round, ...patch } : round)));
@@ -70,9 +72,23 @@ export default function InterviewProcessFields({
                 ) : null}
               </div>
               <div className="space-y-3">
+                {showRoundType ? (
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-medium text-theme-secondary" htmlFor={`round-type-${round.id}`}>
+                      Type
+                    </label>
+                    <input
+                      id={`round-type-${round.id}`}
+                      value={round.type || ""}
+                      onChange={(event) => updateRound(round.id, { type: event.target.value })}
+                      placeholder="OA, Technical, HR"
+                      className={fieldClass}
+                    />
+                  </div>
+                ) : null}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-theme-secondary" htmlFor={`round-title-${round.id}`}>
-                    Round name
+                    {showRoundType ? "Title" : "Round name"}
                   </label>
                   <input
                     id={`round-title-${round.id}`}
@@ -84,7 +100,7 @@ export default function InterviewProcessFields({
                 </div>
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-theme-secondary" htmlFor={`round-details-${round.id}`}>
-                    What happened
+                    {showRoundType ? "Details" : "What happened"}
                   </label>
                   <textarea
                     id={`round-details-${round.id}`}

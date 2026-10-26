@@ -28,6 +28,18 @@ describe("prepRoleTabs", () => {
     expect(tabs).toHaveLength(1);
   });
 
+  it("includes General alongside every catalog role when asked", () => {
+    const tabs = buildPrepRoleTabs(
+      [
+        { key: "sde", label: "SDE" },
+        { key: "analyst", label: "Analyst" },
+      ],
+      ["sde"],
+      { alwaysIncludeGeneral: true }
+    );
+    expect(tabs.map((tab) => tab.label)).toEqual(["General", "Analyst", "SDE"]);
+  });
+
   it("shows tabs when multiple roles exist", () => {
     expect(prepRoleTabsVisible(buildPrepRoleTabs([], ["", "sde"]))).toBe(true);
     expect(prepRoleTabsVisible(buildPrepRoleTabs([], [""]))).toBe(false);

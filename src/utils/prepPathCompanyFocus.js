@@ -120,6 +120,15 @@ export function parsePrepPathMockPrefill(search) {
   };
 }
 
+/** Opens the /general company list on the card this PrepPath was generated for. */
+export function buildPrepPathCompanyCardHref(appPath, companyId) {
+  const id = String(companyId || "").trim();
+  if (!id || typeof appPath !== "function") return "";
+  const params = new URLSearchParams();
+  params.set("card", id);
+  return appPath(`/companystats?${params.toString()}`);
+}
+
 export function buildPrepPathCompanyHref(appPath, companyId, { tab, focus } = {}) {
   const id = String(companyId || "").trim();
   if (!id || typeof appPath !== "function") return "";

@@ -72,12 +72,16 @@ describe("QuickLinksTab", () => {
       />
     );
 
-    expect(screen.queryByRole("tab", { name: "General" })).not.toBeInTheDocument();
-    expect(screen.getByTestId("prep-role-badge")).toHaveTextContent("Roles:");
-    expect(screen.getByTestId("prep-role-badge")).toHaveTextContent("SDE");
+    expect(screen.getByRole("tab", { name: "General" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "SDE" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByTestId("prep-role-badge")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "SDE link" })).toBeInTheDocument();
     expect(screen.getByTestId("quick-links-role-summary")).toHaveTextContent(/DSA/);
     expect(screen.queryByRole("link", { name: "General link" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "General" }));
+    expect(screen.getByRole("link", { name: "General link" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "SDE link" })).not.toBeInTheDocument();
   });
 
   it("shows a prep role badge when content is tagged for one role only", () => {
@@ -95,8 +99,12 @@ describe("QuickLinksTab", () => {
         }}
       />
     );
-    expect(screen.getByTestId("prep-role-badge")).toHaveTextContent("Roles:");
-    expect(screen.getByTestId("prep-role-badge")).toHaveTextContent("Software Engineer");
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "General" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Software Engineer" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.queryByTestId("prep-role-badge")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "GFG" })).toBeInTheDocument();
   });
 });

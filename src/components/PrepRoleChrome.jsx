@@ -14,10 +14,11 @@ export default function PrepRoleChrome({
   badgeClassName = "",
   requireGeneralContent = false,
   excludeGeneralTab = true,
+  alwaysIncludeGeneral = false,
   variant = "theme",
   switching = false,
 }) {
-  const tabOptions = { requireGeneralContent, excludeGeneralTab };
+  const tabOptions = { requireGeneralContent, excludeGeneralTab, alwaysIncludeGeneral };
   const tabs = buildPrepRoleTabs(prepRoles, itemRoleKeys, tabOptions);
   if (tabs.length === 0) return null;
 
@@ -55,6 +56,7 @@ export default function PrepRoleChrome({
       forceVisible
       excludeGeneralTab={excludeGeneralTab}
       requireGeneralContent={requireGeneralContent}
+      alwaysIncludeGeneral={alwaysIncludeGeneral}
       variant={variant}
       switching={switching}
     />

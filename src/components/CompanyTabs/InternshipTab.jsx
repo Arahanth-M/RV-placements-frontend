@@ -1,8 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
+import { submissionPrepRoleField, submissionTargetFields } from "../../utils/submissionTargetFields.js";
+import {
+  buildPrepRoleTabs,
+  catalogHasNamedPrepRoles,
+  itemMatchesPrepRoleTab,
+  pickDefaultPrepRoleTab,
+  uniformPrepRoleTabOptions,
+} from "../../utils/prepRoleTabs.js";
 import BrandLogo from "../BrandLogo.jsx";
+import PrepRoleChrome from "../PrepRoleChrome.jsx";
 import SubmissionFeedbackModal from "../SubmissionFeedbackModal";
 import {
   ExperienceEmptyState,
@@ -27,6 +35,10 @@ function InternshipTab({
   const [experienceText, setExperienceText] = useState("");
   const [submitAnonymously, setSubmitAnonymously] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const [activePrepRoleKey, setActivePrepRoleKey] = useState(null);
+  const contributionRoleKeyRef = useRef("");
+  const expRefs = useRef({});
+  const [focusedExpIndex, setFocusedExpIndex] = useState(-1);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,6 +58,7 @@ function InternshipTab({
             placementListContext,
             placementCompanyVisitId,
           }),
+          ...submissionPrepRoleField(isGeneral, contributionRoleKeyRef.current),
         }),
       });
 
@@ -69,8 +82,26 @@ function InternshipTab({
   };
 
   const internshipExperience = listInternshipExperienceEntries(company);
-  const expRefs = useRef({});
-  const [focusedExpIndex, setFocusedExpIndex] = useState(-1);
+  const prepRoles = Array.isArray(company?.prepRoles) ? company.prepRoles : [];
+  const roleTabOptions = useMemo(() => uniformPrepRoleTabOptions(prepRoles), [prepRoles]);
+  const experienceRoleItemKeys = internshipExperience.map((exp) => String(exp?.prepRoleKey ?? ""));
+  const experienceRoleTabs = buildPrepRoleTabs(prepRoles, experienceRoleItemKeys, roleTabOptions);
+  const showRoleChrome =
+    isGeneral && (catalogHasNamedPrepRoles(prepRoles) || internshipExperience.length > 0);
+  const effectivePrepRoleKey = (() => {
+    if (!showRoleChrome) return "";
+    const preferred = pickDefaultPrepRoleTab(prepRoles, experienceRoleItemKeys, roleTabOptions);
+    if (activePrepRoleKey === null) return preferred;
+    return experienceRoleTabs.some((tab) => tab.key === activePrepRoleKey)
+      ? activePrepRoleKey
+      : preferred;
+  })();
+  contributionRoleKeyRef.current = showRoleChrome ? effectivePrepRoleKey : "";
+  const experienceVisible = (exp) => {
+    if (!showRoleChrome) return true;
+    return itemMatchesPrepRoleTab(exp?.prepRoleKey, effectivePrepRoleKey);
+  };
+  const visibleExperiences = internshipExperience.filter(experienceVisible);
 
   useEffect(() => {
     const idx = findFocusIndex(
@@ -82,24 +113,37 @@ function InternshipTab({
       setFocusedExpIndex(-1);
       return;
     }
+    setActivePrepRoleKey(String(internshipExperience[idx]?.prepRoleKey ?? ""));
     setFocusedExpIndex(idx);
     scrollFocusNode(expRefs.current[idx]);
   }, [focusQuery, company]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+      {showRoleChrome ? (
+        <PrepRoleChrome
+          prepRoles={prepRoles}
+          itemRoleKeys={experienceRoleItemKeys}
+          activeKey={effectivePrepRoleKey}
+          onChange={setActivePrepRoleKey}
+          ariaLabel="Internship experience roles"
+          excludeGeneralTab={false}
+          alwaysIncludeGeneral={roleTabOptions.alwaysIncludeGeneral}
+        />
+      ) : null}
       <div className="rounded-xl border border-theme bg-theme-card p-4 shadow-sm sm:p-6">
         <ExperienceSectionHeader
           kicker="Experiences"
           title="Internship Experience"
-          count={internshipExperience.length}
+          count={visibleExperiences.length}
           addLabel="Add Internship Experience"
           onAdd={() => setShowModal(true)}
         />
 
-        {internshipExperience.length > 0 ? (
+        {visibleExperiences.length > 0 ? (
           <div className="space-y-3 sm:space-y-4">
             {internshipExperience.map((exp, index) => {
+              if (!experienceVisible(exp)) return null;
               const expContent = exp.content || exp;
               const isAnonymous = exp.isAnonymous === true || exp.isAnonymous === "true";
               const submittedBy = exp.submittedBy || null;
@@ -124,7 +168,11 @@ function InternshipTab({
           </div>
         ) : (
           <ExperienceEmptyState
-            message="No internship experiences yet. Share what the internship was like so others can prepare."
+            message={
+              internshipExperience.length > 0
+                ? "No internship experiences for this role yet. Share what the internship was like so others can prepare."
+                : "No internship experiences yet. Share what the internship was like so others can prepare."
+            }
             actionLabel="Add Internship Experience"
             onAction={() => setShowModal(true)}
           />

@@ -272,8 +272,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { PrepRoleChromeDark } from "../PrepRoleChrome.jsx";
 import {
   buildPrepRoleTabs,
+  catalogHasNamedPrepRoles,
   itemMatchesPrepRoleTab,
   pickDefaultPrepRoleTab,
+  uniformPrepRoleTabOptions,
 } from "../../utils/prepRoleTabs.js";
 import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransition.js";
 import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
@@ -294,7 +296,7 @@ import BrandLogo from "../BrandLogo.jsx";
 import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
 import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
-import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
+import { submissionPrepRoleField, submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
   findFocusIndex,
   PREP_FOCUS_HIGHLIGHT_CLASS,
@@ -330,6 +332,7 @@ function OATab({
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [activeOaPrepRoleKey, setActiveOaPrepRoleKey] = useState(null);
+  const contributionRoleKeyRef = useRef("");
   const questionRowRefs = useRef({});
 
   const safeCompany = company || {};
@@ -358,6 +361,7 @@ function OATab({
             placementListContext,
             placementCompanyVisitId,
           }),
+          ...submissionPrepRoleField(isGeneral, contributionRoleKeyRef.current),
         }),
       });
 
@@ -542,6 +546,7 @@ function OATab({
     : [];
   const mcqQuestions = Array.isArray(safeCompany.mcqQuestions) ? safeCompany.mcqQuestions : [];
   const prepRoles = Array.isArray(safeCompany.prepRoles) ? safeCompany.prepRoles : [];
+  const roleTabOptions = useMemo(() => uniformPrepRoleTabOptions(prepRoles), [prepRoles]);
   const oaRoleItemKeys = useMemo(() => {
     const keys = [];
     parsedQuestions.forEach((question, index) => {
@@ -554,22 +559,21 @@ function OATab({
     });
     return keys;
   }, [parsedQuestions, oaPrepRoleKeys, mcqQuestions]);
-  const oaPrepRoles = prepRoles.filter((row) =>
-    oaRoleItemKeys.includes(String(row?.key ?? ""))
-  );
   const oaRoleTabs = useMemo(
-    () => buildPrepRoleTabs(oaPrepRoles, oaRoleItemKeys),
-    [oaPrepRoles, oaRoleItemKeys]
+    () => buildPrepRoleTabs(prepRoles, oaRoleItemKeys, roleTabOptions),
+    [prepRoles, oaRoleItemKeys, roleTabOptions]
   );
-  const showOaRoleChrome = isGeneral && oaRoleItemKeys.length > 0;
+  const showOaRoleChrome =
+    isGeneral && (catalogHasNamedPrepRoles(prepRoles) || oaRoleItemKeys.length > 0);
   const effectiveOaPrepRoleKey = useMemo(() => {
     if (!showOaRoleChrome) return "";
-    const preferred = pickDefaultPrepRoleTab(oaPrepRoles, oaRoleItemKeys);
+    const preferred = pickDefaultPrepRoleTab(prepRoles, oaRoleItemKeys, roleTabOptions);
     if (activeOaPrepRoleKey === null) return preferred;
     return oaRoleTabs.some((tab) => tab.key === activeOaPrepRoleKey)
       ? activeOaPrepRoleKey
       : preferred;
-  }, [showOaRoleChrome, oaPrepRoles, oaRoleItemKeys, oaRoleTabs, activeOaPrepRoleKey]);
+  }, [showOaRoleChrome, prepRoles, oaRoleItemKeys, oaRoleTabs, activeOaPrepRoleKey, roleTabOptions]);
+  contributionRoleKeyRef.current = showOaRoleChrome ? effectiveOaPrepRoleKey : "";
   const roleSwitching = usePrepRoleSwitchTransition(
     showOaRoleChrome ? effectiveOaPrepRoleKey : "__static__"
   );
@@ -696,12 +700,13 @@ function OATab({
     <div className="max-w-7xl mx-auto px-3 sm:px-5 py-4 sm:py-6 space-y-5 sm:space-y-6 text-slate-200">
       {showOaRoleChrome ? (
         <PrepRoleChromeDark
-          prepRoles={oaPrepRoles}
+          prepRoles={prepRoles}
           itemRoleKeys={oaRoleItemKeys}
           activeKey={effectiveOaPrepRoleKey}
           onChange={setActiveOaPrepRoleKey}
           ariaLabel="OA question roles"
           excludeGeneralTab={false}
+          alwaysIncludeGeneral={roleTabOptions.alwaysIncludeGeneral}
           switching={roleSwitching}
         />
       ) : null}
@@ -1001,11 +1006,11 @@ function OATab({
             })}
           </div>
         ) : hasAnyOaCoding && showOaRoleChrome ? (
-          <p className="text-slate-400">No questions for this role. Choose another role tab above.</p>
+          <p className="text-slate-400">No questions for this role yet. Use Add Question to contribute one.</p>
         ) : visibleMcqCount === 0 ? (
           <p className="text-slate-400">
             {showOaRoleChrome && oaRoleItemKeys.length > 0
-              ? "No questions for this role. Choose another role tab above."
+              ? "No questions for this role yet. Use Add Question to contribute one."
               : "No online assessment questions yet."}
           </p>
         ) : null}

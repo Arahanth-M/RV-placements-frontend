@@ -89,13 +89,15 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import { PrepRoleChromeDark } from "../PrepRoleChrome.jsx";
 import {
   buildPrepRoleTabs,
+  catalogHasNamedPrepRoles,
   itemMatchesPrepRoleTab,
   pickDefaultPrepRoleTab,
+  uniformPrepRoleTabOptions,
 } from "../../utils/prepRoleTabs.js";
 import { DEFAULT_PLACEMENT_DETAIL_YEAR } from "../../constants/placementYears.js";
 import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES } from "../../utils/constants";
-import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
+import { adminCompanyVisitOpts, companyAPI, companyContentAdminAPI } from "../../utils/api";
 import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransition.js";
 import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
@@ -112,11 +114,14 @@ import { stripQuestionMarkers } from "../../utils/stripQuestionMarkers";
 import { formatSolutionCode } from "../../utils/formatSolutionCode.js";
 import { inferSolutionLanguage } from "../../utils/inferSolutionLanguage.js";
 import { parseExperienceStoredEntry } from "../../utils/parseExperienceStoredEntry.js";
-import { composeInterviewProcess } from "../../utils/splitExperienceNarrative.js";
+import {
+  composeInterviewProcess,
+  composeStoredInterviewExperience,
+} from "../../utils/splitExperienceNarrative.js";
 import InterviewProcessFields, {
   blankInterviewRound,
 } from "./InterviewProcessFields.jsx";
-import { submissionTargetFields } from "../../utils/submissionTargetFields.js";
+import { submissionPrepRoleField, submissionTargetFields } from "../../utils/submissionTargetFields.js";
 import {
   ExperienceEmptyState,
   ExperienceSectionHeader,
@@ -167,8 +172,20 @@ function InterviewTab({
   const [platformDraft, setPlatformDraft] = useState(null);
   const [editIPIndex, setEditIPIndex] = useState(null);
   const [editIPContent, setEditIPContent] = useState("");
+  const [editIPOverview, setEditIPOverview] = useState("");
+  const [editIPRounds, setEditIPRounds] = useState([]);
+  const [editIPUsesStoredShape, setEditIPUsesStoredShape] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
+  const [likeOverride, setLikeOverride] = useState({});
+  const [likePendingKey, setLikePendingKey] = useState("");
+  const [likeError, setLikeError] = useState("");
+  const contributionRoleKeyRef = useRef("");
+
+  useEffect(() => {
+    setLikeOverride({});
+    setLikeError("");
+  }, [company?._id]);
   const questionRowRefs = useRef({});
   const processRowRefs = useRef({});
   const [focusedProcessIndex, setFocusedProcessIndex] = useState(-1);
@@ -190,6 +207,7 @@ function InterviewTab({
     ? company.interviewQuestions_prepRoleKey
     : [];
   const prepRoles = Array.isArray(company.prepRoles) ? company.prepRoles : [];
+  const roleTabOptions = useMemo(() => uniformPrepRoleTabOptions(prepRoles), [prepRoles]);
   /** `null` = user has not picked a tab yet; use smart default. */
   const [activeInterviewPrepRoleKey, setActiveInterviewPrepRoleKey] = useState(null);
   const [activeExperiencePrepRoleKey, setActiveExperiencePrepRoleKey] = useState(null);
@@ -199,33 +217,28 @@ function InterviewTab({
     [interviewQuestions, interviewPrepRoleKeys]
   );
   const interviewRoleTabs = useMemo(
-    () => buildPrepRoleTabs(prepRoles, interviewRoleItemKeys),
-    [prepRoles, interviewRoleItemKeys]
+    () => buildPrepRoleTabs(prepRoles, interviewRoleItemKeys, roleTabOptions),
+    [prepRoles, interviewRoleItemKeys, roleTabOptions]
   );
   const showInterviewRoleChrome =
-    isGeneral && interviewQuestions.some((q) => questionTextIsPresent(q));
+    isGeneral &&
+    (catalogHasNamedPrepRoles(prepRoles) ||
+      interviewQuestions.some((q) => questionTextIsPresent(q)));
 
   const effectiveInterviewPrepRoleKey = useMemo(() => {
     if (!showInterviewRoleChrome) return "";
-    const preferred = pickDefaultPrepRoleTab(prepRoles, interviewRoleItemKeys);
+    const preferred = pickDefaultPrepRoleTab(prepRoles, interviewRoleItemKeys, roleTabOptions);
     if (activeInterviewPrepRoleKey === null) return preferred;
-    const candidate = interviewRoleTabs.some((tab) => tab.key === activeInterviewPrepRoleKey)
+    return interviewRoleTabs.some((tab) => tab.key === activeInterviewPrepRoleKey)
       ? activeInterviewPrepRoleKey
       : preferred;
-    const hasQuestions = interviewQuestions.some(
-      (q, index) =>
-        questionTextIsPresent(q) &&
-        itemMatchesPrepRoleTab(interviewPrepRoleKeys[index], candidate)
-    );
-    return hasQuestions ? candidate : preferred;
   }, [
     showInterviewRoleChrome,
     prepRoles,
     interviewRoleItemKeys,
     interviewRoleTabs,
     activeInterviewPrepRoleKey,
-    interviewQuestions,
-    interviewPrepRoleKeys,
+    roleTabOptions,
   ]);
   const roleSwitching = usePrepRoleSwitchTransition(
     showInterviewRoleChrome ? effectiveInterviewPrepRoleKey : "__static__"
@@ -574,30 +587,104 @@ function InterviewTab({
     }
   };
 
-  const handleEditIP = (index, contentText) => {
+  const closeEditIP = () => {
+    setEditIPIndex(null);
+    setEditIPContent("");
+    setEditIPOverview("");
+    setEditIPRounds([]);
+    setEditIPUsesStoredShape(false);
+  };
+
+  const handleEditIP = (index, process) => {
+    const polished = process?.polishedContent;
+    const storedRounds = Array.isArray(polished?.rounds) ? polished.rounds : [];
+    const overview = String(polished?.overview || "");
+    const hasStoredShape =
+      overview.trim().length > 0 ||
+      storedRounds.some((round) => round?.type || round?.title || round?.details);
     setEditIPIndex(index);
-    setEditIPContent(contentText || "");
+    setEditIPUsesStoredShape(hasStoredShape);
+    if (hasStoredShape) {
+      setEditIPOverview(overview);
+      setEditIPRounds(
+        (storedRounds.length ? storedRounds : [{}]).map((round, roundIndex) => ({
+          ...blankInterviewRound(),
+          id: `stored-${index}-${roundIndex}`,
+          type: round?.type || "",
+          title: round?.title || "",
+          details: round?.details || "",
+        }))
+      );
+      setEditIPContent("");
+      return;
+    }
+    setEditIPOverview("");
+    setEditIPRounds([]);
+    setEditIPContent(typeof process === "string" ? process : process?.content || "");
   };
 
   const handleSaveEditIP = async (e) => {
     e.preventDefault();
     if (editIPIndex == null || !company?._id) return;
+    const storedRounds = editIPRounds
+      .map((round, roundIndex) => ({
+        order: roundIndex + 1,
+        type: String(round.type || "").trim(),
+        title: String(round.title || "").trim(),
+        details: String(round.details || "").trim(),
+      }))
+      .filter((round) => round.type || round.title || round.details);
+    const content = editIPUsesStoredShape
+      ? composeStoredInterviewExperience({ overview: editIPOverview, rounds: storedRounds })
+      : editIPContent;
+    if (!String(content || "").trim()) {
+      alert("Add an overview or at least one round.");
+      return;
+    }
     setActionLoading(true);
     try {
       await contentAdmin.updateInterviewProcess(
         company._id,
         editIPIndex,
-        { content: editIPContent },
+        editIPUsesStoredShape
+          ? {
+              content,
+              polishedContent: {
+                overview: editIPOverview.trim(),
+                rounds: storedRounds,
+              },
+            }
+          : { content, polishedContent: null },
         adminOpts
       );
       if (onCompanyUpdate) onCompanyUpdate();
-      setEditIPIndex(null);
-      setEditIPContent("");
+      closeEditIP();
     } catch (err) {
       console.error(err);
       alert("Failed to update entry.");
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleLikeExperience = async (experienceKey) => {
+    if (!experienceKey || !company?._id || likePendingKey) return;
+    setLikePendingKey(experienceKey);
+    setLikeError("");
+    try {
+      const response = await companyAPI.likeInterviewExperience(company._id, experienceKey);
+      setLikeOverride((prev) => ({
+        ...prev,
+        [experienceKey]: {
+          likeCount: Number(response?.data?.likeCount) || 0,
+          likedByMe: response?.data?.likedByMe === true,
+        },
+      }));
+    } catch (err) {
+      console.error(err);
+      setLikeError(err?.response?.data?.error || "Could not update like. Please try again.");
+    } finally {
+      setLikePendingKey("");
     }
   };
 
@@ -635,6 +722,7 @@ function InterviewTab({
             placementListContext,
             placementCompanyVisitId,
           }),
+          ...submissionPrepRoleField(isGeneral, effectiveInterviewPrepRoleKey),
         }),
       });
 
@@ -690,6 +778,7 @@ function InterviewTab({
             placementListContext,
             placementCompanyVisitId,
           }),
+          ...submissionPrepRoleField(isGeneral, contributionRoleKeyRef.current),
         }),
       });
 
@@ -732,19 +821,19 @@ function InterviewTab({
   const experienceRoleItemKeys = interviewProcess.map((process) =>
     String(process?.prepRoleKey ?? "")
   );
-  const experiencePrepRoles = prepRoles.filter((row) =>
-    experienceRoleItemKeys.includes(String(row?.key ?? ""))
-  );
-  const experienceRoleTabs = buildPrepRoleTabs(experiencePrepRoles, experienceRoleItemKeys);
-  const showExperienceRoleChrome = isGeneral && interviewProcess.length > 0;
+  const experienceRoleTabs = buildPrepRoleTabs(prepRoles, experienceRoleItemKeys, roleTabOptions);
+  const showExperienceRoleChrome =
+    isGeneral &&
+    (catalogHasNamedPrepRoles(prepRoles) || interviewProcess.length > 0);
   const effectiveExperiencePrepRoleKey = (() => {
     if (!showExperienceRoleChrome) return "";
-    const preferred = pickDefaultPrepRoleTab(experiencePrepRoles, experienceRoleItemKeys);
+    const preferred = pickDefaultPrepRoleTab(prepRoles, experienceRoleItemKeys, roleTabOptions);
     if (activeExperiencePrepRoleKey === null) return preferred;
     return experienceRoleTabs.some((tab) => tab.key === activeExperiencePrepRoleKey)
       ? activeExperiencePrepRoleKey
       : preferred;
   })();
+  contributionRoleKeyRef.current = showExperienceRoleChrome ? effectiveExperiencePrepRoleKey : "";
   const experienceVisible = (process) => {
     if (!showExperienceRoleChrome) return true;
     return itemMatchesPrepRoleTab(process?.prepRoleKey, effectiveExperiencePrepRoleKey);
@@ -785,6 +874,7 @@ function InterviewTab({
           onChange={setActiveInterviewPrepRoleKey}
           ariaLabel="Interview question roles"
           excludeGeneralTab={false}
+          alwaysIncludeGeneral={roleTabOptions.alwaysIncludeGeneral}
           switching={roleSwitching}
         />
       ) : null}
@@ -989,7 +1079,7 @@ function InterviewTab({
           </div>
         ) : totalInterviewQuestionCount > 0 && showInterviewRoleChrome ? (
           <p className="text-slate-400">
-            No questions for this role. Choose another role tab above.
+            No questions for this role yet. Use Add Interview Question to contribute one.
           </p>
         ) : (
           <p className="text-slate-400">No interview questions yet.</p>
@@ -999,12 +1089,13 @@ function InterviewTab({
 
       {showExperienceSection && showExperienceRoleChrome ? (
         <PrepRoleChromeDark
-          prepRoles={experiencePrepRoles}
+          prepRoles={prepRoles}
           itemRoleKeys={experienceRoleItemKeys}
           activeKey={effectiveExperiencePrepRoleKey}
           onChange={setActiveExperiencePrepRoleKey}
           ariaLabel="Interview experience roles"
           excludeGeneralTab={false}
+          alwaysIncludeGeneral={roleTabOptions.alwaysIncludeGeneral}
         />
       ) : null}
       {showExperienceSection ? (
@@ -1022,27 +1113,41 @@ function InterviewTab({
             {interviewProcess.map((process, index) => {
               if (!experienceVisible(process)) return null;
               const processContent = process.content || process;
+              const experienceKey = String(process.experienceKey || "");
+              const like = likeOverride[experienceKey] || {
+                likeCount: process.likeCount,
+                likedByMe: process.likedByMe,
+              };
 
               return (
                 <div
-                  key={index}
+                  key={experienceKey || index}
                   ref={(el) => {
                     processRowRefs.current[index] = el;
                   }}
                 >
                 <ExperienceStoryCard
-                  key={index}
+                  key={experienceKey || index}
                   content={processContent}
+                  polishedContent={process.polishedContent}
+                  layout={isAdmin ? "stored" : "story"}
+                  overviewLabel="Overview of the interview"
                   highlighted={focusedProcessIndex === index}
                   forceExpanded={focusedProcessIndex === index}
                   variant="dark"
                   showContributor={false}
+                  likeCount={like.likeCount}
+                  likedByMe={like.likedByMe === true}
+                  likePending={likePendingKey === experienceKey}
+                  onLike={
+                    experienceKey ? () => handleLikeExperience(experienceKey) : null
+                  }
                   adminActions={
                     isAdmin ? (
                       <>
                         <button
                           type="button"
-                          onClick={() => handleEditIP(index, processContent)}
+                          onClick={() => handleEditIP(index, process)}
                           className="rounded-md p-2 text-amber-400 transition-colors hover:bg-slate-700"
                           title="Edit entry"
                         >
@@ -1065,18 +1170,23 @@ function InterviewTab({
               );
             })}
           </div>
-        ) : interviewProcess.length > 0 && showExperienceRoleChrome ? (
-          <p className="text-sm text-slate-400">
-            No interview experiences for this role. Choose another role tab above.
-          </p>
         ) : (
           <ExperienceEmptyState
-            message="No interview experiences yet. Share the rounds you faced so others can prepare."
+            message={
+              interviewProcess.length > 0
+                ? "No interview experiences for this role yet. Share the rounds you faced so others can prepare."
+                : "No interview experiences yet. Share the rounds you faced so others can prepare."
+            }
             actionLabel="Add Interview Process"
             onAction={() => setShowAddProcessModal(true)}
             variant="dark"
           />
         )}
+        {likeError ? (
+          <p className="mt-3 text-sm text-red-400" role="alert">
+            {likeError}
+          </p>
+        ) : null}
       </div>
       ) : null}
       </div>
@@ -1240,32 +1350,43 @@ function InterviewTab({
 
       {/* Edit Interview Process modal (admin) */}
       {editIPIndex !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
-          <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4 py-6">
+          <div className="flex max-h-[min(90vh,860px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
             <div className="border-b border-theme px-6 py-4">
               <h3 className="text-xl font-semibold text-theme-primary">
                 Edit Interview Process {editIPIndex + 1}
               </h3>
               <p className="mt-1 text-sm text-theme-secondary">
-                Only this entry’s text is updated. Round headings are still stored as part of the same string.
+                {editIPUsesStoredShape
+                  ? "Overview, type, title, and details are saved exactly as shown."
+                  : "This entry is saved as one write-up."}
               </p>
             </div>
-            <form onSubmit={handleSaveEditIP} className="space-y-5 px-6 py-5">
-              <textarea
-                value={editIPContent}
-                onChange={(e) => setEditIPContent(e.target.value)}
-                placeholder="Content"
-                className="w-full min-h-[170px] rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
-                required
-              />
-              <div className="flex justify-end gap-3">
+            <form onSubmit={handleSaveEditIP} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                {editIPUsesStoredShape ? (
+                  <InterviewProcessFields
+                    overview={editIPOverview}
+                    onOverviewChange={setEditIPOverview}
+                    rounds={editIPRounds}
+                    onRoundsChange={setEditIPRounds}
+                    showRoundType
+                  />
+                ) : (
+                  <textarea
+                    value={editIPContent}
+                    onChange={(e) => setEditIPContent(e.target.value)}
+                    placeholder="Content"
+                    className="w-full min-h-[280px] whitespace-pre-wrap rounded-xl border border-theme bg-theme-input px-4 py-3 text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent"
+                    required
+                  />
+                )}
+              </div>
+              <div className="flex justify-end gap-3 border-t border-theme px-6 py-4">
                 <button
                   type="button"
                   className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-nav"
-                  onClick={() => {
-                    setEditIPIndex(null);
-                    setEditIPContent("");
-                  }}
+                  onClick={closeEditIP}
                 >
                   Cancel
                 </button>

@@ -28,14 +28,12 @@ export function buildPrepRoleTabs(prepRoles, itemRoleKeys = [], options = {}) {
     String(raw ?? "")
   );
   const hasGeneralContent = keys.some((key) => key === "");
-  const catalogHasGeneral = (Array.isArray(prepRoles) ? prepRoles : []).some(
-    (row) => String(row?.key ?? "") === ""
-  );
 
-  const allowGeneral =
+  const includeGeneral =
     !options.excludeGeneralTab &&
-    (hasGeneralContent || (!options.requireGeneralContent && catalogHasGeneral));
-  if (allowGeneral && hasGeneralContent) {
+    (hasGeneralContent ||
+      (options.alwaysIncludeGeneral === true && !options.requireGeneralContent));
+  if (includeGeneral) {
     map.set(GENERAL_PREP_ROLE_KEY, { key: GENERAL_PREP_ROLE_KEY, label: "General" });
   }
 
@@ -58,6 +56,23 @@ export function buildPrepRoleTabs(prepRoles, itemRoleKeys = [], options = {}) {
     if (b.key === GENERAL_PREP_ROLE_KEY) return 1;
     return a.label.localeCompare(b.label);
   });
+}
+
+export function catalogHasNamedPrepRoles(prepRoles) {
+  return (Array.isArray(prepRoles) ? prepRoles : []).some(
+    (row) => String(row?.key ?? "").trim() !== ""
+  );
+}
+
+/**
+ * Same pills on every company prep tab: General, then every catalog role,
+ * including roles that do not have content yet.
+ */
+export function uniformPrepRoleTabOptions(prepRoles) {
+  return {
+    excludeGeneralTab: false,
+    alwaysIncludeGeneral: catalogHasNamedPrepRoles(prepRoles),
+  };
 }
 
 export function prepRoleTabsVisible(tabs) {

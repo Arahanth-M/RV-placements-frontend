@@ -17,3 +17,9 @@ export function submissionTargetFields({
     ...(placementCompanyVisitId ? { companyVisitId: placementCompanyVisitId } : {}),
   };
 }
+
+/** Tags a `/general` contribution with the role pill the student had selected. */
+export function submissionPrepRoleField(isGeneral, prepRoleKey) {
+  if (!isGeneral) return {};
+  return { prepRoleKey: String(prepRoleKey ?? "").trim() };
+}

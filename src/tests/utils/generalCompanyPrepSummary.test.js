@@ -63,8 +63,22 @@ describe("generalCompanyPrepSummary", () => {
       ],
     });
     expect(summary.roleCoverage).toEqual([
-      { key: "sde", label: "SDE", line: "8 OA · 3 interview q's · 2 interview exprs" },
-      { key: "analyst", label: "Analyst", line: "4 OA · 2 interview q's · 1 interview expr" },
+      {
+        key: "sde",
+        label: "SDE",
+        oa: 8,
+        interview: 3,
+        experiences: 2,
+        line: "8 OA · 3 interview q's · 2 interview exprs",
+      },
+      {
+        key: "analyst",
+        label: "Analyst",
+        oa: 4,
+        interview: 2,
+        experiences: 1,
+        line: "4 OA · 2 interview q's · 1 interview expr",
+      },
     ]);
   });
 });

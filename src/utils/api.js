@@ -109,6 +109,14 @@ export const authAPI = {
 };
 
 export const companyAPI = {
+  getLogoBatch: (domains, size) =>
+    API.get("/api/logo/batch", {
+      params: {
+        domains: (Array.isArray(domains) ? domains : []).join(","),
+        size,
+      },
+    }),
+
   async getAllCompanies(options = {}) {
     let year = options.year != null ? Number(options.year) : null;
     if (year != null && !Number.isFinite(year)) year = null;
@@ -395,6 +403,9 @@ export const companyAPI = {
     }),
 
   incrementHelpfulCount: (id) => API.post(`/api/companies/${id}/helpful`),
+
+  likeInterviewExperience: (id, experienceKey) =>
+    API.post(`/api/companies/${id}/interview-experiences/like`, { experienceKey }),
 
   getHelpfulStatus: (id) => API.get(`/api/companies/${id}/helpful/status`),
 

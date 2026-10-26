@@ -6,6 +6,7 @@ import { useInterviewLock } from "../utils/InterviewLockContext";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { parsePrepPathMockPrefill } from "../utils/prepPathCompanyFocus.js";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
+import CompanyCard from "./CompanyCard.jsx";
 import AIInterviews from "./AIInterviews";
 import InterviewSlotsPage from "./InterviewSlotsPage";
 import {
@@ -23,6 +24,27 @@ const HUB_TABS = [
   { id: "analytics", label: "Interview analytics" },
 ];
 
+function expectationTopicsFromCompany(company) {
+  const raw = company?.Must_Do_Topics ?? company?.must_do_topics ?? [];
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set();
+  const topics = [];
+  for (const item of raw) {
+    const text =
+      typeof item === "string"
+        ? item.trim()
+        : item && typeof item === "object" && typeof item.topic === "string"
+          ? item.topic.trim()
+          : "";
+    if (!text) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    topics.push(text);
+  }
+  return topics;
+}
+
 function normalizeHubTab(raw) {
   const value = String(raw || "").trim().toLowerCase();
   if (value === "slots" || value === "slot") return "slots";
@@ -39,6 +61,10 @@ function GeneralMockInterviewPage() {
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
+  const [companyCard, setCompanyCard] = useState(null);
+  const [companyCardLocked, setCompanyCardLocked] = useState(false);
+  const [companyCardLoading, setCompanyCardLoading] = useState(false);
+  const [companyCardError, setCompanyCardError] = useState("");
 
   const activeTab = normalizeHubTab(searchParams.get("tab"));
   const selectedId = String(searchParams.get("companyId") || "").trim();
@@ -81,6 +107,53 @@ function GeneralMockInterviewPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setCompanyCard(null);
+      setCompanyCardLocked(false);
+      setCompanyCardError("");
+      setCompanyCardLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setCompanyCard(null);
+    setCompanyCardLocked(false);
+    setCompanyCardError("");
+    setCompanyCardLoading(true);
+    companyAPI
+      .getCompany(selectedId, { scope: "platform" })
+      .then((res) => {
+        if (cancelled) return;
+        setCompanyCardLocked(false);
+        setCompanyCard(res?.data && typeof res.data === "object" ? res.data : null);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (cancelled) return;
+        const lockedCompany = err?.response?.data?.company;
+        if (err?.response?.status === 402 && lockedCompany && typeof lockedCompany === "object") {
+          setCompanyCard(lockedCompany);
+          setCompanyCardLocked(true);
+          setCompanyCardError("");
+          return;
+        }
+        setCompanyCard(null);
+        setCompanyCardLocked(false);
+        setCompanyCardError("Could not load this company's card.");
+      })
+      .finally(() => {
+        if (!cancelled) setCompanyCardLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  const expectationTopics = useMemo(
+    () => expectationTopicsFromCompany(companyCard),
+    [companyCard]
+  );
 
   const selectedCompany = useMemo(() => {
     if (!selectedId) return null;
@@ -252,6 +325,78 @@ function GeneralMockInterviewPage() {
                       PrepPath suggested this mock. You can still change role, difficulty, or
                       rounds before starting.
                     </p>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {!isInterviewLocked && selectedCompany ? (
+                <section
+                  className="mb-5 rounded-2xl border border-theme bg-theme-card p-4 sm:p-5 shadow-sm"
+                  aria-label="Company stats card"
+                  data-testid="mock-company-stats"
+                >
+                  <h2 className="text-base font-semibold text-theme-primary">Company stats</h2>
+                  <p className="mt-1 text-sm text-theme-secondary">
+                    Before you configure the interview, go through{" "}
+                    {selectedCompany.name ? `${selectedCompany.name}'s` : "this company's"}{" "}
+                    stats card. The focus areas are what they expect you to know. Open full
+                    details if you want the rest of the company page.
+                  </p>
+
+                  {companyCardLoading ? (
+                    <p className="mt-4 text-sm text-theme-muted">Loading company card…</p>
+                  ) : null}
+                  {companyCardError ? (
+                    <p className="mt-4 text-sm text-red-400">{companyCardError}</p>
+                  ) : null}
+
+                  {companyCard ? (
+                    <div
+                      className={`mt-4 grid items-start gap-4 ${
+                        companyCardLocked || expectationTopics.length > 0
+                          ? "lg:grid-cols-[minmax(0,22rem)_1fr]"
+                          : ""
+                      }`}
+                    >
+                      <div className="mx-auto w-full max-w-md lg:mx-0">
+                        <CompanyCard
+                          company={companyCard}
+                          hidePlacementGotInCounts
+                          detailLocked={companyCardLocked}
+                        />
+                      </div>
+                      {companyCardLocked ? (
+                        <p className="text-sm text-theme-secondary">
+                          This company card is locked. Unlock it to review the focus areas and
+                          must-do topics before you start.
+                        </p>
+                      ) : expectationTopics.length > 0 ? (
+                        <div className="min-w-0 rounded-2xl border border-theme bg-theme-input/40 p-4">
+                          <p className="text-sm font-semibold text-theme-primary">
+                            What they expect
+                          </p>
+                          <p className="mt-1 text-xs text-theme-muted">
+                            Must-do topics from this company card. These show up as tips while
+                            your answers are being scored.
+                          </p>
+                          <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                            {expectationTopics.map((topic) => (
+                              <li
+                                key={topic}
+                                className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary"
+                              >
+                                {topic}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-theme-muted">
+                          This company does not have must-do topics yet. You can still open the
+                          card for the rest of its prep notes.
+                        </p>
+                      )}
+                    </div>
                   ) : null}
                 </section>
               ) : null}
