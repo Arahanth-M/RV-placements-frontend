@@ -17,6 +17,7 @@ import { companyAPI, prepPathAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { consumeTestEmailFeature } from "../utils/testEmailAccess.js";
 import {
+  buildPrepPathCompanyCardHref,
   buildPrepPathCompanyHref,
   buildPrepPathMockInterviewHref,
   displayPrepEvidenceLabel,
@@ -825,6 +826,8 @@ function PrepPathPlanView({ plan, days = [] }) {
   const mockDifficulty = String(mockSuggestion?.difficulty || "medium");
   const mockDifficultyLabel =
     mockDifficulty.charAt(0).toUpperCase() + mockDifficulty.slice(1);
+  const companyCardHref =
+    isGeneral && companyId ? buildPrepPathCompanyCardHref(appPath, companyId) : "";
 
   const signalLabel = (type) => {
     switch (String(type || "").toLowerCase()) {
@@ -969,6 +972,25 @@ function PrepPathPlanView({ plan, days = [] }) {
           </div>
         ) : null}
       </section>
+
+      {companyCardHref ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-theme bg-theme-card px-4 py-3 sm:px-5">
+          <p className="min-w-0 text-sm text-theme-secondary">
+            This plan was generated for{" "}
+            <span className="font-semibold text-theme-primary">
+              {plan.companyName || "this company"}
+            </span>
+            .
+          </p>
+          <Link
+            to={companyCardHref}
+            className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-theme-accent hover:underline"
+          >
+            Open company card
+            <FaArrowRight className="h-3 w-3" aria-hidden />
+          </Link>
+        </div>
+      ) : null}
 
       {isGeneral && mockSuggestion?.role && mockRounds.length > 0 ? (
         <section className="rounded-2xl border border-theme bg-theme-card p-4 sm:p-6">

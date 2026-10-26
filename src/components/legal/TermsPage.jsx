@@ -13,6 +13,7 @@ export default function TermsPage() {
     <LegalPageLayout
       title="Terms & Conditions"
       subtitle={`Rules that govern use of ${LEGAL_BRAND}, operated by ${LEGAL_OPERATOR}.`}
+      lastUpdated="25 October 2026"
     >
       <LegalSection title="Agreement">
         <p>
@@ -39,6 +40,29 @@ export default function TermsPage() {
           company insights, AI mock interviews, PrepPath study plans, resources, and related tools.
           It is not a university, employer, or placement office, and it does not guarantee
           internships, jobs, or interview outcomes.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Independent platform disclaimer">
+        <p>
+          {LEGAL_BRAND} is an independent educational and interview-preparation platform. It is not
+          affiliated with, endorsed by, sponsored by, or officially associated with any of the
+          companies featured on this website unless expressly stated otherwise.
+        </p>
+        <p>
+          Company names and trademarks belong to their respective owners and are used where
+          appropriate to identify the companies being discussed. Any company logos displayed remain
+          the property of their respective owners.
+        </p>
+        <p>
+          Interview experiences and recruitment information are provided for educational and
+          informational purposes. They may reflect individual candidates’ experiences and may not
+          represent official company hiring procedures or current recruitment practices.
+        </p>
+        <p>
+          Our AI mock interviews and preparation materials are independent simulations designed to
+          help candidates prepare for recruitment processes. They are not official company
+          interviews and do not guarantee selection or employment.
         </p>
       </LegalSection>
 

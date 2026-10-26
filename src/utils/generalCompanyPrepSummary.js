@@ -65,6 +65,9 @@ export function buildGeneralCompanyPrepSummary(company = {}) {
     rolesLine,
     updatedLine: updated ? `Last updated ${updated}` : "Last updated —",
     countsLine: `${oa} ${oaLabel} · ${interview} ${iqLabel} · ${experiences} ${exprLabel}`,
+    oa,
+    interview,
+    experiences,
     /** Compact single-line copy when a card has no role breakdown. */
     countsLineCard: coverage.line,
     /** Per-role compact lines for grid cards. */
@@ -80,7 +83,14 @@ function roleCoverageFromCompany(company = {}) {
       const key = String(row?.key ?? "").trim();
       const label = String(row?.label || "").trim() || (key || "General");
       const coverage = formatPlatformPrepCoverage(row);
-      return { key, label, line: coverage.line };
+      return {
+        key,
+        label,
+        oa: coverage.oa,
+        interview: coverage.interview,
+        experiences: coverage.experiences,
+        line: coverage.line,
+      };
     })
     .filter((row) => row.label);
 }

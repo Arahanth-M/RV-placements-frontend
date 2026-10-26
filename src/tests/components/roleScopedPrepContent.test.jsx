@@ -42,7 +42,9 @@ describe("OA questions by role", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Analyst" }));
     await waitFor(() => {
       expect(screen.getByText("Analyst MCQ")).toBeInTheDocument();
-      expect(screen.getByText("No questions for this role. Choose another role tab above.")).toBeInTheDocument();
+      expect(
+        screen.getByText("No questions for this role yet. Use Add Question to contribute one.")
+      ).toBeInTheDocument();
     });
   });
 
@@ -79,6 +81,12 @@ describe("interview content by role", () => {
       expect(screen.getByRole("button", { name: /Question 1/ })).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Question 2/ })).not.toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Analyst" }));
+    await waitFor(() => {
+      expect(screen.getByText(/No questions for this role yet/)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("button", { name: /Add Interview Question/ })).toBeInTheDocument();
   });
 
   it("shows untagged interview experiences under General", async () => {
@@ -104,5 +112,28 @@ describe("interview content by role", () => {
       expect(screen.getByText("Untagged experience story")).toBeInTheDocument();
       expect(screen.queryByText("SDE onsite story")).not.toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Analyst" }));
+    expect(screen.queryByText("SDE onsite story")).not.toBeInTheDocument();
+    expect(screen.getByText(/No interview experiences for this role yet/)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Add Interview Process/ }).length).toBeGreaterThan(0);
+  });
+
+  it("lists every company role on interview experience when only General has stories", () => {
+    render(
+      <InterviewTab
+        isGeneral
+        generalSection="experience"
+        company={{
+          prepRoles,
+          interviewProcess: [{ content: "Untagged experience story", prepRoleKey: "" }],
+        }}
+      />
+    );
+
+    expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "SDE" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Analyst" })).toBeInTheDocument();
+    expect(screen.getByText("Untagged experience story")).toBeInTheDocument();
   });
 });

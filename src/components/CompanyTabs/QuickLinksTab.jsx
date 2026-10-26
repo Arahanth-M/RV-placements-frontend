@@ -3,9 +3,11 @@ import { researchSourceLinkLabel } from "../../utils/researchSourceLabel.js";
 import { classifyResearchSourceSite } from "../../utils/researchSourceSite.js";
 import {
   buildPrepRoleTabs,
+  catalogHasNamedPrepRoles,
   hasRoleScopedPrepContentFromEntries,
   itemMatchesPrepRoleTab,
   pickDefaultPrepRoleTab,
+  uniformPrepRoleTabOptions,
 } from "../../utils/prepRoleTabs.js";
 import { FaTrash } from "react-icons/fa";
 import PrepRoleChrome from "../PrepRoleChrome.jsx";
@@ -82,30 +84,26 @@ export default function QuickLinksTab({
     () => linkEntries.map((source) => String(source?.prepRoleKey ?? "")),
     [linkEntries]
   );
+  const roleTabOptions = useMemo(() => uniformPrepRoleTabOptions(prepRoles), [prepRoles]);
   const roleTabs = useMemo(
-    () => buildPrepRoleTabs(prepRoles, sourceRoleKeys, { excludeGeneralTab: true }),
-    [prepRoles, sourceRoleKeys]
+    () => buildPrepRoleTabs(prepRoles, sourceRoleKeys, roleTabOptions),
+    [prepRoles, sourceRoleKeys, roleTabOptions]
   );
-  const showRoleChrome = hasRoleScopedPrepContentFromEntries(prepRoles, linkEntries);
+  const showRoleChrome =
+    catalogHasNamedPrepRoles(prepRoles) ||
+    hasRoleScopedPrepContentFromEntries(prepRoles, linkEntries);
 
   /** `null` = user has not picked a tab yet; use smart default. */
   const [activePrepRoleKey, setActivePrepRoleKey] = useState(null);
 
   const effectivePrepRoleKey = useMemo(() => {
     if (!showRoleChrome) return "";
-    const preferred = pickDefaultPrepRoleTab(prepRoles, sourceRoleKeys, {
-      excludeGeneralTab: true,
-    });
+    const preferred = pickDefaultPrepRoleTab(prepRoles, sourceRoleKeys, roleTabOptions);
     if (activePrepRoleKey === null) return preferred;
-    const candidate = roleTabs.some((tab) => tab.key === activePrepRoleKey)
+    return roleTabs.some((tab) => tab.key === activePrepRoleKey)
       ? activePrepRoleKey
       : preferred;
-    const hasLinks = sources.some(
-      (source) =>
-        itemMatchesPrepRoleTab(source?.prepRoleKey, candidate) && safeHref(source?.url)
-    );
-    return hasLinks ? candidate : preferred;
-  }, [showRoleChrome, prepRoles, sourceRoleKeys, roleTabs, activePrepRoleKey, sources]);
+  }, [showRoleChrome, prepRoles, sourceRoleKeys, roleTabs, activePrepRoleKey, roleTabOptions]);
   const roleSwitching = usePrepRoleSwitchTransition(
     showRoleChrome ? effectivePrepRoleKey : "__static__"
   );
@@ -198,7 +196,8 @@ export default function QuickLinksTab({
           activeKey={effectivePrepRoleKey}
           onChange={setActivePrepRoleKey}
           ariaLabel="Quick link roles"
-          excludeGeneralTab
+          excludeGeneralTab={false}
+          alwaysIncludeGeneral={roleTabOptions.alwaysIncludeGeneral}
           switching={roleSwitching}
         />
       ) : null}
@@ -275,7 +274,7 @@ export default function QuickLinksTab({
             </div>
           ) : hasAnyLinks ? (
             <div className="rounded-xl border border-dashed border-theme bg-theme-input/20 px-4 py-10 text-center">
-              <p className="font-medium text-theme-primary">No quick links for this role.</p>
+              <p className="font-medium text-theme-primary">No quick links for this role yet.</p>
               <p className="mt-2 text-sm text-theme-muted">
                 Switch role tabs to see other research links.
               </p>

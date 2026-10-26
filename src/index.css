@@ -1066,6 +1066,122 @@ select.spc-field-control {
   scroll-margin-top: 5.5rem;
 }
 
+.experience-overview-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.experience-overview-copy {
+  font-family: "DM Serif Display", Georgia, "Times New Roman", Times, serif;
+  font-size: 1.12rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+@media (min-width: 640px) {
+  .experience-overview-copy {
+    font-size: 1.22rem;
+    line-height: 1.6;
+  }
+}
+
+/* Interview experience rounds — same heading treatment in light and dark. */
+.experience-round-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 0.85rem;
+}
+
+.experience-round-index {
+  margin: 0;
+  font-size: 1.65rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+@media (min-width: 640px) {
+  .experience-round-index {
+    font-size: 1.9rem;
+  }
+}
+
+.experience-round-type {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  background: var(--accent);
+  color: #ffffff !important;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="dark"] .experience-round-type {
+  background: #5b4bdb;
+  color: #f8fafc !important;
+}
+
+.experience-like-btn {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.experience-like-btn:hover:not(:disabled) {
+  background: var(--nav-hover);
+}
+
+.experience-like-btn:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.experience-like-btn--active {
+  background: var(--nav-active);
+  border-color: var(--accent);
+}
+
+.experience-like-icon {
+  display: inline-flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+.experience-like-btn--active .experience-like-icon {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.experience-like-count {
+  min-width: 1.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  padding: 0.125rem 0.5rem;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
 .interview-question-row {
   scroll-margin-top: 6rem;
 }

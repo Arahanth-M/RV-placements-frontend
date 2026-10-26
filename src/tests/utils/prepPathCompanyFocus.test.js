@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPrepPathCompanyCardHref,
   buildPrepPathCompanyHref,
   buildPrepPathMockInterviewHref,
   displayPrepEvidenceLabel,
@@ -30,6 +31,12 @@ describe("prepPathCompanyFocus", () => {
     const full = "Two Sum: given an array of integers, return indices of the two numbers.";
     expect(textMatchesFocus(full, "Two Sum: given an array of integers")).toBe(true);
     expect(findFocusIndex([full, "Other"], "Two Sum")).toBe(0);
+  });
+
+  it("builds a company-card list link for the plan's company", () => {
+    const href = buildPrepPathCompanyCardHref((p) => `/general${p}`, "abc123");
+    expect(href).toBe("/general/companystats?card=abc123");
+    expect(buildPrepPathCompanyCardHref((p) => `/general${p}`, "  ")).toBe("");
   });
 
   it("builds a company deep-link that can return to PrepPath", () => {

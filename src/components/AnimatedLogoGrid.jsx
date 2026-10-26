@@ -27,19 +27,25 @@ const AnimatedLogoGrid = ({
   // displayedCompanies keeps track of which companies are in which grid slot
   const [displayedCompanies, setDisplayedCompanies] = useState([]);
 
-  // Initialize/Update displayed companies when pool data arrives
+  // Initialize/Update displayed companies when pool data arrives.
+  // Fixed tiles keep the same companies so cached logos can paint on the way back.
   useEffect(() => {
-    if (companies.length > 0) {
-      // If we don't have enough logos displayed but have more available, re-initialize
-      // or if we have 0 logos but companies exist
-      if (displayedCompanies.length < Math.min(gridSize, companies.length)) {
-        const indices = Array.from({ length: companies.length }, (_, i) => i);
-        const shuffled = [...indices].sort(() => Math.random() - 0.5);
-        const slice = shuffled.slice(0, Math.min(gridSize, companies.length));
-        setDisplayedCompanies(slice.map(idx => companies[idx]));
-      }
+    if (companies.length === 0) {
+      setDisplayedCompanies([]);
+      return;
     }
-  }, [companies, gridSize, displayedCompanies.length]);
+    const count = Math.min(gridSize, companies.length);
+    if (disableRotation) {
+      setDisplayedCompanies(companies.slice(0, count));
+      return;
+    }
+    setDisplayedCompanies((prev) => {
+      if (prev.length >= count) return prev;
+      const indices = Array.from({ length: companies.length }, (_, i) => i);
+      const shuffled = [...indices].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count).map((idx) => companies[idx]);
+    });
+  }, [companies, gridSize, disableRotation]);
 
   useEffect(() => {
     if (disableRotation) return;

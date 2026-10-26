@@ -3,8 +3,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import PrepPathPage from "../../components/PrepPathPage.jsx";
 import { TenantShellProvider } from "../../context/TenantShellContext.jsx";
-import { TENANT_BASE } from "../../constants/tenant.js";
+import { GENERAL_BASE, TENANT_BASE } from "../../constants/tenant.js";
 import { prepPathAPI } from "../../utils/api.js";
+
+vi.mock("../../utils/AuthContext", () => ({
+  useAuth: () => ({ user: { userId: "u1" }, setUser: vi.fn() }),
+}));
 
 vi.mock("../../utils/api.js", () => ({
   companyAPI: {
@@ -49,10 +53,11 @@ const plan = {
   },
 };
 
-function renderPage() {
+function renderPage(base = TENANT_BASE, planOverride = plan) {
+  prepPathAPI.getPlan.mockResolvedValue({ data: { plan: planOverride } });
   return render(
     <MemoryRouter initialEntries={["/prep-path?plan=plan-1"]}>
-      <TenantShellProvider base={TENANT_BASE}>
+      <TenantShellProvider base={base}>
         <PrepPathPage />
       </TenantShellProvider>
     </MemoryRouter>
@@ -66,8 +71,6 @@ describe("PrepPath completion tracking", () => {
       data: { quota: { unlimited: true, used: 1 } },
     });
     prepPathAPI.listPlans.mockResolvedValue({ data: { plans: [] } });
-    prepPathAPI.getPlan.mockResolvedValue({ data: { plan } });
-
     renderPage();
 
     const bar = await screen.findByRole("progressbar", { name: "PrepPath completion" });
@@ -106,5 +109,30 @@ describe("PrepPath completion tracking", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sliding window" }));
     expect(sliding).toHaveAttribute("aria-checked", "true");
     expect(bar).toHaveAttribute("aria-valuenow", "100");
+  });
+
+  it("links to the company card above the suggested AI mock", async () => {
+    localStorage.clear();
+    prepPathAPI.getQuota.mockResolvedValue({
+      data: { quota: { unlimited: true, used: 1 } },
+    });
+    prepPathAPI.listPlans.mockResolvedValue({ data: { plans: [] } });
+
+    renderPage(GENERAL_BASE, {
+      ...plan,
+      mockSuggestion: {
+        role: "Software Engineer (SDE)",
+        difficulty: "medium",
+        rounds: ["DSA"],
+        why: "Matches this company's OA pattern.",
+      },
+    });
+
+    const cardLink = await screen.findByRole("link", { name: "Open company card" });
+    expect(cardLink).toHaveAttribute("href", "/general/companystats?card=co-1");
+    const mockHeading = screen.getByRole("heading", { name: "Suggested AI mock" });
+    expect(
+      cardLink.compareDocumentPosition(mockHeading) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 });

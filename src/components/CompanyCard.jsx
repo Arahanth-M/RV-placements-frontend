@@ -75,6 +75,10 @@ function CompanyCard({
   placementCluster,
   isTeaser = false,
   detailLocked = false,
+  /** /general cards: fill zero prep counts on the card (not the first category card). */
+  boostZeroPrepCounts = false,
+  /** Scroll target when arriving from a PrepPath plan for this company. */
+  highlighted = false,
 }) {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const navigate = useNavigate();
@@ -357,12 +361,14 @@ function CompanyCard({
 
   return (
     <div
-      className={`relative rounded-2xl shadow-md p-5 sm:p-6 company-card @container h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 transition-[box-shadow,border-color] duration-300 hover:shadow-2xl ${
+      id={company?._id ? `company-card-${company._id}` : undefined}
+      className={`relative rounded-2xl shadow-md p-5 sm:p-6 company-card @container h-full w-full min-w-0 max-w-full overflow-hidden flex flex-col bg-theme-card border-2 transition-[box-shadow,border-color] duration-300 hover:shadow-2xl scroll-mt-24 ${
         isTrending
           ? "company-card--trending border-amber-400/70"
           : "border-theme-accent"
-      }`}
+      } ${highlighted ? "ring-2 ring-theme-accent bg-theme-accent/10" : ""}`}
       data-testid="company-card"
+      data-highlighted={highlighted ? "true" : undefined}
     >
       {(isGeneral && (isTeaser || detailLocked)) || isTrending ? (
         <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end gap-1">
@@ -461,6 +467,7 @@ function CompanyCard({
           company={company}
           variant="card"
           className="mb-4 w-full min-w-0"
+          boostZeroPrepCounts={boostZeroPrepCounts}
         />
       ) : null}
 

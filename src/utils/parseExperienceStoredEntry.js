@@ -19,8 +19,18 @@ function laterIso(a, b) {
 /**
  * @param {unknown} entry
  * @param {unknown} [sidecarDate]
- * @returns {{ content: string, prepRoleKey: string, isAnonymous: boolean, submittedBy: unknown, updatedAt: string|null }}
+ * @returns {{ content: string, prepRoleKey: string, isAnonymous: boolean, submittedBy: unknown, updatedAt: string|null, experienceKey: string, likeCount: number, likedByMe: boolean }}
  */
+function likeFields(entry) {
+  const source = entry && typeof entry === "object" ? entry : {};
+  const likeCount = Number(source.likeCount);
+  return {
+    experienceKey: String(source.experienceKey || ""),
+    likeCount: Number.isFinite(likeCount) && likeCount > 0 ? likeCount : 0,
+    likedByMe: source.likedByMe === true,
+  };
+}
+
 export function parseExperienceStoredEntry(entry, sidecarDate = null) {
   const sidecar = asDateIso(sidecarDate);
 
@@ -35,12 +45,21 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
         laterIso(entry.updatedAt, laterIso(entry.approvedAt, entry.submittedAt)),
         sidecar
       ),
+      ...likeFields(entry),
+      polishedContent: entry.polishedContent || null,
     };
   }
 
   const trimmed = String(entry || "").trim();
   if (!trimmed) {
-    return { content: "", prepRoleKey: "", isAnonymous: false, submittedBy: null, updatedAt: sidecar };
+    return {
+      content: "",
+      prepRoleKey: "",
+      isAnonymous: false,
+      submittedBy: null,
+      updatedAt: sidecar,
+      ...likeFields(null),
+    };
   }
 
   try {
@@ -57,6 +76,7 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
             laterIso(parsed.updatedAt, laterIso(parsed.approvedAt, parsed.submittedAt)),
             sidecar
           ),
+          ...likeFields(parsed),
         };
       }
     }
@@ -70,6 +90,7 @@ export function parseExperienceStoredEntry(entry, sidecarDate = null) {
     isAnonymous: false,
     submittedBy: null,
     updatedAt: sidecar,
+    ...likeFields(null),
   };
 }
 

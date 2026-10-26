@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaChevronRight, FaSearch } from "react-icons/fa";
 import CompanyCard from "./CompanyCard";
@@ -17,19 +17,26 @@ import {
 } from "./PageBackNav.jsx";
 import { companyAPI, billingAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
+import { isPlatformAdminUser } from "../utils/collegeScope.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import {
   GENERAL_COMPANY_CATEGORIES,
   groupCompaniesByGeneralCategory,
   isGeneralCompanyCardDetailLocked,
+  locateGeneralCompanyCard,
   parseGeneralCompanyCategoryParam,
 } from "../utils/generalCompanyCategory.js";
+import { scrollFocusNode } from "../utils/prepPathCompanyFocus.js";
 import {
   COMPANY_LIST_SEARCH_PARAM,
   parseCompanyListPageParam,
   setCompanyListPageParam,
   setCompanyListSearchParam,
 } from "../utils/companyListUrlState.js";
+import {
+  readGeneralCompanyList,
+  writeGeneralCompanyList,
+} from "../utils/generalCompanyListCache.js";
 
 const COMPANIES_PER_PAGE = 9;
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -54,18 +61,34 @@ function sortCompaniesByName(list) {
   );
 }
 
+/** Cards only read prepRoleKey. Drop link snippets before holding the list in memory. */
+function slimCompanyForGeneralList(company) {
+  if (!company || typeof company !== "object" || !Array.isArray(company.researchSources)) {
+    return company;
+  }
+  return {
+    ...company,
+    researchSources: company.researchSources.map((source) => ({
+      prepRoleKey: String(source?.prepRoleKey ?? ""),
+    })),
+  };
+}
+
 export default function GeneralCompanyList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { base, homePath } = useTenantShell();
   const { user } = useAuth();
-  const [companies, setCompanies] = useState([]);
-  const [fetchDone, setFetchDone] = useState(false);
+  const isPlatformAdmin = isPlatformAdminUser(user);
+  const [companies, setCompanies] = useState(() => readGeneralCompanyList() || []);
+  const [fetchDone, setFetchDone] = useState(() => Boolean(readGeneralCompanyList()));
   const [helpfulStatusByCompanyId, setHelpfulStatusByCompanyId] = useState({});
   const [teaserCompanyIds, setTeaserCompanyIds] = useState({});
   const [cardAccess, setCardAccess] = useState({ allCards: false, categories: {} });
 
   const selectedCategory = parseGeneralCompanyCategoryParam(searchParams.get("category"));
+  const focusCardId = String(searchParams.get("card") || "").trim();
+  const appliedCardRef = useRef("");
   const selectedCategoryMeta = GENERAL_COMPANY_CATEGORIES.find(
     (category) => category.id === selectedCategory
   );
@@ -138,14 +161,19 @@ export default function GeneralCompanyList() {
 
   useEffect(() => {
     let cancelled = false;
+    const hadCache = Boolean(readGeneralCompanyList());
     (async () => {
       try {
         const res = await companyAPI.getAllCompanies();
         if (cancelled) return;
-        setCompanies(sortCompaniesByName(uniqueCompaniesById(res.data || [])));
+        const next = sortCompaniesByName(
+          uniqueCompaniesById(res.data || []).map(slimCompanyForGeneralList)
+        );
+        writeGeneralCompanyList(next);
+        setCompanies(next);
       } catch (err) {
         console.error("Error fetching companies:", err);
-        if (!cancelled) setCompanies([]);
+        if (!cancelled && !hadCache) setCompanies([]);
       } finally {
         if (!cancelled) setFetchDone(true);
       }
@@ -163,6 +191,7 @@ export default function GeneralCompanyList() {
   const categoryCompanies = selectedCategory
     ? groupedCompanies[selectedCategory] || []
     : companies;
+  const firstCategoryCompanyId = categoryCompanies[0]?._id;
 
   const filteredCompanies = useMemo(() => {
     const q = String(search || "").trim().toLowerCase();
@@ -204,6 +233,39 @@ export default function GeneralCompanyList() {
       cancelled = true;
     };
   }, [user?.userId, selectedCategory, visibleIdsKey]);
+
+  useEffect(() => {
+    if (!fetchDone || !focusCardId) return;
+    if (appliedCardRef.current === focusCardId) return;
+    const located = locateGeneralCompanyCard(
+      companies,
+      focusCardId,
+      COMPANIES_PER_PAGE
+    );
+    if (!located) return;
+    const onCard =
+      selectedCategory === located.category &&
+      page === located.page &&
+      !String(search || "").trim();
+    if (!onCard) {
+      const next = new URLSearchParams();
+      next.set("category", located.category);
+      if (located.page > 1) next.set("page", String(located.page));
+      next.set("card", focusCardId);
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    appliedCardRef.current = focusCardId;
+    scrollFocusNode(document.getElementById(`company-card-${focusCardId}`));
+  }, [
+    companies,
+    fetchDone,
+    focusCardId,
+    page,
+    search,
+    selectedCategory,
+    setSearchParams,
+  ]);
 
   const openCategory = (categoryId) => {
     setSearchParams({ category: categoryId });
@@ -316,9 +378,14 @@ export default function GeneralCompanyList() {
                     <CompanyCard
                       key={company._id}
                       company={company}
+                      highlighted={focusCardId !== "" && String(company._id) === focusCardId}
                       helpfulStatus={helpfulStatusByCompanyId[company._id]}
                       isAdmin={false}
                       hidePlacementGotInCounts
+                      boostZeroPrepCounts={
+                        !isPlatformAdmin &&
+                        String(company._id) !== String(firstCategoryCompanyId || "")
+                      }
                       isTeaser={
                         String(teaserCompanyIds[selectedCategory] || "") ===
                         String(company._id)

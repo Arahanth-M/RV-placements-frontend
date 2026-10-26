@@ -207,6 +207,36 @@ export function groupCompaniesByGeneralCategory(companies) {
 }
 
 /**
+ * Find the category page that shows a company card.
+ * Companies must already be in the same order as the /general list (name-sorted);
+ * grouping preserves that order.
+ * @param {Array<{ _id?: unknown, id?: unknown, business_model?: unknown }>} companies
+ * @param {unknown} companyId
+ * @param {number} [perPage]
+ * @returns {{ category: string, page: number, index: number } | null}
+ */
+export function locateGeneralCompanyCard(companies, companyId, perPage = 9) {
+  const id = String(companyId || "").trim();
+  const size = Number(perPage) > 0 ? Number(perPage) : 9;
+  if (!id) return null;
+  const grouped = groupCompaniesByGeneralCategory(companies);
+  for (const category of GENERAL_COMPANY_CATEGORIES) {
+    const list = grouped[category.id] || [];
+    const index = list.findIndex(
+      (company) => String(company?._id || company?.id || "") === id
+    );
+    if (index >= 0) {
+      return {
+        category: category.id,
+        page: Math.floor(index / size) + 1,
+        index,
+      };
+    }
+  }
+  return null;
+}
+
+/**
  * Billing paywall on company cards applies only to signed-in users.
  * Guests may browse cards; company detail routes still require login.
  * Platform-admin sessions are unlocked for every card.

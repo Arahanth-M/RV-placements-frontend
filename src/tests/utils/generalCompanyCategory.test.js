@@ -11,6 +11,7 @@ import {
   GENERAL_COMPANY_CATEGORY_STARTUP,
   classifyGeneralCompanyCategory,
   groupCompaniesByGeneralCategory,
+  locateGeneralCompanyCard,
   isGeneralCompanyCardDetailLocked,
   parseGeneralCompanyCategoryParam,
 } from "../../utils/generalCompanyCategory.js";
@@ -137,6 +138,28 @@ describe("groupCompaniesByGeneralCategory", () => {
     expect(grouped.service.map((c) => c._id)).toEqual(["2"]);
     expect(grouped.others.map((c) => c._id)).toEqual(["3"]);
     expect(companies).toHaveLength(3);
+  });
+});
+
+describe("locateGeneralCompanyCard", () => {
+  const companies = [
+    { _id: "fin-1", name: "Alpha Pay", business_model: "Fintech" },
+    { _id: "prod-1", name: "Beta Soft", business_model: "Product based" },
+    { _id: "prod-2", name: "Gamma Soft", business_model: "Product based" },
+    { _id: "prod-3", name: "Delta Soft", business_model: "Product based" },
+  ];
+
+  it("returns the category and page that contain the card", () => {
+    expect(locateGeneralCompanyCard(companies, "prod-3", 2)).toEqual({
+      category: GENERAL_COMPANY_CATEGORY_PRODUCT,
+      page: 2,
+      index: 2,
+    });
+  });
+
+  it("returns null when the company is not in the list", () => {
+    expect(locateGeneralCompanyCard(companies, "missing", 2)).toBeNull();
+    expect(locateGeneralCompanyCard(companies, "  ", 2)).toBeNull();
   });
 });
 

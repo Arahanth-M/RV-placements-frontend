@@ -984,6 +984,7 @@ function AIInterviewTab({
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [tips, setTips] = useState([]);
+  const [tipsCompanySpecific, setTipsCompanySpecific] = useState(false);
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [visibleTestCases, setVisibleTestCases] = useState([]);
   const [previewExecutionResult, setPreviewExecutionResult] = useState(null);
@@ -1971,6 +1972,7 @@ function AIInterviewTab({
     setRoundFeedbackView(null);
     setIsProcessing(false);
     setTips([]);
+    setTipsCompanySpecific(false);
     setCurrentTipIndex(0);
     setVisibleTestCases([]);
     setPreviewSqlContext(null);
@@ -2563,6 +2565,7 @@ function AIInterviewTab({
         lastScore: pre.lastScore ?? null,
       };
       setTips(preTips);
+      setTipsCompanySpecific(pre.tipsCompanySpecific === true);
       console.info("[AIInterviewTab] pre-submit status ok", {
         sessionId,
         snapIdx: snap.idx,
@@ -2575,6 +2578,7 @@ function AIInterviewTab({
         message: preErr?.message,
       });
       setTips([]);
+      setTipsCompanySpecific(false);
     }
 
     try {
@@ -2661,6 +2665,7 @@ function AIInterviewTab({
           }
           if (Array.isArray(st.tips)) {
             setTips(st.tips);
+            setTipsCompanySpecific(st.tipsCompanySpecific === true);
           }
           const idx = toQuestionIndex(st.currentQuestionIndex);
           const cq = (st.currentQuestion ?? "").trim();
@@ -3993,7 +3998,9 @@ function AIInterviewTab({
                 </div>
               </div>
               <p className="text-xs text-theme-secondary ml-[108px] sm:ml-[124px]">
-                This usually takes a few seconds. Take a breath and skim a tip below.
+                {tipsCompanySpecific
+                  ? "This usually takes a few seconds. Skim what this company expects below."
+                  : "This usually takes a few seconds. Take a breath and skim a tip below."}
               </p>
             </div>
             <div className="px-6 py-6 min-h-[140px] flex flex-col justify-center">
@@ -4005,7 +4012,11 @@ function AIInterviewTab({
                   >
                     <p className="text-xs font-semibold text-theme-accent mb-2 flex items-center gap-1.5">
                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-theme-accent animate-pulse" />
-                      Interview tip
+                      {tipsCompanySpecific
+                        ? company?.name
+                          ? `What ${company.name} expects`
+                          : "What this company expects"
+                        : "Interview tip"}
                     </p>
                     <p className="text-sm sm:text-base text-theme-primary leading-relaxed whitespace-pre-wrap">
                       {tips[currentTipIndex % tips.length]}

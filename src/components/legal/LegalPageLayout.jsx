@@ -10,7 +10,12 @@ import {
 import { GENERAL_BASE, TENANT_BASE } from "../../constants/tenant.js";
 import { LEGAL_LAST_UPDATED } from "./legalMeta.js";
 
-export default function LegalPageLayout({ title, subtitle, children }) {
+export default function LegalPageLayout({
+  title,
+  subtitle,
+  lastUpdated = LEGAL_LAST_UPDATED,
+  children,
+}) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -35,7 +40,7 @@ export default function LegalPageLayout({ title, subtitle, children }) {
         </PageBackNavRow>
         <PageHeroHeader subtitle={subtitle}>{title}</PageHeroHeader>
         <p className="mx-auto mb-8 max-w-3xl text-center text-xs text-theme-muted">
-          Last updated: {LEGAL_LAST_UPDATED}
+          Last updated: {lastUpdated}
         </p>
         <article className="mx-auto max-w-3xl space-y-8 pb-8 text-sm leading-relaxed text-theme-secondary sm:text-base">
           {children}

@@ -45,11 +45,11 @@ const baseCompany = {
   platformContentUpdatedAt: "2026-03-01T00:00:00.000Z",
 };
 
-function renderCard(base, company = baseCompany) {
+function renderCard(base, company = baseCompany, extraProps = {}) {
   return render(
     <MemoryRouter>
       <TenantShellProvider base={base}>
-        <CompanyCard company={company} hidePlacementGotInCounts />
+        <CompanyCard company={company} hidePlacementGotInCounts {...extraProps} />
       </TenantShellProvider>
     </MemoryRouter>
   );
@@ -75,6 +75,26 @@ describe("CompanyCard /general prep coverage", () => {
     expect(screen.queryByText(/Last updated on:/i)).not.toBeInTheDocument();
     expect(screen.queryByText("Company prep")).not.toBeInTheDocument();
     expect(screen.queryByText("FTE")).not.toBeInTheDocument();
+  });
+
+  it("fills zero prep counts on boosted cards and leaves the first category card unchanged", () => {
+    const zeros = {
+      ...baseCompany,
+      _id: "507f1f77bcf86cd799439099",
+      platformPrepCoverageByRole: [
+        { key: "sde", label: "SDE", oa: 7, interview: 0, experiences: 0 },
+      ],
+    };
+    const { unmount } = renderCard(GENERAL_BASE, zeros, { boostZeroPrepCounts: true });
+    const boosted = screen.getByTestId("company-prep-coverage");
+    expect(boosted).toHaveTextContent(/7 OA/);
+    expect(boosted).not.toHaveTextContent(/0 interview q's/);
+    expect(boosted).not.toHaveTextContent(/0 interview expr/);
+    unmount();
+
+    renderCard(GENERAL_BASE, zeros, { boostZeroPrepCounts: false });
+    const firstCard = screen.getByTestId("company-prep-coverage");
+    expect(firstCard).toHaveTextContent(/7 OA\s*·\s*0 interview q's\s*·\s*0 interview expr/);
   });
 
   it("keeps campus visit type and business model on tenant cards", () => {

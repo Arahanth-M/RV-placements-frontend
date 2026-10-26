@@ -10,12 +10,14 @@ export default function PrepRoleSubTabs({
   forceVisible = false,
   excludeGeneralTab = true,
   requireGeneralContent = false,
+  alwaysIncludeGeneral = false,
   variant = "theme",
   switching = false,
 }) {
   const tabs = buildPrepRoleTabs(prepRoles, itemRoleKeys, {
     excludeGeneralTab,
     requireGeneralContent,
+    alwaysIncludeGeneral,
   });
   if (!forceVisible && !prepRoleTabsVisible(tabs)) return null;
   if (!tabs.length) return null;
