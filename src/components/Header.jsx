@@ -44,9 +44,12 @@ import {
 } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { isPlatformAdminUser } from "../utils/collegeScope.js";
+import {
+  LOGIN_INTENT_CAMPUS,
+  LOGIN_INTENT_GENERAL,
+} from "../utils/loginIntent.js";
 import NotificationBell from "./NotificationBell";
 import BrandLogo from "./BrandLogo.jsx";
-import PlatformLoginMenu from "./PlatformLoginMenu.jsx";
 import { useProductTour } from "../context/ProductTourContext";
 import { TOUR_PREPARE_EVENT } from "../utils/productTourEvents";
 
@@ -64,7 +67,7 @@ function buildStudentCornerLinks(base, isGeneral) {
     base === TENANT_BASE ? PATH_COMPANY_STATS : pathUnderBase(base, "/companystats");
   if (isGeneral) {
     const links = [
-      { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
+      { label: "Company Prep Hub", path: companyStatsPath, icon: FaChartBar },
       {
         label: "AI mock interviews",
         path: pathUnderBase(base, "/interviews"),
@@ -74,6 +77,11 @@ function buildStudentCornerLinks(base, isGeneral) {
         label: "Behavioral coach",
         path: pathUnderBase(base, "/behavioral-coach"),
         icon: FaUserFriends,
+      },
+      {
+        label: "Peer sessions",
+        path: pathUnderBase(base, "/peer-sessions"),
+        icon: FaUsers,
       },
       {
         label: "Challenges",
@@ -104,12 +112,17 @@ function buildStudentCornerLinks(base, isGeneral) {
     return links;
   }
   const links = [
-    { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
+    { label: "Company Prep Hub", path: companyStatsPath, icon: FaChartBar },
     { label: "AI Interviews", path: pathUnderBase(base, "/interviews"), icon: FaComments },
     {
       label: "Behavioral coach",
       path: pathUnderBase(base, "/behavioral-coach"),
       icon: FaUserFriends,
+    },
+    {
+      label: "Peer sessions",
+      path: pathUnderBase(base, "/peer-sessions"),
+      icon: FaUsers,
     },
     {
       label: "Challenges",
@@ -319,7 +332,7 @@ const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
 
 const Header = () => {
   const placementFormEntryUrl = `${BASE_URL}/api/placement/form`;
-  const { user, isAdmin, isSuperAdmin, studentData, signup, logout, loading } = useAuth();
+  const { user, isAdmin, isSuperAdmin, studentData, login, signup, logout, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -540,7 +553,7 @@ const Header = () => {
 
   // Sidebar-style dropdown wrapper
   const DropdownMenu = ({ children }) => (
-    <div className="absolute right-0 top-full z-[100] mt-1 w-52 overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
+    <div className="absolute right-0 top-full z-[100] mt-1 w-max min-w-52 max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border border-theme bg-theme-card shadow-lg py-1">
       {children}
     </div>
   );
@@ -573,12 +586,20 @@ const Header = () => {
     return (
       <div className="relative" ref={accountMenuRef}>
         {!user ? (
-          <PlatformLoginMenu
+          <button
+            type="button"
             disabled={loading}
-            align="right"
-            triggerClassName={`${headerNavChipBase} ${headerChipIdle}`}
-            triggerLabel="Login"
-          />
+            onClick={() => {
+              const next = `${location.pathname}${location.search}${location.hash}`;
+              if (next && next !== "/login" && !next.endsWith("/login")) {
+                sessionStorage.setItem("loginRedirectPath", next);
+              }
+              navigate("/login");
+            }}
+            className={`${headerNavChipBase} ${headerChipIdle}`}
+          >
+            Login
+          </button>
         ) : (
           <button
             type="button"
@@ -624,7 +645,7 @@ const Header = () => {
         {accountMenuOpen && user && (
           <DropdownMenu>
               <>
-                <div className="px-3 py-2 text-xs text-theme-secondary border-b border-theme break-words">
+                <div className="whitespace-nowrap px-3 py-2 text-xs text-theme-secondary border-b border-theme">
                   {user.email}
                 </div>
                 {!shouldHideViewProfile ? (
@@ -640,6 +661,19 @@ const Header = () => {
                   className={dropdownItemClass}
                 >
                   My Submissions
+                </button>
+                <button
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    sessionStorage.removeItem("loginRedirectPath");
+                    login(false, {
+                      intent: isGeneral ? LOGIN_INTENT_CAMPUS : LOGIN_INTENT_GENERAL,
+                      selectAccount: true,
+                    });
+                  }}
+                  className={dropdownItemClass}
+                >
+                  {isGeneral ? "Campus dashboard" : "General dashboard"}
                 </button>
                 <button
                   onClick={() => { setAccountMenuOpen(false); signup(); }}

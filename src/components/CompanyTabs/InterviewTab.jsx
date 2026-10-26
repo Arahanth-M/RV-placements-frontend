@@ -1101,9 +1101,9 @@ function InterviewTab({
       {showExperienceSection ? (
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
         <ExperienceSectionHeader
-          title="Interview Process"
+          title="Interview experience"
           count={visibleInterviewProcess.length}
-          addLabel="Add Interview Process"
+          addLabel="Add interview experience"
           onAdd={() => setShowAddProcessModal(true)}
           variant="dark"
         />
@@ -1172,12 +1172,8 @@ function InterviewTab({
           </div>
         ) : (
           <ExperienceEmptyState
-            message={
-              interviewProcess.length > 0
-                ? "No interview experiences for this role yet. Share the rounds you faced so others can prepare."
-                : "No interview experiences yet. Share the rounds you faced so others can prepare."
-            }
-            actionLabel="Add Interview Process"
+            message="No interview experiences yet. Share the rounds you faced so others can prepare."
+            actionLabel="Add interview experience"
             onAction={() => setShowAddProcessModal(true)}
             variant="dark"
           />
@@ -1260,7 +1256,7 @@ function InterviewTab({
                   <BrandLogo />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-theme-primary">Add Interview Process</h3>
+                  <h3 className="text-xl font-semibold text-theme-primary">Add interview experience</h3>
                   <p className="mt-1 text-sm text-theme-secondary">Add the overview, then enter each round separately.</p>
                 </div>
               </div>

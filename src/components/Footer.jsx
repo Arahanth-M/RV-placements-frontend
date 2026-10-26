@@ -34,7 +34,7 @@ function Footer() {
           <ul className="flex flex-col gap-3.5 items-center">
             {[
               { label: "Home", to: homePath },
-              { label: "Company Stats", to: appPath("/companystats") },
+              { label: "Company Prep Hub", to: appPath("/companystats") },
               { label: "Contact Us", to: appPath("/contact") },
               { label: "Feedback", to: appPath("/feedback") },
               { label: "Developers", to: appPath("/team") },

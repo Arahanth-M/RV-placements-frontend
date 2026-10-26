@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FaBook,
@@ -29,7 +29,6 @@ import { canAccessRvceTenant, getAppHomePathForUser, isPlatformAdminUser } from 
 import CompanyLogo from "./CompanyLogo";
 import { PageHeroFontStyles } from "./PageBackNav.jsx";
 import PlatformFooter from "./PlatformFooter.jsx";
-import PlatformLoginMenu from "./PlatformLoginMenu.jsx";
 
 const MotionDiv = motion.div;
 const MotionP = motion.p;
@@ -670,9 +669,18 @@ function LandingHero({ user, embedded = false }) {
 
 function LandingHeader({ user, loading }) {
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
   const isPlatformAdmin = isPlatformAdminUser(user);
   const canEnterRvce = !isPlatformAdmin && canAccessRvceTenant(user);
   const appHome = getAppHomePathForUser(user);
+  const openLogin = () => {
+    const next = `${location.pathname}${location.search}${location.hash}`;
+    if (next && next !== "/login" && !next.endsWith("/login")) {
+      sessionStorage.setItem("loginRedirectPath", next);
+    }
+    navigate("/login");
+  };
   return (
     <header className="sticky top-0 z-50 border-b border-theme bg-theme-card/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
@@ -714,11 +722,14 @@ function LandingHeader({ user, loading }) {
               {isPlatformAdmin ? "Admin" : canEnterRvce ? "Dashboard" : "General"}
             </Link>
           ) : (
-            <PlatformLoginMenu
-              align="right"
+            <button
+              type="button"
               disabled={loading}
-              triggerClassName="inline-flex items-center gap-2 rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-70"
-            />
+              onClick={openLogin}
+              className="inline-flex items-center gap-2 rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-70"
+            >
+              Login
+            </button>
           )}
         </div>
       </div>
@@ -733,19 +744,17 @@ export default function PlatformLanding({ embedded = false }) {
   const [companyLogos, setCompanyLogos] = useState(FALLBACK_COMPANIES);
   const [stats, setStats] = useState(FALLBACK_STATS);
   const [featuredTestimonials] = useState(() => shuffleTestimonials(STUDENT_TESTIMONIALS, 6));
-  const noticeReason = searchParams.get("reason");
-  const showRvceEmailNotice = noticeReason === "rvce_email_required";
-  const showCampusNotOnboardedNotice = noticeReason === "campus_not_onboarded";
+  const showRvceEmailNotice = searchParams.get("reason") === "rvce_email_required";
 
   useEffect(() => {
-    if (!showRvceEmailNotice && !showCampusNotOnboardedNotice) return undefined;
+    if (!showRvceEmailNotice) return undefined;
     const t = setTimeout(() => {
       const next = new URLSearchParams(searchParams);
       next.delete("reason");
       setSearchParams(next, { replace: true });
     }, 8000);
     return () => clearTimeout(t);
-  }, [showRvceEmailNotice, showCampusNotOnboardedNotice, searchParams, setSearchParams]);
+  }, [showRvceEmailNotice, searchParams, setSearchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -839,22 +848,6 @@ export default function PlatformLanding({ embedded = false }) {
           .
         </div>
       ) : null}
-      {showCampusNotOnboardedNotice ? (
-        <div className="border-b border-theme-accent/30 bg-theme-accent/10 px-4 py-3 text-center text-sm text-theme-primary">
-          Your college isn&apos;t onboarded yet. You&apos;re in the{" "}
-          <strong className="text-theme-accent">general dashboard</strong>
-          {" — "}
-          or{" "}
-          <Link
-            to="/onboard"
-            className="font-semibold text-theme-accent underline-offset-2 hover:underline"
-          >
-            enrol your college
-          </Link>
-          .
-        </div>
-      ) : null}
-
       <main className="flex-1">
         <LandingHero user={user} embedded={embedded} />
 

@@ -449,7 +449,7 @@ const Resources = () => {
             onMouseOver={(e) => e.currentTarget.style.background = '#4338CA'}
             onMouseOut={(e) => e.currentTarget.style.background = '#4F46E5'}
           >
-            Explore company stats <span style={{ fontSize: '18px' }}>→</span>
+            Explore Company Prep Hub <span style={{ fontSize: '18px' }}>→</span>
           </Link>
         </div>
 

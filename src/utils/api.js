@@ -230,6 +230,12 @@ export const companyAPI = {
       patch,
       { timeout: 120000 }
     ),
+  addCompanyResearchItem: (jobId, question, style) =>
+    API.post(
+      `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/items`,
+      { question, style },
+      { timeout: 120000 }
+    ),
   deleteCompanyResearchItem: (jobId, index) =>
     API.delete(
       `/api/admin/platform/company-research/${encodeURIComponent(String(jobId || ""))}/items/${encodeURIComponent(String(index))}`,

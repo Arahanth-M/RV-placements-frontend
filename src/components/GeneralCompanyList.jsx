@@ -297,7 +297,7 @@ export default function GeneralCompanyList() {
           {!selectedCategory ? (
             <>
               <PageHeroHeader subtitle="Grouped by each company’s business model. Pick a category to browse company cards.">
-                Company <em style={{ color: "#818CF8", fontStyle: "italic" }}>Stats</em>
+                Company <em style={{ color: "#818CF8", fontStyle: "italic" }}>Prep Hub</em>
               </PageHeroHeader>
               {!fetchDone ? (
                 <CategoryTilesGridShimmer count={GENERAL_COMPANY_CATEGORIES.length} />

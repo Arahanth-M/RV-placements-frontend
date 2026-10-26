@@ -193,6 +193,9 @@ export const AuthProvider = ({ children }) => {
     if (intent === "campus" || intent === "spc") {
       params.set("intent", intent);
     }
+    if (options?.selectAccount) {
+      params.set("prompt", "select_account");
+    }
     const qs = params.toString();
     const authUrl = isAdmin
       ? `${BASE_URL}/api/auth/google/admin${

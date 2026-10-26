@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FaCheck, FaPaperPlane } from "react-icons/fa";
+import { FaCheck, FaLock, FaPaperPlane } from "react-icons/fa";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
 import { useInterviewLock } from "../utils/InterviewLockContext";
@@ -36,6 +36,7 @@ import CompanyLogo from "./CompanyLogo";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
 import BrandLogo from "./BrandLogo.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
+import CompanyContributeModal from "./CompanyContributeModal.jsx";
 
 import AboutTab from "./CompanyTabs/AboutTab";
 import GeneralTab from "./CompanyTabs/GeneralTab";
@@ -307,6 +308,8 @@ function rvitmPlacementGotInTotal(company) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
+const FREE_GENERAL_COMPANY_TABS = new Set(["about", "quicklinks", "mustdo"]);
+
 function CompanyDetails() {
   const COMPANY_DETAILS_RETURN_PATH_KEY = "companyDetailsReturnPath";
   const { id } = useParams();
@@ -334,6 +337,8 @@ function CompanyDetails() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [paywallMeta, setPaywallMeta] = useState(null);
+  const [tabPaywallOpen, setTabPaywallOpen] = useState(false);
+  const [contributeKind, setContributeKind] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isInterviewLocked, setIsInterviewLocked] = useState(false);
   const [placementYear, setPlacementYear] = useState(DEFAULT_PLACEMENT_DETAIL_YEAR);
@@ -564,6 +569,13 @@ function CompanyDetails() {
     if (!prepFocusNav.tab) return;
     setActiveTab(prepFocusNav.tab);
   }, [id, prepFocusNav.tab, prepFocusNav.fromPrepPath]);
+
+  useEffect(() => {
+    if (!company?.tabsLocked) return;
+    if (FREE_GENERAL_COMPANY_TABS.has(activeTab)) return;
+    setActiveTab("about");
+    setTabPaywallOpen(true);
+  }, [company?.tabsLocked, activeTab]);
 
   useEffect(() => {
     if (!company || !id) return;
@@ -1023,6 +1035,10 @@ function CompanyDetails() {
   };
 
   const handleTabChange = (nextTab) => {
+    if (company?.tabsLocked && !FREE_GENERAL_COMPANY_TABS.has(nextTab)) {
+      setTabPaywallOpen(true);
+      return;
+    }
     if (
       isInterviewLocked &&
       activeTab === "aiinterview" &&
@@ -1264,6 +1280,9 @@ function CompanyDetails() {
                     }`}
                   >
                     {label}
+                    {company?.tabsLocked && !FREE_GENERAL_COMPANY_TABS.has(id) ? (
+                      <FaLock className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                    ) : null}
                     {isYearTab && (
                       <ChevronIcon
                         className={`w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 transition-transform duration-200 ${
@@ -1523,6 +1542,60 @@ function CompanyDetails() {
           />
         </div>
       )}
+      <PaywallModal
+        open={tabPaywallOpen}
+        onClose={() => setTabPaywallOpen(false)}
+        title={`Unlock ${company?.name || "this company"}`}
+        message="About, Quick links, and Must do topics are free. The other sections need a plan for this category, or a plan that includes all company cards."
+        pricingPath={appPath("/pricing")}
+        feature={company?.paywall?.feature || "company_detail"}
+        categoryId={company?.paywall?.categoryId || ""}
+      >
+        <div className="mt-5 space-y-2">
+          <p className="text-sm font-semibold text-theme-primary">Add something for this company</p>
+          <button
+            type="button"
+            onClick={() => {
+              setTabPaywallOpen(false);
+              setContributeKind("oa");
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-theme px-4 py-3 text-left text-sm font-semibold text-theme-primary hover:bg-theme-hero"
+          >
+            Add OA question
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTabPaywallOpen(false);
+              setContributeKind("interview");
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-theme px-4 py-3 text-left text-sm font-semibold text-theme-primary hover:bg-theme-hero"
+          >
+            Add interview question
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTabPaywallOpen(false);
+              setContributeKind("experience");
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-theme px-4 py-3 text-left text-sm font-semibold text-theme-primary hover:bg-theme-hero"
+          >
+            Add interview experience
+          </button>
+        </div>
+      </PaywallModal>
+      <CompanyContributeModal
+        open={Boolean(contributeKind)}
+        kind={contributeKind}
+        onKindChange={setContributeKind}
+        onClose={() => setContributeKind(null)}
+        company={company}
+        isGeneral={isGeneral}
+        placementYear={placementYear}
+        placementListContext={placementContextForApi}
+        placementCompanyVisitId={placementCompanyVisitIdForApi}
+      />
     </>
   );
 }

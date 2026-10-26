@@ -17,7 +17,6 @@ import {
   normalizeTotalGotInByYear,
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
-import PaywallModal from "./PaywallPanel.jsx";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
@@ -106,7 +105,6 @@ function CompanyCard({
     normalizeTotalGotInByYear(company, cardPlacementYear)
   );
   const [isUpdatingTotalGotIn, setIsUpdatingTotalGotIn] = useState(false);
-  const [paywallOpen, setPaywallOpen] = useState(false);
   const viewCount = Math.max(0, Number(company.views) || 0);
   const isTrending = company.trending === true;
   // Update local state when company prop changes
@@ -165,10 +163,6 @@ function CompanyCard({
   })();
 
   const handleCardClick = () => {
-    if (isGeneral && detailLocked) {
-      setPaywallOpen(true);
-      return;
-    }
     // Store that we're navigating from company cards view (user-specific)
     // The parent component (CompanyStats) will store the current state via useEffect cleanup
     const storageKey = user && user.userId ? `fromCompanyCards_${user.userId}` : 'fromCompanyCards';
@@ -208,7 +202,6 @@ function CompanyCard({
 
   const prefetchDetails = () => {
     if (hasPrefetchedRef.current || !company?._id) return;
-    if (isGeneral && detailLocked) return;
     hasPrefetchedRef.current = true;
     if (isGeneral) {
       companyAPI.prefetchCompany(company._id, { scope: "platform" });
@@ -626,14 +619,6 @@ function CompanyCard({
           </div>
         </div>
       </div>
-      <PaywallModal
-        open={paywallOpen}
-        onClose={() => setPaywallOpen(false)}
-        title={`Unlock ${company?.name || "this company"}`}
-        message="This company card is premium. The first company in each category stays free to open. Unlock this category, or a plan that includes all company cards."
-        pricingPath={appPath("/pricing")}
-        feature="company_detail"
-      />
     </div>
   );
 }

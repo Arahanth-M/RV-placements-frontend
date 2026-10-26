@@ -912,6 +912,9 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
   const [linksSummaryText, setLinksSummaryText] = useState("");
   const [savingLinksSummary, setSavingLinksSummary] = useState(false);
   const [savingItemIndex, setSavingItemIndex] = useState(null);
+  const [manualQuestion, setManualQuestion] = useState("");
+  const [manualStyle, setManualStyle] = useState("non_coding");
+  const [addingQuestion, setAddingQuestion] = useState(false);
   const statusRef = useRef("");
   const deadlineRef = useRef({ id: "", at: 0 });
   const generationRef = useRef(0);
@@ -1653,6 +1656,42 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
     }
   };
 
+  const addManualQuestion = async (event) => {
+    event.preventDefault();
+    const text = manualQuestion.replace(/\s+/g, " ").trim();
+    if (!researchJobId || published || questionsFinalized || isExperience || !text) return;
+    setAddingQuestion(true);
+    setResearchError("");
+    try {
+      const res = await companyAPI.addCompanyResearchItem(researchJobId, text, manualStyle);
+      const items = Array.isArray(res?.data?.items) ? res.data.items : null;
+      const index = Number(res?.data?.index);
+      if (!items || !Number.isInteger(index)) return;
+      setResearchResult((current) => {
+        if (!current) return current;
+        const next = { ...current, items };
+        const jobId = researchJobIdRef.current;
+        const nextMap = { ...jobsBySlotRef.current };
+        for (const [key, row] of Object.entries(nextMap)) {
+          if (row?.jobId === jobId) nextMap[key] = { ...row, result: next };
+        }
+        jobsBySlotRef.current = nextMap;
+        setJobsBySlot(nextMap);
+        return next;
+      });
+      setSelectedIndexes((current) => {
+        const next = new Set(current);
+        next.add(index);
+        return next;
+      });
+      setManualQuestion("");
+    } catch (err) {
+      setResearchError(apiErrorMessage(err, "This question could not be added."));
+    } finally {
+      setAddingQuestion(false);
+    }
+  };
+
   const finalizeQuestions = () => {
     if (selectedIndexes.size === 0) return;
     const indexes = [...selectedIndexes].sort((a, b) => a - b);
@@ -2134,6 +2173,49 @@ export default function GeneralResearchPanel({ companyId, companyName }) {
 
           {!savesLinks || reviewTab === "questions" ? (
             <div className="space-y-4" role="tabpanel">
+              {!isExperience && !questionsFinalized && !published ? (
+                <form
+                  onSubmit={addManualQuestion}
+                  className="space-y-2 rounded-xl border border-theme bg-theme-hero/20 p-3"
+                >
+                  <p className="text-sm font-semibold text-theme-primary">Add a question</p>
+                  <p className="text-xs text-theme-secondary">
+                    Add it before you finalize. Answer generation then covers this question together
+                    with the ones you keep.
+                  </p>
+                  <textarea
+                    className={`${inputClass} min-h-[88px]`}
+                    value={manualQuestion}
+                    onChange={(event) => setManualQuestion(event.target.value)}
+                    placeholder="Paste or type the full question"
+                    aria-label="Manual question"
+                    disabled={addingQuestion}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-xs font-semibold text-theme-secondary" htmlFor="manual-question-style">
+                      Type
+                    </label>
+                    <select
+                      id="manual-question-style"
+                      className={`${inputClass} w-auto`}
+                      value={manualStyle}
+                      onChange={(event) => setManualStyle(event.target.value)}
+                      disabled={addingQuestion}
+                    >
+                      <option value="non_coding">Written</option>
+                      <option value="coding">Coding</option>
+                      {reviewField === "onlineQuestions" ? <option value="sql">SQL</option> : null}
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={addingQuestion || !manualQuestion.trim()}
+                      className="rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme-primary disabled:opacity-60"
+                    >
+                      {addingQuestion ? "Adding…" : "Add question"}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
               {!questionsFinalized && questions.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   <button
