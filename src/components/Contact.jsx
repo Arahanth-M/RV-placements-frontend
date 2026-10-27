@@ -1,6 +1,6 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaEnvelope, FaExternalLinkAlt, FaLinkedin, FaMapMarkerAlt, FaUniversity } from "react-icons/fa";
+import { FaEnvelope, FaExternalLinkAlt, FaMapMarkerAlt, FaUniversity } from "react-icons/fa";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -13,7 +13,6 @@ import { RVCE_PLACEMENT_EMAIL, RVITM_PLACEMENT_EMAIL } from "../utils/collegeSco
 import {
   DEVOMATION_AI_EMAIL,
   PLATFORM_CONTACT_EMAIL,
-  PLATFORM_LINKEDIN_URL,
 } from "../utils/constants";
 import { GENERAL_BASE, TENANT_BASE } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
@@ -62,58 +61,36 @@ function GeneralContactBody() {
         Contact <em style={{ color: "#818CF8", fontStyle: "italic" }}>Us</em>
       </PageHeroHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-shadow">
-          <div className="flex items-center mb-3 sm:mb-4">
+      <div className="mb-6 flex justify-center sm:mb-8">
+        <div className="w-full max-w-xl rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-center shadow-lg backdrop-blur transition-shadow hover:shadow-xl sm:p-8">
+          <div className="mb-3 flex items-center justify-center sm:mb-4">
             <div
-              className="rounded-full p-2 sm:p-3 mr-3 sm:mr-4 border border-theme-accent"
+              className="mr-3 rounded-full border border-theme-accent p-2 sm:mr-4 sm:p-3"
               style={{ backgroundColor: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
             >
-              <FaEnvelope className="w-5 h-5 sm:w-6 sm:h-6 text-theme-accent" />
+              <FaEnvelope className="h-5 w-5 text-theme-accent sm:h-6 sm:w-6" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-indigo-400">Email</h2>
+            <h2 className="text-xl font-semibold text-indigo-400 sm:text-2xl">Email</h2>
           </div>
-          <p className="text-sm sm:text-base text-slate-400 mb-2">Product support</p>
+          <p className="mb-2 text-sm text-slate-400 sm:text-base">Product support</p>
           <a
             href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
-            className="text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base md:text-lg flex items-center break-all"
+            className="inline-flex items-center justify-center break-all text-sm font-medium text-indigo-400 hover:text-indigo-300 sm:text-base md:text-lg"
           >
             {PLATFORM_CONTACT_EMAIL}
-            <FaExternalLinkAlt className="w-3 h-3 sm:w-4 sm:h-4 ml-2 flex-shrink-0" />
+            <FaExternalLinkAlt className="ml-2 h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
           </a>
-          <p className="text-sm sm:text-base text-slate-400 mt-4 mb-2">Business</p>
+          <p className="mb-2 mt-4 text-sm text-slate-400 sm:text-base">Business</p>
           <a
             href={`mailto:${DEVOMATION_AI_EMAIL}`}
-            className="text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base md:text-lg flex items-center break-all"
+            className="inline-flex items-center justify-center break-all text-sm font-medium text-indigo-400 hover:text-indigo-300 sm:text-base md:text-lg"
           >
             {DEVOMATION_AI_EMAIL}
-            <FaExternalLinkAlt className="w-3 h-3 sm:w-4 sm:h-4 ml-2 flex-shrink-0" />
+            <FaExternalLinkAlt className="ml-2 h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
           </a>
           <p className="mt-4 text-sm text-slate-400">
             Support is provided by email. We do not currently publish a customer phone number.
           </p>
-        </div>
-
-        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl shadow-lg p-6 sm:p-8 hover:shadow-xl transition-shadow">
-          <div className="flex items-center mb-3 sm:mb-4">
-            <div
-              className="rounded-full p-2 sm:p-3 mr-3 sm:mr-4 border border-theme-accent"
-              style={{ backgroundColor: "color-mix(in srgb, var(--accent) 14%, transparent)" }}
-            >
-              <FaLinkedin className="w-5 h-5 sm:w-6 sm:h-6 text-theme-accent" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-indigo-400">LinkedIn</h2>
-          </div>
-          <p className="text-sm sm:text-base text-slate-400 mb-3 sm:mb-4">{LEGAL_OPERATOR}</p>
-          <a
-            href={PLATFORM_LINKEDIN_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-400 hover:text-indigo-300 font-medium text-sm sm:text-base md:text-lg flex items-center break-all"
-          >
-            linkedin.com/company/devomation-ai
-            <FaExternalLinkAlt className="w-3 h-3 sm:w-4 sm:h-4 ml-2 flex-shrink-0" />
-          </a>
         </div>
       </div>
 

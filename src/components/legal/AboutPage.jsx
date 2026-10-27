@@ -61,7 +61,7 @@ export default function AboutPage() {
               {DEVOMATION_AI_EMAIL}
             </a>
           </li>
-          <li>
+          {/* <li>
             LinkedIn:{" "}
             <a
               className="text-theme-accent underline"
@@ -71,7 +71,7 @@ export default function AboutPage() {
             >
               Devomation AI
             </a>
-          </li>
+          </li> */}
         </ul>
       </LegalSection>
 

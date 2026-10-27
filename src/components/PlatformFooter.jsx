@@ -112,26 +112,28 @@ export default function PlatformFooter() {
           </div>
 
           <div className="lg:col-span-2">
-            <FooterHeading>Contact</FooterHeading>
-            <div className="flex items-center gap-3">
-              <a
-                href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
-                className={socialBtnClass}
-                aria-label={`Email ${PLATFORM_CONTACT_EMAIL}`}
-                title={PLATFORM_CONTACT_EMAIL}
-              >
-                <FaEnvelope className="h-4 w-4" aria-hidden />
-              </a>
-              <a
-                href={PLATFORM_LINKEDIN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={socialBtnClass}
-                aria-label="Devomation AI on LinkedIn"
-                title="LinkedIn"
-              >
-                <FaLinkedin className="h-4 w-4" aria-hidden />
-              </a>
+            <div className="inline-flex flex-col items-center">
+              <FooterHeading>Contact</FooterHeading>
+              <div className="flex items-center justify-center gap-3">
+                <a
+                  href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
+                  className={socialBtnClass}
+                  aria-label={`Email ${PLATFORM_CONTACT_EMAIL}`}
+                  title={PLATFORM_CONTACT_EMAIL}
+                >
+                  <FaEnvelope className="h-4 w-4" aria-hidden />
+                </a>
+                {/* <a
+                  href={PLATFORM_LINKEDIN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={socialBtnClass}
+                  aria-label="Devomation AI on LinkedIn"
+                  title="LinkedIn"
+                >
+                  <FaLinkedin className="h-4 w-4" aria-hidden />
+                </a> */}
+              </div>
             </div>
           </div>
         </div>
