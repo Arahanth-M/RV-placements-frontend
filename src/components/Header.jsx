@@ -111,28 +111,14 @@ function buildStudentCornerLinks(base, isGeneral) {
     });
     return links;
   }
+  // Campus Student Corner must stay distinct from /general (no behavioral/peer/challenges/drive calendar).
   const links = [
-    { label: "Company Prep Hub", path: companyStatsPath, icon: FaChartBar },
+    { label: "Company Stats", path: companyStatsPath, icon: FaChartBar },
     { label: "AI Interviews", path: pathUnderBase(base, "/interviews"), icon: FaComments },
     {
-      label: "Behavioral coach",
-      path: pathUnderBase(base, "/behavioral-coach"),
-      icon: FaUserFriends,
-    },
-    {
-      label: "Peer sessions",
-      path: pathUnderBase(base, "/peer-sessions"),
-      icon: FaUsers,
-    },
-    {
-      label: "Challenges",
-      path: pathUnderBase(base, "/challenges"),
-      icon: FaTrophy,
-    },
-    {
-      label: "Drive calendar",
-      path: pathUnderBase(base, "/drive-calendar"),
-      icon: FaCalendarCheck,
+      label: "Interview Slots",
+      path: pathUnderBase(base, "/interview-slots"),
+      icon: FaCalendarAlt,
     },
     { label: "PrepPath", path: pathUnderBase(base, "/prep-path"), icon: FaMapMarkedAlt },
     { label: "Resources", path: pathUnderBase(base, "/resources"), icon: FaBook },

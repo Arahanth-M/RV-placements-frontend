@@ -272,7 +272,12 @@ function StudentFeatureRoutes({
   includeLeaderboard = true,
   flatCompanyList = false,
   generalInterviewHub = false,
+  /** /general-only: behavioral coach, peer sessions, challenges, drive calendar */
+  includeGeneralOnlyFeatures = false,
 } = {}) {
+  const generalOnlyFallback = (
+    <Navigate to={includeGeneralOnlyFeatures ? GENERAL_BASE : TENANT_BASE} replace />
+  );
   return (
     <>
       {includeIndexHome ? <Route index element={<Home />} /> : null}
@@ -332,38 +337,49 @@ function StudentFeatureRoutes({
           </ProtectedRoute>
         }
       />
-      <Route
-        path="behavioral-coach"
-        element={
-          <ProtectedRoute>
-            <BehavioralCoachPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="peer-sessions"
-        element={
-          <ProtectedRoute>
-            <PeerSessionsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="challenges"
-        element={
-          <ProtectedRoute>
-            <PracticeChallengesPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="drive-calendar"
-        element={
-          <ProtectedRoute>
-            <DriveCalendarPage />
-          </ProtectedRoute>
-        }
-      />
+      {includeGeneralOnlyFeatures ? (
+        <>
+          <Route
+            path="behavioral-coach"
+            element={
+              <ProtectedRoute>
+                <BehavioralCoachPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="peer-sessions"
+            element={
+              <ProtectedRoute>
+                <PeerSessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="challenges"
+            element={
+              <ProtectedRoute>
+                <PracticeChallengesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="drive-calendar"
+            element={
+              <ProtectedRoute>
+                <DriveCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+        </>
+      ) : (
+        <>
+          <Route path="behavioral-coach" element={generalOnlyFallback} />
+          <Route path="peer-sessions" element={generalOnlyFallback} />
+          <Route path="challenges" element={generalOnlyFallback} />
+          <Route path="drive-calendar" element={generalOnlyFallback} />
+        </>
+      )}
       <Route path="team" element={<Developers />} />
       <Route
         path="profile"
@@ -532,6 +548,7 @@ function GeneralRoutes() {
           includeLeaderboard: false,
           flatCompanyList: true,
           generalInterviewHub: true,
+          includeGeneralOnlyFeatures: true,
         })}
         <Route
           path="interview-slots"

@@ -3,15 +3,12 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   FaBook,
-  FaBriefcase,
   FaBuilding,
   FaCalendarAlt,
   FaChartLine,
   FaCode,
   FaComments,
   FaFileAlt,
-  FaFolderOpen,
-  FaGraduationCap,
   FaMapMarkedAlt,
   FaMoon,
   FaQuestionCircle,
@@ -177,19 +174,19 @@ const CHALLENGES = [
     icon: FaTrophy,
     title: "No idea where you stand",
     text: "Without peer benchmarks and a performance view, it’s hard to know if you’re actually interview-ready.",
-    fixes: ["Daily & weekly challenges", "Performance overview", "Hear from seniors"],
+    fixes: ["Daily & weekly challenges", "Performance overview"],
   },
   {
     icon: FaFileAlt,
     title: "Resume and documents are last-minute chaos",
     text: "ATS rejects, outdated resumes, and offer letters / certificates buried across devices.",
-    fixes: ["Resume builder + ATS", "Live preview", "Private document vault"],
+    fixes: ["Resume builder + ATS", "Live preview"],
   },
   {
     icon: FaCalendarAlt,
     title: "Drives move faster than students do",
     text: "Deadlines, eligibility, and visit dates get lost in group chats until it’s already too late.",
-    fixes: ["Drive calendar & reminders", "Eligibility checklists", "Career explorer"],
+    fixes: ["Drive calendar & reminders", "Eligibility checklists"],
   },
 ];
 
@@ -235,11 +232,6 @@ const SOLUTIONS = [
     text: "STAR-format practice for HR rounds — clearer stories, stronger delivery, less blanking out.",
   },
   {
-    icon: FaBriefcase,
-    title: "Career explorer",
-    text: "Roles, skills, sample JDs, and market salary ranges so you pick targets with eyes open.",
-  },
-  {
     icon: FaFileAlt,
     title: "Resume builder + ATS",
     text: "Live preview and ATS checks so your resume is placement-ready before you hit apply.",
@@ -248,16 +240,6 @@ const SOLUTIONS = [
     icon: FaCalendarAlt,
     title: "Drive calendar & reminders",
     text: "Upcoming visits, deadlines, and eligibility checklists — so nothing important slips by.",
-  },
-  {
-    icon: FaFolderOpen,
-    title: "Private document vault",
-    text: "Offer letters, resumes, and certificates in one secure place — yours alone.",
-  },
-  {
-    icon: FaGraduationCap,
-    title: "Hear from seniors",
-    text: "Advice and lived experience from people a step ahead on the same campus journey.",
   },
   {
     icon: FaChartLine,
