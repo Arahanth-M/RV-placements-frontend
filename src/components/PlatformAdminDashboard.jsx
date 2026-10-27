@@ -400,7 +400,13 @@ function visitorName(row) {
   return email ? email.split("@")[0] : "Visitor";
 }
 
+const VISITOR_AUDIENCE_TABS = [
+  { key: "general", label: "General dashboard" },
+  { key: "campus", label: "Campus dashboard" },
+];
+
 function VisitorsPanel() {
+  const [audience, setAudience] = useState("general");
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -415,7 +421,7 @@ function VisitorsPanel() {
     setError("");
     try {
       const { data } = await platformAdminAPI.getVisitors({
-        params: { page, limit: 50, q: query || undefined },
+        params: { page, limit: 50, q: query || undefined, audience },
       });
       setItems(Array.isArray(data?.items) ? data.items : []);
       setTotal(Number(data?.total) || 0);
@@ -427,7 +433,7 @@ function VisitorsPanel() {
     } finally {
       setLoading(false);
     }
-  }, [page, query]);
+  }, [page, query, audience]);
 
   useEffect(() => {
     void load();
@@ -439,13 +445,23 @@ function VisitorsPanel() {
     setQuery(draft.trim());
   };
 
+  const selectAudience = (next) => {
+    if (next === audience) return;
+    setAudience(next);
+    setPage(1);
+  };
+
+  const audienceLabel =
+    audience === "campus" ? "campus dashboard" : "general dashboard";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="text-base font-semibold text-theme-primary">Signed-in visitors</h3>
           <p className="mt-1 text-sm text-theme-secondary">
-            {total} {total === 1 ? "person" : "people"} signed in on or after 1 October 2026, newest first.
+            {total} {total === 1 ? "person" : "people"} on the {audienceLabel} signed in on or after
+            1 October 2026, newest first.
           </p>
         </div>
         <form className="flex gap-2" onSubmit={submitSearch}>
@@ -465,6 +481,32 @@ function VisitorsPanel() {
         </form>
       </div>
 
+      <div
+        className="inline-flex rounded-xl border border-theme bg-theme-card p-1"
+        role="tablist"
+        aria-label="Visitor audience"
+      >
+        {VISITOR_AUDIENCE_TABS.map((tab) => {
+          const selected = audience === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                selected
+                  ? "bg-theme-accent text-white"
+                  : "text-theme-secondary hover:text-theme-primary"
+              }`}
+              onClick={() => selectAudience(tab.key)}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? <p className="text-sm text-theme-secondary">Loading visitors…</p> : null}
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
@@ -476,13 +518,12 @@ function VisitorsPanel() {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Last login</th>
-                <th className="px-4 py-3">Audience</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-4 text-theme-secondary" colSpan={4}>
+                  <td className="px-4 py-4 text-theme-secondary" colSpan={3}>
                     {query ? "No visitors match that search." : "No sign-ins yet."}
                   </td>
                 </tr>
@@ -493,9 +534,6 @@ function VisitorsPanel() {
                     <td className="px-4 py-3 text-theme-secondary">{row.email || "—"}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-theme-secondary">
                       {formatWhen(row.lastLoginAt)}
-                    </td>
-                    <td className="px-4 py-3 text-theme-secondary">
-                      {row.audience === "campus" ? "Campus" : "General"}
                     </td>
                   </tr>
                 ))
