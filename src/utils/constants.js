@@ -147,14 +147,14 @@ export const FEEDBACK_FORM_URL =
     String(process.env.REACT_APP_FEEDBACK_FORM_URL).trim()) ||
   "https://docs.google.com/forms/d/e/1FAIpQLSfiUSw6yFFy-id7_jRv-GKGS3cBcvYPKY-zN7NalR7TqZxvIQ/viewform?usp=publish-editor";
 
-/** Hostnames where resume builder is on without rebuild (matches gradual rollout / prod domain). */
+/** Hostnames where resume builder is on without rebuild (prod + subdomains like test.*). */
 function isResumeBuilderAllowedHostname(hostname) {
   const h = String(hostname || "").trim().toLowerCase();
   if (!h) return false;
   if (h === "localhost" || h === "127.0.0.1") return true;
   const domain = String(PRODUCTION_DOMAIN || "").trim().toLowerCase();
   if (!domain) return false;
-  return h === domain || h === `www.${domain}`;
+  return h === domain || h.endsWith(`.${domain}`);
 }
 
 /** Feature flag: env `REACT_APP_ENABLE_RESUME_BUILDER=1`, localhost, or production domain at runtime. */

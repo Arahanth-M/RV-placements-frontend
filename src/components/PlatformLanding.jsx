@@ -155,7 +155,7 @@ const CHALLENGES = [
   {
     icon: FaBuilding,
     title: "Companies feel like a black box",
-    text: "Roles, rounds, and what to prepare are scattered across chats and random blogs — never in one place.",
+    text: "Roles, rounds, and what to prepare are scattered across chats and random blogs and never in one place.",
     fixes: ["Company insights", "Coding Qs & experiences", "Interview stories"],
   },
   {
@@ -194,7 +194,7 @@ const SOLUTIONS = [
   {
     icon: FaBuilding,
     title: "Company insights",
-    text: "Roles, process, and what each company looks for — so prep starts with context, not guesswork.",
+    text: "Roles, process, and what each company looks for,so prep starts with context, not guesswork.",
   },
   {
     icon: FaRobot,
@@ -204,7 +204,7 @@ const SOLUTIONS = [
   {
     icon: FaMapMarkedAlt,
     title: "PrepPath",
-    text: "A guided plan toward your target roles — what to learn, what to revise, and what to skip.",
+    text: "A guided plan toward your target roles which has what to learn, what to revise, and what to skip.",
   },
   {
     icon: FaBook,
@@ -219,17 +219,17 @@ const SOLUTIONS = [
   {
     icon: FaTrophy,
     title: "Daily & weekly challenges",
-    text: "Short practice bursts that show where you stand among peers — and keep you consistent.",
+    text: "Short practice bursts that show where you stand among peers.",
   },
   {
     icon: FaUserFriends,
     title: "Peer mock pairing",
-    text: "Book a 30‑minute mock with another student on campus and practice like it’s the real interview.",
+    text: "Book a 30‑minute mock with another student and practice like it’s the real interview.",
   },
   {
     icon: FaComments,
     title: "Behavioral answer coach",
-    text: "STAR-format practice for HR rounds — clearer stories, stronger delivery, less blanking out.",
+    text: "STAR-format practice for HR rounds. Clearer stories, stronger delivery, less blanking out.",
   },
   {
     icon: FaFileAlt,
@@ -239,12 +239,12 @@ const SOLUTIONS = [
   {
     icon: FaCalendarAlt,
     title: "Drive calendar & reminders",
-    text: "Upcoming visits, deadlines, and eligibility checklists — so nothing important slips by.",
+    text: "Upcoming visits, deadlines, and eligibility checklists,so nothing important slips by.",
   },
   {
     icon: FaChartLine,
     title: "Performance overview",
-    text: "See strengths, gaps, and progress across mocks and practice — know what to fix next.",
+    text: "See strengths, gaps, and progress across mocks and practice and know what to fix next.",
   },
 ];
 
@@ -607,7 +607,7 @@ function LandingHero({ user, embedded = false }) {
           {...fadeUp(0.16)}
           className="mt-6 max-w-xl text-lg sm:text-xl text-theme-secondary leading-relaxed mx-auto font-medium"
         >
-          Crack placements with company-ready prep — not guesswork.
+          Crack placements with company-ready prep and not guesswork.
         </MotionP>
 
         <HeroHighlightRotator />
@@ -634,9 +634,9 @@ function LandingHero({ user, embedded = false }) {
                 <a href="#solutions" className={heroBtnClass}>
                   See what you get
                 </a>
-                <a href="#challenges" className={heroBtnClass}>
+                {/* <a href="#challenges" className={heroBtnClass}>
                   See challenges
-                </a>
+                </a> */}
                 <Link to="/onboard" className={heroBtnClass}>
                   Enrol your college
                 </Link>
@@ -872,7 +872,7 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="What we"
               titleAccent="Provide"
-              subtitle="One place for insight, practice, peer pressure (the good kind), resumes, drives, and performance — built for campus placement season."
+              subtitle="One place for insight, practice, peer pressure (the good kind), resumes, drives, and performance,built for campus placement season."
               id="landing-solutions-heading"
             />
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">

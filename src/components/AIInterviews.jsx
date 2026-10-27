@@ -316,17 +316,17 @@ function AIInterviews({ embedded = false, hideSlotsTab = false } = {}) {
         </button>
       </div>
 
-      {activeTab !== "slots" ? (
-      <div
-        className="mb-6 rounded-xl border border-dashed border-theme-accent/35 bg-theme-hero/60 px-4 py-3 text-sm text-theme-secondary"
-        data-tour="ai-interviews-start"
-      >
-        <span className="font-semibold text-theme-primary">Start a mock interview: </span>
-        {isGeneral
-          ? "Student Corner → AI mock interviews → pick a company → customize your interview → Start Interview."
-          : 'Company Stats → open a company → click on "Explore AI interview" button which is located at bottom right → Customize your interview → Start Interview.'}
-      </div>
-      ) : null}
+      {/* {activeTab !== "slots" ? (
+      // <div
+      //   className="mb-6 rounded-xl border border-dashed border-theme-accent/35 bg-theme-hero/60 px-4 py-3 text-sm text-theme-secondary"
+      //   data-tour="ai-interviews-start"
+      // >
+      //   <span className="font-semibold text-theme-primary">Start a mock interview: </span>
+      //   {isGeneral
+      //     ? "Student Corner → AI mock interviews → pick a company → customize your interview → Start Interview."
+      //     : 'Company Stats → open a company → click on "Explore AI interview" button which is located at bottom right → Customize your interview → Start Interview.'}
+      // </div>
+      ) : null} */}
 
       {activeTab === "slots" && allowSlots ? (
         <InterviewSlotsPage embedded />

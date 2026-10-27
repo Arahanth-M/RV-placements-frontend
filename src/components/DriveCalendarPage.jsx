@@ -28,7 +28,7 @@ const REMINDER_KIND_OPTIONS = [
   { id: "day_of", label: "On the day" },
   { id: "day_before", label: "Day before" },
   { id: "week_before", label: "A week before" },
-  { id: "custom", label: "Custom (tell us what you need)" },
+  // { id: "custom", label: "Custom (tell us what you need)" },
 ];
 
 const REMINDER_CHANNEL_OPTIONS = [
@@ -290,7 +290,7 @@ export default function DriveCalendarPage() {
           <PageBackButton onClick={() => navigate(appPath("/"))} label="Back" />
         </PageBackNavRow>
 
-        <PageHeroHeader subtitle="Log campus visits, deadlines, and eligibility checklists yourself. Choose reminder timing and channel — we’ll save it and send notifications manually for now.">
+        <PageHeroHeader subtitle="Log campus visits, deadlines, and eligibility checklists yourself. Choose reminder timing and channel. We’ll save it and send notifications manually for now.">
           Drive{" "}
           <span className="italic text-theme-accent">calendar</span>
         </PageHeroHeader>
@@ -456,9 +456,9 @@ export default function DriveCalendarPage() {
                             maxLength={20}
                             className="mt-1 w-full rounded-lg border border-theme bg-theme-card px-2 py-2 text-sm font-normal"
                           />
-                          <span className="mt-1 block text-[11px] font-normal text-theme-secondary">
+                          {/* <span className="mt-1 block text-[11px] font-normal text-theme-secondary">
                             Used for WhatsApp / SMS reminders (saved only; sent manually for now).
-                          </span>
+                          </span> */}
                         </label>
                       ) : null}
                       <label className="block text-xs font-semibold text-theme-primary">

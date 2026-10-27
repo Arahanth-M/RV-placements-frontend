@@ -549,7 +549,7 @@ export default function BehavioralCoachPage() {
   const avgStar = summary?.averageStar || {};
   const pickHint = whyMode
     ? "This theme uses Motivation → Fit → Evidence → Aspiration (not STAR)."
-    : "We’ll give you one HR-style prompt. Fill each STAR box, then review dimension scores.";
+    : "You'll get one HR-style prompt. Fill each STAR box, then review dimension scores.";
 
   return (
     <div className={pageShellOuterClassCompact}>
@@ -560,7 +560,7 @@ export default function BehavioralCoachPage() {
           <PageBackButton onClick={() => navigate(appPath("/"))} label="Back" />
         </PageBackNavRow>
 
-        <PageHeroHeader subtitle="Practice one answer at a time — STAR for behavioral themes, Motivation/Fit for why-company — then get dimension coaching.">
+        <PageHeroHeader >
           Behavioral{" "}
           <span className="italic text-theme-accent">answer coach</span>
         </PageHeroHeader>

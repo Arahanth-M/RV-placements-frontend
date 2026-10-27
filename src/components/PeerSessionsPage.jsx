@@ -774,7 +774,7 @@ export default function PeerSessionsPage() {
           <PageBackButton onClick={() => navigate(appPath("/"))} label="Back" />
         </PageBackNavRow>
 
-        <PageHeroHeader subtitle="Book an online Google Meet session (auto-created) — mock interviews, study groups, or doubts. Times are in IST. Others request to join; you accept. The Meet link unlocks for accepted members during the session window. Share your session code from All sessions.">
+        <PageHeroHeader subtitle="Book an online Google Meet session (auto-created) for mock interviews, study groups, or doubts. Times are in IST. when others request to join, you accept. The Meet link unlocks for accepted members during the session window. Share your session code from All sessions with your friends to make them join easily.">
           Peer{" "}
           <span className="italic text-theme-accent">sessions</span>
         </PageHeroHeader>

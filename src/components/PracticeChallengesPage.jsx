@@ -442,7 +442,7 @@ export default function PracticeChallengesPage() {
               className={tab === TAB_TODAY ? "space-y-4" : "hidden"}
             >
               <p className="text-sm text-theme-secondary">
-                {today.periodKey} · {formatWindow(today.opensAt, today.closesAt)}
+                {formatWindow(today.opensAt, today.closesAt)}
                 {today.myPoints != null ? ` · Your points today: ${today.myPoints}` : ""}
               </p>
               {todayProblem ? (
