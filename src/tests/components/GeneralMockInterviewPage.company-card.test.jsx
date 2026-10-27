@@ -37,15 +37,6 @@ vi.mock("../../components/InterviewSlotsPage", () => ({
   default: () => null,
 }));
 
-vi.mock("../../components/CompanyCard.jsx", () => ({
-  default: ({ company, detailLocked }) => (
-    <article data-testid="company-card">
-      {company?.name}
-      {detailLocked ? " locked" : ""}
-    </article>
-  ),
-}));
-
 function renderPage(search = "") {
   return render(
     <MemoryRouter initialEntries={[`/interviews${search}`]}>
@@ -61,7 +52,7 @@ describe("GeneralMockInterviewPage company stats card", () => {
     getCompanyNames.mockResolvedValue({ data: [{ _id: "co-1", name: "PhonePe" }] });
   });
 
-  it("shows the company card and must-do topics between selection and interview setup", async () => {
+  it("shows a company-card link and must-do topics between selection and interview setup", async () => {
     getCompany.mockResolvedValue({
       data: {
         _id: "co-1",
@@ -74,10 +65,13 @@ describe("GeneralMockInterviewPage company stats card", () => {
     renderPage("?companyId=co-1");
 
     expect(await screen.findByRole("heading", { name: "Company stats" })).toBeInTheDocument();
-    expect(screen.getByTestId("company-card")).toHaveTextContent("PhonePe");
+    const cardLink = screen.getByTestId("mock-company-card-link");
+    expect(cardLink).toHaveTextContent("Open PhonePe card");
+    expect(cardLink).toHaveAttribute("href", "/general/companystats?card=co-1");
     expect(screen.getByText("Dynamic Programming")).toBeInTheDocument();
     expect(screen.getByText("SQL")).toBeInTheDocument();
     expect(screen.getByText(/Before you configure the interview/)).toBeInTheDocument();
+    expect(screen.queryByTestId("company-card")).not.toBeInTheDocument();
 
     const stats = screen.getByTestId("mock-company-stats");
     const setup = screen.getByRole("heading", { name: "Interview configuration" });
@@ -92,7 +86,7 @@ describe("GeneralMockInterviewPage company stats card", () => {
     expect(getCompany).not.toHaveBeenCalled();
   });
 
-  it("shows a locked card without must-do topics when the company is premium", async () => {
+  it("shows a locked message without must-do topics when the company is premium", async () => {
     getCompany.mockRejectedValue({
       response: {
         status: 402,
@@ -102,7 +96,10 @@ describe("GeneralMockInterviewPage company stats card", () => {
 
     renderPage("?companyId=co-1");
 
-    expect(await screen.findByTestId("company-card")).toHaveTextContent("locked");
+    expect(await screen.findByTestId("mock-company-card-link")).toHaveAttribute(
+      "href",
+      "/general/companystats?card=co-1"
+    );
     expect(screen.getByText(/This company card is locked/)).toBeInTheDocument();
     expect(screen.queryByText("What they expect")).not.toBeInTheDocument();
   });

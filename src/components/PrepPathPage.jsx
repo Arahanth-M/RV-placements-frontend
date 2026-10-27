@@ -1424,7 +1424,7 @@ function PrepPathPage() {
     if (quota && quota.unlimited !== true && Number(quota.remaining) <= 0) {
       if (isGeneral) {
         setPaywallMessage(
-          "Your free PrepPath plan has been used. Unlock PrepPath to generate more plans."
+          "Your free PrepPath plans have been used. Unlock PrepPath to generate more plans."
         );
         setPaywallFeature("prep_path");
         setPaywallCategoryId("");
@@ -1534,7 +1534,9 @@ function PrepPathPage() {
                         : `Generated today: ${quota.used}`
                       : isGeneral
                         ? quota.remaining > 0
-                          ? "1 free PrepPath remaining"
+                          ? `${quota.remaining} free PrepPath${
+                              quota.remaining === 1 ? "" : "s"
+                            } remaining`
                           : "Free PrepPath used"
                         : `Today: ${quota.used}/${quota.limit} used · ${quota.remaining} left`}
                   </span>
@@ -1850,7 +1852,7 @@ function PrepPathPage() {
         }
         message={
           paywallMessage ||
-          "Your free PrepPath plan has been used. Unlock PrepPath to generate more plans."
+          "Your free PrepPath plans have been used. Unlock PrepPath to generate more plans."
         }
         pricingPath={appPath("/pricing")}
         feature={paywallFeature}

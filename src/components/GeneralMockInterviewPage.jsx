@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaBuilding, FaSearch } from "react-icons/fa";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { FaArrowRight, FaBuilding, FaSearch } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useInterviewLock } from "../utils/InterviewLockContext";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
-import { parsePrepPathMockPrefill } from "../utils/prepPathCompanyFocus.js";
+import {
+  buildPrepPathCompanyCardHref,
+  parsePrepPathMockPrefill,
+} from "../utils/prepPathCompanyFocus.js";
 import AIInterviewTab from "./CompanyTabs/AIInterviewTab";
-import CompanyCard from "./CompanyCard.jsx";
 import AIInterviews from "./AIInterviews";
 import InterviewSlotsPage from "./InterviewSlotsPage";
 import {
@@ -53,7 +55,7 @@ function normalizeHubTab(raw) {
 }
 
 function GeneralMockInterviewPage() {
-  const { base } = useTenantShell();
+  const { base, appPath } = useTenantShell();
   const navigate = useNavigate();
   const { setIsInterviewLocked: setGlobalInterviewLocked } = useInterviewLock();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -164,6 +166,11 @@ function GeneralMockInterviewPage() {
       }
     );
   }, [companies, selectedId]);
+
+  const companyCardHref = useMemo(
+    () => (selectedId ? buildPrepPathCompanyCardHref(appPath, selectedId) : ""),
+    [appPath, selectedId]
+  );
 
   const searchQuery = search.trim();
   const filtered = useMemo(() => {
@@ -337,34 +344,33 @@ function GeneralMockInterviewPage() {
                 >
                   <h2 className="text-base font-semibold text-theme-primary">Company stats</h2>
                   <p className="mt-1 text-sm text-theme-secondary">
-                    Before you configure the interview, go through{" "}
+                    Before you configure the interview, review{" "}
                     {selectedCompany.name ? `${selectedCompany.name}'s` : "this company's"}{" "}
-                    stats card. The focus areas are what they expect you to know. Open full
-                    details if you want the rest of the company page.
+                    prep notes. The focus areas are what they expect you to know.
                   </p>
 
+                  {companyCardHref ? (
+                    <div className="mt-4">
+                      <Link
+                        to={companyCardHref}
+                        data-testid="mock-company-card-link"
+                        className="inline-flex items-center gap-2 text-sm font-semibold text-theme-accent hover:underline"
+                      >
+                        Open {selectedCompany.name || "company"} card
+                        <FaArrowRight className="h-3 w-3" aria-hidden />
+                      </Link>
+                    </div>
+                  ) : null}
+
                   {companyCardLoading ? (
-                    <p className="mt-4 text-sm text-theme-muted">Loading company card…</p>
+                    <p className="mt-4 text-sm text-theme-muted">Loading company prep notes…</p>
                   ) : null}
                   {companyCardError ? (
                     <p className="mt-4 text-sm text-red-400">{companyCardError}</p>
                   ) : null}
 
                   {companyCard ? (
-                    <div
-                      className={`mt-4 grid items-start gap-4 ${
-                        companyCardLocked || expectationTopics.length > 0
-                          ? "lg:grid-cols-[minmax(0,22rem)_1fr]"
-                          : ""
-                      }`}
-                    >
-                      <div className="mx-auto w-full max-w-md lg:mx-0">
-                        <CompanyCard
-                          company={companyCard}
-                          hidePlacementGotInCounts
-                          detailLocked={companyCardLocked}
-                        />
-                      </div>
+                    <div className="mt-4">
                       {companyCardLocked ? (
                         <p className="text-sm text-theme-secondary">
                           This company card is locked. Unlock it to review the focus areas and

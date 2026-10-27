@@ -391,7 +391,7 @@ export default function GeneralPricingPage() {
                     ? "Unlimited (paid)"
                     : Number.isFinite(mockRemaining) && mockRemaining <= 0
                       ? "Used"
-                      : "1 remaining"}
+                      : `${Number.isFinite(mockRemaining) ? mockRemaining : 1} remaining`}
                 </li>
                 <li>
                   Free PrepPath:{" "}
@@ -399,7 +399,7 @@ export default function GeneralPricingPage() {
                     ? "Unlimited (paid)"
                     : Number.isFinite(prepRemaining) && prepRemaining <= 0
                       ? "Used"
-                      : "1 remaining"}
+                      : `${Number.isFinite(prepRemaining) ? prepRemaining : 2} remaining`}
                 </li>
               </ul>
               <p className="mt-4 text-sm font-semibold text-theme-accent">Active</p>
