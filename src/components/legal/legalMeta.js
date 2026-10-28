@@ -34,28 +34,31 @@ export const PUBLIC_PLAN_PRICES = [
   {
     name: "Free trial",
     price: "₹0",
-    detail: "First company in each category, 1 AI mock interview, and 1 PrepPath plan.",
+    detail:
+      "First company in each category, 1 AI mock interview, 1 PrepPath plan, and 1 behavioural coach question.",
   },
   {
     name: "Unlock one category",
-    price: "₹199",
+    price: "₹299",
     detail:
-      "Company-card details for one category. No AI mocks or PrepPath. One-time, 6 months. No auto-renew.",
+      "Company-card details for one category plus unlimited behavioural coach (up to 3 questions per hour). No AI mocks or PrepPath. One-time, 6 months. No auto-renew.",
   },
   {
     name: "Unlimited PrepPath",
     price: "₹499",
     detail:
-      "Unlimited PrepPath plus all company cards. One-time, 6 months. No auto-renew.",
+      "Unlimited PrepPath plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew.",
   },
   {
     name: "Unlimited AI mock interviews",
     price: "₹499",
-    detail: "Unlimited AI mocks plus all company cards. One-time, 6 months. No auto-renew.",
+    detail:
+      "Unlimited AI mocks plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew.",
   },
   {
     name: "All premium features",
     price: "₹699",
-    detail: "All company cards, unlimited AI mocks, and unlimited PrepPath. One-time, 6 months. No auto-renew.",
+    detail:
+      "All company cards, unlimited AI mocks, unlimited PrepPath, and unlimited behavioural coach. One-time, 6 months. No auto-renew.",
   },
 ];

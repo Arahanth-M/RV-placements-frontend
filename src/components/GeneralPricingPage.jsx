@@ -23,15 +23,20 @@ const PLAN_INFO = {
       "Full details for the first company in each category",
       "1 lifetime AI mock interview",
       "1 lifetime PrepPath plan",
+      "1 lifetime behavioural coach question + evaluation",
     ],
     excludes: [
       "Full details for other companies in a category",
       "Unlimited AI mocks",
       "Unlimited PrepPath",
+      "Unlimited behavioural coach",
     ],
   },
   category: {
-    includes: ["Full company-card details for every company in the category you choose"],
+    includes: [
+      "Full company-card details for every company in the category you choose",
+      "Unlimited behavioural coach (up to 3 questions per hour)",
+    ],
     excludes: [
       "AI mock interviews",
       "PrepPath",
@@ -42,6 +47,7 @@ const PLAN_INFO = {
     includes: [
       "Unlimited PrepPath plans for 6 months",
       "Full company-card details for every company",
+      "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
     excludes: ["Unlimited AI mock interviews"],
   },
@@ -49,6 +55,7 @@ const PLAN_INFO = {
     includes: [
       "Unlimited AI mock interviews for 6 months",
       "Full company-card details for every company",
+      "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
     excludes: ["Unlimited PrepPath"],
   },
@@ -57,15 +64,23 @@ const PLAN_INFO = {
       "Full company-card details for every company",
       "Unlimited AI mock interviews for 6 months",
       "Unlimited PrepPath for 6 months",
+      "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
     excludes: [],
   },
   all_cards: {
-    includes: ["Full company-card details for every company"],
+    includes: [
+      "Full company-card details for every company",
+      "Unlimited behavioural coach (up to 3 questions per hour)",
+    ],
     excludes: ["AI mock interviews", "PrepPath"],
   },
   mocks_prep: {
-    includes: ["Unlimited AI mock interviews", "Unlimited PrepPath"],
+    includes: [
+      "Unlimited AI mock interviews",
+      "Unlimited PrepPath",
+      "Unlimited behavioural coach (up to 3 questions per hour)",
+    ],
     excludes: ["Unlocking extra company cards"],
   },
 };
@@ -281,6 +296,12 @@ export default function GeneralPricingPage() {
       return true;
     }
     if (
+      feature === "behavioral_coach" &&
+      (planId === "category" || planId === "prep_path" || planId === "mocks" || planId === "all_premium")
+    ) {
+      return true;
+    }
+    if (
       feature === "company_detail" &&
       (planId === "category" || planId === "prep_path" || planId === "mocks" || planId === "all_premium")
     ) {
@@ -357,6 +378,8 @@ export default function GeneralPricingPage() {
 
   const mockRemaining = Number(access?.freeMockRemaining);
   const prepRemaining = Number(access?.freePrepRemaining);
+  const behavioralRemaining = Number(access?.freeBehavioralRemaining);
+  const unlimitedBehavioral = access?.unlimitedBehavioralCoach === true;
 
   return (
     <div className={`min-h-screen ${pageShellOuterClassCompact}`}>
@@ -381,8 +404,8 @@ export default function GeneralPricingPage() {
                 <FaCheckCircle className="shrink-0 text-theme-accent" aria-hidden />
               </div>
               <p className="flex-1 text-sm text-theme-secondary">
-                First company in each category stays free. Includes 1 AI mock interview and 1 PrepPath
-                plan.
+                First company in each category stays free. Includes 1 AI mock interview, 1 PrepPath
+                plan, and 1 behavioural coach question.
               </p>
               <ul className="mt-3 space-y-1 text-sm text-theme-secondary">
                 <li>
@@ -400,6 +423,14 @@ export default function GeneralPricingPage() {
                     : Number.isFinite(prepRemaining) && prepRemaining <= 0
                       ? "Used"
                       : `${Number.isFinite(prepRemaining) ? prepRemaining : 2} remaining`}
+                </li>
+                <li>
+                  Free behavioural coach:{" "}
+                  {unlimitedBehavioral || summary.behavioralCoach
+                    ? "Unlimited (paid)"
+                    : Number.isFinite(behavioralRemaining) && behavioralRemaining <= 0
+                      ? "Used"
+                      : `${Number.isFinite(behavioralRemaining) ? behavioralRemaining : 1} remaining`}
                 </li>
               </ul>
               <p className="mt-4 text-sm font-semibold text-theme-accent">Active</p>

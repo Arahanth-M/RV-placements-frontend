@@ -12,10 +12,11 @@ import {
 } from "recharts";
 import { useAuth } from "../utils/AuthContext";
 import { consumeTestEmailFeature } from "../utils/testEmailAccess.js";
-import { interviewAPI } from "../utils/api";
+import { billingAPI, interviewAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { getFocusOptionsForRoundType } from "../constants/interviewRoundFocus.js";
 import BrandLogo from "./BrandLogo.jsx";
+import PaywallModal from "./PaywallPanel.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -375,8 +376,6 @@ function CoachWaitOverlay({ mode, tipIndex }) {
 export default function BehavioralCoachPage() {
   const navigate = useNavigate();
   const { user, setUser, loading: authLoading } = useAuth();
-  const behavioralLocked =
-    user?.testEmailAccess?.active === true && user.testEmailAccess.behavioralRemaining === 0;
   const { appPath } = useTenantShell();
 
   const [phase, setPhase] = useState(PHASE_PICK);
@@ -390,10 +389,23 @@ export default function BehavioralCoachPage() {
   const [busyMode, setBusyMode] = useState(null);
   const [waitTipIndex, setWaitTipIndex] = useState(0);
   const [error, setError] = useState("");
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallMessage, setPaywallMessage] = useState("");
+  const [unlimitedBehavioral, setUnlimitedBehavioral] = useState(false);
+  const [freeBehavioralRemaining, setFreeBehavioralRemaining] = useState(null);
 
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [expandedAttemptId, setExpandedAttemptId] = useState("");
+
+  const testEmailLocked =
+    user?.testEmailAccess?.active === true && user.testEmailAccess.behavioralRemaining === 0;
+  const freeTierUsed =
+    unlimitedBehavioral !== true &&
+    freeBehavioralRemaining !== null &&
+    Number(freeBehavioralRemaining) <= 0 &&
+    user?.testEmailAccess?.active !== true;
+  const behavioralLocked = testEmailLocked || freeTierUsed;
 
   const focusLabel = useMemo(() => focusLabelFor(focus), [focus]);
   const answerFields = useMemo(() => fieldsForFocus(focus), [focus]);
@@ -440,6 +452,24 @@ export default function BehavioralCoachPage() {
     setExpandedAttemptId("");
   };
 
+  const loadAccess = useCallback(async () => {
+    if (!user?.userId && !user?._id) return;
+    try {
+      const { data } = await billingAPI.getAccess();
+      setUnlimitedBehavioral(data?.unlimitedBehavioralCoach === true);
+      const remaining = data?.freeBehavioralRemaining;
+      setFreeBehavioralRemaining(
+        remaining == null || remaining === "" ? null : Number(remaining)
+      );
+    } catch {
+      // Access snapshot is optional for page load; start endpoint still enforces limits.
+    }
+  }, [user?.userId, user?._id]);
+
+  useEffect(() => {
+    loadAccess();
+  }, [loadAccess]);
+
   const loadAnalytics = useCallback(async () => {
     if (!user?.userId && !user?._id) return;
     setAnalyticsLoading(true);
@@ -467,7 +497,15 @@ export default function BehavioralCoachPage() {
 
   const startPractice = async (focusOverride) => {
     if (!user?.userId && !user?._id) return;
-    if (behavioralLocked) return;
+    if (behavioralLocked) {
+      if (freeTierUsed) {
+        setPaywallMessage(
+          "Your free behavioural coach question has been used. Unlock one company category for unlimited coach practice."
+        );
+        setPaywallOpen(true);
+      }
+      return;
+    }
     const nextFocus =
       typeof focusOverride === "string" && focusOverride.trim()
         ? focusOverride.trim()
@@ -478,6 +516,14 @@ export default function BehavioralCoachPage() {
     try {
       const { data } = await interviewAPI.startBehavioralCoach({ focus: nextFocus });
       consumeTestEmailFeature(user, setUser, "behavioralRemaining");
+      if (data?.unlimitedBehavioralCoach === true) {
+        setUnlimitedBehavioral(true);
+      }
+      if (data?.freeBehavioralRemaining != null) {
+        setFreeBehavioralRemaining(Number(data.freeBehavioralRemaining));
+      } else if (unlimitedBehavioral !== true && user?.testEmailAccess?.active !== true) {
+        setFreeBehavioralRemaining(0);
+      }
       setFocus(nextFocus);
       setPracticeId(data.practiceId || "");
       setQuestion(data.question || "");
@@ -486,8 +532,17 @@ export default function BehavioralCoachPage() {
       setResult(null);
       setPhase(PHASE_ANSWER);
     } catch (err) {
-      if (err?.response?.data?.code === "TEST_EMAIL_LIMIT") {
+      const code = err?.response?.data?.code;
+      if (code === "TEST_EMAIL_LIMIT") {
         consumeTestEmailFeature(user, setUser, "behavioralRemaining");
+      }
+      if (code === "PAYWALL") {
+        setFreeBehavioralRemaining(0);
+        setPaywallMessage(
+          err?.response?.data?.error ||
+            "Your free behavioural coach question has been used. Unlock one company category for unlimited coach practice."
+        );
+        setPaywallOpen(true);
       }
       setError(
         err?.response?.data?.error ||
@@ -551,10 +606,31 @@ export default function BehavioralCoachPage() {
     ? "This theme uses Motivation → Fit → Evidence → Aspiration (not STAR)."
     : "You'll get one HR-style prompt. Fill each STAR box, then review dimension scores.";
 
+  const quotaHint = unlimitedBehavioral
+    ? "Unlimited coach practice on your plan (up to 3 new questions per hour)."
+    : user?.testEmailAccess?.active === true
+      ? testEmailLocked
+        ? "This test email’s behavioural coach session has been used."
+        : "This test email includes 1 behavioural coach session."
+      : freeTierUsed
+        ? "Your free behavioural coach question has been used."
+        : "Free tier includes 1 behavioural coach question and evaluation.";
+
   return (
     <div className={pageShellOuterClassCompact}>
       <PageHeroFontStyles />
       {busyMode ? <CoachWaitOverlay mode={busyMode} tipIndex={waitTipIndex} /> : null}
+      <PaywallModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        title="Unlock behavioural coach"
+        message={
+          paywallMessage ||
+          "Your free behavioural coach question has been used. Unlock one company category for unlimited coach practice."
+        }
+        pricingPath={appPath("/pricing")}
+        feature="behavioral_coach"
+      />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(appPath("/"))} label="Back" />
@@ -578,6 +654,7 @@ export default function BehavioralCoachPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-theme-primary">Pick a theme</h2>
                   <p className="mt-1 text-sm text-theme-secondary">{pickHint}</p>
+                  <p className="mt-1 text-xs text-theme-muted">{quotaHint}</p>
                 </div>
                 <button
                   type="button"
@@ -611,14 +688,36 @@ export default function BehavioralCoachPage() {
                   );
                 })}
               </div>
-              <button
-                type="button"
-                disabled={busy || behavioralLocked}
-                onClick={() => startPractice()}
-                className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-              >
-                {busy ? "Generating question…" : behavioralLocked ? "Session used" : "Get a question"}
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={busy || (behavioralLocked && !freeTierUsed)}
+                  onClick={() => startPractice()}
+                  className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy
+                    ? "Generating question…"
+                    : freeTierUsed
+                      ? "Unlock unlimited"
+                      : behavioralLocked
+                        ? "Session used"
+                        : "Get a question"}
+                </button>
+                {freeTierUsed ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaywallMessage(
+                        "Your free behavioural coach question has been used. Unlock one company category for unlimited coach practice."
+                      );
+                      setPaywallOpen(true);
+                    }}
+                    className="rounded-xl border border-theme px-4 py-2.5 text-sm font-semibold text-theme-secondary hover:border-theme-accent/40 hover:text-theme-accent"
+                  >
+                    View pricing
+                  </button>
+                ) : null}
+              </div>
             </section>
           ) : null}
 
