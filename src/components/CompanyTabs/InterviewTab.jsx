@@ -102,6 +102,7 @@ import { usePrepRoleSwitchTransition } from "../../hooks/usePrepRoleSwitchTransi
 import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
 import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
+import PlatformQuestionEnhanceBar from "../platform/PlatformQuestionEnhanceBar.jsx";
 import {
   platformQuestionEditDraft,
   platformQuestionEditPayload,
@@ -163,6 +164,7 @@ function InterviewTab({
   const [processRounds, setProcessRounds] = useState(() => [blankInterviewRound()]);
   const [processFormError, setProcessFormError] = useState("");
   const [newInterviewProcessAnonymous, setNewInterviewProcessAnonymous] = useState(false);
+  const [processDeclaration, setProcessDeclaration] = useState(false);
   const [openIndexQ, setOpenIndexQ] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null);
@@ -176,6 +178,7 @@ function InterviewTab({
   const [editIPRounds, setEditIPRounds] = useState([]);
   const [editIPUsesStoredShape, setEditIPUsesStoredShape] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [enhanceBusy, setEnhanceBusy] = useState(null);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [likeOverride, setLikeOverride] = useState({});
   const [likePendingKey, setLikePendingKey] = useState("");
@@ -587,6 +590,39 @@ function InterviewTab({
     }
   };
 
+  const handleEnhanceIQField = async (index, field) => {
+    if (!isGeneral || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
+    const labels = {
+      question: "Enhance question",
+      intuition: "Enhance intuition",
+      explanation: "Enhance explanation",
+      cpp: "Refill C++",
+      java: "Refill Java",
+      python: "Refill Python",
+    };
+    if (
+      !window.confirm(
+        `${labels[field] || "Enhance"} for this interview question? Existing content for that section will be replaced.`
+      )
+    ) {
+      return;
+    }
+    setEnhanceBusy({ index, field });
+    try {
+      await contentAdmin.enhanceInterviewQuestionField(company._id, index, field);
+      if (onCompanyUpdate) onCompanyUpdate();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Enhance failed. Try again."
+      );
+    } finally {
+      setEnhanceBusy(null);
+    }
+  };
+
   const closeEditIP = () => {
     setEditIPIndex(null);
     setEditIPContent("");
@@ -749,10 +785,15 @@ function InterviewTab({
     setProcessRounds([blankInterviewRound()]);
     setProcessFormError("");
     setNewInterviewProcessAnonymous(false);
+    setProcessDeclaration(false);
   };
 
   const handleSubmitInterviewProcess = async (e) => {
     e.preventDefault();
+    if (!processDeclaration) {
+      setProcessFormError("Please confirm the declaration before submitting.");
+      return;
+    }
     const content = composeInterviewProcess({
       overview: processOverview,
       rounds: processRounds,
@@ -953,6 +994,16 @@ function InterviewTab({
                 {openIndexQ === index && (
                   <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
                     <p className="min-w-0">{q}</p>
+
+                    {isAdmin && isGeneral ? (
+                      <PlatformQuestionEnhanceBar
+                        busyField={
+                          enhanceBusy?.index === index ? enhanceBusy.field : null
+                        }
+                        disabled={actionLoading}
+                        onEnhance={(field) => handleEnhanceIQField(index, field)}
+                      />
+                    ) : null}
 
                     {(() => {
                       const langSol = company.interviewQuestions_solutions?.[index];
@@ -1281,6 +1332,23 @@ function InterviewTab({
                     Submit anonymously (your name will be hidden in public interview experience view).
                   </span>
                 </label>
+                <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={processDeclaration}
+                    onChange={(e) => {
+                      setProcessDeclaration(e.target.checked);
+                      if (e.target.checked) setProcessFormError("");
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-theme text-theme-accent focus:ring-theme-accent"
+                    required
+                  />
+                  <span className="text-sm text-theme-secondary">
+                    I confirm that the information I am submitting is accurate and based on my own
+                    participation in this company&apos;s interview process. I understand the platform
+                    may contact me by email to verify this submission.
+                  </span>
+                </label>
               </div>
               <div className="flex items-center justify-end gap-3 border-t border-theme px-6 py-4">
                 <button
@@ -1295,7 +1363,8 @@ function InterviewTab({
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  disabled={!processDeclaration}
+                  className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   Submit
                 </button>

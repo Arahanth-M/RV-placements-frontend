@@ -120,7 +120,7 @@ function GeneralContactBody() {
           <strong className="text-white">Location:</strong> {LEGAL_LOCATION}
         </p>
         <p className="mt-3 text-sm text-slate-400">
-          Last Minute Placement Prep is a digital service. Correspondence and payment queries are
+          One Stop Placement Prep is a digital service. Correspondence and payment queries are
           handled by email at the addresses above.
         </p>
       </div>

@@ -6,7 +6,7 @@ import { useTenantShell } from "../context/TenantShellContext.jsx";
 function ProductWordmark() {
   return (
     <span className="px-0.5 text-center font-serif text-[11px] leading-tight tracking-tight text-theme-primary sm:text-xs">
-      lastminute
+      onestop
       <span className="italic text-theme-accent">placementprep</span>
     </span>
   );

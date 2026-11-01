@@ -17,6 +17,7 @@ export default function PlatformQuestionEditModal({
   onSubmit,
   onCancel,
   saving = false,
+  showCodingFields = true,
 }) {
   if (!draft) return null;
 
@@ -45,15 +46,18 @@ export default function PlatformQuestionEditModal({
                 aria-label="Question"
               />
             </label>
-            <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-200">Intuition</span>
-              <textarea
-                value={draft.intuition}
-                onChange={(e) => setField("intuition", e.target.value)}
-                className={`${fieldClass} min-h-[90px]`}
-                aria-label="Intuition"
-              />
-            </label>
+            {showCodingFields ? (
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-slate-200">Intuition</span>
+                <textarea
+                  value={draft.intuition}
+                  onChange={(e) => setField("intuition", e.target.value)}
+                  className={`${fieldClass} min-h-[90px]`}
+                  aria-label="Intuition"
+                  required
+                />
+              </label>
+            ) : null}
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-slate-200">Explanation</span>
               <textarea
@@ -61,20 +65,24 @@ export default function PlatformQuestionEditModal({
                 onChange={(e) => setField("explanation", e.target.value)}
                 className={`${fieldClass} min-h-[120px]`}
                 aria-label="Explanation"
+                required
               />
             </label>
-            {LANGUAGE_FIELDS.map((field) => (
-              <label key={field.id} className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-200">{field.label}</span>
-                <textarea
-                  value={draft.solutions[field.id]}
-                  onChange={(e) => setSolution(field.id, e.target.value)}
-                  className={`${fieldClass} min-h-[140px] font-mono`}
-                  aria-label={field.label}
-                  spellCheck={false}
-                />
-              </label>
-            ))}
+            {showCodingFields
+              ? LANGUAGE_FIELDS.map((field) => (
+                  <label key={field.id} className="block space-y-1.5">
+                    <span className="text-sm font-medium text-slate-200">{field.label}</span>
+                    <textarea
+                      value={draft.solutions[field.id]}
+                      onChange={(e) => setSolution(field.id, e.target.value)}
+                      className={`${fieldClass} min-h-[140px] font-mono`}
+                      aria-label={field.label}
+                      spellCheck={false}
+                      required
+                    />
+                  </label>
+                ))
+              : null}
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-700 px-5 py-4">
             <button

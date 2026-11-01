@@ -379,10 +379,11 @@ function AIInterviews({ embedded = false, hideSlotsTab = false } = {}) {
                   <div className="bg-theme-card border border-theme rounded-xl p-4 sm:p-6">
                     <h2 className="text-lg font-semibold text-theme-primary mb-1 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />
-                      Completed interviews
+                      My interviews
                     </h2>
                     <p className="text-xs text-theme-muted mb-3">
-                      {total} {total === 1 ? "company" : "companies"} · {PAGE_SIZE} per page
+                      {total} {total === 1 ? "session" : "sessions"} (completed and exited mid-way) ·{" "}
+                      {PAGE_SIZE} per page
                     </p>
                     <div
                       className={`space-y-3 ${pageLoading ? "opacity-60 pointer-events-none" : ""}`}
@@ -431,12 +432,22 @@ function AIInterviews({ embedded = false, hideSlotsTab = false } = {}) {
   );
 }
 
+function statusLabel(status) {
+  if (status === "completed") return "Completed";
+  if (status === "abandoned") return "Exited mid-way";
+  return "In Progress";
+}
+
 function InterviewSessionCard({ session }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { appPath, isGeneral } = useTenantShell();
   const [detailSession, setDetailSession] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [hasRequestedDetail, setHasRequestedDetail] = useState(false);
+  const [continueBusy, setContinueBusy] = useState(false);
+  const [continueError, setContinueError] = useState("");
 
   const handleToggle = async (event) => {
     const isOpen = event.currentTarget.open;
@@ -462,6 +473,35 @@ function InterviewSessionCard({ session }) {
   const roundEntries = getRoundQuestionEntries(sessionData);
   const hasRoundQuestions = roundEntries.length > 0;
   const hasHistory = Array.isArray(sessionData.history) && sessionData.history.length > 0;
+  const isAbandoned =
+    sessionData.status === "abandoned" ||
+    Boolean(sessionData.abandonedAt) ||
+    (sessionData.status !== "completed" &&
+      String(sessionData.state || "") !== "INTERVIEW_COMPLETE");
+  const isPlatformMock =
+    String(sessionData.contentScope || "").toLowerCase() === "platform" || isGeneral;
+  const canContinue =
+    isAbandoned && isPlatformMock && sessionData.canContinue === true;
+  const needsUpgrade =
+    isAbandoned && isPlatformMock && sessionData.continueRequiresUpgrade === true;
+
+  const handleContinue = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!canContinue || continueBusy || user?.betaAccess === false) return;
+    const companyId = sessionData.companyId ? String(sessionData.companyId) : "";
+    if (!companyId) {
+      setContinueError("Missing company for this interview.");
+      return;
+    }
+    setContinueBusy(true);
+    setContinueError("");
+    const params = new URLSearchParams({
+      companyId,
+      continueSessionId: String(sessionData._id),
+    });
+    navigate(`${appPath("/interviews")}?${params.toString()}`);
+  };
 
   return (
     <details
@@ -469,12 +509,51 @@ function InterviewSessionCard({ session }) {
       onToggle={handleToggle}
     >
       <summary className="cursor-pointer text-sm font-semibold text-theme-primary">
-        {sessionData.companyName || "Unknown Company"} -{" "}
-        {sessionData.status === "completed" ? "Completed" : "In Progress"} -{" "}
+        {sessionData.companyName || "Unknown Company"} - {statusLabel(sessionData.status)} -{" "}
         {new Date(sessionData.updatedAt).toLocaleString()}
       </summary>
 
       <div className="mt-3 space-y-3 text-sm">
+        {isAbandoned ? (
+          <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-theme-secondary">
+            {needsUpgrade ? (
+              <p>
+                You exited this free mock mid-way. It still counts as your free AI mock interview.
+                Unlock unlimited AI mocks to continue from where you left off.
+              </p>
+            ) : (
+              <p>
+                You exited this interview mid-way. Your answers so far are saved
+                {canContinue ? ", and you can continue below." : "."}
+              </p>
+            )}
+            {needsUpgrade && isGeneral ? (
+              <button
+                type="button"
+                className="mt-2 text-sm font-semibold text-theme-accent hover:underline"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  navigate(`${appPath("/pricing")}?feature=mocks`);
+                }}
+              >
+                View pricing
+              </button>
+            ) : null}
+            {canContinue ? (
+              <button
+                type="button"
+                disabled={continueBusy}
+                onClick={handleContinue}
+                className="mt-2 inline-flex items-center rounded-lg bg-theme-accent px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {continueBusy ? "Opening…" : "Continue interview"}
+              </button>
+            ) : null}
+            {continueError ? <p className="mt-2 text-red-400">{continueError}</p> : null}
+          </div>
+        ) : null}
+
         <p className="text-theme-secondary">
           <span className="font-semibold text-theme-primary">Round:</span>{" "}
           {sessionData.currentRound || "N/A"} |{" "}

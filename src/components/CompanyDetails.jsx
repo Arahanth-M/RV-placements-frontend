@@ -34,6 +34,7 @@ import {
 } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
+import { buildGeneralCompanyPrepSummary } from "../utils/generalCompanyPrepSummary.js";
 import BrandLogo from "./BrandLogo.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
 import CompanyContributeModal from "./CompanyContributeModal.jsx";
@@ -1158,13 +1159,21 @@ function CompanyDetails() {
             </div>
             <div
               className="h-11 w-[4.75rem] sm:h-12 sm:w-24 shrink-0 rounded-lg border border-theme bg-theme-card p-1.5 sm:p-2 shadow-sm"
-              title={isGeneral ? "Last Minute Placement Prep" : "RV College of Engineering"}
+              title={isGeneral ? "One Stop Placement Prep" : "RV College of Engineering"}
             >
               <BrandLogo />
             </div>
           </div>
         ) : (
-        <div className="bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6" data-tour="company-details-header">
+        <div className="relative bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6" data-tour="company-details-header">
+          {isGeneral ? (
+            <p
+              className="absolute top-4 right-4 sm:top-5 sm:right-6 md:top-6 md:right-8 max-w-[48%] text-right text-xs sm:text-sm text-theme-muted italic leading-snug"
+              data-testid="company-detail-last-updated"
+            >
+              {buildGeneralCompanyPrepSummary(company).updatedLine}
+            </p>
+          ) : null}
           <div className="flex items-center gap-4 sm:gap-5 md:gap-6">
             <div
               className="h-16 w-16 shrink-0 rounded-xl border-2 border-theme bg-theme-card shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28 flex items-center justify-center overflow-hidden"
@@ -1177,7 +1186,7 @@ function CompanyDetails() {
                 alt={company.name || "Company logo"}
               />
             </div>
-            <div className="flex-1 min-w-0 py-0.5">
+            <div className={`flex-1 min-w-0 py-0.5 ${isGeneral ? "pr-[7.5rem] sm:pr-40 md:pr-44" : ""}`}>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-theme-primary leading-[1.08] tracking-tight break-words">
                 {company.name}
               </h1>

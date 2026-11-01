@@ -23,7 +23,7 @@ export default function AboutPage() {
     >
       <LegalSection title="Who we are">
         <p>
-          {LEGAL_BRAND} (lastminuteplacementprep.in) helps students prepare for internships and
+          {LEGAL_BRAND} (onestopplacementprep.in) helps students prepare for internships and
           campus placements with company insights, AI mock interviews, PrepPath plans, and related
           tools. The product is built and operated by {LEGAL_OPERATOR}.
         </p>
@@ -31,8 +31,8 @@ export default function AboutPage() {
 
       <LegalSection title="What we offer">
         <p>
-          Students on the Last Minute Placement Prep platform can browse company categories, use a
-          free trial (teaser cards, one AI mock, one PrepPath plan), and optionally purchase
+          Students on the One Stop Placement Prep platform can browse company categories, use a
+          free trial (teaser cards, one AI mock of any company, one PrepPath plan), and optionally purchase
           one-time six-month access for more cards, mocks, or PrepPath. Resume builder, where
           available, is free.
         </p>
@@ -77,7 +77,7 @@ export default function AboutPage() {
 
       <LegalSection title="Payments">
         <p>
-          Payments on the Last Minute Placement Prep platform are processed by Razorpay. Plan names
+          Payments on the One Stop Placement Prep platform are processed by Razorpay. Plan names
           and prices are listed on{" "}
           <Link className="text-theme-accent underline" to={legalPath("/pricing")}>
             Pricing

@@ -95,10 +95,10 @@ export default function TestEmailPanel() {
         <h3 className="text-base font-semibold text-theme-primary">Set test emailId</h3>
         <p className="mt-1 max-w-3xl text-sm text-theme-secondary">
           A test email can sign in for the window you choose and use the public platform once each:
-          one AI mock interview, one PrepPath, one challenge submission, and one behavioural coach.
-          In every company category only the first company opens in full. The other companies stay
-          as cards. Setting the same email again only refreshes the sign-in window. It does not
-          grant those features a second time.
+          one AI mock interview of any company, one PrepPath, one challenge submission, and one
+          behavioural coach. In every company category only the first company opens in full. The
+          other companies stay as cards. Setting the same email again only refreshes the sign-in
+          window. It does not grant those features a second time.
         </p>
       </div>
       {error ? <p className="text-sm text-red-500">{error}</p> : null}

@@ -6,9 +6,12 @@ export const LOCALHOST_PORT = 7779;
 export const LOCALHOST_MAIN_PORT = 7778;
 /** Split stack: backend-interview (compose.interview.yml). */
 export const LOCALHOST_INTERVIEW_PORT = 7777;
-export const PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
+/** Canonical public domain for the general (platform) product. */
+export const PRODUCTION_DOMAIN = "onestopplacementprep.in";
+/** Legacy campus / prior product hostname — still accepted for feature flags. */
+export const LEGACY_PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
 
-export const PLATFORM_CONTACT_EMAIL = "lastminuteplacementprep@gmail.com";
+export const PLATFORM_CONTACT_EMAIL = "onestopplacementprep@gmail.com";
 export const DEVOMATION_AI_EMAIL = "devomationai@gmail.com";
 //export const PLATFORM_LINKEDIN_URL = "https://www.linkedin.com/company/devomation-ai";
 
@@ -152,9 +155,10 @@ function isResumeBuilderAllowedHostname(hostname) {
   const h = String(hostname || "").trim().toLowerCase();
   if (!h) return false;
   if (h === "localhost" || h === "127.0.0.1") return true;
-  const domain = String(PRODUCTION_DOMAIN || "").trim().toLowerCase();
-  if (!domain) return false;
-  return h === domain || h.endsWith(`.${domain}`);
+  const domains = [PRODUCTION_DOMAIN, LEGACY_PRODUCTION_DOMAIN]
+    .map((d) => String(d || "").trim().toLowerCase())
+    .filter(Boolean);
+  return domains.some((domain) => h === domain || h.endsWith(`.${domain}`));
 }
 
 /** Feature flag: env `REACT_APP_ENABLE_RESUME_BUILDER=1`, localhost, or production domain at runtime. */

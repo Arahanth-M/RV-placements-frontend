@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../utils/AuthContext";
 import { consumeTestEmailFeature } from "../../utils/testEmailAccess.js";
 import { useTheme } from "../../utils/ThemeContext";
-import { interviewAPI } from "../../utils/api";
+import { billingAPI, interviewAPI } from "../../utils/api";
 import { useTenantShell } from "../../context/TenantShellContext.jsx";
 import { MESSAGES } from "../../utils/constants";
 import { FaChevronDown, FaMoon, FaSpinner, FaSun } from "react-icons/fa";
@@ -61,7 +61,10 @@ const CODING_LANGUAGE_OPTION_LABELS = {
 };
 
 const EXIT_WARNING_MESSAGE =
-  "Are you sure you want to quit this interview?\n\nIf you exit now, your current interview will be discarded, your progress will not be saved, and you will be returned to this company's General tab.";
+  "Are you sure you want to quit this interview?\n\nIf you exit now, this interview will be marked as exited mid-way and saved under Interview analytics → My Interviews. You can review what you answered so far.";
+
+const EXIT_WARNING_FREE_TRIAL_EXTRA =
+  "Leaving mid-interview still uses up your free AI mock interview. You will not get another free trial mock, and you will not be able to continue this interview until you unlock unlimited AI mock interviews.";
 
 const MAX_CUSTOM_ROUNDS = 4;
 const ROUND_DIFFICULTY_OPTIONS = INTERVIEW_DIFFICULTIES;
@@ -932,9 +935,13 @@ function AIInterviewTab({
   onForceExitToGeneral,
   registerInterviewExitHandler,
   initialMockPlan = null,
+  continueSessionId = "",
+  onContinueSessionConsumed,
 }) {
   const { user, setUser } = useAuth();
   const { isGeneral, appPath } = useTenantShell();
+  const [hasUnlimitedMocks, setHasUnlimitedMocks] = useState(false);
+  const [billingAccessLoaded, setBillingAccessLoaded] = useState(!isGeneral);
   const { theme, toggleTheme } = useTheme();
   const [sessionId, setSessionId] = useState("");
   const [question, setQuestion] = useState("");
@@ -1009,6 +1016,7 @@ function AIInterviewTab({
   /** After each answer: full-screen feedback until user taps "Next question". */
   const [pendingQuestionFeedback, setPendingQuestionFeedback] = useState(null);
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
+  const continueBootstrappedRef = useRef("");
   const [isInFullscreen, setIsInFullscreen] = useState(
     Boolean(typeof document !== "undefined" && getFullscreenElement())
   );
@@ -1263,6 +1271,30 @@ function AIInterviewTab({
     const nextRounds = roundsFromMockPrefill(plan?.rounds, plan?.difficulty);
     if (nextRounds) setCustomRounds(nextRounds);
   }, [isGeneral, initialMockPlanKey]);
+
+  useEffect(() => {
+    if (!isGeneral) {
+      setHasUnlimitedMocks(false);
+      setBillingAccessLoaded(true);
+      return undefined;
+    }
+    let cancelled = false;
+    setBillingAccessLoaded(false);
+    (async () => {
+      try {
+        const res = await billingAPI.getAccess();
+        if (cancelled) return;
+        setHasUnlimitedMocks(res?.data?.summary?.mocks === true);
+      } catch {
+        if (!cancelled) setHasUnlimitedMocks(false);
+      } finally {
+        if (!cancelled) setBillingAccessLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isGeneral, user?.userId]);
 
   useEffect(() => {
     setInterviewLimitReached(false);
@@ -1533,9 +1565,16 @@ function AIInterviewTab({
         const companyCardLock =
           data?.feature === "company_detail" ||
           String(data?.message || "").includes("first card in each category");
+        const freeRemaining = Number(data?.freeMockRemaining);
+        const freeNotConsumed = data?.freeMockConsumed === false;
+        // Free mock of any company is already chosen on this page — don't paywall-block.
+        const hasFreePlatformMock =
+          isGeneral &&
+          ((Number.isFinite(freeRemaining) && freeRemaining > 0) || freeNotConsumed);
         const blocked =
           data?.canStart === false &&
           (data?.reason === "INTERVIEW_LIMIT_REACHED" || data?.reason === "PAYWALL") &&
+          !hasFreePlatformMock &&
           !(testMockAnyCompany && companyCardLock);
         setInterviewLimitReached(blocked);
         setInterviewLimitMessage(
@@ -1773,8 +1812,9 @@ function AIInterviewTab({
     }
 
     window.dispatchEvent(new Event("ai-interview-intentional-exit"));
+    // Persist abandoned session BEFORE tearing down UI, or My Interviews won't list it.
+    await discardCurrentInterview(sessionIdToDiscard);
     await finalizeExitToGeneral();
-    discardCurrentInterview(sessionIdToDiscard).catch(() => {});
     return true;
   }, [
     discardCurrentInterview,
@@ -2213,6 +2253,21 @@ function AIInterviewTab({
         if (testMockAnyCompany && companyCardLock) {
           return;
         }
+        const freeRemaining = Number(err?.response?.data?.freeMockRemaining);
+        const freeNotConsumed = err?.response?.data?.freeMockConsumed === false;
+        // Don't show "free mock used" when the trial flag is still false / remaining > 0.
+        if (
+          isGeneral &&
+          ((Number.isFinite(freeRemaining) && freeRemaining > 0) || freeNotConsumed)
+        ) {
+          setInterviewLimitReached(false);
+          setInterviewLimitMessage("");
+          setError(
+            err?.response?.data?.error ||
+              "Could not start the interview. Please try again."
+          );
+          return;
+        }
         const msg = err?.response?.data?.error || MESSAGES.INTERVIEW_LIMIT_REACHED;
         setInterviewLimitReached(true);
         setInterviewLimitMessage(msg);
@@ -2405,6 +2460,66 @@ function AIInterviewTab({
 
     // Resume intentionally disabled.
   }, [applyQuestionMetaFromStatus]);
+
+  useEffect(() => {
+    const sid = String(continueSessionId || "").trim();
+    if (!sid || !company?._id) return undefined;
+    if (continueBootstrappedRef.current === sid) return undefined;
+    if (user?.betaAccess === false) return undefined;
+    let cancelled = false;
+    continueBootstrappedRef.current = sid;
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        await interviewAPI.continueInterview(sid);
+        if (cancelled) return;
+        const { data: st } = await interviewAPI.getInterviewStatus(sid);
+        if (cancelled) return;
+        setSessionId(sid);
+        applyInterviewStatusPayload(st);
+        setRoundsPlan(Array.isArray(st.roundsPlan) ? st.roundsPlan : []);
+        if (st.difficultyLevel) setDifficultyLevel(st.difficultyLevel);
+        await enterFullscreen();
+        if (typeof onContinueSessionConsumed === "function") {
+          onContinueSessionConsumed();
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to continue interview:", err);
+        const code = err?.response?.data?.code;
+        const msg =
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Could not continue this interview.";
+        if (code === "PAYWALL" || err?.response?.status === 402) {
+          setInterviewLimitReached(true);
+          setInterviewLimitMessage(msg);
+          openInterviewLimitModal(msg);
+        } else {
+          setError(msg);
+        }
+        continueBootstrappedRef.current = "";
+        if (typeof onContinueSessionConsumed === "function") {
+          onContinueSessionConsumed();
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    continueSessionId,
+    company?._id,
+    user?.betaAccess,
+    applyInterviewStatusPayload,
+    onContinueSessionConsumed,
+  ]);
+
+  const showFreeTrialExitWarning =
+    isGeneral && billingAccessLoaded && !hasUnlimitedMocks;
 
   const codingLanguageOptions = useMemo(() => {
     return INTERVIEW_UI_CODING_LANGUAGES.filter((id) => supportedCodingLanguages.includes(id)).map(
@@ -3284,6 +3399,13 @@ function AIInterviewTab({
         onRequestAccess={handleInterviewLimitRequest}
         requesting={interviewLimitRequesting}
         upgradePath={isGeneral ? `${appPath("/pricing")}?feature=mocks` : ""}
+        preferredCompanyId={company?._id ? String(company._id) : ""}
+        preferredCompanyName={company?.name || ""}
+        onContinueWithPreferredCompany={() => {
+          setInterviewLimitReached(false);
+          setInterviewLimitMessage("");
+          setInterviewLimitOpen(false);
+        }}
       />
       <CompanyRequiredPrompt
         open={companyRequiredPromptOpen}
@@ -3312,18 +3434,25 @@ function AIInterviewTab({
               Quit interview?
             </p>
             <h3 className="text-2xl font-bold text-theme-primary leading-tight">
-              Your current progress will be discarded
+              {showFreeTrialExitWarning
+                ? "Leaving now uses up your free mock"
+                : "Exit this interview mid-way?"}
             </h3>
             <p className="mt-4 text-sm sm:text-base text-theme-secondary leading-relaxed whitespace-pre-wrap">
               {EXIT_WARNING_MESSAGE}
             </p>
+            {showFreeTrialExitWarning ? (
+              <p className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-theme-primary leading-relaxed">
+                {EXIT_WARNING_FREE_TRIAL_EXTRA}
+              </p>
+            ) : null}
             <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
               <button
                 type="button"
                 onClick={() => resolveQuitConfirmation(false)}
                 className="px-5 py-3 rounded-xl border border-theme text-theme-primary hover:bg-theme-nav transition-colors"
               >
-                Resume interview
+                Keep interviewing
               </button>
               <button
                 type="button"
@@ -3334,7 +3463,7 @@ function AIInterviewTab({
                   color: "var(--warning-foreground)",
                 }}
               >
-                Quit and discard
+                {showFreeTrialExitWarning ? "Quit and use free mock" : "Quit interview"}
               </button>
             </div>
           </div>
@@ -3940,7 +4069,11 @@ function AIInterviewTab({
           <p className="text-sm text-theme-primary">
             Interview mode is active. Press <span className="font-semibold">Esc</span> or use
             the <span className="font-semibold">Back</span> button to quit. If you leave now,
-            this in-progress interview will be discarded and will not be saved.
+            this interview is saved as exited mid-way under My Interviews
+            {showFreeTrialExitWarning
+              ? ", and your free AI mock interview is still used up"
+              : ""}
+            .
           </p>
         </div>
       )}

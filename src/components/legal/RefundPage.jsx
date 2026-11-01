@@ -16,7 +16,7 @@ export default function RefundPage() {
     >
       <LegalSection title="Cancellations">
         <p>
-          Paid plans on the Last Minute Placement Prep platform are one-time purchases for a
+          Paid plans on the One Stop Placement Prep platform are one-time purchases for a
           six-month access window. There is no subscription and no auto-renewal, so there is
           nothing to cancel after a successful payment. Access continues until the plan expiry date
           shown on Pricing. You may stop using the product at any time; unused time is not

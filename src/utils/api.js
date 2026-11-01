@@ -668,10 +668,44 @@ export const platformAdminAPI = {
     API.put(`/api/admin/platform/companies/${companyId}/oa-questions/${index}`, data),
   deleteOAQuestion: (companyId, index) =>
     API.delete(`/api/admin/platform/companies/${companyId}/oa-questions/${index}`),
+  enhanceOAQuestionField: (companyId, index, field) =>
+    API.post(
+      `/api/admin/platform/companies/${companyId}/oa-questions/${index}/enhance-field`,
+      { field },
+      { timeout: 180000 }
+    ),
   updateInterviewQuestion: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`, data),
   deleteInterviewQuestion: (companyId, index) =>
     API.delete(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`),
+  enhanceInterviewQuestionField: (companyId, index, field) =>
+    API.post(
+      `/api/admin/platform/companies/${companyId}/interview-questions/${index}/enhance-field`,
+      { field },
+      { timeout: 180000 }
+    ),
+  downloadPrepInterviewCsvTemplate: (companyId) =>
+    API.get(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/csv-template`,
+      { responseType: "blob" }
+    ),
+  previewPrepInterviewCsv: (companyId, formData) =>
+    API.post(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/csv-preview`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    ),
+  finalizePrepInterviewCsv: (companyId, payload) =>
+    API.post(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/csv-finalize`,
+      payload
+    ),
+  fetchPrepQuickLinks: (companyId, payload) =>
+    API.post(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/fetch-quick-links`,
+      payload,
+      { timeout: 180000 }
+    ),
   updateInterviewProcess: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/interview-process/${index}`, data),
   deleteInterviewProcess: (companyId, index) =>
@@ -963,6 +997,18 @@ export const interviewAPI = {
     const res = await interviewHttp.delete(`/api/interview/discard/${encodeURIComponent(sessionId)}`);
     interviewDetailCache.delete(String(sessionId));
     interviewDetailPromises.delete(String(sessionId));
+    interviewSummaryCache.clear();
+    interviewSummaryPromises.clear();
+    return res;
+  },
+  async continueInterview(sessionId) {
+    const res = await interviewHttp.post(
+      `/api/interview/continue/${encodeURIComponent(sessionId)}`
+    );
+    interviewDetailCache.delete(String(sessionId));
+    interviewDetailPromises.delete(String(sessionId));
+    interviewSummaryCache.clear();
+    interviewSummaryPromises.clear();
     return res;
   },
   getResumableInterview: ({

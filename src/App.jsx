@@ -83,7 +83,7 @@ function PublicLegalShell() {
             to="/"
             className="font-serif text-xl tracking-tight text-theme-primary"
           >
-            lastminute<span className="italic text-theme-accent">placementprep</span>
+            onestop<span className="italic text-theme-accent">placementprep</span>
           </Link>
         </header>
         <main className="flex-grow">

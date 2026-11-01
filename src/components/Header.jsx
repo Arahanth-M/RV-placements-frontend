@@ -709,11 +709,11 @@ const Header = () => {
                 ? "flex h-9 max-w-[11rem] shrink-0 items-center rounded-xl border border-theme bg-theme-hero px-2.5 py-1 font-serif text-sm text-theme-primary tracking-tight sm:h-12 sm:max-w-none sm:px-3 sm:text-base"
                 : "flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-theme bg-white px-1.5 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-12 sm:w-[4.5rem] sm:px-2"
             }
-            title={isGeneral ? "Last Minute Placement Prep — Home" : "RVCE Placement — Home"}
+            title={isGeneral ? "One Stop Placement Prep — Home" : "RVCE Placement — Home"}
           >
             {isGeneral ? (
               <span className="truncate">
-                lastminute<span className="italic text-theme-accent">placementprep</span>
+                onestop<span className="italic text-theme-accent">placementprep</span>
               </span>
             ) : (
               <BrandLogo alt="" />

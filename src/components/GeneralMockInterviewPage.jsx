@@ -70,6 +70,7 @@ function GeneralMockInterviewPage() {
 
   const activeTab = normalizeHubTab(searchParams.get("tab"));
   const selectedId = String(searchParams.get("companyId") || "").trim();
+  const continueSessionId = String(searchParams.get("continueSessionId") || "").trim();
   const mockPrefill = useMemo(
     () => parsePrepPathMockPrefill(searchParams),
     [searchParams]
@@ -369,39 +370,30 @@ function GeneralMockInterviewPage() {
                     <p className="mt-4 text-sm text-red-400">{companyCardError}</p>
                   ) : null}
 
-                  {companyCard ? (
-                    <div className="mt-4">
-                      {companyCardLocked ? (
-                        <p className="text-sm text-theme-secondary">
-                          This company card is locked. Unlock it to review the focus areas and
-                          must-do topics before you start.
-                        </p>
-                      ) : expectationTopics.length > 0 ? (
-                        <div className="min-w-0 rounded-2xl border border-theme bg-theme-input/40 p-4">
-                          <p className="text-sm font-semibold text-theme-primary">
-                            What they expect
-                          </p>
-                          <p className="mt-1 text-xs text-theme-muted">
-                            Must-do topics from this company card. These show up as tips while
-                            your answers are being scored.
-                          </p>
-                          <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
-                            {expectationTopics.map((topic) => (
-                              <li
-                                key={topic}
-                                className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary"
-                              >
-                                {topic}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-theme-muted">
-                          This company does not have must-do topics yet. You can still open the
-                          card for the rest of its prep notes.
-                        </p>
-                      )}
+                  {companyCard && companyCardLocked ? (
+                    <p className="mt-4 text-sm text-theme-secondary">
+                      This company card is locked. Unlock it to review the focus areas and
+                      must-do topics before you start.
+                    </p>
+                  ) : null}
+
+                  {companyCard && !companyCardLocked && expectationTopics.length > 0 ? (
+                    <div className="mt-4 min-w-0 rounded-2xl border border-theme bg-theme-input/40 p-4">
+                      <p className="text-sm font-semibold text-theme-primary">What they expect</p>
+                      <p className="mt-1 text-xs text-theme-muted">
+                        Must-do topics from this company card. These show up as tips while your
+                        answers are being scored.
+                      </p>
+                      <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                        {expectationTopics.map((topic) => (
+                          <li
+                            key={topic}
+                            className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary"
+                          >
+                            {topic}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   ) : null}
                 </section>
@@ -413,6 +405,12 @@ function GeneralMockInterviewPage() {
                 onInterviewLockChange={setIsInterviewLocked}
                 onForceExitToGeneral={() => setIsInterviewLocked(false)}
                 initialMockPlan={initialMockPlan}
+                continueSessionId={continueSessionId}
+                onContinueSessionConsumed={() => {
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("continueSessionId");
+                  setSearchParams(next, { replace: true });
+                }}
               />
             </>
           ) : null}

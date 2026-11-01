@@ -21,7 +21,7 @@ const PLAN_INFO = {
   trial: {
     includes: [
       "Full details for the first company in each category",
-      "1 lifetime AI mock interview",
+      "1 lifetime AI mock interview (any company)",
       "1 lifetime PrepPath plan",
       "1 lifetime behavioural coach question + evaluation",
     ],
@@ -205,6 +205,8 @@ export default function GeneralPricingPage() {
   const [access, setAccess] = useState(null);
   const [categoryId, setCategoryId] = useState(prefillCategory);
   const [busyPlan, setBusyPlan] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [checkoutPreview, setCheckoutPreview] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -310,6 +312,13 @@ export default function GeneralPricingPage() {
     return planId === "all_premium";
   };
 
+  const closeCheckoutPreview = () => {
+    if (paying) return;
+    setCheckoutPreview(null);
+    setBusyPlan("");
+  };
+
+  /** Quote first so we can show Base / GST / Total before Razorpay opens. */
   const buy = async (plan) => {
     setError("");
     setSuccess("");
@@ -323,27 +332,70 @@ export default function GeneralPricingPage() {
     }
     setBusyPlan(plan.id);
     try {
-      const orderRes = await billingAPI.createOrder({
+      const quoteRes = await billingAPI.quote({
         planId: plan.id,
         categoryId: plan.requiresCategory ? categoryId : undefined,
       });
+      const quote = quoteRes.data?.quote;
+      if (!quote || Number(quote.payableInr) <= 0) {
+        setError(quoteRes.data?.owned ? "You already have this access." : "Nothing to pay for this plan.");
+        setBusyPlan("");
+        return;
+      }
+      setCheckoutPreview({
+        plan,
+        categoryId: plan.requiresCategory ? categoryId : "",
+        quote,
+      });
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Could not prepare checkout.");
+      setBusyPlan("");
+    }
+  };
+
+  const confirmCheckoutPreview = async () => {
+    if (!checkoutPreview?.plan || paying) return;
+    const { plan, categoryId: previewCategoryId, quote } = checkoutPreview;
+    setPaying(true);
+    setError("");
+    try {
+      const orderRes = await billingAPI.createOrder({
+        planId: plan.id,
+        categoryId: plan.requiresCategory ? previewCategoryId : undefined,
+      });
       const Razorpay = await loadRazorpayCheckoutScript();
       const payload = orderRes.data;
+      const order = payload.order || {};
+      const baseInr = order.baseInr ?? quote.baseInr;
+      const gstInr = order.gstInr ?? quote.gstInr;
+      const payableInr = order.payableInr ?? quote.payableInr;
+      const checkoutDescription =
+        order.checkoutDescription ||
+        `${payload.plan?.name || plan.name}: Base ₹${baseInr} + GST 18% ₹${gstInr} = ₹${payableInr}`;
+
+      // Razorpay Price Summary only shows the total; close our split modal first.
+      setCheckoutPreview(null);
+
       await new Promise((resolve, reject) => {
         const checkout = new Razorpay({
           key: payload.keyId,
-          amount: payload.order.amountPaise,
-          currency: payload.order.currency || "INR",
-          name: "Last Minute Placement Prep",
-          description: payload.plan?.name || plan.name,
-          order_id: payload.order.razorpayOrderId,
+          amount: order.amountPaise,
+          currency: order.currency || "INR",
+          name: "One Stop Placement Prep",
+          description: checkoutDescription,
+          order_id: order.razorpayOrderId,
           prefill: {
             email: user?.email || "",
             name: user?.username || "",
           },
           notes: {
             planId: plan.id,
-            categoryId: plan.requiresCategory ? categoryId : "",
+            categoryId: plan.requiresCategory ? previewCategoryId : "",
+            baseInr: baseInr != null ? String(baseInr) : "",
+            gstInr: gstInr != null ? String(gstInr) : "",
+            gstRate: order.gstRate != null ? String(order.gstRate) : "0.18",
+            totalInr: payableInr != null ? String(payableInr) : "",
+            breakdown: checkoutDescription,
           },
           theme: { color: "#6366F1" },
           handler: async (response) => {
@@ -361,17 +413,23 @@ export default function GeneralPricingPage() {
         checkout.open();
       });
       await load();
-      const paid = payload.order.payableInr;
-      setSuccess(`Payment successful. ${plan.name} is active for 6 months.`);
-      if (paid != null) {
-        setSuccess(`Payment of ₹${paid} successful. ${plan.name} is active for 6 months.`);
+      if (payableInr != null && baseInr != null && gstInr != null) {
+        setSuccess(
+          `Payment of ₹${payableInr} successful (₹${baseInr} + ₹${gstInr} GST). ${plan.name} is active for 6 months.`
+        );
+      } else if (payableInr != null) {
+        setSuccess(`Payment of ₹${payableInr} successful. ${plan.name} is active for 6 months.`);
+      } else {
+        setSuccess(`Payment successful. ${plan.name} is active for 6 months.`);
       }
     } catch (err) {
       const closed = err?.message === "Checkout closed";
       if (!closed) {
         setError(err?.response?.data?.error || err?.message || "Payment failed.");
       }
+      setCheckoutPreview(null);
     } finally {
+      setPaying(false);
       setBusyPlan("");
     }
   };
@@ -404,8 +462,8 @@ export default function GeneralPricingPage() {
                 <FaCheckCircle className="shrink-0 text-theme-accent" aria-hidden />
               </div>
               <p className="flex-1 text-sm text-theme-secondary">
-                First company in each category stays free. Includes 1 AI mock interview, 1 PrepPath
-                plan, and 1 behavioural coach question.
+                First company in each category stays free for full details. Includes 1 AI mock
+                interview of any company, 1 PrepPath plan, and 1 behavioural coach question.
               </p>
               <ul className="mt-3 space-y-1 text-sm text-theme-secondary">
                 <li>
@@ -509,11 +567,13 @@ export default function GeneralPricingPage() {
                     </p>
                     <button
                       type="button"
-                      disabled={Boolean(busyPlan)}
+                      disabled={Boolean(busyPlan) || paying}
                       onClick={() => buy(plan)}
                       className="mt-4 rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
                     >
-                      {busyPlan === plan.id ? "Opening checkout…" : "Unlock"}
+                      {busyPlan === plan.id && !checkoutPreview
+                        ? "Preparing…"
+                        : "Unlock"}
                     </button>
                   </div>
                 );
@@ -526,6 +586,61 @@ export default function GeneralPricingPage() {
           )}
         </section>
       </div>
+
+      {checkoutPreview ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="gst-checkout-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-theme bg-theme-card p-6 shadow-xl">
+            <h3 id="gst-checkout-title" className="text-lg font-semibold text-theme-primary">
+              Confirm payment
+            </h3>
+            <p className="mt-1 text-sm text-theme-secondary">
+              {checkoutPreview.plan?.name}
+              {checkoutPreview.plan?.requiresCategory && checkoutPreview.categoryId
+                ? ` · ${categoryLabel(checkoutPreview.categoryId)}`
+                : ""}
+            </p>
+            <dl className="mt-5 space-y-2.5 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-theme-secondary">Base</dt>
+                <dd className="font-medium text-theme-primary">₹{checkoutPreview.quote.baseInr}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-theme-secondary">GST (18%)</dt>
+                <dd className="font-medium text-theme-primary">₹{checkoutPreview.quote.gstInr}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 border-t border-theme pt-2.5">
+                <dt className="font-semibold text-theme-primary">Total</dt>
+                <dd className="text-lg font-semibold text-theme-primary">
+                  ₹{checkoutPreview.quote.payableInr}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                disabled={paying}
+                onClick={closeCheckoutPreview}
+                className="rounded-xl border border-theme px-4 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-hero disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={paying}
+                onClick={confirmCheckoutPreview}
+                className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+              >
+                {paying ? "Opening Razorpay…" : "Pay ₹" + checkoutPreview.quote.payableInr}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

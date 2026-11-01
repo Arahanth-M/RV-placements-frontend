@@ -11,7 +11,7 @@ export default function PublicPricingPage() {
   return (
     <LegalPageLayout
       title="Pricing"
-      subtitle="One-time digital plans for Last Minute Placement Prep. No auto-renewal. Amounts in INR."
+      subtitle="One-time digital plans for One Stop Placement Prep. No auto-renewal. Amounts in INR. Plan prices are exclusive of 18% GST, which is added at checkout."
     >
       <LegalSection title="Plans">
         <div className="overflow-x-auto rounded-xl border border-theme">
@@ -39,13 +39,14 @@ export default function PublicPricingPage() {
         <p>
           {inGeneral ? (
             <>
-              Checkout is on this same Pricing page in Student Corner after you sign in. Payments
-              are processed by Razorpay.
+              Checkout is on this same Pricing page in Student Corner after you sign in. The Razorpay
+              payment screen shows base amount and 18% GST separately. Payments are processed by
+              Razorpay.
             </>
           ) : (
             <>
-              Sign in to Last Minute Placement Prep and open Pricing in Student Corner to purchase.
-              Payments are processed by Razorpay.
+              Sign in to One Stop Placement Prep and open Pricing in Student Corner to purchase.
+              Checkout shows base amount plus 18% GST. Payments are processed by Razorpay.
             </>
           )}
         </p>

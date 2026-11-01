@@ -302,8 +302,8 @@ export default function AdminSubmissionsTab({
     const from = (meta.page - 1) * PAGE_SIZE + 1;
     const to = Math.min(meta.page * PAGE_SIZE, meta.total);
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-slate-700 bg-slate-800/40">
-        <p className="text-xs text-slate-400">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-theme bg-theme-hero">
+        <p className="text-xs text-theme-muted">
           {from}–{to} of {meta.total}
         </p>
         <div className="flex items-center gap-2">
@@ -311,18 +311,18 @@ export default function AdminSubmissionsTab({
             type="button"
             disabled={meta.page <= 1 || loading}
             onClick={() => setPage(meta.page - 1)}
-            className="px-3 py-1.5 text-xs rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs rounded-md border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Previous
           </button>
-          <span className="text-xs text-slate-300 tabular-nums">
+          <span className="text-xs text-theme-secondary tabular-nums">
             Page {meta.page} / {meta.totalPages}
           </span>
           <button
             type="button"
             disabled={meta.page >= meta.totalPages || loading}
             onClick={() => setPage(meta.page + 1)}
-            className="px-3 py-1.5 text-xs rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs rounded-md border border-theme bg-theme-card text-theme-primary hover:bg-theme-hero disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next
           </button>
@@ -332,25 +332,26 @@ export default function AdminSubmissionsTab({
   };
 
   const submissionAiBusy = submissionEnhancing || submissionAddingAnswer;
+  const disabledBtn = "bg-theme-hero text-theme-muted cursor-not-allowed";
 
   return (
     <>
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-700">
+      <div className="bg-theme-card border border-theme rounded-xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-theme">
           <div className="mb-4">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
               <div aria-hidden="true" />
-              <h2 className="text-center text-2xl font-semibold text-indigo-400">
+              <h2 className="text-center text-2xl font-semibold text-theme-accent">
                 Submissions Management
               </h2>
               <div aria-hidden="true" />
             </div>
-            <p className="mx-auto mt-1 max-w-2xl text-center text-sm text-slate-400">
+            <p className="mx-auto mt-1 max-w-2xl text-center text-sm text-theme-secondary">
               Review and approve user submissions
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex gap-2 border border-slate-700 rounded-lg p-1 bg-slate-800/60">
+            <div className="flex gap-2 border border-theme rounded-lg p-1 bg-theme-hero">
               <button
                 type="button"
                 onClick={() => {
@@ -359,8 +360,8 @@ export default function AdminSubmissionsTab({
                 }}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   submissionsSubTab === "pending"
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-300 hover:bg-slate-700"
+                    ? "bg-theme-accent text-white"
+                    : "text-theme-secondary hover:bg-theme-card"
                 }`}
               >
                 Pending
@@ -373,8 +374,8 @@ export default function AdminSubmissionsTab({
                 }}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   submissionsSubTab === "approved"
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-300 hover:bg-slate-700"
+                    ? "bg-theme-accent text-white"
+                    : "text-theme-secondary hover:bg-theme-card"
                 }`}
               >
                 Approved
@@ -387,7 +388,7 @@ export default function AdminSubmissionsTab({
                 disabled={approvingAll || loading}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   approvingAll
-                    ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                    ? disabledBtn
                     : "bg-green-600 text-white hover:bg-green-700"
                 }`}
               >
@@ -398,14 +399,14 @@ export default function AdminSubmissionsTab({
             )}
           </div>
           {(pendingCount > 0 || approvedCount > 0) && (
-            <p className="mt-3 text-center text-xs text-slate-400">
+            <p className="mt-3 text-center text-xs text-theme-muted">
               {pendingCount} pending · {approvedCount} approved
             </p>
           )}
         </div>
 
         {error ? (
-          <div className="px-6 py-4 text-sm text-red-300 border-b border-slate-700 bg-red-950/30">
+          <div className="px-6 py-4 text-sm text-red-700 dark:text-red-300 border-b border-theme bg-red-50 dark:bg-red-950/30">
             {error}
           </div>
         ) : null}
@@ -413,68 +414,68 @@ export default function AdminSubmissionsTab({
         {submissionsSubTab === "pending" ? (
           loading && submissions.length === 0 ? (
             <div className="p-8 sm:p-12 text-center">
-              <p className="text-slate-400 text-sm sm:text-base">Loading pending submissions…</p>
+              <p className="text-theme-secondary text-sm sm:text-base">Loading pending submissions…</p>
             </div>
           ) : submissions.length === 0 ? (
             <div className="p-8 sm:p-12 text-center">
-              <p className="text-slate-400 text-sm sm:text-base">No pending submissions found.</p>
+              <p className="text-theme-secondary text-sm sm:text-base">No pending submissions found.</p>
             </div>
           ) : (
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <div className="inline-block min-w-full align-middle">
-                <table className="min-w-full divide-y divide-slate-700">
-                  <thead className="bg-slate-800/60">
+                <table className="min-w-full divide-y divide-[color:var(--border)]">
+                  <thead className="bg-theme-hero">
                     <tr>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                         Submitted By
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                         Company
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                         Type
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden md:table-cell">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider hidden md:table-cell">
                         Content
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden lg:table-cell">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider hidden lg:table-cell">
                         Submitted At
                       </th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-slate-800/40 divide-y divide-slate-700">
+                  <tbody className="bg-theme-card divide-y divide-[color:var(--border)]">
                     {submissions.map((submission) => {
                       const content = parseContent(submission.content);
                       return (
                         <tr
                           key={submission._id}
-                          className="hover:bg-slate-700/50 cursor-pointer"
+                          className="hover:bg-theme-hero cursor-pointer"
                           onClick={() => handleViewFullSubmission(submission)}
                         >
                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                             <div>
-                              <p className="text-xs sm:text-sm font-medium text-slate-200">
+                              <p className="text-xs sm:text-sm font-medium text-theme-primary">
                                 {submission.submittedBy?.name || "N/A"}
                                 {submission.isAnonymous && (
-                                  <span className="ml-2 text-xs text-orange-600 font-normal">
+                                  <span className="ml-2 text-xs text-orange-600 dark:text-orange-400 font-normal">
                                     (Anonymous)
                                   </span>
                                 )}
                               </p>
-                              <p className="text-xs sm:text-sm text-slate-400 truncate max-w-[120px] sm:max-w-none">
+                              <p className="text-xs sm:text-sm text-theme-muted truncate max-w-[120px] sm:max-w-none">
                                 {submission.submittedBy?.email || ""}
                               </p>
                             </div>
                           </td>
                           <td className="px-3 sm:px-6 py-4 max-w-[14rem]">
                             <div>
-                              <p className="text-xs sm:text-sm text-slate-200">
+                              <p className="text-xs sm:text-sm text-theme-primary">
                                 {submission.companyId?.name || "N/A"}
                               </p>
-                              <p className="text-[11px] sm:text-xs text-slate-400 leading-snug">
+                              <p className="text-[11px] sm:text-xs text-theme-muted leading-snug">
                                 <span className="block">Year: {submission.placementYear || "N/A"}</span>
                                 <span className="block">
                                   Cluster: {formatClusterShort(submission.cluster)}
@@ -483,24 +484,24 @@ export default function AdminSubmissionsTab({
                             </div>
                           </td>
                           <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200 capitalize">
                               {submission.type}
                             </span>
                           </td>
                           <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
-                            <div className="text-xs sm:text-sm text-slate-300 max-w-md">
+                            <div className="text-xs sm:text-sm text-theme-secondary max-w-md">
                               {content.question && (
                                 <p className="font-medium mb-1 truncate">Q: {content.question}</p>
                               )}
                               {content.solution && (
-                                <p className="text-slate-400 truncate">A: {content.solution}</p>
+                                <p className="text-theme-muted truncate">A: {content.solution}</p>
                               )}
                               {!content.question && !content.solution && (
-                                <p className="text-slate-400 truncate">{submission.content}</p>
+                                <p className="text-theme-muted truncate">{submission.content}</p>
                               )}
                             </div>
                           </td>
-                          <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-slate-400 hidden lg:table-cell">
+                          <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-theme-muted hidden lg:table-cell">
                             {formatDate(submission.submittedAt)}
                           </td>
                           <td
@@ -516,7 +517,7 @@ export default function AdminSubmissionsTab({
                                 }
                                 className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
                                   approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                    ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                                    ? disabledBtn
                                     : "bg-green-600 text-white hover:bg-green-700"
                                 }`}
                               >
@@ -530,7 +531,7 @@ export default function AdminSubmissionsTab({
                                 }
                                 className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition w-full sm:w-auto ${
                                   approvingIds.has(submission._id) || rejectingIds.has(submission._id)
-                                    ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                                    ? disabledBtn
                                     : "bg-red-600 text-white hover:bg-red-700"
                                 }`}
                               >
@@ -551,70 +552,70 @@ export default function AdminSubmissionsTab({
           )
         ) : loading && approvedSubmissions.length === 0 ? (
           <div className="p-8 sm:p-12 text-center">
-            <p className="text-slate-400 text-sm sm:text-base">Loading approved submissions…</p>
+            <p className="text-theme-secondary text-sm sm:text-base">Loading approved submissions…</p>
           </div>
         ) : approvedSubmissions.length === 0 ? (
           <div className="p-8 sm:p-12 text-center">
-            <p className="text-slate-400 text-sm sm:text-base">No approved submissions found.</p>
+            <p className="text-theme-secondary text-sm sm:text-base">No approved submissions found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto -mx-4 sm:mx-0">
             <div className="inline-block min-w-full align-middle">
-              <table className="min-w-full divide-y divide-slate-700">
-                <thead className="bg-slate-800/60">
+              <table className="min-w-full divide-y divide-[color:var(--border)]">
+                <thead className="bg-theme-hero">
                   <tr>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                       Submitted By
                     </th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                       Company
                     </th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider hidden sm:table-cell">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-theme-muted uppercase tracking-wider hidden sm:table-cell">
                       Approved
                     </th>
-                    <th className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-theme-muted uppercase tracking-wider">
                       Action
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-slate-800/40 divide-y divide-slate-700">
+                <tbody className="bg-theme-card divide-y divide-[color:var(--border)]">
                   {approvedSubmissions.map((submission) => (
                     <tr
                       key={submission._id}
-                      className="hover:bg-slate-700/50 cursor-pointer"
+                      className="hover:bg-theme-hero cursor-pointer"
                       onClick={() => handleViewFullSubmission(submission)}
                     >
                       <td className="px-3 sm:px-4 py-4">
-                        <p className="text-xs sm:text-sm font-medium text-slate-200">
+                        <p className="text-xs sm:text-sm font-medium text-theme-primary">
                           {submission.submittedBy?.name || "N/A"}
                           {submission.isAnonymous ? (
-                            <span className="ml-1.5 text-xs text-orange-400 font-normal">
+                            <span className="ml-1.5 text-xs text-orange-600 dark:text-orange-400 font-normal">
                               (Anon)
                             </span>
                           ) : null}
                         </p>
-                        <p className="text-xs text-slate-400 truncate max-w-[140px] sm:max-w-none">
+                        <p className="text-xs text-theme-muted truncate max-w-[140px] sm:max-w-none">
                           {submission.submittedBy?.email || ""}
                         </p>
                       </td>
                       <td className="px-3 sm:px-4 py-4">
-                        <p className="text-xs sm:text-sm text-slate-200">
+                        <p className="text-xs sm:text-sm text-theme-primary">
                           {submission.companyId?.name || "N/A"}
                         </p>
-                        <p className="text-[11px] text-slate-400">
+                        <p className="text-[11px] text-theme-muted">
                           {submission.placementYear || "—"} ·{" "}
                           {formatClusterShort(submission.cluster)}
                         </p>
                       </td>
                       <td className="px-3 sm:px-4 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-600 text-white capitalize">
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-theme-accent text-white capitalize">
                           {submission.type}
                         </span>
                       </td>
-                      <td className="px-3 sm:px-4 py-4 whitespace-nowrap text-xs text-slate-400 hidden sm:table-cell">
+                      <td className="px-3 sm:px-4 py-4 whitespace-nowrap text-xs text-theme-muted hidden sm:table-cell">
                         {submission.approvedAt ? formatDate(submission.approvedAt) : "N/A"}
                       </td>
                       <td
@@ -627,7 +628,7 @@ export default function AdminSubmissionsTab({
                           disabled={deletingIds.has(submission._id)}
                           className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition ${
                             deletingIds.has(submission._id)
-                              ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                              ? disabledBtn
                               : "bg-red-600 text-white hover:bg-red-700"
                           }`}
                         >
@@ -648,14 +649,14 @@ export default function AdminSubmissionsTab({
 
       {/* Full Submission Details Modal */}
       {showSubmissionModal && selectedSubmission ? (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-indigo-400">Full Submission Details</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-theme-card border border-theme rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-theme-card border-b border-theme px-6 py-4 flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-theme-accent">Full Submission Details</h3>
               <button
                 type="button"
                 onClick={closeSubmissionModal}
-                className="text-slate-400 hover:text-slate-200 text-2xl font-bold"
+                className="text-theme-muted hover:text-theme-primary text-2xl font-bold"
               >
                 ×
               </button>
@@ -663,71 +664,71 @@ export default function AdminSubmissionsTab({
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Submitted By</p>
-                  <p className="text-base text-slate-200 mt-1">
+                  <p className="text-sm font-medium text-theme-muted">Submitted By</p>
+                  <p className="text-base text-theme-primary mt-1">
                     {selectedSubmission.submittedBy?.name || "N/A"}
                     {selectedSubmission.isAnonymous ? (
-                      <span className="ml-2 text-sm text-orange-400">(Anonymous)</span>
+                      <span className="ml-2 text-sm text-orange-600 dark:text-orange-400">(Anonymous)</span>
                     ) : null}
                   </p>
-                  <p className="text-sm text-slate-400 mt-1">
+                  <p className="text-sm text-theme-muted mt-1">
                     {selectedSubmission.submittedBy?.email || "N/A"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Company</p>
-                  <p className="text-base text-slate-200 mt-1">
+                  <p className="text-sm font-medium text-theme-muted">Company</p>
+                  <p className="text-base text-theme-primary mt-1">
                     {selectedSubmission.companyId?.name || "N/A"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Type</p>
-                  <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-indigo-600 text-white capitalize">
+                  <p className="text-sm font-medium text-theme-muted">Type</p>
+                  <span className="inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full bg-theme-accent text-white capitalize">
                     {selectedSubmission.type || "N/A"}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Placement Year</p>
-                  <p className="text-base text-slate-200 mt-1">
+                  <p className="text-sm font-medium text-theme-muted">Placement Year</p>
+                  <p className="text-base text-theme-primary mt-1">
                     {selectedSubmission.placementYear || "N/A"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Cluster</p>
-                  <p className="text-base text-slate-200 mt-1">
+                  <p className="text-sm font-medium text-theme-muted">Cluster</p>
+                  <p className="text-base text-theme-primary mt-1">
                     {formatClusterShort(selectedSubmission.cluster)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Status</p>
+                  <p className="text-sm font-medium text-theme-muted">Status</p>
                   <span
                     className={`inline-block mt-1 px-3 py-1 text-sm font-semibold rounded-full ${
                       selectedSubmission.status === "approved"
                         ? "bg-green-600 text-white"
-                        : "bg-yellow-600 text-white"
+                        : "bg-yellow-500 text-white"
                     }`}
                   >
                     {selectedSubmission.status === "approved" ? "Approved" : "Pending"}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-400">Submitted At</p>
-                  <p className="text-base text-slate-200 mt-1">
+                  <p className="text-sm font-medium text-theme-muted">Submitted At</p>
+                  <p className="text-base text-theme-primary mt-1">
                     {formatDate(selectedSubmission.submittedAt)}
                   </p>
                 </div>
                 {selectedSubmission.approvedAt ? (
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Approved At</p>
-                    <p className="text-base text-slate-200 mt-1">
+                    <p className="text-sm font-medium text-theme-muted">Approved At</p>
+                    <p className="text-base text-theme-primary mt-1">
                       {formatDate(selectedSubmission.approvedAt)}
                     </p>
                   </div>
                 ) : null}
                 {selectedSubmission.status === "approved" ? (
                   <div>
-                    <p className="text-sm font-medium text-slate-400">Reviewed by</p>
-                    <p className="text-base text-slate-200 mt-1">
+                    <p className="text-sm font-medium text-theme-muted">Reviewed by</p>
+                    <p className="text-base text-theme-primary mt-1">
                       {selectedSubmission.reviewedBy?.name
                         ? `${selectedSubmission.reviewedBy.name}${
                             selectedSubmission.reviewedBy.role === "spc"
@@ -740,9 +741,9 @@ export default function AdminSubmissionsTab({
                 ) : null}
               </div>
 
-              <div className="border-t border-slate-700 pt-4">
-                <p className="text-sm font-medium text-slate-400 mb-2">Full Submission Content</p>
-                <div className="bg-slate-900 rounded-lg p-4">
+              <div className="border-t border-theme pt-4">
+                <p className="text-sm font-medium text-theme-muted mb-2">Full Submission Content</p>
+                <div className="bg-theme-hero rounded-lg p-4 border border-theme">
                   {(() => {
                     const content = parseContent(selectedSubmission.content);
                     if (content.question || content.solution) {
@@ -750,16 +751,16 @@ export default function AdminSubmissionsTab({
                         <div className="space-y-3">
                           {content.question ? (
                             <div>
-                              <p className="text-sm font-semibold text-slate-300 mb-1">Question:</p>
-                              <p className="text-base text-slate-200 whitespace-pre-wrap break-words">
+                              <p className="text-sm font-semibold text-theme-secondary mb-1">Question:</p>
+                              <p className="text-base text-theme-primary whitespace-pre-wrap break-words">
                                 {content.question}
                               </p>
                             </div>
                           ) : null}
                           {content.solution ? (
                             <div>
-                              <p className="text-sm font-semibold text-slate-300 mb-1">Solution:</p>
-                              <pre className="text-base text-slate-200 whitespace-pre-wrap break-words font-sans bg-slate-800 p-3 rounded border border-slate-700 overflow-x-auto">
+                              <p className="text-sm font-semibold text-theme-secondary mb-1">Solution:</p>
+                              <pre className="text-base text-theme-primary whitespace-pre-wrap break-words font-sans bg-theme-card p-3 rounded border border-theme overflow-x-auto">
                                 {content.solution}
                               </pre>
                             </div>
@@ -768,7 +769,7 @@ export default function AdminSubmissionsTab({
                       );
                     }
                     return (
-                      <p className="text-base text-slate-200 whitespace-pre-wrap break-words">
+                      <p className="text-base text-theme-primary whitespace-pre-wrap break-words">
                         {selectedSubmission.content || "—"}
                       </p>
                     );
@@ -777,19 +778,19 @@ export default function AdminSubmissionsTab({
               </div>
 
               {submissionEnhanceError ? (
-                <p className="text-sm text-red-400 border-t border-slate-700 pt-4">
+                <p className="text-sm text-red-600 dark:text-red-400 border-t border-theme pt-4">
                   {submissionEnhanceError}
                 </p>
               ) : null}
 
               {submissionEnhancedContent ? (
-                <div className="border-t border-slate-700 pt-4">
-                  <p className="text-sm font-medium text-slate-400 mb-2">
+                <div className="border-t border-theme pt-4">
+                  <p className="text-sm font-medium text-theme-muted mb-2">
                     {submissionAnswerGenerated
                       ? "Generated answer preview"
                       : "AI-enhanced preview"}
                   </p>
-                  <div className="bg-slate-900/80 border border-violet-500/30 rounded-lg p-4">
+                  <div className="bg-theme-hero border border-theme-accent/30 rounded-lg p-4">
                     {(() => {
                       const content = parseContent(submissionEnhancedContent);
                       if (content.question || content.solution) {
@@ -797,20 +798,20 @@ export default function AdminSubmissionsTab({
                           <div className="space-y-3">
                             {content.question ? (
                               <div>
-                                <p className="text-sm font-semibold text-slate-300 mb-1">
+                                <p className="text-sm font-semibold text-theme-secondary mb-1">
                                   Question:
                                 </p>
-                                <p className="text-base text-slate-200 whitespace-pre-wrap break-words">
+                                <p className="text-base text-theme-primary whitespace-pre-wrap break-words">
                                   {content.question}
                                 </p>
                               </div>
                             ) : null}
                             {content.solution ? (
                               <div>
-                                <p className="text-sm font-semibold text-slate-300 mb-1">
+                                <p className="text-sm font-semibold text-theme-secondary mb-1">
                                   Solution:
                                 </p>
-                                <pre className="text-base text-slate-200 whitespace-pre-wrap break-words font-sans bg-slate-800 p-3 rounded border border-slate-700 overflow-x-auto max-h-48">
+                                <pre className="text-base text-theme-primary whitespace-pre-wrap break-words font-sans bg-theme-card p-3 rounded border border-theme overflow-x-auto max-h-48">
                                   {content.solution}
                                 </pre>
                               </div>
@@ -819,7 +820,7 @@ export default function AdminSubmissionsTab({
                         );
                       }
                       return (
-                        <p className="text-base text-slate-200 whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                        <p className="text-base text-theme-primary whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
                           {submissionEnhancedContent}
                         </p>
                       );
@@ -829,7 +830,7 @@ export default function AdminSubmissionsTab({
               ) : null}
 
               {selectedSubmission.status !== "approved" ? (
-                <div className="border-t border-slate-700 pt-4 flex flex-wrap gap-3">
+                <div className="border-t border-theme pt-4 flex flex-wrap gap-3">
                   {submissionSupportsAddAnswer(selectedSubmission.type) ? (
                     <button
                       type="button"
@@ -843,7 +844,7 @@ export default function AdminSubmissionsTab({
                         submissionAiBusy ||
                         approvingIds.has(selectedSubmission._id) ||
                         rejectingIds.has(selectedSubmission._id)
-                          ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                          ? disabledBtn
                           : "bg-sky-600 text-white hover:bg-sky-700"
                       }`}
                     >
@@ -863,7 +864,7 @@ export default function AdminSubmissionsTab({
                         submissionAiBusy ||
                         approvingIds.has(selectedSubmission._id) ||
                         rejectingIds.has(selectedSubmission._id)
-                          ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                          ? disabledBtn
                           : "bg-violet-600 text-white hover:bg-violet-700"
                       }`}
                     >
@@ -886,7 +887,7 @@ export default function AdminSubmissionsTab({
                           submissionAiBusy ||
                           approvingIds.has(selectedSubmission._id) ||
                           rejectingIds.has(selectedSubmission._id)
-                            ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                            ? disabledBtn
                             : "bg-green-600 text-white hover:bg-green-700"
                         }`}
                       >
@@ -908,8 +909,8 @@ export default function AdminSubmissionsTab({
                           submissionAiBusy ||
                           approvingIds.has(selectedSubmission._id) ||
                           rejectingIds.has(selectedSubmission._id)
-                            ? "bg-slate-600 text-slate-400 cursor-not-allowed"
-                            : "border border-slate-500 text-slate-200 hover:bg-slate-700"
+                            ? disabledBtn
+                            : "border border-theme text-theme-primary hover:bg-theme-hero"
                         }`}
                       >
                         {approvingIds.has(selectedSubmission._id)
@@ -930,7 +931,7 @@ export default function AdminSubmissionsTab({
                         submissionAiBusy ||
                         approvingIds.has(selectedSubmission._id) ||
                         rejectingIds.has(selectedSubmission._id)
-                          ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                          ? disabledBtn
                           : "bg-green-600 text-white hover:bg-green-700"
                       }`}
                     >
@@ -949,7 +950,7 @@ export default function AdminSubmissionsTab({
                       submissionAiBusy ||
                       approvingIds.has(selectedSubmission._id) ||
                       rejectingIds.has(selectedSubmission._id)
-                        ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                        ? disabledBtn
                         : "bg-red-600 text-white hover:bg-red-700"
                     }`}
                   >
@@ -957,14 +958,14 @@ export default function AdminSubmissionsTab({
                   </button>
                 </div>
               ) : (
-                <div className="border-t border-slate-700 pt-4 flex flex-wrap gap-3 justify-end">
+                <div className="border-t border-theme pt-4 flex flex-wrap gap-3 justify-end">
                   <button
                     type="button"
                     onClick={() => handleDeleteApprovedSubmission(selectedSubmission._id)}
                     disabled={deletingIds.has(selectedSubmission._id)}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                       deletingIds.has(selectedSubmission._id)
-                        ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                        ? disabledBtn
                         : "bg-red-600 text-white hover:bg-red-700"
                     }`}
                   >

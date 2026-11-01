@@ -31,6 +31,7 @@ export default function CompanyContributeModal({
   const [overview, setOverview] = useState("");
   const [rounds, setRounds] = useState(() => [blankInterviewRound()]);
   const [anonymous, setAnonymous] = useState(false);
+  const [experienceDeclaration, setExperienceDeclaration] = useState(false);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -52,6 +53,7 @@ export default function CompanyContributeModal({
     setOverview("");
     setRounds([blankInterviewRound()]);
     setAnonymous(false);
+    setExperienceDeclaration(false);
     setFormError("");
     setSubmitting(false);
   };
@@ -109,6 +111,10 @@ export default function CompanyContributeModal({
 
   const handleExperience = (event) => {
     event.preventDefault();
+    if (!experienceDeclaration) {
+      setFormError("Please confirm the declaration before submitting.");
+      return;
+    }
     const content = composeInterviewProcess({ overview, rounds });
     if (!content || !rounds.some((round) => round.title.trim() || round.details.trim())) {
       setFormError("Add at least one round before submitting.");
@@ -229,6 +235,23 @@ export default function CompanyContributeModal({
                         Submit anonymously (your name will be hidden).
                       </span>
                     </label>
+                    <label className="flex items-start gap-3 rounded-xl border border-theme bg-theme-input/50 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={experienceDeclaration}
+                        onChange={(event) => {
+                          setExperienceDeclaration(event.target.checked);
+                          if (event.target.checked) setFormError("");
+                        }}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-theme text-theme-accent focus:ring-theme-accent"
+                        required
+                      />
+                      <span className="text-sm text-theme-secondary">
+                        I confirm that the information I am submitting is accurate and based on
+                        my own participation in this company&apos;s interview process. I understand
+                        the platform may contact me by email to verify this submission.
+                      </span>
+                    </label>
                   </>
                 )}
               </div>
@@ -242,7 +265,7 @@ export default function CompanyContributeModal({
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || (isExperience && !experienceDeclaration)}
                   className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
                 >
                   {submitting ? "Submitting…" : "Submit"}

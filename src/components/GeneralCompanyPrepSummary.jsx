@@ -16,7 +16,6 @@ export default function GeneralCompanyPrepSummary({
 }) {
   const {
     rolesLine,
-    updatedLine,
     countsLine,
     countsLineCard,
     roleCoverage,
@@ -94,7 +93,6 @@ export default function GeneralCompanyPrepSummary({
       <p className="break-words">
         <span className="font-semibold text-theme-primary">Roles:</span> {rolesLine}
       </p>
-      <p>{updatedLine}</p>
       <p className="text-theme-muted text-sm sm:text-base md:text-lg font-normal tabular-nums">
         {countsLine}
       </p>

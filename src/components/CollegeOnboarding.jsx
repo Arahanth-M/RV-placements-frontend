@@ -80,7 +80,7 @@ function OnboardingHeader() {
           to={homePath}
           className="min-w-0 shrink font-serif text-lg sm:text-xl text-theme-primary tracking-tight"
         >
-          lastminute<span className="italic text-theme-accent">placementprep</span>
+          onestop<span className="italic text-theme-accent">placementprep</span>
         </Link>
         <button
           type="button"

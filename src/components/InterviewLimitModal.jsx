@@ -5,10 +5,7 @@ import { MESSAGES } from "../utils/constants";
 import { billingAPI, companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
-import {
-  GENERAL_COMPANY_CATEGORIES,
-  groupCompaniesByGeneralCategory,
-} from "../utils/generalCompanyCategory.js";
+import { GENERAL_COMPANY_CATEGORIES } from "../utils/generalCompanyCategory.js";
 
 function sortByName(list) {
   return [...list].sort((a, b) =>
@@ -35,43 +32,32 @@ function uniqueById(list) {
   return out;
 }
 
-function teasersFromAccess(access, nameLookup) {
-  const fromApi = uniqueById(access?.teaserCompanies);
-  if (fromApi.length) return fromApi;
-
-  const ids = access?.teaserCompanyIds && typeof access.teaserCompanyIds === "object"
-    ? access.teaserCompanyIds
-    : {};
-  const fromIds = [];
-  for (const [categoryId, rawId] of Object.entries(ids)) {
-    const id = rawId != null ? String(rawId).trim() : "";
-    if (!id) continue;
-    const categoryMeta = GENERAL_COMPANY_CATEGORIES.find((item) => item.id === categoryId);
-    fromIds.push({
-      _id: id,
-      name: nameLookup.get(id) || "Teaser company",
-      categoryId,
-      categoryLabel: categoryMeta?.label || categoryId,
-    });
-  }
-  return uniqueById(fromIds);
+function companiesFromNames(names) {
+  return uniqueById(
+    (Array.isArray(names) ? names : []).map((row) => {
+      const categoryId = String(row?.categoryId || "").trim();
+      const categoryMeta = GENERAL_COMPANY_CATEGORIES.find((item) => item.id === categoryId);
+      return {
+        _id: row?._id,
+        name: row?.name,
+        categoryId,
+        categoryLabel: categoryMeta?.label || row?.categoryLabel || "",
+      };
+    })
+  );
 }
 
-function teasersFromCompanyList(companies) {
-  const sorted = sortByName(Array.isArray(companies) ? companies : []);
-  const grouped = groupCompaniesByGeneralCategory(sorted);
-  const out = [];
-  for (const category of GENERAL_COMPANY_CATEGORIES) {
-    const first = grouped[category.id]?.[0];
-    if (!first?._id) continue;
-    out.push({
-      _id: String(first._id),
-      name: String(first.name || "").trim() || "Company",
-      categoryId: category.id,
-      categoryLabel: category.label,
-    });
-  }
-  return uniqueById(out);
+function messageSaysFreeMockUsed(text) {
+  return /free\s+ai\s+mock[\s\S]*used|free\s+mock[\s\S]*already\s+been\s+used|free\s+mock\s+interview\s+has\s+been\s+used/i.test(
+    String(text || "")
+  );
+}
+
+function readFreeMockRemaining(access) {
+  // Prefer explicit remaining; if freeMockConsumed is still false, treat as 1 available.
+  if (access?.freeMockConsumed === false) return 1;
+  const remaining = Number(access?.freeMockRemaining);
+  return Number.isFinite(remaining) ? Math.max(0, remaining) : 0;
 }
 
 /**
@@ -85,6 +71,9 @@ export default function InterviewLimitModal({
   onRequestAccess,
   requesting = false,
   upgradePath = "",
+  preferredCompanyId = "",
+  preferredCompanyName = "",
+  onContinueWithPreferredCompany,
 }) {
   const navigate = useNavigate();
   const { appPath } = useTenantShell();
@@ -92,13 +81,17 @@ export default function InterviewLimitModal({
   const testEmailPicksAnyCompany = user?.testEmailAccess?.active === true;
   const testMockStillAvailable =
     testEmailPicksAnyCompany && user.testEmailAccess.mockRemaining !== 0;
+  const preferredId = String(preferredCompanyId || "").trim();
+  const preferredName = String(preferredCompanyName || "").trim();
+  const hasPreferredCompany = Boolean(preferredId);
   const [requestFeedback, setRequestFeedback] = useState("");
   const [freeMockRemaining, setFreeMockRemaining] = useState(null);
-  const [teaserCompanies, setTeaserCompanies] = useState([]);
-  const [selectedTeaserId, setSelectedTeaserId] = useState("");
-  const [showTeaserPicker, setShowTeaserPicker] = useState(false);
-  const [teasersLoading, setTeasersLoading] = useState(false);
-  const [teasersError, setTeasersError] = useState("");
+  const [accessLoaded, setAccessLoaded] = useState(false);
+  const [mockCompanies, setMockCompanies] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [companiesError, setCompaniesError] = useState("");
 
   useEffect(() => {
     if (!open) return undefined;
@@ -117,67 +110,101 @@ export default function InterviewLimitModal({
   useEffect(() => {
     if (!open) {
       setRequestFeedback("");
-      setShowTeaserPicker(false);
-      setSelectedTeaserId("");
-      setTeasersError("");
+      setShowCompanyPicker(false);
+      setSelectedCompanyId("");
+      setCompaniesError("");
+      setFreeMockRemaining(null);
+      setAccessLoaded(false);
     }
   }, [open]);
 
   useEffect(() => {
     if (!open || !upgradePath || testEmailPicksAnyCompany) return undefined;
     let cancelled = false;
-    setTeasersLoading(true);
+    setAccessLoaded(false);
+    setFreeMockRemaining(null);
+    // Company was already chosen in setup — only need remaining-count, not a second picker.
+    if (hasPreferredCompany) {
+      setCompaniesLoading(true);
+      (async () => {
+        try {
+          const accessRes = await billingAPI.getAccess().catch(() => null);
+          if (cancelled) return;
+          setFreeMockRemaining(readFreeMockRemaining(accessRes?.data));
+          setMockCompanies([]);
+          setSelectedCompanyId(preferredId);
+          setCompaniesError("");
+        } catch {
+          if (!cancelled) {
+            setFreeMockRemaining(0);
+            setMockCompanies([]);
+            setSelectedCompanyId(preferredId);
+            setCompaniesError("");
+          }
+        } finally {
+          if (!cancelled) {
+            setCompaniesLoading(false);
+            setAccessLoaded(true);
+          }
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setCompaniesLoading(true);
     (async () => {
       try {
-        const [accessRes, namesRes, companiesRes] = await Promise.all([
+        const [accessRes, namesRes] = await Promise.all([
           billingAPI.getAccess().catch(() => null),
           companyAPI.getCompanyNames().catch(() => ({ data: [] })),
-          companyAPI.getAllCompanies().catch(() => ({ data: [] })),
         ]);
         if (cancelled) return;
-        const access = accessRes?.data || {};
-        const remaining = Number(access.freeMockRemaining);
-        setFreeMockRemaining(Number.isFinite(remaining) ? remaining : 1);
+        setFreeMockRemaining(readFreeMockRemaining(accessRes?.data));
 
-        const nameLookup = new Map(
-          (Array.isArray(namesRes?.data) ? namesRes.data : []).map((row) => [
-            String(row._id),
-            String(row.name || "").trim(),
-          ])
-        );
-        let teasers = teasersFromAccess(access, nameLookup);
-        if (!teasers.length) {
-          teasers = teasersFromCompanyList(companiesRes?.data || []);
-        }
-        teasers = sortByName(teasers);
-        setTeaserCompanies(teasers);
-        setSelectedTeaserId(teasers[0]?._id ? String(teasers[0]._id) : "");
-        setTeasersError(teasers.length ? "" : "Could not load teaser companies. Please try again.");
+        const companies = sortByName(companiesFromNames(namesRes?.data || []));
+        setMockCompanies(companies);
+        setSelectedCompanyId(companies[0]?._id ? String(companies[0]._id) : "");
+        setCompaniesError(companies.length ? "" : "Could not load companies. Please try again.");
       } catch {
         if (!cancelled) {
-          setFreeMockRemaining(1);
-          setTeaserCompanies([]);
-          setSelectedTeaserId("");
-          setTeasersError("Could not load teaser companies. Please try again.");
+          setFreeMockRemaining(0);
+          setMockCompanies([]);
+          setSelectedCompanyId("");
+          setCompaniesError("Could not load companies. Please try again.");
         }
       } finally {
-        if (!cancelled) setTeasersLoading(false);
+        if (!cancelled) {
+          setCompaniesLoading(false);
+          setAccessLoaded(true);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, upgradePath, testEmailPicksAnyCompany]);
+  }, [open, upgradePath, testEmailPicksAnyCompany, hasPreferredCompany, preferredId]);
 
   if (!open) return null;
 
   const body =
     (message && String(message).trim()) || MESSAGES.INTERVIEW_LIMIT_REACHED;
   const isPending = limitRequestStatus === "pending";
+  const freeMockUsedByMessage = messageSaysFreeMockUsed(body);
+  // Wait for access load; never treat null/loading as "still have a free mock".
   const freeMockAvailable =
     Boolean(upgradePath) &&
     !testEmailPicksAnyCompany &&
-    (freeMockRemaining == null || freeMockRemaining > 0);
+    accessLoaded &&
+    !freeMockUsedByMessage &&
+    Number.isFinite(freeMockRemaining) &&
+    freeMockRemaining > 0;
+  const freeMockUsed =
+    Boolean(upgradePath) &&
+    !testEmailPicksAnyCompany &&
+    accessLoaded &&
+    (freeMockUsedByMessage || freeMockRemaining === 0);
 
   const handleRequest = async () => {
     if (!onRequestAccess || isPending || requesting) return;
@@ -194,8 +221,12 @@ export default function InterviewLimitModal({
     }
   };
 
-  const startFreeTeaserMock = () => {
-    const id = String(selectedTeaserId || "").trim();
+  const startFreeMock = () => {
+    if (hasPreferredCompany && typeof onContinueWithPreferredCompany === "function") {
+      onContinueWithPreferredCompany();
+      return;
+    }
+    const id = String(selectedCompanyId || "").trim();
     if (!id) return;
     onClose();
     navigate(`${appPath("/interviews")}?companyId=${encodeURIComponent(id)}`);
@@ -233,66 +264,94 @@ export default function InterviewLimitModal({
 
         {upgradePath && !testMockStillAvailable ? (
           <div className="flex flex-col gap-3">
-            {freeMockAvailable ? (
-              <button
-                type="button"
-                onClick={() => setShowTeaserPicker(true)}
-                className={`text-left rounded-xl border p-4 transition-colors ${
-                  showTeaserPicker
-                    ? "border-theme-accent bg-theme-hero/50"
-                    : "border-theme bg-theme-hero/30 hover:bg-theme-hero/50"
-                }`}
-              >
-                <p className="text-sm font-semibold text-theme-primary">
-                  Take 1 free mock on a teaser company
-                </p>
-                <p className="mt-1 text-sm text-theme-secondary">
-                  You have one free mock. Use it on the first company in any category.
-                </p>
-              </button>
-            ) : (
+            {!accessLoaded ? (
+              <p className="text-sm text-theme-muted">Checking free mock availability…</p>
+            ) : freeMockAvailable ? (
+              hasPreferredCompany ? (
+                <div className="rounded-xl border border-theme bg-theme-hero/30 p-4">
+                  <p className="text-sm font-semibold text-theme-primary">
+                    You still have {freeMockRemaining} free mock
+                    {freeMockRemaining === 1 ? "" : "s"}
+                  </p>
+                  <p className="mt-1 text-sm text-theme-secondary">
+                    Continue with{" "}
+                    <span className="font-semibold text-theme-primary">
+                      {preferredName || "your selected company"}
+                    </span>
+                    . Company and rounds are already set.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={startFreeMock}
+                    disabled={companiesLoading}
+                    className="mt-3 w-full px-6 py-3 rounded-xl border border-theme-accent text-theme-accent text-base font-semibold transition-colors hover:bg-theme-hero disabled:opacity-60"
+                  >
+                    Continue free mock
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowCompanyPicker(true)}
+                    className={`text-left rounded-xl border p-4 transition-colors ${
+                      showCompanyPicker
+                        ? "border-theme-accent bg-theme-hero/50"
+                        : "border-theme bg-theme-hero/30 hover:bg-theme-hero/50"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-theme-primary">
+                      Take 1 free mock on any company
+                    </p>
+                    <p className="mt-1 text-sm text-theme-secondary">
+                      You have one free mock. Use it on any company of your choice.
+                    </p>
+                  </button>
+
+                  {showCompanyPicker ? (
+                    <div className="rounded-xl border border-theme bg-theme-card p-4">
+                      <label
+                        htmlFor="free-mock-company"
+                        className="mb-1 block text-xs font-medium text-theme-secondary"
+                      >
+                        Choose a company
+                      </label>
+                      {companiesLoading ? (
+                        <p className="text-sm text-theme-muted">Loading companies…</p>
+                      ) : companiesError && !mockCompanies.length ? (
+                        <p className="text-sm text-theme-muted">{companiesError}</p>
+                      ) : (
+                        <select
+                          id="free-mock-company"
+                          className="w-full rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary"
+                          value={selectedCompanyId}
+                          onChange={(e) => setSelectedCompanyId(e.target.value)}
+                        >
+                          {mockCompanies.map((company) => (
+                            <option key={company._id} value={company._id}>
+                              {company.name}
+                              {company.categoryLabel ? ` (${company.categoryLabel})` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <button
+                        type="button"
+                        onClick={startFreeMock}
+                        disabled={!selectedCompanyId || companiesLoading}
+                        className="mt-3 w-full px-6 py-3 rounded-xl border border-theme-accent text-theme-accent text-base font-semibold transition-colors hover:bg-theme-hero disabled:opacity-60"
+                      >
+                        Start free mock
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )
+            ) : freeMockUsed && !freeMockUsedByMessage ? (
               <p className="text-sm text-theme-muted leading-relaxed">
                 Your free AI mock interview has already been used. Unlock unlimited mocks from the
                 pricing page.
               </p>
-            )}
-
-            {showTeaserPicker && freeMockAvailable ? (
-              <div className="rounded-xl border border-theme bg-theme-card p-4">
-                <label
-                  htmlFor="teaser-mock-company"
-                  className="mb-1 block text-xs font-medium text-theme-secondary"
-                >
-                  Choose a teaser company
-                </label>
-                {teasersLoading ? (
-                  <p className="text-sm text-theme-muted">Loading companies…</p>
-                ) : teasersError && !teaserCompanies.length ? (
-                  <p className="text-sm text-theme-muted">{teasersError}</p>
-                ) : (
-                  <select
-                    id="teaser-mock-company"
-                    className="w-full rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-primary"
-                    value={selectedTeaserId}
-                    onChange={(e) => setSelectedTeaserId(e.target.value)}
-                  >
-                    {teaserCompanies.map((company) => (
-                      <option key={company._id} value={company._id}>
-                        {company.name}
-                        {company.categoryLabel ? ` (${company.categoryLabel})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button
-                  type="button"
-                  onClick={startFreeTeaserMock}
-                  disabled={!selectedTeaserId || teasersLoading}
-                  className="mt-3 w-full px-6 py-3 rounded-xl border border-theme-accent text-theme-accent text-base font-semibold transition-colors hover:bg-theme-hero disabled:opacity-60"
-                >
-                  Start free mock
-                </button>
-              </div>
             ) : null}
           </div>
         ) : (

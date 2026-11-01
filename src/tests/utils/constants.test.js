@@ -18,7 +18,7 @@ describe('Constants', () => {
     it('should have correct localhost values', () => {
       expect(LOCALHOST_HOSTNAME).toBe('localhost')
       expect(LOCALHOST_PORT).toBe(7779)
-      expect(PRODUCTION_DOMAIN).toBe('lastminuteplacementprep.in')
+      expect(PRODUCTION_DOMAIN).toBe('onestopplacementprep.in')
     })
   })
 
@@ -88,7 +88,7 @@ describe('Constants', () => {
     it('should have correct config values', () => {
       expect(CONFIG.FRONTEND_PORT).toBe(5173)
       expect(String(CONFIG.BACKEND_PORT)).toMatch(/^\d+$/)
-      expect(CONFIG.PRODUCTION_URL).toBe('https://lastminuteplacementprep.in')
+      expect(CONFIG.PRODUCTION_URL).toBe('https://onestopplacementprep.in')
       expect(CONFIG.LOCAL_URL).toBe('http://localhost:5173')
     })
   })
@@ -104,10 +104,10 @@ describe('Constants', () => {
 
     it('should detect production environment correctly', () => {
       Object.defineProperty(window, 'location', {
-        value: { hostname: 'lastminuteplacementprep.in' },
+        value: { hostname: 'onestopplacementprep.in' },
         writable: true,
       })
-      expect(window.location.hostname).toBe('lastminuteplacementprep.in')
+      expect(window.location.hostname).toBe('onestopplacementprep.in')
     })
   })
 })

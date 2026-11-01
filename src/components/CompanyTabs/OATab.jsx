@@ -284,7 +284,9 @@ import { FaCopy, FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 import { API_ENDPOINTS, MESSAGES, CONFIG } from "../../utils/constants";
 import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
+import McqPracticeCard from "./McqPracticeCard.jsx";
 import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
+import PlatformQuestionEnhanceBar from "../platform/PlatformQuestionEnhanceBar.jsx";
 import {
   platformQuestionEditDraft,
   platformQuestionEditPayload,
@@ -323,13 +325,13 @@ function OATab({
   const [solution, setSolution] = useState("");
   const [openQuestionIndex, setOpenQuestionIndex] = useState(null);
   const [openSolutionIndex, setOpenSolutionIndex] = useState({}); // track solution open per question
-  const [openMcqAnswerIndex, setOpenMcqAnswerIndex] = useState({});
   const [copiedIndex, setCopiedIndex] = useState(null); // track which solution was copied
   const [editIndex, setEditIndex] = useState(null);
   const [editQuestion, setEditQuestion] = useState("");
   const [editSolution, setEditSolution] = useState("");
   const [platformDraft, setPlatformDraft] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [enhanceBusy, setEnhanceBusy] = useState(null);
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [activeOaPrepRoleKey, setActiveOaPrepRoleKey] = useState(null);
   const contributionRoleKeyRef = useRef("");
@@ -390,13 +392,6 @@ function OATab({
 
   const toggleSolutionAccordion = (questionIdx) => {
     setOpenSolutionIndex((prev) => ({
-      ...prev,
-      [questionIdx]: !prev[questionIdx],
-    }));
-  };
-
-  const toggleMcqAnswer = (questionIdx) => {
-    setOpenMcqAnswerIndex((prev) => ({
       ...prev,
       [questionIdx]: !prev[questionIdx],
     }));
@@ -463,6 +458,39 @@ function OATab({
       );
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleEnhanceOAField = async (index, field) => {
+    if (!isGeneral || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
+    const labels = {
+      question: "Enhance question",
+      intuition: "Enhance intuition",
+      explanation: "Enhance explanation",
+      cpp: "Refill C++",
+      java: "Refill Java",
+      python: "Refill Python",
+    };
+    if (
+      !window.confirm(
+        `${labels[field] || "Enhance"} for this OA question? Existing content for that section will be replaced.`
+      )
+    ) {
+      return;
+    }
+    setEnhanceBusy({ index, field });
+    try {
+      await contentAdmin.enhanceOAQuestionField(safeCompany._id, index, field);
+      if (onCompanyUpdate) onCompanyUpdate();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Enhance failed. Try again."
+      );
+    } finally {
+      setEnhanceBusy(null);
     }
   };
 
@@ -729,82 +757,12 @@ function OATab({
                 .slice(0, qIndex + 1)
                 .filter((question) => mcqVisible(question)).length;
               return (
-              <div 
-                key={qIndex} 
-                className="border border-slate-700/50 rounded-lg bg-slate-800/40 p-4 sm:p-5 hover:border-slate-600 transition-colors"
-                data-testid={`mcq-question-${qIndex}`}
-              >
-                <div className="flex gap-2.5 sm:gap-3 mb-3 sm:mb-4">
-                  <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 text-xs sm:text-sm font-bold border border-indigo-300 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-500/50">
-                    {displayNumber}
-                  </span>
-                  <p className="text-slate-200 font-medium text-sm sm:text-lg leading-relaxed sm:leading-snug min-w-0">
-                    {q.question}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 ml-0 sm:ml-10">
-                  {(
-                    Array.isArray(q.mcqMetadata?.options) && q.mcqMetadata.options.length > 0
-                      ? q.mcqMetadata.options.map((opt) => ({
-                          label: String(opt?.id || "").toUpperCase(),
-                          value: opt?.text,
-                        }))
-                      : [
-                          { label: "A", value: q.optionA },
-                          { label: "B", value: q.optionB },
-                          { label: "C", value: q.optionC },
-                          { label: "D", value: q.optionD },
-                        ]
-                  ).map((opt) => opt.value && (
-                    <div
-                      key={opt.label}
-                      className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg bg-theme-input border border-theme text-theme-secondary"
-                    >
-                      <span className="font-bold text-theme-accent shrink-0">{opt.label}.</span>
-                      <span className="text-xs sm:text-sm leading-relaxed min-w-0 text-theme-primary">
-                        {opt.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {q.answer || q.explanation ? (
-                  <div className="mt-3 sm:mt-4 ml-0 sm:ml-10 min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60">
-                    <button
-                      type="button"
-                      onClick={() => toggleMcqAnswer(qIndex)}
-                      className="w-full text-left px-3 py-2.5 font-medium text-indigo-400 flex justify-between items-center gap-2 bg-slate-900/40"
-                      aria-expanded={Boolean(openMcqAnswerIndex[qIndex])}
-                    >
-                      <span>View answer</span>
-                      <span className="text-base text-slate-400 shrink-0">
-                        {openMcqAnswerIndex[qIndex] ? "−" : "+"}
-                      </span>
-                    </button>
-                    {openMcqAnswerIndex[qIndex] ? (
-                      <div className="space-y-3 px-3 py-3">
-                        {q.answer ? (
-                          <div
-                            className="inline-flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200"
-                            data-testid={`mcq-answer-${qIndex}`}
-                          >
-                            <FaCheck className="w-3.5 h-3.5 shrink-0" />
-                            <span className="text-xs sm:text-sm font-semibold tracking-wide leading-snug">
-                              Correct Answer: <span className="ml-1">{q.answer}</span>
-                            </span>
-                          </div>
-                        ) : null}
-                        {q.explanation ? (
-                          <p className="text-sm text-slate-400 leading-relaxed whitespace-pre-wrap">
-                            {q.explanation}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+                <McqPracticeCard
+                  key={`${effectiveOaPrepRoleKey || "all"}-${qIndex}-${String(q.question || "").slice(0, 48)}`}
+                  question={q}
+                  displayNumber={displayNumber}
+                  testIdIndex={qIndex}
+                />
               );
             })}
           </div>
@@ -885,6 +843,16 @@ function OATab({
                 {openQuestionIndex === index && (
                   <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
                     <p className="min-w-0">{q}</p>
+
+                    {isAdmin && isGeneral ? (
+                      <PlatformQuestionEnhanceBar
+                        busyField={
+                          enhanceBusy?.index === index ? enhanceBusy.field : null
+                        }
+                        disabled={actionLoading}
+                        onEnhance={(field) => handleEnhanceOAField(index, field)}
+                      />
+                    ) : null}
 
                     {(() => {
                       const langSol = safeCompany.onlineQuestions_solutions?.[index];

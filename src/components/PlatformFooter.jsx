@@ -76,7 +76,7 @@ export default function PlatformFooter() {
         <div className="grid grid-cols-1 items-start gap-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-8 lg:gap-y-0">
           <div className="sm:col-span-2 lg:col-span-5">
             <h2 className="text-2xl font-serif tracking-tight text-theme-primary">
-              lastminute<span className="italic text-theme-accent">placementprep</span>
+              onestop<span className="italic text-theme-accent">placementprep</span>
             </h2>
             <p className="mt-2 text-sm font-medium text-theme-secondary/80">
               A product of Devomation AI
@@ -139,7 +139,7 @@ export default function PlatformFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-2 border-t border-theme pt-8 text-sm text-theme-secondary sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} lastminuteplacementprep. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} onestopplacementprep. All rights reserved.</p>
           <p className="text-theme-secondary/70">Built for campuses · Powered by Devomation AI</p>
         </div>
       </div>

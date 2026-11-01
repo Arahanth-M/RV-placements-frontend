@@ -4,6 +4,7 @@ import { FaChevronRight } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { GENERAL_BASE } from "../constants/tenant.js";
 import GeneralResearchPanel from "./GeneralResearchPanel.jsx";
+import PlatformPrepCsvImportPanel from "./platform/PlatformPrepCsvImportPanel.jsx";
 import AnimatedLogoGrid from "./AnimatedLogoGrid";
 import { CategoryTilesGridShimmer } from "./StatsLoadingShimmer";
 import {
@@ -169,7 +170,14 @@ export default function GeneralDataEntryPage() {
           ) : null}
 
           {!loadingDetail && !detailError ? (
-            <GeneralResearchPanel key={companyId} companyId={companyId} companyName={resolvedName} />
+            <>
+              <PlatformPrepCsvImportPanel
+                key={`csv-${companyId}`}
+                companyId={companyId}
+                companyName={resolvedName}
+              />
+              <GeneralResearchPanel key={companyId} companyId={companyId} companyName={resolvedName} />
+            </>
           ) : null}
         </div>
       </div>

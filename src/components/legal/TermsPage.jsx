@@ -36,7 +36,7 @@ export default function TermsPage() {
 
       <LegalSection title="The platform">
         <p>
-          Last Minute Placement Prep is a digital placement-preparation platform. It provides
+          One Stop Placement Prep is a digital placement-preparation platform. It provides
           company insights, AI mock interviews, PrepPath study plans, resources, and related tools.
           It is not a university, employer, or placement office, and it does not guarantee
           internships, jobs, or interview outcomes.
@@ -86,12 +86,13 @@ export default function TermsPage() {
 
       <LegalSection title="Payment terms">
         <p>
-          Paid access on the Last Minute Placement Prep platform is sold as one-time plans for six
+          Paid access on the One Stop Placement Prep platform is sold as one-time plans for six
           months. There is no auto-renewal. Prices are shown in INR on the{" "}
           <Link className="text-theme-accent underline" to={legalPath("/pricing")}>
             Pricing
           </Link>{" "}
-          page and are GST-inclusive unless we state otherwise. Payments are processed by Razorpay.
+          page. Listed plan amounts are base prices; 18% GST is added at checkout and shown in
+          the payment breakdown. Payments are processed by Razorpay.
           Access starts after Razorpay confirms a successful payment. Failed, cancelled, or
           incomplete checkouts do not create access.
         </p>
@@ -100,9 +101,9 @@ export default function TermsPage() {
       <LegalSection title="Service conditions">
         <p>
           Free trial access includes teaser company cards (the first company in each category), one
-          lifetime free AI mock, and one lifetime free PrepPath plan. Resume builder, where
-          offered, remains free. We may change features, limits, or catalogue content. We aim for
-          high availability but do not warrant uninterrupted service.
+          lifetime free AI mock of any company, and one lifetime free PrepPath plan. Resume builder,
+          where offered, remains free. We may change features, limits, or catalogue content. We aim
+          for high availability but do not warrant uninterrupted service.
         </p>
       </LegalSection>
 

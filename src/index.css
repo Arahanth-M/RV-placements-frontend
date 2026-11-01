@@ -1608,6 +1608,22 @@ html, body, #root {
     animation: landing-brand-shine 4s ease-in-out infinite;
   }
 
+  @keyframes landing-hero-caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .landing-hero-caret {
+    display: inline-block;
+    width: 0.08em;
+    height: 0.9em;
+    margin-left: 0.12em;
+    vertical-align: -0.08em;
+    background-color: var(--accent);
+    animation: landing-hero-caret-blink 0.9s steps(1) infinite;
+  }
+
   /* Light hero: white washes out — stay in theme purple / deep indigo only */
   [data-theme="light"] .landing-brand-gradient {
     background-image: linear-gradient(

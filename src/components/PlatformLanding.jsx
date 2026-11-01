@@ -470,6 +470,52 @@ function LogoMarquee({ items, reverse = false, secondsPerTile = 5, children }) {
   );
 }
 
+const HERO_WELCOME_FULL = "Welcome to One Stop Placement Prep";
+
+function HeroWelcomeTyping() {
+  const reduceMotion = useReducedMotion();
+  const [visibleCount, setVisibleCount] = useState(reduceMotion ? HERO_WELCOME_FULL.length : 0);
+  const [caretOn, setCaretOn] = useState(!reduceMotion);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setVisibleCount(HERO_WELCOME_FULL.length);
+      setCaretOn(false);
+      return undefined;
+    }
+
+    setVisibleCount(0);
+    setCaretOn(true);
+    let index = 0;
+    let hideCaretTimer = null;
+    const typeId = setInterval(() => {
+      index += 1;
+      setVisibleCount(index);
+      if (index >= HERO_WELCOME_FULL.length) {
+        clearInterval(typeId);
+        hideCaretTimer = setTimeout(() => setCaretOn(false), 1400);
+      }
+    }, 42);
+
+    return () => {
+      clearInterval(typeId);
+      if (hideCaretTimer) clearTimeout(hideCaretTimer);
+    };
+  }, [reduceMotion]);
+
+  const typed = HERO_WELCOME_FULL.slice(0, visibleCount);
+
+  return (
+    <span aria-label={HERO_WELCOME_FULL}>
+      <span aria-hidden="true">{typed}</span>
+      {caretOn && !reduceMotion ? (
+        <span aria-hidden="true" className="landing-hero-caret" />
+      ) : null}
+      <span className="sr-only">{HERO_WELCOME_FULL}</span>
+    </span>
+  );
+}
+
 function HeroHighlightRotator() {
   const reduceMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
@@ -600,7 +646,7 @@ function LandingHero({ user, embedded = false }) {
           {...fadeUp(0.05)}
           className="landing-brand-gradient text-[2.1rem] sm:text-5xl md:text-6xl lg:text-[3.75rem] font-extrabold tracking-tight leading-[1.12]"
         >
-          Welcome to Last Minute Placement Prep
+          <HeroWelcomeTyping />
         </MotionH1>
 
         <MotionP
@@ -667,7 +713,7 @@ function LandingHeader({ user, loading }) {
     <header className="sticky top-0 z-50 border-b border-theme bg-theme-card/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <a href="#top" className="min-w-0 shrink font-serif text-lg sm:text-xl text-theme-primary tracking-tight">
-          lastminute<span className="italic text-theme-accent">placementprep</span>
+          onestop<span className="italic text-theme-accent">placementprep</span>
         </a>
         <nav className="hidden md:flex items-center gap-5 text-base font-semibold text-theme-secondary">
           <a href="#challenges" className="hover:text-theme-accent transition-colors">
@@ -965,7 +1011,7 @@ export default function PlatformLanding({ embedded = false }) {
             <SectionIntro
               title="Student"
               titleAccent="Testimonials"
-              subtitle="What students say about prepping with Last Minute Placement Prep."
+              subtitle="What students say about prepping with One Stop Placement Prep."
               id="landing-testimonials-heading"
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

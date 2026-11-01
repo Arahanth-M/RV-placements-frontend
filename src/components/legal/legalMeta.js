@@ -3,9 +3,9 @@ import { GENERAL_BASE } from "../../constants/tenant.js";
 
 export const LEGAL_LAST_UPDATED = "15 September 2026";
 
-export const LEGAL_BRAND = "Last Minute Placement Prep";
+export const LEGAL_BRAND = "One Stop Placement Prep";
 export const LEGAL_OPERATOR = "Devomation AI";
-export const LEGAL_WEBSITE = "https://lastminuteplacementprep.in";
+export const LEGAL_WEBSITE = "https://onestopplacementprep.in";
 export const LEGAL_LOCATION = "Bengaluru, Karnataka, India";
 
 export const PUBLIC_LEGAL_PATHS = [
@@ -35,30 +35,30 @@ export const PUBLIC_PLAN_PRICES = [
     name: "Free trial",
     price: "₹0",
     detail:
-      "First company in each category, 1 AI mock interview, 1 PrepPath plan, and 1 behavioural coach question.",
+      "First company in each category for full details, 1 AI mock interview of any company, 1 PrepPath plan, and 1 behavioural coach question.",
   },
   {
     name: "Unlock one category",
-    price: "₹299",
+    price: "₹199 + 18% GST",
     detail:
-      "Company-card details for one category plus unlimited behavioural coach (up to 3 questions per hour). No AI mocks or PrepPath. One-time, 6 months. No auto-renew.",
+      "Company-card details for one category plus unlimited behavioural coach (up to 3 questions per hour). No AI mocks or PrepPath. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
   {
     name: "Unlimited PrepPath",
-    price: "₹499",
+    price: "₹399 + 18% GST",
     detail:
-      "Unlimited PrepPath plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew.",
+      "Unlimited PrepPath plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
   {
     name: "Unlimited AI mock interviews",
-    price: "₹499",
+    price: "₹399 + 18% GST",
     detail:
-      "Unlimited AI mocks plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew.",
+      "Unlimited AI mocks plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
   {
     name: "All premium features",
-    price: "₹699",
+    price: "₹599 + 18% GST",
     detail:
-      "All company cards, unlimited AI mocks, unlimited PrepPath, and unlimited behavioural coach. One-time, 6 months. No auto-renew.",
+      "All company cards, unlimited AI mocks, unlimited PrepPath, and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
 ];
