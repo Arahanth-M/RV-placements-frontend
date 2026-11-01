@@ -164,7 +164,14 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
     } catch (err) {
       setItems([]);
       setPreviewErrors([]);
-      setError(err?.response?.data?.error || "CSV preview failed.");
+      const apiError = err?.response?.data?.error;
+      const status = err?.response?.status;
+      setError(
+        apiError ||
+          (status
+            ? `CSV preview failed (HTTP ${status}).`
+            : err?.message || "CSV preview failed.")
+      );
     } finally {
       setUploading(false);
     }

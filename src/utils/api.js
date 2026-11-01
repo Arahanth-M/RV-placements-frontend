@@ -693,7 +693,8 @@ export const platformAdminAPI = {
     API.post(
       `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/csv-preview`,
       formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      // Let the browser set multipart boundary; forcing Content-Type breaks multer in Safari/prod.
+      { timeout: 120000 }
     ),
   finalizePrepInterviewCsv: (companyId, payload) =>
     API.post(
@@ -741,9 +742,7 @@ export const interviewQuestionBankAPI = {
   catalog: () => API.get("/api/interview-question-bank/catalog"),
   create: (payload) => API.post("/api/interview-question-bank", payload),
   importCsv: (formData) =>
-    API.post("/api/interview-question-bank/import", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    }),
+    API.post("/api/interview-question-bank/import", formData, { timeout: 120000 }),
   update: (id, payload) =>
     API.put(`/api/interview-question-bank/${encodeURIComponent(String(id || ""))}`, payload),
   bulkTags: (payload) => API.patch("/api/interview-question-bank/bulk/tags", payload),
