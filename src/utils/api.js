@@ -689,11 +689,10 @@ export const platformAdminAPI = {
       `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/csv-template`,
       { responseType: "blob" }
     ),
-  previewPrepInterviewCsv: (companyId, formData) =>
+  previewPrepInterviewCsv: (companyId, payload) =>
     API.post(
       `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/csv-preview`,
-      formData,
-      // Let the browser set multipart boundary; forcing Content-Type breaks multer in Safari/prod.
+      payload,
       { timeout: 120000 }
     ),
   finalizePrepInterviewCsv: (companyId, payload) =>

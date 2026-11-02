@@ -151,9 +151,13 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
     }
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await platformAdminAPI.previewPrepInterviewCsv(companyId, formData);
+      // Send CSV as JSON text — avoids multipart/multer failures in Safari/prod proxies.
+      const csvText = await file.text();
+      if (!String(csvText || "").trim()) {
+        setError("The selected file is empty.");
+        return;
+      }
+      const res = await platformAdminAPI.previewPrepInterviewCsv(companyId, { csvText });
       const nextItems = Array.isArray(res.data?.items) ? res.data.items : [];
       setItems(nextItems);
       setPreviewErrors(Array.isArray(res.data?.errors) ? res.data.errors : []);
@@ -164,7 +168,12 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
     } catch (err) {
       setItems([]);
       setPreviewErrors([]);
-      const apiError = err?.response?.data?.error;
+      const apiError =
+        typeof err?.response?.data?.error === "string"
+          ? err.response.data.error
+          : typeof err?.response?.data === "string"
+            ? err.response.data.slice(0, 240)
+            : "";
       const status = err?.response?.status;
       setError(
         apiError ||
