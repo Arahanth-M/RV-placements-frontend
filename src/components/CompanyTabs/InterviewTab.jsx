@@ -592,21 +592,6 @@ function InterviewTab({
 
   const handleEnhanceIQField = async (index, field) => {
     if (!isGeneral || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
-    const labels = {
-      question: "Enhance question",
-      intuition: "Enhance intuition",
-      explanation: "Enhance explanation",
-      cpp: "Refill C++",
-      java: "Refill Java",
-      python: "Refill Python",
-    };
-    if (
-      !window.confirm(
-        `${labels[field] || "Enhance"} for this interview question? Existing content for that section will be replaced.`
-      )
-    ) {
-      return;
-    }
     setEnhanceBusy({ index, field });
     try {
       await contentAdmin.enhanceInterviewQuestionField(company._id, index, field);

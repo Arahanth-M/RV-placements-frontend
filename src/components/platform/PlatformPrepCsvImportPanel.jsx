@@ -95,6 +95,8 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
   const [importedRoles, setImportedRoles] = useState([]);
   const [fetchingLinks, setFetchingLinks] = useState(false);
   const [linksSummary, setLinksSummary] = useState(null);
+  const [generatingSummaries, setGeneratingSummaries] = useState(false);
+  const [roleSummaries, setRoleSummaries] = useState(null);
 
   const roles = useMemo(() => {
     const map = new Map();
@@ -254,6 +256,7 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
   const fetchQuickLinks = async () => {
     setError("");
     setLinksSummary(null);
+    setRoleSummaries(null);
     if (!quickLinkRoles.length) {
       setError("No roles from the CSV to fetch quick links for.");
       return;
@@ -270,6 +273,26 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
       setError(err?.response?.data?.error || "Quick links fetch failed.");
     } finally {
       setFetchingLinks(false);
+    }
+  };
+
+  const generateRoleSummaries = async () => {
+    setError("");
+    setRoleSummaries(null);
+    if (!quickLinkRoles.length) {
+      setError("No roles available for summary generation.");
+      return;
+    }
+    setGeneratingSummaries(true);
+    try {
+      const res = await platformAdminAPI.generatePrepRoleSummaries(companyId, {
+        roles: quickLinkRoles,
+      });
+      setRoleSummaries(res.data || null);
+    } catch (err) {
+      setError(err?.response?.data?.error || "Role summary generation failed.");
+    } finally {
+      setGeneratingSummaries(false);
     }
   };
 
@@ -309,6 +332,7 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
               setFile(event.target.files?.[0] || null);
               setFinalizeSummary(null);
               setLinksSummary(null);
+              setRoleSummaries(null);
               setImportedRoles([]);
             }}
           />
@@ -330,16 +354,95 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
 
       {error ? <p className="mt-3 text-sm text-red-500">{error}</p> : null}
       {finalizeSummary ? (
-        <p className="mt-3 text-sm text-emerald-600">
-          Added {finalizeSummary.inserted} question
-          {finalizeSummary.inserted === 1 ? "" : "s"}
-          {finalizeSummary.rolesAdded
-            ? ` · ${finalizeSummary.rolesAdded} new role${
-                finalizeSummary.rolesAdded === 1 ? "" : "s"
-              }`
-            : ""}
-          .
-        </p>
+        <div className="mt-3 space-y-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3">
+          <p className="text-sm text-emerald-600">
+            Added {finalizeSummary.inserted} question
+            {finalizeSummary.inserted === 1 ? "" : "s"}
+            {finalizeSummary.rolesAdded
+              ? ` · ${finalizeSummary.rolesAdded} new role${
+                  finalizeSummary.rolesAdded === 1 ? "" : "s"
+                }`
+              : ""}
+            .
+          </p>
+          {quickLinkRoles.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="w-full text-xs text-theme-muted">
+                Roles: {quickLinkRoles.map((role) => role.label).join(", ")}
+              </p>
+              <button
+                type="button"
+                disabled={fetchingLinks || generatingSummaries}
+                onClick={fetchQuickLinks}
+                className="inline-flex items-center gap-2 rounded-xl border border-theme bg-theme-card px-4 py-2 text-sm font-semibold text-theme-primary hover:bg-theme-hero/40 disabled:opacity-60"
+              >
+                <FaLink aria-hidden />
+                {fetchingLinks ? "Fetching quick links…" : "Get quick links for CSV roles"}
+              </button>
+              <button
+                type="button"
+                disabled={generatingSummaries || fetchingLinks || !linksSummary}
+                onClick={generateRoleSummaries}
+                title={
+                  linksSummary
+                    ? "Generate LLM role summaries from the fetched quick links"
+                    : "Fetch quick links first"
+                }
+                className="inline-flex items-center gap-2 rounded-xl border border-theme bg-theme-card px-4 py-2 text-sm font-semibold text-theme-primary hover:bg-theme-hero/40 disabled:opacity-60"
+              >
+                {generatingSummaries ? "Generating summaries…" : "Generate role summaries"}
+              </button>
+            </div>
+          ) : null}
+          {linksSummary ? (
+            <div className="rounded-xl border border-theme bg-theme-input/30 p-3">
+              <p className="text-sm text-emerald-600">
+                Added {linksSummary.inserted} quick link
+                {linksSummary.inserted === 1 ? "" : "s"}
+                {linksSummary.duplicates
+                  ? ` · ${linksSummary.duplicates} duplicate${
+                      linksSummary.duplicates === 1 ? "" : "s"
+                    } skipped`
+                  : ""}
+                .
+              </p>
+              {Array.isArray(linksSummary?.perRole) && linksSummary.perRole.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-xs text-theme-secondary">
+                  {linksSummary.perRole.map((row) => (
+                    <li key={row.key || row.label}>
+                      {row.label}:{" "}
+                      {row.status === "ok"
+                        ? `${row.inserted} new / ${row.found} found`
+                        : row.error || "failed"}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+          {roleSummaries ? (
+            <div className="rounded-xl border border-theme bg-theme-input/30 p-3">
+              <p className="text-sm text-emerald-600">
+                Generated {roleSummaries.generated} role summar
+                {roleSummaries.generated === 1 ? "y" : "ies"}
+                {roleSummaries.failed
+                  ? ` · ${roleSummaries.failed} failed`
+                  : ""}
+                .
+              </p>
+              {Array.isArray(roleSummaries?.perRole) && roleSummaries.perRole.length > 0 ? (
+                <ul className="mt-2 space-y-2 text-xs text-theme-secondary">
+                  {roleSummaries.perRole.map((row) => (
+                    <li key={row.key || row.label}>
+                      <span className="font-semibold text-theme-primary">{row.label}:</span>{" "}
+                      {row.status === "ok" ? row.summary : row.error || "failed"}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {previewErrors.length > 0 ? (

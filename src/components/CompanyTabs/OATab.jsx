@@ -463,21 +463,6 @@ function OATab({
 
   const handleEnhanceOAField = async (index, field) => {
     if (!isGeneral || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
-    const labels = {
-      question: "Enhance question",
-      intuition: "Enhance intuition",
-      explanation: "Enhance explanation",
-      cpp: "Refill C++",
-      java: "Refill Java",
-      python: "Refill Python",
-    };
-    if (
-      !window.confirm(
-        `${labels[field] || "Enhance"} for this OA question? Existing content for that section will be replaced.`
-      )
-    ) {
-      return;
-    }
     setEnhanceBusy({ index, field });
     try {
       await contentAdmin.enhanceOAQuestionField(safeCompany._id, index, field);

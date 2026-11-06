@@ -1168,15 +1168,15 @@ function CompanyDetails() {
         <div className="relative bg-theme-card border border-theme rounded-xl p-5 sm:p-7 md:p-8 mb-4 sm:mb-6" data-tour="company-details-header">
           {isGeneral ? (
             <p
-              className="absolute top-4 right-4 sm:top-5 sm:right-6 md:top-6 md:right-8 max-w-[48%] text-right text-xs sm:text-sm text-theme-muted italic leading-snug"
+              className="mb-3 text-left text-xs text-theme-muted italic leading-snug sm:mb-0 sm:absolute sm:top-5 sm:right-6 md:top-6 md:right-8 sm:max-w-[48%] sm:text-right sm:text-sm"
               data-testid="company-detail-last-updated"
             >
               {buildGeneralCompanyPrepSummary(company).updatedLine}
             </p>
           ) : null}
-          <div className="flex items-center gap-4 sm:gap-5 md:gap-6">
+          <div className="flex items-start gap-3 sm:items-center sm:gap-5 md:gap-6">
             <div
-              className="h-16 w-16 shrink-0 rounded-xl border-2 border-theme bg-theme-card shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28 flex items-center justify-center overflow-hidden"
+              className="h-14 w-14 shrink-0 rounded-xl border-2 border-theme bg-theme-card shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28 flex items-center justify-center overflow-hidden"
               data-testid="company-logo"
             >
               <CompanyLogo
@@ -1186,8 +1186,8 @@ function CompanyDetails() {
                 alt={company.name || "Company logo"}
               />
             </div>
-            <div className={`flex-1 min-w-0 py-0.5 ${isGeneral ? "pr-[7.5rem] sm:pr-40 md:pr-44" : ""}`}>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-theme-primary leading-[1.08] tracking-tight break-words">
+            <div className={`flex-1 min-w-0 py-0.5 ${isGeneral ? "sm:pr-40 md:pr-44" : ""}`}>
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-theme-primary leading-[1.08] tracking-tight break-words [overflow-wrap:anywhere]">
                 {company.name}
               </h1>
               {isGeneral ? (

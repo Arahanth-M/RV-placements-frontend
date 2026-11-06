@@ -706,6 +706,12 @@ export const platformAdminAPI = {
       payload,
       { timeout: 180000 }
     ),
+  generatePrepRoleSummaries: (companyId, payload) =>
+    API.post(
+      `/api/admin/platform/companies/${encodeURIComponent(String(companyId || ""))}/interview-questions/generate-role-summaries`,
+      payload,
+      { timeout: 300000 }
+    ),
   updateInterviewProcess: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/interview-process/${index}`, data),
   deleteInterviewProcess: (companyId, index) =>
