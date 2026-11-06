@@ -1,18 +1,15 @@
 import { BASE_URL } from "./constants";
 import { resolveLogoDomainFromName } from "./companyLogoDomains";
 
-function getCompanyInitials(name) {
-  if (!name || !name.trim()) return "XX";
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) {
-    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-  }
-  return words[0].substring(0, 2).toUpperCase();
-}
+/**
+ * Shared thumbnail size for companystats hub tiles + company cards.
+ * One size → one cache key (`domain|size`), so opening a category reuses hub logos.
+ */
+export const LIST_LOGO_PIXEL_SIZE = 72;
 
-export function getDefaultLogoSrc(name) {
-  const initials = getCompanyInitials(name);
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%236366F1'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' font-weight='bold' fill='white'%3E${encodeURIComponent(initials)}%3C/text%3E%3C/svg%3E`;
+/** Neutral blank tile — never show company initials while logos load or fail. */
+export function getDefaultLogoSrc(_name) {
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='8' fill='%23E2E8F0'/%3E%3C/svg%3E`;
 }
 
 function normalizeDomain(domain) {
@@ -58,7 +55,7 @@ function domainFromName(name) {
  * @param {{ name?: string, domain?: string }} company
  * @param {number} [pixelSize]
  */
-export function resolveCompanyLogoTarget(company, pixelSize = 96) {
+export function resolveCompanyLogoTarget(company, pixelSize = LIST_LOGO_PIXEL_SIZE) {
   const name = company?.name;
   const rawDomain = company?.domain?.trim() || "";
   const normalizedDomain = normalizeDomain(rawDomain);
@@ -67,7 +64,7 @@ export function resolveCompanyLogoTarget(company, pixelSize = 96) {
     domainFromName(name);
   const size = Number.isFinite(Number(pixelSize))
     ? Math.min(800, Math.max(32, Math.trunc(Number(pixelSize))))
-    : 96;
+    : LIST_LOGO_PIXEL_SIZE;
   const fallback = getDefaultLogoSrc(name);
   const networkUrl = domain
     ? `${BASE_URL}/api/logo?domain=${encodeURIComponent(domain)}&size=${encodeURIComponent(String(size))}`

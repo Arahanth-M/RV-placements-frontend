@@ -18,6 +18,7 @@ import {
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
+import { LIST_LOGO_PIXEL_SIZE } from "../utils/companyLogoSrc.js";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -416,6 +417,7 @@ function CompanyCard({
         >
           <CompanyLogo
             company={company}
+            pixelSize={LIST_LOGO_PIXEL_SIZE}
             className="w-full h-full object-contain p-1.5"
             alt={company.name || "Company"}
           />

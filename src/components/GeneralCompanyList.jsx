@@ -4,6 +4,7 @@ import { FaChevronRight, FaSearch } from "react-icons/fa";
 import CompanyCard from "./CompanyCard";
 import AnimatedLogoGrid from "./AnimatedLogoGrid";
 import {
+  CategoryTileShimmer,
   CategoryTilesGridShimmer,
   CompanyCardGridShimmer,
 } from "./StatsLoadingShimmer";
@@ -37,9 +38,29 @@ import {
   readGeneralCompanyList,
   writeGeneralCompanyList,
 } from "../utils/generalCompanyListCache.js";
+import { peekCompanyLogo, requestCompanyLogo } from "../utils/companyLogoBatch.js";
+import {
+  LIST_LOGO_PIXEL_SIZE,
+  resolveCompanyLogoTarget,
+} from "../utils/companyLogoSrc.js";
 
 const COMPANIES_PER_PAGE = 9;
 const CATEGORY_TILE_LOGO_GRID = 4;
+/** Reveal 2 tiles per tick so each flush fills one BATCH_CHUNK of 8 logos. */
+const CATEGORY_REVEAL_STEP = 2;
+/** Gap between reveal steps — next batch is prefetched during this window. */
+const CATEGORY_REVEAL_MS = 450;
+
+function prefetchCategoryTileLogos(companies) {
+  for (const company of (Array.isArray(companies) ? companies : []).slice(
+    0,
+    CATEGORY_TILE_LOGO_GRID
+  )) {
+    const target = resolveCompanyLogoTarget(company, LIST_LOGO_PIXEL_SIZE);
+    if (!target.domain || peekCompanyLogo(target.cacheKey)) continue;
+    void requestCompanyLogo(target);
+  }
+}
 
 function uniqueCompaniesById(list) {
   const seen = new Set();
@@ -82,6 +103,7 @@ export default function GeneralCompanyList() {
   const isPlatformAdmin = isPlatformAdminUser(user);
   const [companies, setCompanies] = useState(() => readGeneralCompanyList() || []);
   const [fetchDone, setFetchDone] = useState(() => Boolean(readGeneralCompanyList()));
+  const [visibleCategoryCount, setVisibleCategoryCount] = useState(0);
   const [helpfulStatusByCompanyId, setHelpfulStatusByCompanyId] = useState({});
   const [teaserCompanyIds, setTeaserCompanyIds] = useState({});
   const [cardAccess, setCardAccess] = useState({ allCards: false, categories: {} });
@@ -186,6 +208,51 @@ export default function GeneralCompanyList() {
   const groupedCompanies = useMemo(
     () => groupCompaniesByGeneralCategory(companies),
     [companies]
+  );
+
+  // Reveal two category tiles per tick (8 logos ≈ one batch chunk).
+  useEffect(() => {
+    if (!fetchDone || selectedCategory) {
+      return undefined;
+    }
+    const total = GENERAL_COMPANY_CATEGORIES.length;
+    const initial = Math.min(CATEGORY_REVEAL_STEP, total);
+    setVisibleCategoryCount(initial);
+    if (initial >= total) return undefined;
+
+    let shown = initial;
+    const timer = window.setInterval(() => {
+      shown = Math.min(total, shown + CATEGORY_REVEAL_STEP);
+      setVisibleCategoryCount(shown);
+      if (shown >= total) window.clearInterval(timer);
+    }, CATEGORY_REVEAL_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [fetchDone, selectedCategory]);
+
+  // Prefetch the next reveal step's logos during the stagger gap.
+  useEffect(() => {
+    if (!fetchDone || selectedCategory || visibleCategoryCount <= 0) return;
+    const nextStart = visibleCategoryCount;
+    const nextEnd = Math.min(
+      GENERAL_COMPANY_CATEGORIES.length,
+      visibleCategoryCount + CATEGORY_REVEAL_STEP
+    );
+    for (let i = nextStart; i < nextEnd; i += 1) {
+      const category = GENERAL_COMPANY_CATEGORIES[i];
+      prefetchCategoryTileLogos(groupedCompanies[category.id] || []);
+    }
+  }, [fetchDone, selectedCategory, visibleCategoryCount, groupedCompanies]);
+
+  const revealedCategories = useMemo(
+    () => GENERAL_COMPANY_CATEGORIES.slice(0, Math.max(0, visibleCategoryCount)),
+    [visibleCategoryCount]
+  );
+  const pendingCategories = useMemo(
+    () => GENERAL_COMPANY_CATEGORIES.slice(Math.max(0, visibleCategoryCount)),
+    [visibleCategoryCount]
   );
 
   const categoryCompanies = selectedCategory
@@ -302,8 +369,11 @@ export default function GeneralCompanyList() {
               {!fetchDone ? (
                 <CategoryTilesGridShimmer count={GENERAL_COMPANY_CATEGORIES.length} />
               ) : (
-                <div className="mx-auto grid min-w-0 w-full max-w-6xl auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3">
-                  {GENERAL_COMPANY_CATEGORIES.map((category) => {
+                <div
+                  className="mx-auto grid min-w-0 w-full max-w-6xl auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3"
+                  aria-busy={pendingCategories.length > 0 ? "true" : undefined}
+                >
+                  {revealedCategories.map((category) => {
                     const list = groupedCompanies[category.id] || [];
                     return (
                       <button
@@ -327,7 +397,8 @@ export default function GeneralCompanyList() {
                                 companies={list.slice(0, CATEGORY_TILE_LOGO_GRID)}
                                 gridSize={CATEGORY_TILE_LOGO_GRID}
                                 disableRotation
-                                pixelSize={72}
+                                pixelSize={LIST_LOGO_PIXEL_SIZE}
+                                loading="eager"
                               />
                             ) : (
                               <p className="text-sm italic text-theme-muted">No companies yet</p>
@@ -343,6 +414,9 @@ export default function GeneralCompanyList() {
                       </button>
                     );
                   })}
+                  {pendingCategories.map((category) => (
+                    <CategoryTileShimmer key={`pending-${category.id}`} />
+                  ))}
                 </div>
               )}
             </>
