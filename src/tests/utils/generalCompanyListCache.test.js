@@ -18,7 +18,7 @@ describe("generalCompanyListCache", () => {
 
   it("restores the list from sessionStorage when memory is empty", () => {
     sessionStorage.setItem(
-      "general_companies_v1",
+      "general_companies_v2",
       JSON.stringify({
         cachedAt: Date.now(),
         list: [{ _id: "2", name: "Adobe" }],

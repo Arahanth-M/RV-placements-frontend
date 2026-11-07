@@ -287,6 +287,21 @@ import LanguageSolutionPanel from "../LanguageSolutionPanel";
 import McqPracticeCard from "./McqPracticeCard.jsx";
 import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
 import PlatformQuestionEnhanceBar from "../platform/PlatformQuestionEnhanceBar.jsx";
+import PlatformQuestionEnhanceAllButton, {
+  PLATFORM_ENHANCE_ALL_FIELDS,
+  isCodingOnlyEnhanceField,
+  isCodingQuestionKind,
+  runEnhanceEverythingForCompany,
+} from "../platform/PlatformQuestionEnhanceAllButton.jsx";
+import PlatformEnhanceConfirmModal from "../platform/PlatformEnhanceConfirmModal.jsx";
+import {
+  loadPlatformEnhanceCompletion,
+  mergePlatformEnhanceCompletion,
+  resolveEnhanceRunIndexes,
+  savePlatformEnhanceCompletion,
+  shouldEnhanceIndexForRetry,
+} from "../../utils/platformEnhanceCompletion.js";
+import { clearGeneralCompanyListCache } from "../../utils/generalCompanyListCache.js";
 import {
   platformQuestionEditDraft,
   platformQuestionEditPayload,
@@ -332,6 +347,11 @@ function OATab({
   const [platformDraft, setPlatformDraft] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [enhanceBusy, setEnhanceBusy] = useState(null);
+  const [enhanceAllBusy, setEnhanceAllBusy] = useState(false);
+  const [enhanceAllBusyField, setEnhanceAllBusyField] = useState(null);
+  const [enhanceAllProgress, setEnhanceAllProgress] = useState(null);
+  const [enhanceAllConfirm, setEnhanceAllConfirm] = useState(null);
+  const [enhanceCompletedFields, setEnhanceCompletedFields] = useState({});
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [activeOaPrepRoleKey, setActiveOaPrepRoleKey] = useState(null);
   const contributionRoleKeyRef = useRef("");
@@ -339,6 +359,20 @@ function OATab({
 
   const safeCompany = company || {};
   const contentAdmin = companyContentAdminAPI(isGeneral);
+
+  useEffect(() => {
+    if (!isGeneral || !safeCompany._id) {
+      setEnhanceCompletedFields({});
+      return;
+    }
+    setEnhanceCompletedFields(
+      loadPlatformEnhanceCompletion(
+        safeCompany._id,
+        "oa",
+        safeCompany.platformEnhanceCompletion
+      )
+    );
+  }, [isGeneral, safeCompany._id, safeCompany.platformEnhanceCompletion]);
   const adminOpts = adminCompanyVisitOpts({
     placementYear,
     placementListContext,
@@ -463,6 +497,7 @@ function OATab({
 
   const handleEnhanceOAField = async (index, field) => {
     if (!isGeneral || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
+    if (enhanceAllBusy) return;
     setEnhanceBusy({ index, field });
     try {
       await contentAdmin.enhanceOAQuestionField(safeCompany._id, index, field);
@@ -478,6 +513,180 @@ function OATab({
       setEnhanceBusy(null);
     }
   };
+
+  const requestEnhanceAllOA = ({
+    fields,
+    busyField,
+    title,
+    message,
+    confirmLabel,
+    successMessage,
+    codingOnly = false,
+  }) => {
+    if (!isGeneral || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
+    if (enhanceAllBusy || enhanceBusy || actionLoading || enhanceAllConfirm) return;
+    const allIndexes = parsedQuestions
+      .map((q, index) => {
+        if (!questionTextIsPresent(q)) return -1;
+        if (codingOnly && !isCodingQuestionKind(oaQuestionKinds[index])) return -1;
+        return index;
+      })
+      .filter((index) => index >= 0);
+    const { indexes, retryFailedOnly } = resolveEnhanceRunIndexes({
+      allIndexes,
+      completion: enhanceCompletedFields,
+      fields,
+    });
+    if (indexes.length < 1) {
+      if (codingOnly) {
+        alert("No coding OA questions to enhance for this field.");
+      }
+      return;
+    }
+    setEnhanceAllConfirm({
+      fields,
+      busyField,
+      indexes,
+      codingOnly,
+      retryFailedOnly,
+      title: typeof title === "function" ? title(indexes.length, retryFailedOnly) : title,
+      message: message(indexes.length, retryFailedOnly),
+      confirmLabel:
+        typeof confirmLabel === "function"
+          ? confirmLabel(indexes.length, retryFailedOnly)
+          : confirmLabel,
+      successMessage,
+    });
+  };
+
+  const executeEnhanceAllOA = async (pending) => {
+    if (!pending || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
+    setEnhanceAllConfirm(null);
+    setEnhanceAllBusy(true);
+    setEnhanceAllBusyField(pending.busyField);
+    setEnhanceAllProgress(null);
+    try {
+      const summary = await runEnhanceEverythingForCompany({
+        indexes: pending.indexes,
+        fields: pending.fields,
+        enhanceOne: (index, field) =>
+          contentAdmin.enhanceOAQuestionField(safeCompany._id, index, field),
+        shouldEnhance: (index, field) => {
+          const codingOk =
+            !isCodingOnlyEnhanceField(field) ||
+            isCodingQuestionKind(oaQuestionKinds[index]);
+          if (!codingOk) return false;
+          if (!pending.retryFailedOnly) return true;
+          return shouldEnhanceIndexForRetry(enhanceCompletedFields, index, field);
+        },
+        onProgress: (progress) => {
+          setEnhanceAllProgress(progress);
+          setEnhanceBusy({ index: progress.index, field: progress.field });
+        },
+      });
+      const nextCompletion = mergePlatformEnhanceCompletion(enhanceCompletedFields, {
+        fields: pending.fields,
+        fieldStats: summary.fieldStats,
+        indexes: pending.indexes,
+        retryFailedOnly: Boolean(pending.retryFailedOnly),
+      });
+      setEnhanceCompletedFields(nextCompletion);
+      savePlatformEnhanceCompletion(safeCompany._id, "oa", nextCompletion);
+      try {
+        if (contentAdmin.saveEnhanceCompletion) {
+          const res = await contentAdmin.saveEnhanceCompletion(
+            safeCompany._id,
+            "oa",
+            nextCompletion
+          );
+          const serverMap = res?.data?.platformEnhanceCompletion?.oa;
+          if (serverMap && typeof serverMap === "object") {
+            setEnhanceCompletedFields(serverMap);
+            savePlatformEnhanceCompletion(safeCompany._id, "oa", serverMap);
+          }
+        }
+      } catch (persistErr) {
+        console.error("Failed to persist OA enhance completion:", persistErr);
+      }
+      clearGeneralCompanyListCache();
+      if (onCompanyUpdate) onCompanyUpdate();
+      alert(
+        summary.failureCount === 0
+          ? pending.successMessage(summary.questionCount, pending.retryFailedOnly)
+          : `Finished for ${summary.questionCount} question(s): ${summary.successCount} succeeded, ${summary.failureCount} failed.`
+      );
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Enhance failed. Try again."
+      );
+    } finally {
+      setEnhanceBusy(null);
+      setEnhanceAllBusy(false);
+      setEnhanceAllBusyField(null);
+      setEnhanceAllProgress(null);
+    }
+  };
+
+  const handleEnhanceAllOAField = (field) => {
+    const labels = {
+      question: "questions",
+      intuition: "intuitions",
+      explanation: "explanations",
+      cpp: "C++ solutions",
+      java: "Java solutions",
+      python: "Python solutions",
+    };
+    const label = labels[field] || field;
+    const codingOnly = isCodingOnlyEnhanceField(field);
+    requestEnhanceAllOA({
+      fields: [field],
+      busyField: field,
+      codingOnly,
+      title: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Retry ${count} failed ${label}?`
+          : `Enhance all ${label}?`,
+      confirmLabel: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Yes, retry ${count} failed`
+          : `Yes, enhance ${label}`,
+      message: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Only the ${count} failed ${label} will be enhanced again.\n\nThis is not a full re-run — questions that already succeeded will not be touched.\n\nAre you sure you want to continue?`
+          : codingOnly
+            ? `This will update ${label} for ${count} coding OA question(s) across every role in this company.\n\nExplanation-only questions are skipped.\n\nThis can take a while. Keep this tab open until it finishes.\n\nAre you sure you want to continue?`
+            : `This will update all ${label} for ${count} OA question(s) across every role in this company.\n\nThis can take a while. Keep this tab open until it finishes.\n\nAre you sure you want to continue?`,
+      successMessage: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Retried only the ${count} failed ${label} (successful ones were left unchanged).`
+          : codingOnly
+            ? `Enhanced ${label} for ${count} coding question(s).`
+            : `Enhanced all ${label} for ${count} question(s).`,
+    });
+  };
+
+  const handleEnhanceAllOA = () =>
+    requestEnhanceAllOA({
+      fields: PLATFORM_ENHANCE_ALL_FIELDS,
+      busyField: "all",
+      title: (_count, retryFailedOnly) =>
+        retryFailedOnly
+          ? "Retry failed enhance fields only?"
+          : "Enhance everything for this company?",
+      confirmLabel: (_count, retryFailedOnly) =>
+        retryFailedOnly ? "Yes, retry failures only" : "Yes, enhance everything",
+      message: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Only previously failed enhance fields/questions will be run again.\n\nThis is not a full “Everything” re-run — fields and questions that already succeeded will be skipped.\n\nAre you sure you want to continue?`
+          : `This will enhance all ${count} OA question(s) across every role in this company.\n\nQuestion and explanation update for every question. Intuition, C++, Java, and Python run only on coding questions.\n\nThis can take a long time. Keep this tab open until it finishes.\n\nAre you sure you want to continue?`,
+      successMessage: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Retried only failed enhance fields (successful ones were left unchanged).`
+          : `Enhanced everything for ${count} question(s).`,
+    });
 
   const handleCopySolution = async (solutionText, index) => {
     try {
@@ -726,6 +935,19 @@ function OATab({
       {showOaRoleChrome && roleSwitching ? <PrepRoleSwitchShimmer variant="dark" /> : null}
       {roleSwitching ? null : (
       <>
+      {isAdmin && isGeneral ? (
+        <PlatformQuestionEnhanceAllButton
+          busy={enhanceAllBusy}
+          busyField={enhanceAllBusyField}
+          progress={enhanceAllProgress}
+          disabled={actionLoading || Boolean(enhanceBusy)}
+          questionCount={parsedQuestions.filter(questionTextIsPresent).length}
+          completedFields={enhanceCompletedFields}
+          onEnhanceField={handleEnhanceAllOAField}
+          onEnhanceEverything={handleEnhanceAllOA}
+        />
+      ) : null}
+
       {/* MCQ Questions Section */}
       {visibleMcqCount > 0 && (
         <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
@@ -834,7 +1056,8 @@ function OATab({
                         busyField={
                           enhanceBusy?.index === index ? enhanceBusy.field : null
                         }
-                        disabled={actionLoading}
+                        disabled={actionLoading || enhanceAllBusy}
+                        isCoding={isCodingQuestionKind(oaQuestionKinds[index])}
                         onEnhance={(field) => handleEnhanceOAField(index, field)}
                       />
                     ) : null}
@@ -1082,6 +1305,15 @@ function OATab({
         onClose={() => setSubmissionFeedback(null)}
         variant={submissionFeedback?.variant}
         statusMessage={submissionFeedback?.message}
+      />
+
+      <PlatformEnhanceConfirmModal
+        open={enhanceAllConfirm !== null}
+        title={enhanceAllConfirm?.title}
+        message={enhanceAllConfirm?.message}
+        confirmLabel={enhanceAllConfirm?.confirmLabel}
+        onCancel={() => setEnhanceAllConfirm(null)}
+        onConfirm={() => executeEnhanceAllOA(enhanceAllConfirm)}
       />
     </div>
   );

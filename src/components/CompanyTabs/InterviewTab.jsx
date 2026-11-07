@@ -103,6 +103,21 @@ import PrepRoleSwitchShimmer from "../PrepRoleSwitchShimmer.jsx";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
 import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
 import PlatformQuestionEnhanceBar from "../platform/PlatformQuestionEnhanceBar.jsx";
+import PlatformQuestionEnhanceAllButton, {
+  PLATFORM_ENHANCE_ALL_FIELDS,
+  isCodingOnlyEnhanceField,
+  isCodingQuestionKind,
+  runEnhanceEverythingForCompany,
+} from "../platform/PlatformQuestionEnhanceAllButton.jsx";
+import PlatformEnhanceConfirmModal from "../platform/PlatformEnhanceConfirmModal.jsx";
+import {
+  loadPlatformEnhanceCompletion,
+  mergePlatformEnhanceCompletion,
+  resolveEnhanceRunIndexes,
+  savePlatformEnhanceCompletion,
+  shouldEnhanceIndexForRetry,
+} from "../../utils/platformEnhanceCompletion.js";
+import { clearGeneralCompanyListCache } from "../../utils/generalCompanyListCache.js";
 import {
   platformQuestionEditDraft,
   platformQuestionEditPayload,
@@ -179,6 +194,11 @@ function InterviewTab({
   const [editIPUsesStoredShape, setEditIPUsesStoredShape] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [enhanceBusy, setEnhanceBusy] = useState(null);
+  const [enhanceAllBusy, setEnhanceAllBusy] = useState(false);
+  const [enhanceAllBusyField, setEnhanceAllBusyField] = useState(null);
+  const [enhanceAllProgress, setEnhanceAllProgress] = useState(null);
+  const [enhanceAllConfirm, setEnhanceAllConfirm] = useState(null);
+  const [enhanceCompletedFields, setEnhanceCompletedFields] = useState({});
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [likeOverride, setLikeOverride] = useState({});
   const [likePendingKey, setLikePendingKey] = useState("");
@@ -189,6 +209,20 @@ function InterviewTab({
     setLikeOverride({});
     setLikeError("");
   }, [company?._id]);
+
+  useEffect(() => {
+    if (!isGeneral || !company?._id) {
+      setEnhanceCompletedFields({});
+      return;
+    }
+    setEnhanceCompletedFields(
+      loadPlatformEnhanceCompletion(
+        company._id,
+        "interview",
+        company.platformEnhanceCompletion
+      )
+    );
+  }, [isGeneral, company?._id, company?.platformEnhanceCompletion]);
   const questionRowRefs = useRef({});
   const processRowRefs = useRef({});
   const [focusedProcessIndex, setFocusedProcessIndex] = useState(-1);
@@ -204,6 +238,10 @@ function InterviewTab({
     ? company.interviewQuestions
     : company.interviewQuestions
     ? [company.interviewQuestions]
+    : [];
+
+  const interviewQuestionKinds = Array.isArray(company.interviewQuestions_kind)
+    ? company.interviewQuestions_kind
     : [];
 
   const interviewPrepRoleKeys = Array.isArray(company.interviewQuestions_prepRoleKey)
@@ -592,6 +630,7 @@ function InterviewTab({
 
   const handleEnhanceIQField = async (index, field) => {
     if (!isGeneral || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
+    if (enhanceAllBusy) return;
     setEnhanceBusy({ index, field });
     try {
       await contentAdmin.enhanceInterviewQuestionField(company._id, index, field);
@@ -607,6 +646,180 @@ function InterviewTab({
       setEnhanceBusy(null);
     }
   };
+
+  const requestEnhanceAllIQ = ({
+    fields,
+    busyField,
+    title,
+    message,
+    confirmLabel,
+    successMessage,
+    codingOnly = false,
+  }) => {
+    if (!isGeneral || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
+    if (enhanceAllBusy || enhanceBusy || actionLoading || enhanceAllConfirm) return;
+    const allIndexes = interviewQuestions
+      .map((q, index) => {
+        if (!questionTextIsPresent(q)) return -1;
+        if (codingOnly && !isCodingQuestionKind(interviewQuestionKinds[index])) return -1;
+        return index;
+      })
+      .filter((index) => index >= 0);
+    const { indexes, retryFailedOnly } = resolveEnhanceRunIndexes({
+      allIndexes,
+      completion: enhanceCompletedFields,
+      fields,
+    });
+    if (indexes.length < 1) {
+      if (codingOnly) {
+        alert("No coding interview questions to enhance for this field.");
+      }
+      return;
+    }
+    setEnhanceAllConfirm({
+      fields,
+      busyField,
+      indexes,
+      codingOnly,
+      retryFailedOnly,
+      title: typeof title === "function" ? title(indexes.length, retryFailedOnly) : title,
+      message: message(indexes.length, retryFailedOnly),
+      confirmLabel:
+        typeof confirmLabel === "function"
+          ? confirmLabel(indexes.length, retryFailedOnly)
+          : confirmLabel,
+      successMessage,
+    });
+  };
+
+  const executeEnhanceAllIQ = async (pending) => {
+    if (!pending || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
+    setEnhanceAllConfirm(null);
+    setEnhanceAllBusy(true);
+    setEnhanceAllBusyField(pending.busyField);
+    setEnhanceAllProgress(null);
+    try {
+      const summary = await runEnhanceEverythingForCompany({
+        indexes: pending.indexes,
+        fields: pending.fields,
+        enhanceOne: (index, field) =>
+          contentAdmin.enhanceInterviewQuestionField(company._id, index, field),
+        shouldEnhance: (index, field) => {
+          const codingOk =
+            !isCodingOnlyEnhanceField(field) ||
+            isCodingQuestionKind(interviewQuestionKinds[index]);
+          if (!codingOk) return false;
+          if (!pending.retryFailedOnly) return true;
+          return shouldEnhanceIndexForRetry(enhanceCompletedFields, index, field);
+        },
+        onProgress: (progress) => {
+          setEnhanceAllProgress(progress);
+          setEnhanceBusy({ index: progress.index, field: progress.field });
+        },
+      });
+      const nextCompletion = mergePlatformEnhanceCompletion(enhanceCompletedFields, {
+        fields: pending.fields,
+        fieldStats: summary.fieldStats,
+        indexes: pending.indexes,
+        retryFailedOnly: Boolean(pending.retryFailedOnly),
+      });
+      setEnhanceCompletedFields(nextCompletion);
+      savePlatformEnhanceCompletion(company._id, "interview", nextCompletion);
+      try {
+        if (contentAdmin.saveEnhanceCompletion) {
+          const res = await contentAdmin.saveEnhanceCompletion(
+            company._id,
+            "interview",
+            nextCompletion
+          );
+          const serverMap = res?.data?.platformEnhanceCompletion?.interview;
+          if (serverMap && typeof serverMap === "object") {
+            setEnhanceCompletedFields(serverMap);
+            savePlatformEnhanceCompletion(company._id, "interview", serverMap);
+          }
+        }
+      } catch (persistErr) {
+        console.error("Failed to persist interview enhance completion:", persistErr);
+      }
+      clearGeneralCompanyListCache();
+      if (onCompanyUpdate) onCompanyUpdate();
+      alert(
+        summary.failureCount === 0
+          ? pending.successMessage(summary.questionCount, pending.retryFailedOnly)
+          : `Finished for ${summary.questionCount} question(s): ${summary.successCount} succeeded, ${summary.failureCount} failed.`
+      );
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Enhance failed. Try again."
+      );
+    } finally {
+      setEnhanceBusy(null);
+      setEnhanceAllBusy(false);
+      setEnhanceAllBusyField(null);
+      setEnhanceAllProgress(null);
+    }
+  };
+
+  const handleEnhanceAllIQField = (field) => {
+    const labels = {
+      question: "questions",
+      intuition: "intuitions",
+      explanation: "explanations",
+      cpp: "C++ solutions",
+      java: "Java solutions",
+      python: "Python solutions",
+    };
+    const label = labels[field] || field;
+    const codingOnly = isCodingOnlyEnhanceField(field);
+    requestEnhanceAllIQ({
+      fields: [field],
+      busyField: field,
+      codingOnly,
+      title: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Retry ${count} failed ${label}?`
+          : `Enhance all ${label}?`,
+      confirmLabel: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Yes, retry ${count} failed`
+          : `Yes, enhance ${label}`,
+      message: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Only the ${count} failed ${label} will be enhanced again.\n\nThis is not a full re-run — questions that already succeeded will not be touched.\n\nAre you sure you want to continue?`
+          : codingOnly
+            ? `This will update ${label} for ${count} coding interview question(s) across every role in this company.\n\nExplanation-only questions are skipped.\n\nThis can take a while. Keep this tab open until it finishes.\n\nAre you sure you want to continue?`
+            : `This will update all ${label} for ${count} interview question(s) across every role in this company.\n\nThis can take a while. Keep this tab open until it finishes.\n\nAre you sure you want to continue?`,
+      successMessage: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Retried only the ${count} failed ${label} (successful ones were left unchanged).`
+          : codingOnly
+            ? `Enhanced ${label} for ${count} coding question(s).`
+            : `Enhanced all ${label} for ${count} question(s).`,
+    });
+  };
+
+  const handleEnhanceAllIQ = () =>
+    requestEnhanceAllIQ({
+      fields: PLATFORM_ENHANCE_ALL_FIELDS,
+      busyField: "all",
+      title: (_count, retryFailedOnly) =>
+        retryFailedOnly
+          ? "Retry failed enhance fields only?"
+          : "Enhance everything for this company?",
+      confirmLabel: (_count, retryFailedOnly) =>
+        retryFailedOnly ? "Yes, retry failures only" : "Yes, enhance everything",
+      message: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Only previously failed enhance fields/questions will be run again.\n\nThis is not a full “Everything” re-run — fields and questions that already succeeded will be skipped.\n\nAre you sure you want to continue?`
+          : `This will enhance all ${count} interview question(s) across every role in this company.\n\nQuestion and explanation update for every question. Intuition, C++, Java, and Python run only on coding questions.\n\nThis can take a long time. Keep this tab open until it finishes.\n\nAre you sure you want to continue?`,
+      successMessage: (count, retryFailedOnly) =>
+        retryFailedOnly
+          ? `Retried only failed enhance fields (successful ones were left unchanged).`
+          : `Enhanced everything for ${count} question(s).`,
+    });
 
   const closeEditIP = () => {
     setEditIPIndex(null);
@@ -907,6 +1120,18 @@ function InterviewTab({
       {showQuestionsSection && roleSwitching ? (
         <PrepRoleSwitchShimmer variant="dark" />
       ) : null}
+      {showQuestionsSection && !roleSwitching && isAdmin && isGeneral ? (
+        <PlatformQuestionEnhanceAllButton
+          busy={enhanceAllBusy}
+          busyField={enhanceAllBusyField}
+          progress={enhanceAllProgress}
+          disabled={actionLoading || Boolean(enhanceBusy)}
+          questionCount={totalInterviewQuestionCount}
+          completedFields={enhanceCompletedFields}
+          onEnhanceField={handleEnhanceAllIQField}
+          onEnhanceEverything={handleEnhanceAllIQ}
+        />
+      ) : null}
       {showQuestionsSection && !roleSwitching ? (
       <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 mb-3 sm:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -985,7 +1210,8 @@ function InterviewTab({
                         busyField={
                           enhanceBusy?.index === index ? enhanceBusy.field : null
                         }
-                        disabled={actionLoading}
+                        disabled={actionLoading || enhanceAllBusy}
+                        isCoding={isCodingQuestionKind(interviewQuestionKinds[index])}
                         onEnhance={(field) => handleEnhanceIQField(index, field)}
                       />
                     ) : null}
@@ -1458,6 +1684,15 @@ function InterviewTab({
         onClose={() => setSubmissionFeedback(null)}
         variant={submissionFeedback?.variant}
         statusMessage={submissionFeedback?.message}
+      />
+
+      <PlatformEnhanceConfirmModal
+        open={enhanceAllConfirm !== null}
+        title={enhanceAllConfirm?.title}
+        message={enhanceAllConfirm?.message}
+        confirmLabel={enhanceAllConfirm?.confirmLabel}
+        onCancel={() => setEnhanceAllConfirm(null)}
+        onConfirm={() => executeEnhanceAllIQ(enhanceAllConfirm)}
       />
     </div>
   );

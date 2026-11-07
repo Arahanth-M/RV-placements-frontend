@@ -6,7 +6,7 @@ import PrepSolutionBody from "../PrepSolutionBody.jsx";
 export default function PlatformAdminCodeBlock({ code, language, toolbar = null }) {
   if (!String(code || "").trim()) return null;
   return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-theme bg-theme-card">
+    <div className="min-w-0 overflow-x-auto rounded-xl border border-theme bg-theme-card">
       <div className="p-2 sm:p-3">
         <PrepSolutionBody
           code={code}

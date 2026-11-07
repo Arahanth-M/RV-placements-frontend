@@ -32,6 +32,7 @@ function unescapeLiterals(str) {
 
 /**
  * Brace/colon aware re-indent when leading whitespace was lost in storage.
+ * Used for C/C++/Java only — never for forced Python display.
  */
 export function applyBasicIndent(code, language = "") {
   const lang = String(language || "").toLowerCase();
@@ -76,7 +77,7 @@ export function applyBasicIndent(code, language = "") {
       const prev = out.filter((line) => line.trim()).at(-1) || "";
       const prevOpens = /:\s*(#.*)?$/.test(prev.trim());
       if (!prevOpens) {
-        while (pyStack[pyStack.length - 1] === "def" || pyStack[pyStack.length - 1] === "block") {
+        while (pyStack.length && pyStack[pyStack.length - 1] !== "class") {
           pyStack.pop();
         }
       }
@@ -121,6 +122,7 @@ function needsIndentRestore(code, language = "") {
   const lines = rawLines.map((line) => line.trim()).filter(Boolean);
   if (lines.length < 2) return false;
 
+  // Python display uses preservePythonSourceForDisplay — this path is for C/C++/Java.
   if (lang === "python") {
     const hasLeading = rawLines.some((line) => line.trim() && /^(\s{4}|\t)/.test(line));
     if (!hasLeading) return true;
@@ -130,11 +132,74 @@ function needsIndentRestore(code, language = "") {
   return indented / lines.length < 0.15;
 }
 
+const PYTHON_STORAGE_KEYS = ["python", "code", "solution", "answer", "content", "text"];
+
+/**
+ * Coerce stored Python values (string / wrapper object / array) to a source string
+ * without trimming, reflowing, or rewriting indentation.
+ */
+function coercePythonSourceString(raw, depth = 0) {
+  if (raw == null) return "";
+  if (depth > 5) return String(raw);
+  if (typeof raw === "number" || typeof raw === "boolean") return String(raw);
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => coercePythonSourceString(item, depth + 1))
+      .filter((part) => part !== "")
+      .join("\n\n");
+  }
+
+  if (typeof raw === "object") {
+    for (const key of PYTHON_STORAGE_KEYS) {
+      if (raw[key] == null) continue;
+      const nested = coercePythonSourceString(raw[key], depth + 1);
+      if (nested !== "") return nested;
+    }
+    return "";
+  }
+
+  let text = String(raw);
+  const trimmedEdges = text.trim();
+  // Unwrap a JSON string/array/object wrapper only — do not trim the decoded source.
+  if (
+    (trimmedEdges.startsWith('"') && trimmedEdges.endsWith('"')) ||
+    (trimmedEdges.startsWith("'") && trimmedEdges.endsWith("'")) ||
+    (trimmedEdges.startsWith("[") && trimmedEdges.endsWith("]")) ||
+    (trimmedEdges.startsWith("{") && trimmedEdges.endsWith("}"))
+  ) {
+    try {
+      const parsed = JSON.parse(trimmedEdges);
+      const nested = coercePythonSourceString(parsed, depth + 1);
+      if (nested !== "") return nested;
+    } catch {
+      // keep original text
+    }
+  }
+
+  return text;
+}
+
+/**
+ * Forced-Python display path: preserve source exactly.
+ * Only normalizes line endings (\r\n / \r → \n). No trim, reflow, or indent heuristics.
+ */
+export function preservePythonSourceForDisplay(raw) {
+  const text = coercePythonSourceString(raw);
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
 /**
  * Full pipeline: unescape, reflow one-liners, restore indent.
+ * Forced Python skips structural transforms and only normalizes line endings.
  */
 export function prepareSourceCodeForDisplay(raw, language) {
   const lang = String(language || "").toLowerCase();
+
+  if (lang === "python") {
+    return preservePythonSourceForDisplay(raw);
+  }
+
   let text = formatSolutionCode(raw, 0, { language: lang || undefined });
   text = unescapeLiterals(text);
   text = reflowSpacedSourceCode(text, lang);

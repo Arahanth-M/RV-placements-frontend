@@ -1,3 +1,5 @@
+import { isCodingOnlyEnhanceField } from "./PlatformQuestionEnhanceAllButton.jsx";
+
 const ACTIONS = [
   { field: "question", label: "Enhance question" },
   { field: "intuition", label: "Enhance intuition" },
@@ -9,13 +11,20 @@ const ACTIONS = [
 
 /**
  * Platform-admin only controls to rewrite one OA/interview question field via LLM.
+ * Coding-only actions (intuition + languages) hide for explanation-only questions.
  */
 export default function PlatformQuestionEnhanceBar({
   busyField = null,
   disabled = false,
   onEnhance,
+  isCoding = true,
 }) {
   if (typeof onEnhance !== "function") return null;
+
+  const actions = ACTIONS.filter(
+    ({ field }) => isCoding || !isCodingOnlyEnhanceField(field)
+  );
+  if (actions.length < 1) return null;
 
   return (
     <div
@@ -24,7 +33,7 @@ export default function PlatformQuestionEnhanceBar({
       role="group"
       aria-label="Enhance or refill question content"
     >
-      {ACTIONS.map(({ field, label }) => {
+      {actions.map(({ field, label }) => {
         const isBusy = busyField === field;
         return (
           <button

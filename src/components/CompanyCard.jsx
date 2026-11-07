@@ -3,7 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FaThumbsUp, FaTimes, FaEdit, FaCheck, FaMinus, FaPlus, FaEye, FaFire, FaLock } from "react-icons/fa";
 import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
-import { adminMayMutateSharedCompanyContent } from "../utils/collegeScope.js";
+import {
+  adminMayMutateSharedCompanyContent,
+  isPlatformAdminUser,
+} from "../utils/collegeScope.js";
 import {
   PLACEMENT_TIER_DREAM,
   PLACEMENT_TIER_OPEN_DREAM,
@@ -18,6 +21,7 @@ import {
 } from "../constants/placementYears.js";
 import CompanyLogo from "./CompanyLogo";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
+import PlatformEnhanceCardMarks from "./platform/PlatformEnhanceCardMarks.jsx";
 import { LIST_LOGO_PIXEL_SIZE } from "../utils/companyLogoSrc.js";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
@@ -87,6 +91,7 @@ function CompanyCard({
   const { appPath, isGeneral } = useTenantShell();
   const { user } = useAuth();
   const canEditProgramGotIn = adminMayMutateSharedCompanyContent(user, isAdmin);
+  const showPlatformEnhanceMarks = isGeneral && isPlatformAdminUser(user);
   const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
   const [hasUpvoted, setHasUpvoted] = useState(helpfulStatus?.hasUpvoted === true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -508,6 +513,9 @@ function CompanyCard({
                   </span>
                 </div>
               )}
+              {showPlatformEnhanceMarks ? (
+                <PlatformEnhanceCardMarks company={company} />
+              ) : null}
             </div>
           </>
         )}

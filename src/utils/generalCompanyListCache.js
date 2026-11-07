@@ -1,5 +1,5 @@
 const MEMORY_KEY = "general";
-const SESSION_KEY = "general_companies_v1";
+const SESSION_KEY = "general_companies_v2";
 const SESSION_TTL_MS = 10 * 60 * 1000;
 
 /** Survives leaving a company card and coming back, within this page session. */

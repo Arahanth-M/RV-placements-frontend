@@ -75,6 +75,13 @@ export function newlineAfterStatementSemicolons(text) {
 const PY_STATEMENT =
   /^(def|class|import|from|if|elif|else|for|while|try|except|finally|with|return|raise|yield|assert|pass|break|continue)(?![\w])/;
 
+/** Words that look like identifiers but never start a new statement. */
+const PY_NON_STATEMENT =
+  /^(and|or|not|in|is|as|True|False|None)(?![\w])/;
+
+/** True assignment ops only — never `==`, `!=`, `<=`, `>=`. */
+const PY_ASSIGN_OP = /^(?:\*\*=|\/\/=|>>=|<<=|\+=|-=|\*=|\/=|%=|@=|&=|\|=|\^=|=(?!=))/;
+
 /** Indented, or already broken onto real statement lines — do not flatten. */
 export function pythonAlreadyLaidOut(raw) {
   const lines = String(raw ?? "").split("\n");
@@ -83,6 +90,21 @@ export function pythonAlreadyLaidOut(raw) {
   const bodies = lines.map((line) => line.trim()).filter(Boolean);
   const statements = bodies.filter((line) => PY_STATEMENT.test(line));
   return statements.length >= 2 && bodies.length >= 4;
+}
+
+function looksLikePythonAssignmentStart(s, i) {
+  const slice = String(s ?? "").slice(i);
+  const name = slice.match(/^([A-Za-z_]\w*)/);
+  if (!name) return false;
+  let k = i + name[1].length;
+  while (s[k] === " ") k += 1;
+  return PY_ASSIGN_OP.test(s.slice(k));
+}
+
+function lineHasCompletedAssignment(soFar) {
+  // Only inspect the current logical line so earlier `description='...'` does not count.
+  const line = String(soFar ?? "").slice(String(soFar ?? "").lastIndexOf("\n") + 1).trim();
+  return /(?:\*\*=|\/\/=|>>=|<<=|\+=|-=|\*=|\/=|%=|@=|&=|\|=|\^=|=(?!=))\s*\S+/.test(line);
 }
 
 /** A line still holds a second statement, e.g. `import argparse parser = ...`. */
@@ -124,12 +146,14 @@ function pythonLineHasExtraStatement(line) {
     const ch = s[i];
     if (ch === "(" || ch === "[" || ch === "{") depth += 1;
     else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
-    const starts =
-      depth === 0 &&
-      (i === 0 || s[i - 1] === " ") &&
-      /[A-Za-z_]/.test(ch) &&
-      (PY_STATEMENT.test(s.slice(i)) || pythonStatementStartsAt(s, i, out));
-    if (starts && out && !out.endsWith("\n")) return true;
+    const atWordStart = depth === 0 && (i === 0 || s[i - 1] === " ") && /[A-Za-z_]/.test(ch);
+    if (atWordStart && out && !out.endsWith("\n") && !PY_NON_STATEMENT.test(s.slice(i))) {
+      const keywordStart = PY_STATEMENT.test(s.slice(i));
+      const assignStart =
+        looksLikePythonAssignmentStart(s, i) && lineHasCompletedAssignment(out);
+      const otherStart = pythonStatementStartsAt(s, i, out);
+      if (keywordStart || assignStart || otherStart) return true;
+    }
     out += ch;
   }
   return false;
@@ -206,17 +230,20 @@ function isPythonAnnotationColon(s, colonIdx) {
 }
 
 function pythonStatementStartsAt(s, i, out) {
+  if (PY_NON_STATEMENT.test(String(s ?? "").slice(i))) return false;
   let q = i - 1;
   while (q >= 0 && s[q] === " ") q -= 1;
   if (q < 0) return false;
   const prev = s[q];
-  if (prev === ")" || prev === "]" || prev === "}" || prev === '"' || prev === "'" || prev === "`" || /[0-9]/.test(prev)) {
+  // Digits alone are not enough — `1 or x` / `2 and y` are expressions, not new statements.
+  if (prev === ")" || prev === "]" || prev === "}" || prev === '"' || prev === "'" || prev === "`") {
     return true;
   }
   if (/[A-Za-z0-9_]/.test(prev)) {
     const line = out.slice(out.lastIndexOf("\n") + 1).trim();
     if (/^import\s+\S+$/.test(line)) return true;
     if (/^from\s+\S+\s+import\s+\S+$/.test(line)) return true;
+    if (looksLikePythonAssignmentStart(s, i) && lineHasCompletedAssignment(line)) return true;
   }
   return false;
 }
@@ -275,12 +302,15 @@ export function reflowPythonOneLiner(src) {
     if (ch === "(" || ch === "[" || ch === "{") depth += 1;
     else if (ch === ")" || ch === "]" || ch === "}") depth = Math.max(0, depth - 1);
 
+    const atWordStart =
+      depth === 0 && (i === 0 || s[i - 1] === " ") && /[A-Za-z_]/.test(ch);
+
     if (
-      depth === 0 &&
-      (i === 0 || s[i - 1] === " ") &&
-      /[A-Za-z_]/.test(ch) &&
+      atWordStart &&
+      !PY_NON_STATEMENT.test(s.slice(i)) &&
       !PY_STATEMENT.test(s.slice(i)) &&
-      pythonStatementStartsAt(s, i, out)
+      (pythonStatementStartsAt(s, i, out) ||
+        (looksLikePythonAssignmentStart(s, i) && lineHasCompletedAssignment(out)))
     ) {
       if (out && !out.endsWith("\n")) out += "\n";
     }
@@ -292,7 +322,7 @@ export function reflowPythonOneLiner(src) {
       continue;
     }
 
-    if (depth === 0 && (i === 0 || s[i - 1] === " ") && PY_STATEMENT.test(s.slice(i))) {
+    if (atWordStart && PY_STATEMENT.test(s.slice(i))) {
       const word = s.slice(i).match(PY_STATEMENT)[1];
       if (word === "import" && /(?:^|\n)from\b[^\n]*$/.test(out)) {
         out += word;
@@ -320,7 +350,32 @@ export function reflowPythonOneLiner(src) {
     i += 1;
   }
 
-  return out.replace(/\n{3,}/g, "\n\n").trim();
+  return out
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+$/g, ""))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** Fix only glued lines; keep surrounding indentation/structure intact. */
+export function reflowGluedPythonLines(raw) {
+  return String(raw ?? "")
+    .split("\n")
+    .map((line) => {
+      if (!pythonLineHasExtraStatement(line)) return line;
+      const indent = line.match(/^\s*/)?.[0] || "";
+      const reflowed = reflowPythonOneLiner(line.trim());
+      if (!reflowed) return line;
+      return reflowed
+        .split("\n")
+        .map((part) => {
+          const trimmed = part.trim();
+          return trimmed ? `${indent}${trimmed}` : "";
+        })
+        .join("\n");
+    })
+    .join("\n");
 }
 
 /**
@@ -334,6 +389,8 @@ export function reflowSpacedSourceCode(code, language) {
   const lang = String(language || "").toLowerCase();
   const pythonish = lang === "python" || (lang === "" && /\bdef\s+\w+/.test(raw));
   if (pythonish) {
+    // Healthy indented Python must be left alone. Only flatten when a line truly
+    // contains a second statement (not `1 or x`, not `a == b`).
     if (pythonAlreadyLaidOut(raw) && !pythonHasGluedStatements(raw)) return raw;
     return reflowPythonOneLiner(raw.replace(/\s+/g, " ").trim());
   }
@@ -408,7 +465,8 @@ export function formatSolutionCode(value, depth = 0, options = {}) {
 
   let result = unescapeLiterals(str);
   const lang = options.language ? String(options.language) : "";
-  if (lang === "cpp" || lang === "java" || lang === "python" || lang === "c") {
+  // Forced Python must not be reflowed here — display uses preservePythonSourceForDisplay.
+  if (lang === "cpp" || lang === "java" || lang === "c") {
     result = reflowSpacedSourceCode(result, lang);
   }
   return result;

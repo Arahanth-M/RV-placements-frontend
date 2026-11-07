@@ -674,6 +674,17 @@ export const platformAdminAPI = {
       { field },
       { timeout: 180000 }
     ),
+  enhanceAllOAQuestions: (companyId) =>
+    API.post(
+      `/api/admin/platform/companies/${companyId}/oa-questions/enhance-all`,
+      {},
+      { timeout: 0 }
+    ),
+  saveEnhanceCompletion: (companyId, scope, completion) =>
+    API.put(`/api/admin/platform/companies/${companyId}/enhance-completion`, {
+      scope,
+      completion,
+    }),
   updateInterviewQuestion: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`, data),
   deleteInterviewQuestion: (companyId, index) =>
@@ -683,6 +694,12 @@ export const platformAdminAPI = {
       `/api/admin/platform/companies/${companyId}/interview-questions/${index}/enhance-field`,
       { field },
       { timeout: 180000 }
+    ),
+  enhanceAllInterviewQuestions: (companyId) =>
+    API.post(
+      `/api/admin/platform/companies/${companyId}/interview-questions/enhance-all`,
+      {},
+      { timeout: 0 }
     ),
   downloadPrepInterviewCsvTemplate: (companyId) =>
     API.get(

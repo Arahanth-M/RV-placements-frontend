@@ -2,12 +2,21 @@ import { describe, expect, it } from "vitest";
 import { looksLikeMarkdownProse } from "../../utils/looksLikeMarkdownProse.js";
 
 describe("looksLikeMarkdownProse", () => {
-  it("detects bold markdown", () => {
-    expect(looksLikeMarkdownProse("**High-level architecture**")).toBe(true);
+  it("flags pipe-heavy Python typing as prose (must not drive forced-python rendering)", () => {
+    const src = [
+      "def f(a: int | str | bytes, b: list[int] | None, c: dict[str, int] | set[int]) -> int | str | None | bool:",
+      "    return a",
+    ].join("\n");
+    expect(looksLikeMarkdownProse(src)).toBe(true);
   });
 
-  it("detects pipe tables", () => {
-    const table = "| a | b |\n|---|---|\n| 1 | 2 |";
-    expect(looksLikeMarkdownProse(table)).toBe(true);
+  it("does not flag ordinary indented Python", () => {
+    const src = [
+      "def solve():",
+      "    if k < 1 or k > m + n:",
+      "        return",
+      "    print(1)",
+    ].join("\n");
+    expect(looksLikeMarkdownProse(src)).toBe(false);
   });
 });

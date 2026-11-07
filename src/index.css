@@ -1186,7 +1186,35 @@ select.spc-field-control {
   scroll-margin-top: 6rem;
 }
 
+/* Prism / react-syntax-highlighter: preserve exact indentation.
+   Global `pre, code { white-space: pre-wrap; word-break: break-word }` below
+   otherwise overrides Prism and visually mangles nested Python blocks. */
+.solution-syntax-root,
+.solution-syntax-root pre,
+.solution-syntax-root code,
+.solution-syntax-root .solution-syntax-pre,
+.solution-syntax-root .solution-syntax-code {
+  white-space: pre !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  tab-size: 4;
+  -moz-tab-size: 4;
+}
+
+.solution-syntax-root pre,
+.solution-syntax-root .solution-syntax-pre {
+  overflow-x: auto !important;
+  max-width: 100%;
+}
+
+/* Keep token spans from inheriting collapsing whitespace rules */
+.solution-syntax-root code span,
+.solution-syntax-root .token {
+  white-space: inherit !important;
+}
+
 /* Prism / react-syntax-highlighter: keep long lines scrollable inside company tabs */
+.company-tab-content .solution-syntax-root > pre,
 .company-tab-content .solution-syntax-root > div {
   overflow-x: auto !important;
 }
@@ -1509,13 +1537,15 @@ html, body, #root {
     display: block;
   }
   
-  /* Make long/preformatted code scrollable and wrap nicely */
-  pre, code {
+  /* Make long/preformatted code scrollable and wrap nicely.
+     Exclude Prism solution blocks — they need exact `pre` whitespace. */
+  pre:not(.solution-syntax-pre),
+  code:not(.solution-syntax-code) {
     white-space: pre-wrap; /* wrap long words where possible */
     word-break: break-word;
   }
-  
-  pre {
+
+  pre:not(.solution-syntax-pre) {
     overflow-x: auto; /* allow horizontal scroll inside pre rather than page */
     max-width: 100%;
   }

@@ -45,7 +45,7 @@ describe("formatSolutionCode", () => {
     expect(out).not.toMatch(/^long\n/m);
   });
 
-  it("reflows a one-line Python def into multiple lines", () => {
+  it("reflows a one-line Python def into multiple lines when reflow helper is called directly", () => {
     const oneLine = "import sys def main(): n = int(data[0]) return n";
     const out = reflowSpacedSourceCode(oneLine, "python");
     expect(out).toContain("import sys");
@@ -62,5 +62,25 @@ describe("formatSolutionCode", () => {
     expect(out).toContain("`A` depends on `B` for module-level edges.");
     expect(out).not.toMatch(/src:\n/);
     expect(out).not.toMatch(/\nfor module-level/);
+  });
+
+  it("does not flatten healthy multiline Python that uses `or` after a number", () => {
+    const src = [
+      "def solve():",
+      "    if k < 1 or k > m + n:",
+      "        print(-1)",
+      "        return",
+      "    print(kth(A, B, k))",
+    ].join("\n");
+    expect(reflowSpacedSourceCode(src, "python")).toBe(src);
+  });
+
+  it("formatSolutionCode with language=python does not reflow source", () => {
+    const src = [
+      "def solve():",
+      "    if k < 1 or k > m + n:",
+      "        return",
+    ].join("\n");
+    expect(formatSolutionCode(src, 0, { language: "python" })).toBe(src);
   });
 });
