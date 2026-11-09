@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaChevronRight, FaSearch } from "react-icons/fa";
 import CompanyCard from "./CompanyCard";
@@ -43,6 +43,20 @@ import {
   LIST_LOGO_PIXEL_SIZE,
   resolveCompanyLogoTarget,
 } from "../utils/companyLogoSrc.js";
+
+/** Jump to top of the document (and common scroll roots). Instant — smooth scroll loses to focus restore. */
+function scrollWindowToTop() {
+  if (typeof window === "undefined") return;
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  document.querySelectorAll("main, [data-tour-scroll-root]").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.scrollTop = 0;
+      node.scrollLeft = 0;
+    }
+  });
+}
 
 const COMPANIES_PER_PAGE = 9;
 const CATEGORY_TILE_LOGO_GRID = 4;
@@ -114,12 +128,12 @@ export default function GeneralCompanyList() {
   const selectedCategoryMeta = GENERAL_COMPANY_CATEGORIES.find(
     (category) => category.id === selectedCategory
   );
-  const search = selectedCategory ? searchParams.get(COMPANY_LIST_SEARCH_PARAM) || "" : "";
-  const page = selectedCategory
-    ? parseCompanyListPageParam(searchParams.get("page"))
-    : 1;
+  const search = searchParams.get(COMPANY_LIST_SEARCH_PARAM) || "";
+  const page = parseCompanyListPageParam(searchParams.get("page"));
+  const hubSearchActive = !selectedCategory && Boolean(String(search).trim());
+  const showCompanyResults = Boolean(selectedCategory) || hubSearchActive;
 
-  const updateCategoryListParams = useCallback(
+  const updateListParams = useCallback(
     (mutate) => {
       setSearchParams(
         (prev) => {
@@ -138,24 +152,24 @@ export default function GeneralCompanyList() {
 
   const setSearch = useCallback(
     (value) => {
-      updateCategoryListParams((params) => {
+      updateListParams((params) => {
         setCompanyListSearchParam(params, value);
         setCompanyListPageParam(params, 1);
       });
     },
-    [updateCategoryListParams]
+    [updateListParams]
   );
 
   const setPage = useCallback(
     (updater) => {
-      updateCategoryListParams((params) => {
+      updateListParams((params) => {
         const current = parseCompanyListPageParam(params.get("page"));
         const nextPage =
           typeof updater === "function" ? updater(current) : updater;
         setCompanyListPageParam(params, nextPage);
       });
     },
-    [updateCategoryListParams]
+    [updateListParams]
   );
 
   useEffect(() => {
@@ -212,7 +226,7 @@ export default function GeneralCompanyList() {
 
   // Reveal two category tiles per tick (8 logos ≈ one batch chunk).
   useEffect(() => {
-    if (!fetchDone || selectedCategory) {
+    if (!fetchDone || selectedCategory || hubSearchActive) {
       return undefined;
     }
     const total = GENERAL_COMPANY_CATEGORIES.length;
@@ -230,11 +244,13 @@ export default function GeneralCompanyList() {
     return () => {
       window.clearInterval(timer);
     };
-  }, [fetchDone, selectedCategory]);
+  }, [fetchDone, selectedCategory, hubSearchActive]);
 
   // Prefetch the next reveal step's logos during the stagger gap.
   useEffect(() => {
-    if (!fetchDone || selectedCategory || visibleCategoryCount <= 0) return;
+    if (!fetchDone || selectedCategory || hubSearchActive || visibleCategoryCount <= 0) {
+      return;
+    }
     const nextStart = visibleCategoryCount;
     const nextEnd = Math.min(
       GENERAL_COMPANY_CATEGORIES.length,
@@ -244,7 +260,13 @@ export default function GeneralCompanyList() {
       const category = GENERAL_COMPANY_CATEGORIES[i];
       prefetchCategoryTileLogos(groupedCompanies[category.id] || []);
     }
-  }, [fetchDone, selectedCategory, visibleCategoryCount, groupedCompanies]);
+  }, [
+    fetchDone,
+    selectedCategory,
+    hubSearchActive,
+    visibleCategoryCount,
+    groupedCompanies,
+  ]);
 
   const revealedCategories = useMemo(
     () => GENERAL_COMPANY_CATEGORIES.slice(0, Math.max(0, visibleCategoryCount)),
@@ -255,18 +277,39 @@ export default function GeneralCompanyList() {
     [visibleCategoryCount]
   );
 
+  const companyCategoryById = useMemo(() => {
+    const map = new Map();
+    for (const category of GENERAL_COMPANY_CATEGORIES) {
+      for (const company of groupedCompanies[category.id] || []) {
+        const id = company?._id != null ? String(company._id) : "";
+        if (id) map.set(id, category.id);
+      }
+    }
+    return map;
+  }, [groupedCompanies]);
+
+  const categoryLabelById = useMemo(
+    () =>
+      Object.fromEntries(
+        GENERAL_COMPANY_CATEGORIES.map((category) => [category.id, category.label])
+      ),
+    []
+  );
+
   const categoryCompanies = selectedCategory
     ? groupedCompanies[selectedCategory] || []
     : companies;
-  const firstCategoryCompanyId = categoryCompanies[0]?._id;
+  const firstCategoryCompanyId = selectedCategory
+    ? categoryCompanies[0]?._id
+    : "";
 
   const filteredCompanies = useMemo(() => {
     const q = String(search || "").trim().toLowerCase();
-    if (!q) return categoryCompanies;
+    if (!q) return selectedCategory ? categoryCompanies : [];
     return categoryCompanies.filter((company) =>
       String(company?.name || "").toLowerCase().includes(q)
     );
-  }, [categoryCompanies, search]);
+  }, [categoryCompanies, search, selectedCategory]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / COMPANIES_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -280,7 +323,7 @@ export default function GeneralCompanyList() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!user || !selectedCategory || visibleIds.length === 0) {
+    if (!user || !showCompanyResults || visibleIds.length === 0) {
       setHelpfulStatusByCompanyId({});
       return () => {
         cancelled = true;
@@ -299,7 +342,7 @@ export default function GeneralCompanyList() {
     return () => {
       cancelled = true;
     };
-  }, [user?.userId, selectedCategory, visibleIdsKey]);
+  }, [user?.userId, showCompanyResults, visibleIdsKey]);
 
   useEffect(() => {
     if (!fetchDone || !focusCardId) return;
@@ -334,19 +377,152 @@ export default function GeneralCompanyList() {
     setSearchParams,
   ]);
 
+  // Category / pagination keep the same pathname, so App ScrollToTop does not run.
+  // Deep-links with ?card= handle their own scroll-into-view.
+  useLayoutEffect(() => {
+    if (focusCardId) return;
+    scrollWindowToTop();
+  }, [selectedCategory, page, focusCardId]);
+
   const openCategory = (categoryId) => {
     setSearchParams({ category: categoryId });
+    scrollWindowToTop();
   };
 
   const backToCategories = () => {
     setSearchParams({});
+    scrollWindowToTop();
+  };
+
+  const clearHubSearch = () => {
+    setSearchParams({});
+    scrollWindowToTop();
   };
 
   const scrollToListTop = () => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    scrollWindowToTop();
   };
+
+  const resolveCardCategory = (companyId) => {
+    if (selectedCategory) return selectedCategory;
+    return companyCategoryById.get(String(companyId || "")) || "";
+  };
+
+  const searchBar = (
+    <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search companies..."
+        className="search-bar w-full flex-1 rounded-xl border border-theme-input bg-theme-input px-4 py-2 text-sm text-theme-primary shadow-sm placeholder-theme-muted transition duration-200 focus:outline-none focus:ring-2 focus:ring-theme-accent sm:py-3 sm:text-base"
+      />
+      <button
+        type="button"
+        className="inline-flex items-center justify-center gap-1 rounded-xl border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary hover:bg-theme-nav"
+        aria-label="Search companies"
+      >
+        <FaSearch className="h-4 w-4" aria-hidden />
+        <span className="hidden sm:inline">Search</span>
+      </button>
+    </div>
+  );
+
+  const companyResults = (
+    <>
+      <div className="company-grid grid w-full min-w-0 max-w-full auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+        {!fetchDone ? (
+          <CompanyCardGridShimmer count={COMPANIES_PER_PAGE} />
+        ) : pageSlice.length > 0 ? (
+          pageSlice.map((company) => {
+            const cardCategory = resolveCardCategory(company._id);
+            const firstInCategoryId = selectedCategory
+              ? firstCategoryCompanyId
+              : (groupedCompanies[cardCategory] || [])[0]?._id;
+            return (
+              <div key={company._id} className="flex h-full min-h-0 flex-col gap-1.5">
+                {hubSearchActive && categoryLabelById[cardCategory] ? (
+                  <p className="px-0.5 text-xs font-medium uppercase tracking-wide text-theme-muted">
+                    {categoryLabelById[cardCategory]}
+                  </p>
+                ) : null}
+                <div className="min-h-0 flex-1">
+                  <CompanyCard
+                    company={company}
+                    highlighted={focusCardId !== "" && String(company._id) === focusCardId}
+                    helpfulStatus={helpfulStatusByCompanyId[company._id]}
+                    isAdmin={false}
+                    hidePlacementGotInCounts
+                    boostZeroPrepCounts={
+                      !isPlatformAdmin &&
+                      String(company._id) !== String(firstInCategoryId || "")
+                    }
+                    isTeaser={
+                      String(teaserCompanyIds[cardCategory] || "") === String(company._id)
+                    }
+                    detailLocked={isGeneralCompanyCardDetailLocked({
+                      user,
+                      cardAccess,
+                      selectedCategory: cardCategory,
+                      teaserCompanyIds,
+                      companyId: company._id,
+                    })}
+                  />
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div
+            className="col-span-full flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-theme bg-theme-card/40 px-6 py-12 text-center sm:py-14"
+            role="status"
+          >
+            <p className="text-base text-theme-secondary">
+              {search.trim()
+                ? "No companies match that search."
+                : "No companies in this category yet."}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {fetchDone && filteredCompanies.length > COMPANIES_PER_PAGE ? (
+        <div className="pagination relative z-10 mt-6 mb-2 flex flex-wrap items-center justify-center gap-1 px-2 py-2 sm:mt-8 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPage((prev) => Math.max(prev - 1, 1));
+              scrollToListTop();
+            }}
+            disabled={safePage === 1}
+            className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary transition duration-200 disabled:opacity-50 sm:px-4 sm:text-base"
+          >
+            Prev
+          </button>
+          <span className="px-3 text-sm text-theme-muted">
+            Page {safePage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setPage((prev) => Math.min(prev + 1, totalPages));
+              scrollToListTop();
+            }}
+            disabled={safePage >= totalPages}
+            className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary transition duration-200 disabled:opacity-50 sm:px-4 sm:text-base"
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
+      {fetchDone && filteredCompanies.length > 0 ? (
+        <p className="mt-2 text-center text-sm text-theme-muted" aria-live="polite">
+          {filteredCompanies.length}{" "}
+          {filteredCompanies.length === 1 ? "company" : "companies"}
+        </p>
+      ) : null}
+    </>
+  );
 
   return (
     <div className={`min-h-screen overflow-x-hidden ${pageShellOuterClass}`}>
@@ -354,19 +530,38 @@ export default function GeneralCompanyList() {
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton
-            onClick={() =>
-              selectedCategory ? backToCategories() : navigate(homePath || base)
+            onClick={() => {
+              if (selectedCategory) {
+                backToCategories();
+                return;
+              }
+              if (hubSearchActive) {
+                clearHubSearch();
+                return;
+              }
+              navigate(homePath || base);
+            }}
+            label={
+              selectedCategory || hubSearchActive ? "Back to categories" : "Back"
             }
-            label={selectedCategory ? "Back to categories" : "Back"}
           />
         </PageBackNavRow>
         <div className="mx-auto w-full max-w-6xl min-w-0">
           {!selectedCategory ? (
             <>
-              <PageHeroHeader subtitle="Grouped by each company’s business model. Pick a category to browse company cards.">
+              <PageHeroHeader
+                subtitle={
+                  hubSearchActive
+                    ? "Matching companies across all categories."
+                    : "Grouped by each company’s business model. Search by name or pick a category."
+                }
+              >
                 Company <em style={{ color: "#818CF8", fontStyle: "italic" }}>Prep Hub</em>
               </PageHeroHeader>
-              {!fetchDone ? (
+              {searchBar}
+              {hubSearchActive ? (
+                companyResults
+              ) : !fetchDone ? (
                 <CategoryTilesGridShimmer count={GENERAL_COMPANY_CATEGORIES.length} />
               ) : (
                 <div
@@ -425,103 +620,8 @@ export default function GeneralCompanyList() {
               <PageHeroHeader subtitle={selectedCategoryMeta?.subtitle}>
                 {selectedCategoryMeta?.label || "Companies"}
               </PageHeroHeader>
-
-              <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search companies..."
-                  className="search-bar w-full flex-1 rounded-xl border border-theme-input bg-theme-input px-4 py-2 text-sm text-theme-primary shadow-sm placeholder-theme-muted transition duration-200 focus:outline-none focus:ring-2 focus:ring-theme-accent sm:py-3 sm:text-base"
-                />
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-1 rounded-xl border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary hover:bg-theme-nav"
-                  aria-label="Search companies"
-                >
-                  <FaSearch className="h-4 w-4" aria-hidden />
-                  <span className="hidden sm:inline">Search</span>
-                </button>
-              </div>
-
-              <div className="company-grid grid w-full min-w-0 max-w-full auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-                {!fetchDone ? (
-                  <CompanyCardGridShimmer count={COMPANIES_PER_PAGE} />
-                ) : pageSlice.length > 0 ? (
-                  pageSlice.map((company) => (
-                    <CompanyCard
-                      key={company._id}
-                      company={company}
-                      highlighted={focusCardId !== "" && String(company._id) === focusCardId}
-                      helpfulStatus={helpfulStatusByCompanyId[company._id]}
-                      isAdmin={false}
-                      hidePlacementGotInCounts
-                      boostZeroPrepCounts={
-                        !isPlatformAdmin &&
-                        String(company._id) !== String(firstCategoryCompanyId || "")
-                      }
-                      isTeaser={
-                        String(teaserCompanyIds[selectedCategory] || "") ===
-                        String(company._id)
-                      }
-                      detailLocked={isGeneralCompanyCardDetailLocked({
-                        user,
-                        cardAccess,
-                        selectedCategory,
-                        teaserCompanyIds,
-                        companyId: company._id,
-                      })}
-                    />
-                  ))
-                ) : (
-                  <div
-                    className="col-span-full flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-theme bg-theme-card/40 px-6 py-12 text-center sm:py-14"
-                    role="status"
-                  >
-                    <p className="text-base text-theme-secondary">
-                      {search.trim()
-                        ? "No companies match that search."
-                        : "No companies in this category yet."}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {fetchDone && filteredCompanies.length > COMPANIES_PER_PAGE ? (
-                <div className="pagination relative z-10 mt-6 mb-2 flex flex-wrap items-center justify-center gap-1 px-2 py-2 sm:mt-8 sm:gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPage((prev) => Math.max(prev - 1, 1));
-                      scrollToListTop();
-                    }}
-                    disabled={safePage === 1}
-                    className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary transition duration-200 disabled:opacity-50 sm:px-4 sm:text-base"
-                  >
-                    Prev
-                  </button>
-                  <span className="px-3 text-sm text-theme-muted">
-                    Page {safePage} of {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPage((prev) => Math.min(prev + 1, totalPages));
-                      scrollToListTop();
-                    }}
-                    disabled={safePage >= totalPages}
-                    className="rounded-lg border border-theme bg-theme-card px-3 py-2 text-sm text-theme-secondary transition duration-200 disabled:opacity-50 sm:px-4 sm:text-base"
-                  >
-                    Next
-                  </button>
-                </div>
-              ) : null}
-              {fetchDone && filteredCompanies.length > 0 ? (
-                <p className="mt-2 text-center text-sm text-theme-muted" aria-live="polite">
-                  {filteredCompanies.length}{" "}
-                  {filteredCompanies.length === 1 ? "company" : "companies"}
-                </p>
-              ) : null}
+              {searchBar}
+              {companyResults}
             </>
           )}
         </div>

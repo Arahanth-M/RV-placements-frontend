@@ -31,6 +31,7 @@ import {
   collegeIdFromUser,
   normalizeCollegeId,
   adminMayMutateSharedCompanyContent,
+  isPlatformAdminUser,
 } from "../utils/collegeScope.js";
 import CompanyLogo from "./CompanyLogo";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
@@ -38,6 +39,8 @@ import { buildGeneralCompanyPrepSummary } from "../utils/generalCompanyPrepSumma
 import BrandLogo from "./BrandLogo.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
 import CompanyContributeModal from "./CompanyContributeModal.jsx";
+import CompanyVerifiedAdminControl from "./platform/CompanyVerifiedAdminControl.jsx";
+import { patchGeneralCompanyListVerified } from "../utils/generalCompanyListCache.js";
 
 import AboutTab from "./CompanyTabs/AboutTab";
 import GeneralTab from "./CompanyTabs/GeneralTab";
@@ -321,6 +324,8 @@ function CompanyDetails() {
   const collegeId = collegeIdFromUser(user);
   const isRvitmViewer = collegeId === COLLEGE_ID_RVITM;
   const canEditSharedCompanyContent = adminMayMutateSharedCompanyContent(user, isAdmin);
+  const showCompanyVerifiedAdmin =
+    isGeneral && isPlatformAdminUser(user);
   const canManageRecruitmentProcess =
     isAdmin || (user && String(user.role || "").toLowerCase() === "spc");
   const profileAvailabilityKey =
@@ -1200,6 +1205,31 @@ function CompanyDetails() {
                   ) || "Placement Drive"}
                 </p>
               )}
+              {showCompanyVerifiedAdmin ? (
+                <CompanyVerifiedAdminControl
+                  company={company}
+                  onVerifiedChange={({ verified, verifiedAt, verifiedNotes }) => {
+                    setCompany((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            verified,
+                            verifiedAt,
+                            ...(verifiedNotes !== undefined
+                              ? { verifiedNotes }
+                              : {}),
+                          }
+                        : prev
+                    );
+                    patchGeneralCompanyListVerified(
+                      company?._id,
+                      verified,
+                      verifiedAt,
+                      verifiedNotes
+                    );
+                  }}
+                />
+              ) : null}
               {user && !isAdmin && !isGeneral && (
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   <button

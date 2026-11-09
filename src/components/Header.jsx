@@ -47,6 +47,8 @@ import { isPlatformAdminUser } from "../utils/collegeScope.js";
 import {
   LOGIN_INTENT_CAMPUS,
   LOGIN_INTENT_GENERAL,
+  clearLoginRedirectPath,
+  persistLoginRedirectPath,
 } from "../utils/loginIntent.js";
 import NotificationBell from "./NotificationBell";
 import BrandLogo from "./BrandLogo.jsx";
@@ -576,10 +578,9 @@ const Header = () => {
             type="button"
             disabled={loading}
             onClick={() => {
-              const next = `${location.pathname}${location.search}${location.hash}`;
-              if (next && next !== "/login" && !next.endsWith("/login")) {
-                sessionStorage.setItem("loginRedirectPath", next);
-              }
+              persistLoginRedirectPath(
+                `${location.pathname}${location.search}${location.hash}`
+              );
               navigate("/login");
             }}
             className={`${headerNavChipBase} ${headerChipIdle}`}
@@ -651,7 +652,7 @@ const Header = () => {
                 <button
                   onClick={() => {
                     setAccountMenuOpen(false);
-                    sessionStorage.removeItem("loginRedirectPath");
+                    clearLoginRedirectPath();
                     login(false, {
                       intent: isGeneral ? LOGIN_INTENT_CAMPUS : LOGIN_INTENT_GENERAL,
                       selectAccount: true,

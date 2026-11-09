@@ -3,7 +3,14 @@ import { clearAllResumeDraftCaches } from './resumeDraftCache.js';
 import { authAPI } from './api';
 import { BASE_URL } from './constants';
 import { flushDauPresence } from './dauPresenceFlush';
-import { persistLoginIntent, LOGIN_INTENT_PLATFORM_ADMIN } from './loginIntent.js';
+import {
+  persistLoginIntent,
+  replaceLoginHistoryBeforeOAuth,
+  markOAuthInProgress,
+  clearOAuthInProgress,
+  isAbandonedOAuthReturn,
+  LOGIN_INTENT_PLATFORM_ADMIN,
+} from './loginIntent.js';
 
 // Use a symbol to check if we're inside a provider
 const AUTH_PROVIDER_SENTINEL = Symbol('AUTH_PROVIDER');
@@ -98,10 +105,42 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkUser();
+
+    // bfcache Back from Google restores a frozen tab — re-run session checks.
+    const onPageShow = (event) => {
+      if (event.persisted || isAbandonedOAuthReturn()) {
+        void checkUser();
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
+
+  const clearLocalAuthState = () => {
+    setUser(null);
+    setIsAdmin(false);
+    setIsSuperAdmin(false);
+    setStudentData(null);
+    clearLoginTimestamp();
+    localStorage.removeItem(LAST_USER_KEY);
+    localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
+  };
 
   const checkUser = async () => {
     try {
+      // Back from Google without finishing OAuth must not revive a prior JWT.
+      if (isAbandonedOAuthReturn()) {
+        clearOAuthInProgress();
+        try {
+          await authAPI.logout();
+        } catch {
+          /* still clear local state */
+        }
+        clearLocalAuthState();
+        setLoading(false);
+        return;
+      }
+
       // If we're offline, fall back to last-known user for read-only/offline mode
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const storedUser = localStorage.getItem(LAST_USER_KEY);
@@ -190,23 +229,26 @@ export const AuthProvider = ({ children }) => {
     persistLoginIntent(options?.intent);
     const intent = String(options?.intent || "").trim();
     const params = new URLSearchParams();
-    if (intent === "campus" || intent === "spc") {
+    if (isAdmin && intent === LOGIN_INTENT_PLATFORM_ADMIN) {
+      params.set("intent", "platform");
+    } else if (intent === "campus" || intent === "spc") {
       params.set("intent", intent);
     }
-    if (options?.selectAccount) {
+    // Always ask Google to show the account picker. Without this, an existing
+    // Google session silently completes OAuth and feels like "auto login".
+    if (options?.selectAccount !== false) {
       params.set("prompt", "select_account");
     }
     const qs = params.toString();
-    const authUrl = isAdmin
-      ? `${BASE_URL}/api/auth/google/admin${
-          intent === LOGIN_INTENT_PLATFORM_ADMIN ? "?intent=platform" : ""
-        }`
-      : `${BASE_URL}/api/auth/google${qs ? `?${qs}` : ""}`;
+    const path = isAdmin ? "/api/auth/google/admin" : "/api/auth/google";
+    const authUrl = `${BASE_URL}${path}${qs ? `?${qs}` : ""}`;
 
     console.log('🚀 Redirecting to login:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);
-    // Replace the current entry so browser back returns to the last app page,
-    // not the transient Google OAuth screen.
+    // Drop /login from history first, then replace with Google — Back returns
+    // to the pre-login app page (e.g. challenges), not the sign-in screen.
+    markOAuthInProgress();
+    replaceLoginHistoryBeforeOAuth("/");
     window.location.replace(authUrl);
   };
 
@@ -216,11 +258,14 @@ export const AuthProvider = ({ children }) => {
     
     console.log('🚀 Redirecting to signup:', authUrl);
     console.log('🏠 Hostname detected:', window.location.hostname);
+    markOAuthInProgress();
+    replaceLoginHistoryBeforeOAuth("/");
     window.location.replace(authUrl);
   };
 
   const logout = useCallback(async () => {
     try {
+      clearOAuthInProgress();
       await Promise.race([
         flushDauPresence(),
         new Promise((resolve) => setTimeout(resolve, 1500)),

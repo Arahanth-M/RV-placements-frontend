@@ -12,15 +12,18 @@ import {
   canAccessRvceTenant,
   isPlatformAdminUser,
 } from "../utils/collegeScope.js";
-import { LOGIN_INTENT_CAMPUS, LOGIN_INTENT_GENERAL } from "../utils/loginIntent.js";
+import {
+  LOGIN_INTENT_CAMPUS,
+  LOGIN_INTENT_GENERAL,
+  consumeLoginRedirectPath,
+  persistLoginRedirectPath,
+} from "../utils/loginIntent.js";
 import {
   PageBackButton,
   PageBackNavRow,
   pageShellInnerClass,
 } from "./PageBackNav.jsx";
 import { SignInPanel } from "./PlatformLoginMenu.jsx";
-
-const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 
 const Login = () => {
   const { login, user, isAdmin, isSuperAdmin } = useAuth();
@@ -45,10 +48,10 @@ const Login = () => {
 
   const persistRedirectForLogin = useCallback(() => {
     if (isAdminRoute) return;
-    const nextPath = `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`;
-    if (nextPath.startsWith("/")) {
-      sessionStorage.setItem(LOGIN_REDIRECT_PATH_KEY, nextPath);
-    }
+    // Do not overwrite a prior route (e.g. /general/challenges) with /login.
+    persistLoginRedirectPath(
+      `${location.pathname || "/"}${location.search || ""}${location.hash || ""}`
+    );
   }, [isAdminRoute, location.hash, location.pathname, location.search]);
 
   const handleGoogleSignIn = (intent) => {
@@ -58,10 +61,8 @@ const Login = () => {
 
   useEffect(() => {
     if (user || isAdminRoute) return;
-    const here = `${location.pathname}${location.search}${location.hash}`;
-    if (here === "/login" || here.endsWith("/login")) return;
     persistRedirectForLogin();
-  }, [user, isAdminRoute, persistRedirectForLogin, location.pathname, location.search, location.hash]);
+  }, [user, isAdminRoute, persistRedirectForLogin]);
 
   useEffect(() => {
     if (!user) return;
@@ -70,9 +71,8 @@ const Login = () => {
       return;
     }
     if (!canAccessRvceTenant(user)) {
-      const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+      const storedRedirect = consumeLoginRedirectPath();
       const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral: true });
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
       navigate(safeRedirect || GENERAL_POST_LOGIN_PATH, { replace: true });
       return;
     }
@@ -80,9 +80,8 @@ const Login = () => {
       navigate(tenantPath("/admin/dashboard"), { replace: true });
       return;
     }
-    const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
+    const storedRedirect = consumeLoginRedirectPath();
     const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral: false });
-    sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
     navigate(safeRedirect, { replace: true });
   }, [user, isAdmin, isSuperAdmin, navigate]);
 

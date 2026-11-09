@@ -91,4 +91,16 @@ describe("toPostLoginAppPath", () => {
     expect(toPostLoginAppPath("/", { useGeneral: false })).toBe("/rvce");
     expect(toPostLoginAppPath("/general", { useGeneral: false })).toBe("/rvce");
   });
+
+  it("returns the page the user started from after general login", () => {
+    expect(
+      toPostLoginAppPath("/general/challenges", { useGeneral: true })
+    ).toBe("/general/challenges");
+    expect(
+      toPostLoginAppPath("/general/challenges?tab=weekly", { useGeneral: true })
+    ).toBe("/general/challenges?tab=weekly");
+    expect(toPostLoginAppPath("/login", { useGeneral: true })).toBe(
+      GENERAL_POST_LOGIN_PATH
+    );
+  });
 });

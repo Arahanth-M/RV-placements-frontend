@@ -1525,10 +1525,19 @@ function CompanyStats() {
   }, [user?.userId, isPlacementCardsYear, placementTier, visibleCompanyIds, visibleCompanyIdsKey]);
 
   const scrollToCompanyListTop = () => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    if (typeof window === "undefined") return;
+    // Instant: smooth scroll often loses to the focused pagination button scrolling back into view.
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
+
+  // Pagination keeps the same pathname/query, so App ScrollToTop does not run.
+  // Only watch the active tier's page — other tier page restores must not yank scroll.
+  useLayoutEffect(() => {
+    if (!placementTier) return;
+    scrollToCompanyListTop();
+  }, [placementTier, tierListConfig.page]);
 
   const renderTierPagination = (totalItems, page, setPage) => {
     if (totalItems <= 0) return null;

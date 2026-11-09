@@ -89,7 +89,10 @@ function clearInterviewSummaryCacheForUser(userId) {
 
 export const authAPI = {
   getCurrentUser: () => API.get('/api/auth/current_user'),
-  logout: () => API.get('/api/auth/logout'),
+  logout: () =>
+    API.get('/api/auth/logout', {
+      headers: { Accept: 'application/json' },
+    }),
   isAdmin: () => API.get('/api/auth/is_admin'),
   submitBlockedLoginInterest: ({ token, collegeName, wantsPlatformAtCollege }) =>
     API.post('/api/auth/blocked-login-interest', {
@@ -685,6 +688,20 @@ export const platformAdminAPI = {
       scope,
       completion,
     }),
+  setCompanyVerified: (companyId, payload = {}) => {
+    const body = {};
+    if (typeof payload === "boolean") {
+      body.verified = payload;
+    } else if (payload && typeof payload === "object") {
+      if (typeof payload.verified === "boolean") body.verified = payload.verified;
+      if (Object.prototype.hasOwnProperty.call(payload, "notes")) {
+        body.notes = payload.notes;
+      } else if (Object.prototype.hasOwnProperty.call(payload, "verifiedNotes")) {
+        body.notes = payload.verifiedNotes;
+      }
+    }
+    return API.put(`/api/admin/platform/companies/${companyId}/verified`, body);
+  },
   updateInterviewQuestion: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`, data),
   deleteInterviewQuestion: (companyId, index) =>

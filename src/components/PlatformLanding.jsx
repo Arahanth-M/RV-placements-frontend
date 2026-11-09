@@ -23,6 +23,7 @@ import { companyAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { useTheme } from "../utils/ThemeContext";
 import { canAccessRvceTenant, getAppHomePathForUser, isPlatformAdminUser } from "../utils/collegeScope.js";
+import { persistLoginRedirectPath } from "../utils/loginIntent.js";
 import CompanyLogo from "./CompanyLogo";
 import { PageHeroFontStyles } from "./PageBackNav.jsx";
 import PlatformFooter from "./PlatformFooter.jsx";
@@ -703,10 +704,9 @@ function LandingHeader({ user, loading }) {
   const canEnterRvce = !isPlatformAdmin && canAccessRvceTenant(user);
   const appHome = getAppHomePathForUser(user);
   const openLogin = () => {
-    const next = `${location.pathname}${location.search}${location.hash}`;
-    if (next && next !== "/login" && !next.endsWith("/login")) {
-      sessionStorage.setItem("loginRedirectPath", next);
-    }
+    persistLoginRedirectPath(
+      `${location.pathname}${location.search}${location.hash}`
+    );
     navigate("/login");
   };
   return (

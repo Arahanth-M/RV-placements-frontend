@@ -795,6 +795,9 @@ function PlacementCustomSearchPanel({ branches, selectedYear }) {
               onPageChange={(page) => {
                 setResultsPage(page);
                 setExpandedRows(new Set());
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
               }}
             />
           </div>
@@ -1402,6 +1405,9 @@ export default function StudentPlacementStatsTab() {
                     onPageChange={(page) => {
                       setRosterPage(page);
                       setExpandedRows(new Set());
+                      window.scrollTo(0, 0);
+                      document.documentElement.scrollTop = 0;
+                      document.body.scrollTop = 0;
                     }}
                   />
                 </div>

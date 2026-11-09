@@ -190,6 +190,15 @@ export function preservePythonSourceForDisplay(raw) {
 }
 
 /**
+ * Show any language source exactly as stored. Only normalizes CRLF → LF.
+ * No trim, unescape, reflow, or indent rewrite.
+ */
+export function preserveStoredSourceForDisplay(raw) {
+  if (raw == null) return "";
+  return String(raw).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+/**
  * Full pipeline: unescape, reflow one-liners, restore indent.
  * Forced Python skips structural transforms and only normalizes line endings.
  */

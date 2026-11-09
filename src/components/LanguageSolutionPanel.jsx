@@ -1,8 +1,7 @@
 import { useState } from "react";
 import PrepSolutionBody from "./PrepSolutionBody";
 import PrepRichText from "./PrepRichText";
-import { formatSolutionCode } from "../utils/formatSolutionCode";
-import { prepareSourceCodeForDisplay } from "../utils/prepareSourceCodeForDisplay.js";
+import { preserveStoredSourceForDisplay } from "../utils/prepareSourceCodeForDisplay.js";
 import { looksLikeMarkdownProse } from "../utils/looksLikeMarkdownProse";
 import PlatformAdminCodeBlock from "./platform/PlatformAdminCodeBlock.jsx";
 
@@ -12,15 +11,15 @@ const LANGS = [
   { id: "python", label: "Python" },
 ];
 
-function formattedSolutions(solutions) {
+function storedSolutions(solutions) {
   const sols =
     solutions && typeof solutions === "object" && !Array.isArray(solutions)
       ? solutions
       : {};
   return {
-    cpp: prepareSourceCodeForDisplay(sols.cpp, "cpp"),
-    java: prepareSourceCodeForDisplay(sols.java, "java"),
-    python: prepareSourceCodeForDisplay(sols.python, "python"),
+    cpp: preserveStoredSourceForDisplay(sols.cpp),
+    java: preserveStoredSourceForDisplay(sols.java),
+    python: preserveStoredSourceForDisplay(sols.python),
   };
 }
 
@@ -44,12 +43,12 @@ export default function LanguageSolutionPanel({
   richTextVariant = "theme",
   platformAdminCodeDisplay = false,
 }) {
-  const sols = formattedSolutions(solutions);
-  const intuitionText = formatSolutionCode(intuition);
-  const explanationText = formatSolutionCode(explanation);
-  const hasIntuition = Boolean(intuitionText);
-  const hasExplanation = Boolean(explanationText);
-  const availableLangs = LANGS.filter((lang) => sols[lang.id]);
+  const sols = storedSolutions(solutions);
+  const intuitionText = preserveStoredSourceForDisplay(intuition);
+  const explanationText = preserveStoredSourceForDisplay(explanation);
+  const hasIntuition = Boolean(String(intuitionText || "").trim());
+  const hasExplanation = Boolean(String(explanationText || "").trim());
+  const availableLangs = LANGS.filter((lang) => String(sols[lang.id] || "").trim());
   const tabs = [
     ...(hasIntuition ? [{ id: "intuition", label: "Intuition" }] : []),
     ...(hasExplanation ? [{ id: "explanation", label: "Explanation" }] : []),
@@ -60,9 +59,10 @@ export default function LanguageSolutionPanel({
     ? tab
     : pickDefaultTab(sols, hasIntuition, hasExplanation);
   const prose = active === "intuition" ? intuitionText : active === "explanation" ? explanationText : "";
-  const code = prose ? "" : sols[active] || formatSolutionCode(fallbackCode);
+  const fallbackStored = preserveStoredSourceForDisplay(fallbackCode);
+  const code = prose ? "" : sols[active] || fallbackStored;
 
-  if (!tabs.length && !formatSolutionCode(fallbackCode)) return null;
+  if (!tabs.length && !String(fallbackStored || "").trim()) return null;
 
   return (
     <div

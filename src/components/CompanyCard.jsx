@@ -22,7 +22,9 @@ import {
 import CompanyLogo from "./CompanyLogo";
 import GeneralCompanyPrepSummary from "./GeneralCompanyPrepSummary.jsx";
 import PlatformEnhanceCardMarks from "./platform/PlatformEnhanceCardMarks.jsx";
+import CompanyVerifiedAdminControl from "./platform/CompanyVerifiedAdminControl.jsx";
 import { LIST_LOGO_PIXEL_SIZE } from "../utils/companyLogoSrc.js";
+import { patchGeneralCompanyListVerified } from "../utils/generalCompanyListCache.js";
 
 const GOT_IN_DISPLAY_YEARS = [...PLACEMENT_DETAIL_VISIT_YEARS];
 
@@ -92,6 +94,10 @@ function CompanyCard({
   const { user } = useAuth();
   const canEditProgramGotIn = adminMayMutateSharedCompanyContent(user, isAdmin);
   const showPlatformEnhanceMarks = isGeneral && isPlatformAdminUser(user);
+  const [companyVerified, setCompanyVerified] = useState(company?.verified === true);
+  const [companyVerifiedNotes, setCompanyVerifiedNotes] = useState(
+    String(company?.verifiedNotes || "")
+  );
   const [helpfulCount, setHelpfulCount] = useState(company.helpfulCount || 0);
   const [hasUpvoted, setHasUpvoted] = useState(helpfulStatus?.hasUpvoted === true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -117,6 +123,11 @@ function CompanyCard({
   useEffect(() => {
     setHelpfulCount(company.helpfulCount || 0);
   }, [company.helpfulCount]);
+
+  useEffect(() => {
+    setCompanyVerified(company?.verified === true);
+    setCompanyVerifiedNotes(String(company?.verifiedNotes || ""));
+  }, [company?._id, company?.verified, company?.verifiedNotes]);
 
   useEffect(() => {
     if (!user) {
@@ -376,8 +387,30 @@ function CompanyCard({
       data-testid="company-card"
       data-highlighted={highlighted ? "true" : undefined}
     >
-      {(isGeneral && (isTeaser || detailLocked)) || isTrending ? (
-        <div className="absolute right-3 top-3 z-[2] flex max-w-[48%] flex-col items-end gap-1">
+      {(isGeneral && (isTeaser || detailLocked)) || isTrending || showPlatformEnhanceMarks ? (
+        <div className="absolute right-3 top-3 z-[2] flex max-w-[55%] flex-col items-end gap-1">
+          {showPlatformEnhanceMarks ? (
+            <CompanyVerifiedAdminControl
+              company={{
+                ...company,
+                verified: companyVerified,
+                verifiedNotes: companyVerifiedNotes,
+              }}
+              compact
+              onVerifiedChange={({ verified, verifiedAt, verifiedNotes }) => {
+                setCompanyVerified(verified);
+                if (verifiedNotes !== undefined) {
+                  setCompanyVerifiedNotes(String(verifiedNotes || ""));
+                }
+                patchGeneralCompanyListVerified(
+                  company?._id,
+                  verified,
+                  verifiedAt,
+                  verifiedNotes
+                );
+              }}
+            />
+          ) : null}
           {isGeneral && isTeaser ? (
             <span className="inline-flex items-center rounded-full border border-emerald-400/50 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
               Free
@@ -413,7 +446,11 @@ function CompanyCard({
         className={`company-header flex flex-shrink-0 items-center gap-3 ${
           isGeneral ? "mb-1.5" : "mb-4"
         } ${
-          isTrending || (isGeneral && (isTeaser || detailLocked)) ? "pr-12" : ""
+          isTrending ||
+          (isGeneral && (isTeaser || detailLocked)) ||
+          showPlatformEnhanceMarks
+            ? "pr-24 sm:pr-28"
+            : ""
         }`}
       >
         <div 
@@ -475,6 +512,7 @@ function CompanyCard({
           variant="card"
           className="mb-4 w-full min-w-0"
           boostZeroPrepCounts={boostZeroPrepCounts}
+          onMoreRolesClick={handleViewDetailsClick}
         />
       ) : null}
 

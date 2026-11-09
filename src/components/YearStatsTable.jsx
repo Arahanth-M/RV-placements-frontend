@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useLayoutEffect, useCallback } from "react";
 import { FaSearch, FaFilter } from "react-icons/fa";
 import { PageBackButton, PageBackNavRow } from "./PageBackNav.jsx";
 import Analytics from "./Analytics";
@@ -19,6 +19,13 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
   const [branchFilter, setBranchFilter] = useState("all");
   const [showFilter, setShowFilter] = useState(false);
   const [page, setPage] = useState(1);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [page]);
 
   useEffect(() => {
     const onTourPrepare = (event) => {
@@ -169,9 +176,10 @@ function YearStatsTable({ year, data, onBack, openDreamMinLpa = DEFAULT_OPEN_DRE
   );
 
   const scrollToYearStatsTop = () => {
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    if (typeof window === "undefined") return;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   if (!data || data.length === 0) {
