@@ -3,8 +3,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus, vs } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "../utils/ThemeContext";
 import { inferSolutionLanguage } from "../utils/inferSolutionLanguage";
-import { formatSolutionCode } from "../utils/formatSolutionCode";
-import { prepareSourceCodeForDisplay } from "../utils/prepareSourceCodeForDisplay.js";
+import { preserveStoredSourceForDisplay } from "../utils/prepareSourceCodeForDisplay.js";
 
 /**
  * VS Code–style syntax highlighting for solution bodies.
@@ -14,18 +13,22 @@ import { prepareSourceCodeForDisplay } from "../utils/prepareSourceCodeForDispla
  * Indentation: global `pre, code { white-space: pre-wrap }` in index.css must not
  * collapse or reflow source — see `.solution-syntax-root` overrides in index.css.
  */
-export default function SolutionSyntaxBlock({ code, toolbar = null, className = "", language }) {
+export default function SolutionSyntaxBlock({
+  code,
+  toolbar = null,
+  className = "",
+  language,
+}) {
   const { theme } = useTheme();
   const rootRef = useRef(null);
   const style = theme === "dark" ? vscDarkPlus : vs;
+  const stored = preserveStoredSourceForDisplay(code);
   const lang =
     typeof language === "string" && language.trim()
       ? language.trim()
-      : inferSolutionLanguage(formatSolutionCode(code));
-  const displayCode =
-    lang && lang !== "markdown"
-      ? prepareSourceCodeForDisplay(code, lang)
-      : formatSolutionCode(code);
+      : inferSolutionLanguage(stored);
+  // Keep spaces/indent exactly as stored (no reflow/re-indent).
+  const displayCode = stored;
 
   useEffect(() => {
     if (!import.meta.env.DEV || !rootRef.current) return;

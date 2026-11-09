@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaCheckCircle, FaInfoCircle, FaLock, FaUnlock } from "react-icons/fa";
+import { FaCheck, FaCheckCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
 import { billingAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { loadRazorpayCheckoutScript } from "../utils/loadRazorpay.js";
@@ -16,6 +16,54 @@ import {
 import ThemedSelect from "./ThemedSelect.jsx";
 
 const PLAN_ORDER = ["category", "prep_path", "mocks", "all_premium"];
+
+/** Flat feature rows for the compare table (aligned to PLAN_ORDER columns). */
+const COMPARISON_ROWS = [
+  {
+    id: "company_cards",
+    label: "Company-card details",
+    hint: "Full details for each company",
+    values: {
+      category: "One category",
+      prep_path: "All categories",
+      mocks: "All categories",
+      all_premium: "All categories",
+    },
+  },
+  {
+    id: "ai_mocks",
+    label: "AI mock interviews",
+    hint: "Practise for any company",
+    values: {
+      category: false,
+      prep_path: false,
+      mocks: "Unlimited",
+      all_premium: "Unlimited",
+    },
+  },
+  {
+    id: "prep_path",
+    label: "PrepPath plans",
+    hint: "Step-by-step prep plan",
+    values: {
+      category: false,
+      prep_path: "Unlimited",
+      mocks: false,
+      all_premium: "Unlimited",
+    },
+  },
+  {
+    id: "behavioral",
+    label: "Behavioural coach",
+    hint: "Questions answered by the coach",
+    values: {
+      category: "3 per hour",
+      prep_path: "Unlimited",
+      mocks: "Unlimited",
+      all_premium: "Unlimited",
+    },
+  },
+];
 
 const PLAN_INFO = {
   trial: {
@@ -88,23 +136,34 @@ const PLAN_INFO = {
 function PlanInfoHint({ planId }) {
   const info = PLAN_INFO[planId];
   const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
+  const closeTimerRef = useRef(null);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDoc = (event) => {
-      const target = event.target instanceof Node ? event.target : null;
-      if (target && rootRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    },
+    []
+  );
 
   if (!info) return null;
 
+  const show = () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
   return (
-    <span ref={rootRef} className="relative inline-flex shrink-0">
+    <span
+      className="relative inline-flex shrink-0"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
       <button
         type="button"
         className="inline-flex h-6 w-6 items-center justify-center rounded-full text-theme-muted transition-colors hover:text-theme-accent"
@@ -113,7 +172,6 @@ function PlanInfoHint({ planId }) {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setOpen((prev) => !prev);
         }}
       >
         <FaInfoCircle className="h-3.5 w-3.5" aria-hidden />
@@ -121,7 +179,7 @@ function PlanInfoHint({ planId }) {
       {open ? (
         <div
           className="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-theme bg-theme-card p-3 text-left shadow-xl sm:w-72"
-          role="dialog"
+          role="tooltip"
           aria-label="Plan details"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-theme-accent">Includes</p>
@@ -193,6 +251,72 @@ function paidPlanTitle(plan, entitlement) {
   return name;
 }
 
+/** Continuous selected-column chrome. */
+function selectedColumnStyle({ edge = "middle" } = {}) {
+  const shadows = ["inset 2px 0 0 0 var(--accent)", "inset -2px 0 0 0 var(--accent)"];
+  if (edge === "start" || edge === "alone") {
+    shadows.unshift("inset 0 3px 0 0 var(--accent)");
+  }
+  if (edge === "end" || edge === "alone") {
+    shadows.push("inset 0 -3px 0 0 var(--accent)");
+  }
+  return {
+    backgroundColor: "color-mix(in srgb, var(--accent) 14%, var(--bg-card))",
+    boxShadow: shadows.join(", "),
+  };
+}
+
+function ComparisonValue({ value, emphasized = false }) {
+  if (value === false || value == null) {
+    return (
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded border-2 border-theme-muted/40 text-theme-muted/70"
+        aria-label="Not included"
+      >
+        <FaTimes className="h-2.5 w-2.5" aria-hidden />
+      </span>
+    );
+  }
+
+  const label = String(value);
+  const isBroad =
+    label.toLowerCase() === "unlimited" || label.toLowerCase().startsWith("all ");
+
+  // Selected column: limited perks as accent pills (matches mock).
+  if (emphasized && !isBroad) {
+    return (
+      <span className="inline-flex rounded-full bg-theme-accent px-3 py-1 text-xs font-semibold text-white shadow-sm">
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center justify-center gap-2 text-sm text-theme-secondary">
+      <span
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 border-theme-muted/40 text-theme-muted"
+        aria-hidden
+      >
+        <FaCheck className="h-2.5 w-2.5" />
+      </span>
+      <span className="font-medium">{label}</span>
+    </span>
+  );
+}
+
+const PLAN_SHORT = {
+  category: "One category",
+  prep_path: "PrepPath",
+  mocks: "AI mocks",
+  all_premium: "All premium",
+};
+
+function freeCreditLabel(unlimitedPaid, remaining, fallback = 1) {
+  if (unlimitedPaid) return "Unlimited (paid)";
+  if (Number.isFinite(remaining) && remaining <= 0) return "Used";
+  return `${Number.isFinite(remaining) ? remaining : fallback} remaining`;
+}
+
 export default function GeneralPricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -209,6 +333,7 @@ export default function GeneralPricingPage() {
   const [checkoutPreview, setCheckoutPreview] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("");
 
   const load = async () => {
     const configRes = await billingAPI.getConfig();
@@ -256,17 +381,41 @@ export default function GeneralPricingPage() {
     if (!stillValid) setCategoryId(categoryOptions[0].value);
   }, [categoryOptions, categoryId]);
 
+  const displayPlans = useMemo(
+    () =>
+      PLAN_ORDER.map((id) => plans.find((plan) => plan.id === id)).filter(Boolean),
+    [plans]
+  );
+
   const shopPlans = useMemo(() => {
-    const list = [...plans].sort(
-      (a, b) => PLAN_ORDER.indexOf(a.id) - PLAN_ORDER.indexOf(b.id)
-    );
-    return list.filter((plan) => {
+    return displayPlans.filter((plan) => {
       if (plan.id === "category") {
         return !summary.allCards && categoryOptions.length > 0;
       }
       return !alreadyOwnsPlan(summary, plan.id, categoryId);
     });
-  }, [plans, summary, categoryId, categoryOptions]);
+  }, [displayPlans, summary, categoryId, categoryOptions]);
+
+  useEffect(() => {
+    if (!displayPlans.length) {
+      if (selectedPlanId) setSelectedPlanId("");
+      return;
+    }
+    if (displayPlans.some((plan) => plan.id === selectedPlanId)) return;
+    if (feature === "mocks" && displayPlans.some((plan) => plan.id === "mocks")) {
+      setSelectedPlanId("mocks");
+      return;
+    }
+    if (feature === "prep_path" && displayPlans.some((plan) => plan.id === "prep_path")) {
+      setSelectedPlanId("prep_path");
+      return;
+    }
+    if (displayPlans.some((plan) => plan.id === "all_premium")) {
+      setSelectedPlanId("all_premium");
+      return;
+    }
+    setSelectedPlanId(displayPlans[0].id);
+  }, [displayPlans, feature, selectedPlanId]);
 
   const currentPaidPlans = useMemo(() => {
     const entitlements = Array.isArray(access?.entitlements) ? access.entitlements : [];
@@ -289,28 +438,6 @@ export default function GeneralPricingPage() {
     }
     return [...byKey.values()];
   }, [access?.entitlements, plans]);
-
-  const highlight = (planId) => {
-    if (feature === "mocks" && (planId === "mocks" || planId === "all_premium")) {
-      return true;
-    }
-    if (feature === "prep_path" && (planId === "prep_path" || planId === "all_premium")) {
-      return true;
-    }
-    if (
-      feature === "behavioral_coach" &&
-      (planId === "category" || planId === "prep_path" || planId === "mocks" || planId === "all_premium")
-    ) {
-      return true;
-    }
-    if (
-      feature === "company_detail" &&
-      (planId === "category" || planId === "prep_path" || planId === "mocks" || planId === "all_premium")
-    ) {
-      return true;
-    }
-    return planId === "all_premium";
-  };
 
   const closeCheckoutPreview = () => {
     if (paying) return;
@@ -446,8 +573,9 @@ export default function GeneralPricingPage() {
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(-1)} label="Back" />
         </PageBackNavRow>
-        <PageHeroHeader>
-          Pricing
+
+        <PageHeroHeader subtitle="Pick one category, or unlock everything for 6 months.">
+          Choose the plan that fits you best
         </PageHeroHeader>
 
         <section className="mx-auto mb-10 max-w-6xl">
@@ -468,27 +596,19 @@ export default function GeneralPricingPage() {
               <ul className="mt-3 space-y-1 text-sm text-theme-secondary">
                 <li>
                   Free mock:{" "}
-                  {summary.mocks
-                    ? "Unlimited (paid)"
-                    : Number.isFinite(mockRemaining) && mockRemaining <= 0
-                      ? "Used"
-                      : `${Number.isFinite(mockRemaining) ? mockRemaining : 1} remaining`}
+                  {freeCreditLabel(summary.mocks, mockRemaining, 1)}
                 </li>
                 <li>
                   Free PrepPath:{" "}
-                  {summary.prepPath
-                    ? "Unlimited (paid)"
-                    : Number.isFinite(prepRemaining) && prepRemaining <= 0
-                      ? "Used"
-                      : `${Number.isFinite(prepRemaining) ? prepRemaining : 2} remaining`}
+                  {freeCreditLabel(summary.prepPath, prepRemaining, 1)}
                 </li>
                 <li>
                   Free behavioural coach:{" "}
-                  {unlimitedBehavioral || summary.behavioralCoach
-                    ? "Unlimited (paid)"
-                    : Number.isFinite(behavioralRemaining) && behavioralRemaining <= 0
-                      ? "Used"
-                      : `${Number.isFinite(behavioralRemaining) ? behavioralRemaining : 1} remaining`}
+                  {freeCreditLabel(
+                    unlimitedBehavioral || summary.behavioralCoach,
+                    behavioralRemaining,
+                    1
+                  )}
                 </li>
               </ul>
               <p className="mt-4 text-sm font-semibold text-theme-accent">Active</p>
@@ -523,67 +643,235 @@ export default function GeneralPricingPage() {
 
         <section className="mx-auto max-w-6xl">
           <h2 className="mb-3 text-xl font-semibold text-theme-primary">Unlock more</h2>
-          {shopPlans.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {shopPlans.map((plan) => {
-                const featured = highlight(plan.id);
-                return (
-                  <div
-                    key={plan.id}
-                    className={`flex h-full flex-col rounded-2xl border-2 bg-theme-card p-5 shadow-md ${
-                      featured ? "border-theme-accent" : "border-theme"
-                    }`}
-                  >
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <h3 className="flex min-w-0 items-center gap-2 text-lg font-semibold text-theme-primary">
-                        <span className="min-w-0">{plan.name}</span>
-                        <PlanInfoHint planId={plan.id} />
-                      </h3>
-                      {featured ? (
-                        <FaUnlock className="shrink-0 text-theme-accent" aria-hidden />
-                      ) : (
-                        <FaLock className="shrink-0 text-theme-muted" aria-hidden />
-                      )}
-                    </div>
-                    <p className="flex-1 text-sm text-theme-secondary">{plan.description}</p>
-                    {plan.requiresCategory ? (
-                      <div className="mt-4">
-                        <label className="mb-1.5 block text-xs font-medium text-theme-secondary">
-                          Choose a category
-                        </label>
-                        <ThemedSelect
-                          value={categoryId}
-                          options={categoryOptions}
-                          onChange={setCategoryId}
-                          placeholder="Select a category"
-                          ariaLabel="Choose a category"
-                          triggerSurface="card"
-                        />
-                      </div>
-                    ) : null}
-                    <p className="mt-4 text-3xl font-semibold text-theme-primary">
-                      ₹{plan.priceInr}
-                      <span className="ml-1 text-sm font-normal text-theme-muted">/ 6 months</span>
-                    </p>
-                    <button
-                      type="button"
-                      disabled={Boolean(busyPlan) || paying}
-                      onClick={() => buy(plan)}
-                      className="mt-4 rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
-                    >
-                      {busyPlan === plan.id && !checkoutPreview
-                        ? "Preparing…"
-                        : "Unlock"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
+          {!displayPlans.length ? (
             <p className="rounded-2xl border border-theme bg-theme-card p-5 text-sm text-theme-secondary">
+              Pricing plans are not available yet.
+            </p>
+          ) : null}
+          {!displayPlans.length ? null : !shopPlans.length ? (
+            <p className="mb-6 rounded-2xl border border-theme bg-theme-card p-5 text-sm text-theme-secondary">
               You already have every paid plan.
             </p>
-          )}
+          ) : null}
+
+          {displayPlans.length ? (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {displayPlans.map((plan) => {
+                  const owned = alreadyOwnsPlan(summary, plan.id, categoryId);
+                  const canBuyCategory =
+                    plan.id !== "category" ||
+                    (!summary.allCards && categoryOptions.length > 0);
+                  const buyDisabled =
+                    owned || !canBuyCategory || Boolean(busyPlan) || paying;
+                  const isBest = plan.id === "all_premium";
+                  const isSelected = selectedPlanId === plan.id;
+
+                  return (
+                    <div
+                      key={plan.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedPlanId(plan.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedPlanId(plan.id);
+                        }
+                      }}
+                      className={`relative flex h-full cursor-pointer flex-col rounded-2xl border-2 p-5 transition-[border-color,box-shadow,background-color] ${
+                        isSelected
+                          ? "border-theme-accent shadow-lg ring-2 ring-theme-accent/40"
+                          : "border-theme bg-theme-card shadow-sm hover:border-theme-accent/40"
+                      }`}
+                      style={
+                        isSelected
+                          ? {
+                              backgroundColor:
+                                "color-mix(in srgb, var(--accent) 12%, var(--bg-card))",
+                            }
+                          : undefined
+                      }
+                    >
+                      {isBest ? (
+                        <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full bg-theme-accent px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
+                          Best value
+                        </span>
+                      ) : null}
+                      <div className="mb-2 flex items-start justify-between gap-2 pt-1">
+                        <h3 className="text-lg font-semibold leading-snug text-theme-primary">
+                          {plan.name}
+                        </h3>
+                        <PlanInfoHint planId={plan.id} />
+                      </div>
+                      <p className="min-h-[2.75rem] text-sm leading-relaxed text-theme-secondary">
+                        {plan.description}
+                      </p>
+                      {plan.requiresCategory && canBuyCategory && !owned ? (
+                        <div
+                          className="mt-4"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <label className="mb-1.5 block text-xs font-medium text-theme-secondary">
+                            Choose a category
+                          </label>
+                          <ThemedSelect
+                            value={categoryId}
+                            options={categoryOptions}
+                            onChange={setCategoryId}
+                            placeholder="Select a category"
+                            ariaLabel="Choose a category"
+                            triggerSurface="card"
+                          />
+                        </div>
+                      ) : null}
+                      <div className="mt-auto pt-5">
+                        <p className="text-3xl font-semibold tracking-tight text-theme-primary">
+                          ₹{plan.priceInr}
+                          <span className="ml-1 text-sm font-normal text-theme-muted">
+                            / 6 months
+                          </span>
+                        </p>
+                        <button
+                          type="button"
+                          disabled={buyDisabled}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedPlanId(plan.id);
+                            buy(plan);
+                          }}
+                          className={`mt-4 w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
+                            isSelected || isBest
+                              ? "bg-theme-accent text-white hover:opacity-95"
+                              : "border border-theme-accent bg-transparent text-theme-accent hover:bg-theme-accent/5"
+                          }`}
+                        >
+                          {owned
+                            ? "Owned"
+                            : busyPlan === plan.id && !checkoutPreview
+                              ? "Preparing…"
+                              : "Unlock"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-10 overflow-hidden rounded-3xl border border-theme bg-theme-card shadow-md">
+                <div className="border-b border-theme px-5 py-4 sm:px-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-theme-accent">
+                    Compare plans
+                  </p>
+                </div>
+
+                <div className="overflow-x-auto px-2 pb-2 sm:px-3">
+                  <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-theme">
+                        <th className="w-[26%] min-w-[11rem] px-4 py-5 align-bottom text-sm font-medium text-theme-muted sm:px-5">
+                          What&apos;s included
+                        </th>
+                        {displayPlans.map((plan) => {
+                          const isSelected = selectedPlanId === plan.id;
+                          const isBest = plan.id === "all_premium";
+                          return (
+                            <th
+                              key={`head-${plan.id}`}
+                              className="relative px-3 py-5 text-center align-bottom"
+                              style={
+                                isSelected
+                                  ? selectedColumnStyle({ edge: "start" })
+                                  : undefined
+                              }
+                            >
+                              {isBest ? (
+                                <span className="mb-2 inline-flex rounded-full bg-amber-300 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
+                                  Best value
+                                </span>
+                              ) : (
+                                <span className="mb-2 inline-block h-5" aria-hidden />
+                              )}
+                              <span className="block text-[11px] font-bold uppercase tracking-[0.12em] text-theme-primary">
+                                {PLAN_SHORT[plan.id] || plan.name}
+                              </span>
+                              <span className="mt-1 block text-sm font-semibold text-theme-primary">
+                                ₹{plan.priceInr}
+                                <span className="font-normal text-theme-muted">/6 mo</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPlanId(plan.id)}
+                                className={`mt-3 inline-flex min-w-[5.5rem] items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                                  isSelected
+                                    ? "bg-theme-accent text-white"
+                                    : "border border-theme-accent bg-transparent text-theme-accent hover:bg-theme-accent/5"
+                                }`}
+                              >
+                                {isSelected ? "Selected" : "Choose"}
+                              </button>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {COMPARISON_ROWS.map((row, rowIndex) => {
+                        const isLast = rowIndex === COMPARISON_ROWS.length - 1;
+                        return (
+                          <tr key={row.id} className="align-middle">
+                            <th
+                              scope="row"
+                              className={`px-4 py-5 align-middle sm:px-5 ${
+                                isLast ? "" : "border-b-2 border-theme"
+                              }`}
+                            >
+                              <p className="font-semibold text-theme-primary">{row.label}</p>
+                              {row.hint ? (
+                                <p className="mt-0.5 text-xs font-normal text-theme-muted">
+                                  {row.hint}
+                                </p>
+                              ) : null}
+                            </th>
+                            {displayPlans.map((plan) => {
+                              const isSelected = selectedPlanId === plan.id;
+                              return (
+                                <td
+                                  key={`${row.id}-${plan.id}`}
+                                  className={`px-3 py-5 text-center transition-colors ${
+                                    isLast ? "" : "border-b-2 border-theme"
+                                  }`}
+                                  style={
+                                    isSelected
+                                      ? selectedColumnStyle({
+                                          edge: isLast ? "end" : "middle",
+                                        })
+                                      : undefined
+                                  }
+                                >
+                                  <div className="flex justify-center">
+                                    <ComparisonValue
+                                      value={row.values[plan.id]}
+                                      emphasized={isSelected}
+                                    />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <p className="border-t border-theme px-5 py-4 text-center text-sm text-theme-secondary sm:px-6">
+                  All Premium saves ₹199 compared with buying PrepPath and AI Mocks separately.
+                </p>
+              </div>
+            </>
+          ) : null}
         </section>
       </div>
 

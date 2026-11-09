@@ -125,6 +125,14 @@ function ScrollToTop() {
   const { pathname } = useLocation();
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.querySelectorAll("main, [data-tour-scroll-root]").forEach((node) => {
+      if (node instanceof HTMLElement) {
+        node.scrollTop = 0;
+        node.scrollLeft = 0;
+      }
+    });
   }, [pathname]);
   return null;
 }

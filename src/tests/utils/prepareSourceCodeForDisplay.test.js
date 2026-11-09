@@ -3,8 +3,23 @@ import {
   applyBasicIndent,
   prepareSourceCodeForDisplay,
   preservePythonSourceForDisplay,
+  preserveStoredSourceForDisplay,
   repairSplitForLoopHeaders,
 } from "../../utils/prepareSourceCodeForDisplay.js";
+
+describe("preserveStoredSourceForDisplay", () => {
+  it("keeps indentation and only normalizes CRLF", () => {
+    const src = "def f():\r\n\tprint(1)\r\n    print(2)\n";
+    expect(preserveStoredSourceForDisplay(src)).toBe(
+      "def f():\n\tprint(1)\n    print(2)\n"
+    );
+  });
+
+  it("does not trim leading or trailing spaces", () => {
+    const src = "  int x = 1;\n";
+    expect(preserveStoredSourceForDisplay(src)).toBe(src);
+  });
+});
 
 describe("prepareSourceCodeForDisplay", () => {
   it("restores indentation for flat multiline C++", () => {

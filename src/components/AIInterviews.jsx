@@ -254,7 +254,9 @@ function AIInterviews({ embedded = false, hideSlotsTab = false } = {}) {
     const clamped = Math.max(1, Math.min(totalPages, nextPage));
     if (clamped === page || pageLoading || loading) return;
     fetchSessions(clamped);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   };
 
   const navigate = useNavigate();

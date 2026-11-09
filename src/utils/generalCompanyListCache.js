@@ -51,3 +51,31 @@ export function writeGeneralCompanyList(list) {
     // Quota or private mode — memory cache still covers back navigation.
   }
 }
+
+/** Keep list-card verified badges/notes in sync after an admin update. */
+export function patchGeneralCompanyListVerified(
+  companyId,
+  verified,
+  verifiedAt = null,
+  verifiedNotes
+) {
+  const id = String(companyId || "");
+  if (!id) return;
+  const current = readGeneralCompanyList();
+  if (!Array.isArray(current) || current.length === 0) return;
+  let changed = false;
+  const next = current.map((company) => {
+    if (String(company?._id || "") !== id) return company;
+    changed = true;
+    const patch = {
+      ...company,
+      verified: verified === true,
+      verifiedAt: verified === true ? verifiedAt || company?.verifiedAt || null : null,
+    };
+    if (verifiedNotes !== undefined) {
+      patch.verifiedNotes = String(verifiedNotes || "");
+    }
+    return patch;
+  });
+  if (changed) writeGeneralCompanyList(next);
+}

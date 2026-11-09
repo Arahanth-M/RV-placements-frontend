@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaChevronDown,
@@ -615,6 +615,16 @@ const MySubmissionsPage = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("newest");
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.querySelectorAll("[data-tour-scroll-root]").forEach((node) => {
+      if (node instanceof HTMLElement) node.scrollTop = 0;
+    });
+  }, [currentPage]);
 
   const refreshSubmissions = useCallback(async () => {
     try {

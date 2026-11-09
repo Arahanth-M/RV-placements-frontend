@@ -17,6 +17,9 @@ import {
   LOGIN_INTENT_SPC,
   LOGIN_INTENT_CAMPUS,
   LOGIN_INTENT_GENERAL,
+  clearLoginRedirectPath,
+  clearOAuthInProgress,
+  consumeLoginRedirectPath,
 } from '../utils/loginIntent.js';
 
 const PLACEMENT_POPUP_FRESH_LOGIN_KEY = 'placementPopupFreshLogin';
@@ -25,7 +28,6 @@ const LOGIN_PROFILE_STATUS_KEY = "loginProfileStatus";
 const LOGIN_PROFILE_STATUS_HAS_PROFILE = "has_profile";
 const LOGIN_PROFILE_STATUS_NO_PROFILE = "no_profile";
 const STUDENT_PROFILE_AVAILABILITY_KEY_PREFIX = "studentProfileAvailability_";
-const LOGIN_REDIRECT_PATH_KEY = "loginRedirectPath";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -45,6 +47,8 @@ const AuthCallback = () => {
       
       if (urlParams.get('login') === 'success' || urlParams.get('signup') === 'success') {
         try {
+          // Finished Google OAuth — allow the new session to stick.
+          clearOAuthInProgress();
           // Give the JWT cookie a brief moment to settle after the OAuth redirect,
           // then fetch the authenticated user once without retrying.
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -111,6 +115,7 @@ const AuthCallback = () => {
           setIsProcessing(false);
         }
       } else if (urlParams.get('login') === 'failed') {
+        clearOAuthInProgress();
         const reason = urlParams.get('reason');
         if (reason === 'closed') {
           setLoginError({
@@ -157,6 +162,7 @@ const AuthCallback = () => {
         setIsProcessing(false);
       } else {
         console.log('Authentication callback invalid');
+        clearOAuthInProgress();
         navigate(TENANT_BASE, { replace: true });
         setIsProcessing(false);
       }
@@ -230,32 +236,32 @@ const AuthCallback = () => {
     }
 
     if (admin) {
+      clearLoginRedirectPath();
       window.location.replace(
         isPlatformAdminUser(user)
           ? generalPath("/admin/dashboard")
           : tenantPath("/admin/dashboard")
       );
     } else if (loginIntent === LOGIN_INTENT_SPC) {
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      clearLoginRedirectPath();
       window.location.replace(tenantPath("/spc-dashboard"));
     } else if (
       useGeneral &&
       (campusUnlisted || loginIntent === LOGIN_INTENT_CAMPUS)
     ) {
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      clearLoginRedirectPath();
       window.location.replace(`${GENERAL_POST_LOGIN_PATH}?reason=campus_not_onboarded`);
-    } else if (loginIntent === LOGIN_INTENT_CAMPUS) {
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      window.location.replace(TENANT_BASE);
-    } else if (loginIntent === LOGIN_INTENT_GENERAL) {
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
-      window.location.replace(GENERAL_POST_LOGIN_PATH);
     } else {
-      const storedRedirect = sessionStorage.getItem(LOGIN_REDIRECT_PATH_KEY);
-      const safeRedirect = toPostLoginAppPath(storedRedirect, { useGeneral });
-      sessionStorage.removeItem(LOGIN_REDIRECT_PATH_KEY);
+      // Honor the route the user started from (e.g. /general/challenges → Login).
+      const storedRedirect = consumeLoginRedirectPath();
+      const preferGeneral =
+        loginIntent === LOGIN_INTENT_GENERAL ||
+        (loginIntent !== LOGIN_INTENT_CAMPUS && useGeneral);
+      const safeRedirect = toPostLoginAppPath(storedRedirect, {
+        useGeneral: preferGeneral,
+      });
       window.location.replace(
-        safeRedirect || (useGeneral ? GENERAL_POST_LOGIN_PATH : TENANT_BASE)
+        safeRedirect || (preferGeneral ? GENERAL_POST_LOGIN_PATH : TENANT_BASE)
       );
     }
     setIsProcessing(false);
