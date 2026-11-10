@@ -12,7 +12,7 @@ export function CompanyCardGridShimmer({
 }) {
   return (
     <div
-      className={`company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr col-span-full ${className}`.trim()}
+      className={`company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-auto col-span-full ${className}`.trim()}
       aria-busy="true"
       aria-label="Loading companies"
     >
@@ -85,7 +85,7 @@ export function CategoryTilesGridShimmer({
 }) {
   return (
     <div
-      className={`mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch ${className}`.trim()}
+      className={`mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-auto items-stretch ${className}`.trim()}
       aria-busy="true"
       aria-label="Loading categories"
     >

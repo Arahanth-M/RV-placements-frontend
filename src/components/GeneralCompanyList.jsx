@@ -430,7 +430,7 @@ export default function GeneralCompanyList() {
 
   const companyResults = (
     <>
-      <div className="company-grid grid w-full min-w-0 max-w-full auto-rows-fr grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+      <div className="company-grid grid w-full min-w-0 max-w-full auto-rows-auto grid-cols-1 items-stretch gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
         {!fetchDone ? (
           <CompanyCardGridShimmer count={COMPANIES_PER_PAGE} />
         ) : pageSlice.length > 0 ? (
@@ -440,13 +440,13 @@ export default function GeneralCompanyList() {
               ? firstCategoryCompanyId
               : (groupedCompanies[cardCategory] || [])[0]?._id;
             return (
-              <div key={company._id} className="flex h-full min-h-0 flex-col gap-1.5">
+              <div key={company._id} className="flex h-full min-h-min flex-col gap-1.5">
                 {hubSearchActive && categoryLabelById[cardCategory] ? (
                   <p className="px-0.5 text-xs font-medium uppercase tracking-wide text-theme-muted">
                     {categoryLabelById[cardCategory]}
                   </p>
                 ) : null}
-                <div className="min-h-0 flex-1">
+                <div className="flex min-h-min flex-1 flex-col">
                   <CompanyCard
                     company={company}
                     highlighted={focusCardId !== "" && String(company._id) === focusCardId}
@@ -487,7 +487,7 @@ export default function GeneralCompanyList() {
       </div>
 
       {fetchDone && filteredCompanies.length > COMPANIES_PER_PAGE ? (
-        <div className="pagination relative z-10 mt-6 mb-2 flex flex-wrap items-center justify-center gap-1 px-2 py-2 sm:mt-8 sm:gap-2">
+        <div className="pagination relative z-10 mt-8 mb-2 flex flex-wrap items-center justify-center gap-1 px-2 py-3 sm:mt-10 sm:gap-2">
           <button
             type="button"
             onClick={() => {
@@ -565,7 +565,7 @@ export default function GeneralCompanyList() {
                 <CategoryTilesGridShimmer count={GENERAL_COMPANY_CATEGORIES.length} />
               ) : (
                 <div
-                  className="mx-auto grid min-w-0 w-full max-w-6xl auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3"
+                  className="mx-auto grid min-w-0 w-full max-w-6xl auto-rows-auto grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3"
                   aria-busy={pendingCategories.length > 0 ? "true" : undefined}
                 >
                   {revealedCategories.map((category) => {

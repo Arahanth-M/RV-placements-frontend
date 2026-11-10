@@ -223,7 +223,7 @@ export default function GeneralDataEntryPage() {
             {listLoading ? (
               <CategoryTilesGridShimmer count={GENERAL_COMPANY_CATEGORIES.length} />
             ) : (
-              <div className="mx-auto grid min-w-0 w-full max-w-6xl auto-rows-fr grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3">
+              <div className="mx-auto grid min-w-0 w-full max-w-6xl auto-rows-auto grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-5 md:gap-6 lg:grid-cols-3">
                 {GENERAL_COMPANY_CATEGORIES.map((category) => {
                   const list = groupedCompanies[category.id] || [];
                   const progress = summarizeCategoryPrepProgress(list);

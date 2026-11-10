@@ -2020,7 +2020,7 @@ function CompanyStats() {
                 <p className="text-base text-theme-secondary">No companies found in this cluster.</p>
               </div>
             ) : (
-              <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr">
+              <div className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-auto">
                 {ecMeSlice.map((c) => (
                   <CompanyCard
                   key={c.placementCompanyVisitId || c._id}
@@ -2181,7 +2181,7 @@ function CompanyStats() {
             </div>
           ) : (
           <div
-            className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-fr items-stretch"
+            className="mx-auto grid min-w-0 w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 md:gap-6 auto-rows-auto items-stretch"
             data-tour="company-stats-categories"
           >
             {categoryTiles.map((tile) => (
@@ -2289,7 +2289,7 @@ function CompanyStats() {
 
       <section className="mb-6 sm:mb-10 w-full max-w-full min-w-0">
         <div
-          className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-fr"
+          className="company-grid grid w-full min-w-0 max-w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch auto-rows-auto"
           data-tour="company-stats-company-grid"
         >
           {!companiesFetchDone ? (
