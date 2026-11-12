@@ -286,6 +286,10 @@ import { adminCompanyVisitOpts, companyContentAdminAPI } from "../../utils/api";
 import LanguageSolutionPanel from "../LanguageSolutionPanel";
 import McqPracticeCard from "./McqPracticeCard.jsx";
 import PlatformQuestionEditModal from "../platform/PlatformQuestionEditModal.jsx";
+import PlatformMcqEditModal, {
+  platformMcqEditDraft,
+  platformMcqEditPayload,
+} from "../platform/PlatformMcqEditModal.jsx";
 import PlatformQuestionEnhanceBar from "../platform/PlatformQuestionEnhanceBar.jsx";
 import PlatformQuestionEnhanceAllButton, {
   PLATFORM_ENHANCE_ALL_FIELDS,
@@ -295,14 +299,19 @@ import PlatformQuestionEnhanceAllButton, {
 } from "../platform/PlatformQuestionEnhanceAllButton.jsx";
 import PlatformEnhanceConfirmModal from "../platform/PlatformEnhanceConfirmModal.jsx";
 import {
+  addPlatformEnhanceBusyKey,
   loadPlatformEnhanceCompletion,
   mergePlatformEnhanceCompletion,
+  platformEnhanceBusyFieldsForIndex,
+  platformEnhanceBusyKey,
+  removePlatformEnhanceBusyKey,
   resolveEnhanceRunIndexes,
   savePlatformEnhanceCompletion,
   shouldEnhanceIndexForRetry,
 } from "../../utils/platformEnhanceCompletion.js";
 import { clearGeneralCompanyListCache } from "../../utils/generalCompanyListCache.js";
 import {
+  isCodingDraftKind,
   platformQuestionEditDraft,
   platformQuestionEditPayload,
 } from "../../utils/platformQuestionEdit.js";
@@ -322,6 +331,16 @@ import {
 
 function questionTextIsPresent(value) {
   return String(value ?? "").trim().length > 0;
+}
+
+const OA_TYPE_TABS = Object.freeze([
+  { id: "mcq", label: "MCQ" },
+  { id: "dsa", label: "DSA" },
+  { id: "long", label: "Long answer" },
+]);
+
+function oaTypeFromKind(kind) {
+  return isCodingQuestionKind(kind) ? "dsa" : "long";
 }
 
 function OATab({
@@ -345,8 +364,11 @@ function OATab({
   const [editQuestion, setEditQuestion] = useState("");
   const [editSolution, setEditSolution] = useState("");
   const [platformDraft, setPlatformDraft] = useState(null);
+  const [platformAddDraft, setPlatformAddDraft] = useState(null);
+  const [mcqDraft, setMcqDraft] = useState(null);
+  const [editMcqIndex, setEditMcqIndex] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [enhanceBusy, setEnhanceBusy] = useState(null);
+  const [enhanceBusyKeys, setEnhanceBusyKeys] = useState(() => new Set());
   const [enhanceAllBusy, setEnhanceAllBusy] = useState(false);
   const [enhanceAllBusyField, setEnhanceAllBusyField] = useState(null);
   const [enhanceAllProgress, setEnhanceAllProgress] = useState(null);
@@ -354,8 +376,10 @@ function OATab({
   const [enhanceCompletedFields, setEnhanceCompletedFields] = useState({});
   const [submissionFeedback, setSubmissionFeedback] = useState(null);
   const [activeOaPrepRoleKey, setActiveOaPrepRoleKey] = useState(null);
+  const [oaTypeTab, setOaTypeTab] = useState("mcq");
   const contributionRoleKeyRef = useRef("");
   const questionRowRefs = useRef({});
+  const oaTypeTabInitializedRef = useRef(false);
 
   const safeCompany = company || {};
   const contentAdmin = companyContentAdminAPI(isGeneral);
@@ -447,6 +471,7 @@ function OATab({
           solutions: safeCompany.onlineQuestions_solutions?.[index],
           intuition: safeCompany.onlineQuestions_intuition?.[index],
           explanation: safeCompany.onlineQuestions_explanation?.[index],
+          kind: safeCompany.onlineQuestions_kind?.[index] || "non_coding",
         })
       );
       return;
@@ -454,6 +479,116 @@ function OATab({
     setPlatformDraft(null);
     setEditQuestion(questionText || "");
     setEditSolution(solutionText || "");
+  };
+
+  const openPlatformAddOAQuestion = (preferredKind = "coding") => {
+    setPlatformAddDraft(
+      platformQuestionEditDraft({
+        kind: preferredKind === "non_coding" || preferredKind === "sql" ? preferredKind : "coding",
+        prepRoleKey: contributionRoleKeyRef.current || "",
+      })
+    );
+  };
+
+  const closePlatformAddOAQuestion = () => {
+    setPlatformAddDraft(null);
+  };
+
+  const handleSavePlatformAddOAQuestion = async (e) => {
+    e.preventDefault();
+    if (!safeCompany._id || !platformAddDraft || !contentAdmin.createOAQuestion) return;
+    setActionLoading(true);
+    try {
+      await contentAdmin.createOAQuestion(
+        safeCompany._id,
+        platformQuestionEditPayload({
+          ...platformAddDraft,
+          prepRoleKey: platformAddDraft.prepRoleKey || contributionRoleKeyRef.current || "",
+        })
+      );
+      clearGeneralCompanyListCache();
+      if (onCompanyUpdate) onCompanyUpdate();
+      closePlatformAddOAQuestion();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to create OA question."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const openAddMcq = () => {
+    setEditMcqIndex(null);
+    setMcqDraft(
+      platformMcqEditDraft({
+        prepRoleKey: contributionRoleKeyRef.current || "",
+      })
+    );
+  };
+
+  const openEditMcq = (qIndex, question) => {
+    setEditMcqIndex(qIndex);
+    setMcqDraft(platformMcqEditDraft(question || {}));
+  };
+
+  const closeMcqModal = () => {
+    setMcqDraft(null);
+    setEditMcqIndex(null);
+  };
+
+  const handleSaveMcq = async (e) => {
+    e.preventDefault();
+    if (!safeCompany._id || !mcqDraft) return;
+    const payload = {
+      ...platformMcqEditPayload(mcqDraft),
+      prepRoleKey: contributionRoleKeyRef.current || "",
+    };
+    setActionLoading(true);
+    try {
+      if (editMcqIndex == null) {
+        if (!contentAdmin.createMcqQuestion) throw new Error("MCQ create unavailable");
+        await contentAdmin.createMcqQuestion(safeCompany._id, payload);
+      } else {
+        if (!contentAdmin.updateMcqQuestion) throw new Error("MCQ update unavailable");
+        await contentAdmin.updateMcqQuestion(safeCompany._id, editMcqIndex, payload);
+      }
+      clearGeneralCompanyListCache();
+      if (onCompanyUpdate) onCompanyUpdate();
+      closeMcqModal();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to save MCQ."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteMcq = async (qIndex) => {
+    if (!safeCompany._id || !contentAdmin.deleteMcqQuestion) return;
+    if (!window.confirm("Delete this MCQ?")) return;
+    setActionLoading(true);
+    try {
+      await contentAdmin.deleteMcqQuestion(safeCompany._id, qIndex);
+      clearGeneralCompanyListCache();
+      if (onCompanyUpdate) onCompanyUpdate();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to delete MCQ."
+      );
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleSaveEditOA = async (e) => {
@@ -498,7 +633,9 @@ function OATab({
   const handleEnhanceOAField = async (index, field) => {
     if (!isGeneral || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
     if (enhanceAllBusy) return;
-    setEnhanceBusy({ index, field });
+    const key = platformEnhanceBusyKey(index, field);
+    if (enhanceBusyKeys.has(key)) return;
+    setEnhanceBusyKeys((prev) => addPlatformEnhanceBusyKey(prev, index, field));
     try {
       await contentAdmin.enhanceOAQuestionField(safeCompany._id, index, field);
       if (onCompanyUpdate) onCompanyUpdate();
@@ -510,7 +647,7 @@ function OATab({
           "Enhance failed. Try again."
       );
     } finally {
-      setEnhanceBusy(null);
+      setEnhanceBusyKeys((prev) => removePlatformEnhanceBusyKey(prev, index, field));
     }
   };
 
@@ -524,7 +661,7 @@ function OATab({
     codingOnly = false,
   }) => {
     if (!isGeneral || !safeCompany._id || !contentAdmin.enhanceOAQuestionField) return;
-    if (enhanceAllBusy || enhanceBusy || actionLoading || enhanceAllConfirm) return;
+    if (enhanceAllBusy || enhanceBusyKeys.size > 0 || actionLoading || enhanceAllConfirm) return;
     const allIndexes = parsedQuestions
       .map((q, index) => {
         if (!questionTextIsPresent(q)) return -1;
@@ -581,7 +718,6 @@ function OATab({
         },
         onProgress: (progress) => {
           setEnhanceAllProgress(progress);
-          setEnhanceBusy({ index: progress.index, field: progress.field });
         },
       });
       const nextCompletion = mergePlatformEnhanceCompletion(enhanceCompletedFields, {
@@ -623,7 +759,6 @@ function OATab({
           "Enhance failed. Try again."
       );
     } finally {
-      setEnhanceBusy(null);
       setEnhanceAllBusy(false);
       setEnhanceAllBusyField(null);
       setEnhanceAllProgress(null);
@@ -738,12 +873,6 @@ function OATab({
     ? safeCompany.onlineQuestions_kind
     : [];
 
-  function oaKindBadge(kind) {
-    if (kind === "coding") return "DSA";
-    if (kind === "sql") return "SQL";
-    return "";
-  }
-
   const parsedQuestions =
     safeCompany.onlineQuestions?.map((qa) => {
       if (!qa) return "";
@@ -804,18 +933,44 @@ function OATab({
     if (!showOaRoleChrome) return true;
     return itemMatchesPrepRoleTab(oaPrepRoleKeys[index], effectiveOaPrepRoleKey);
   };
+  const oaQuestionVisibleInType = (index, typeId) => {
+    if (!oaQuestionVisible(index)) return false;
+    return oaTypeFromKind(oaQuestionKinds[index]) === typeId;
+  };
   const mcqVisible = (question) => {
     if (!showOaRoleChrome) return true;
     return itemMatchesPrepRoleTab(question?.prepRoleKey, effectiveOaPrepRoleKey);
   };
-  const visibleOaQuestionCount = parsedQuestions.filter((_, index) => oaQuestionVisible(index)).length;
   const visibleMcqCount = mcqQuestions.filter((question) => mcqVisible(question)).length;
+  const visibleDsaCount = parsedQuestions.filter((_, index) =>
+    oaQuestionVisibleInType(index, "dsa")
+  ).length;
+  const visibleLongCount = parsedQuestions.filter((_, index) =>
+    oaQuestionVisibleInType(index, "long")
+  ).length;
   const hasAnyOaCoding = parsedQuestions.some(questionTextIsPresent);
+
+  useEffect(() => {
+    if (oaTypeTabInitializedRef.current) return;
+    const preferred =
+      (visibleMcqCount > 0 && "mcq") ||
+      (visibleDsaCount > 0 && "dsa") ||
+      (visibleLongCount > 0 && "long") ||
+      (isAdmin && isGeneral ? "mcq" : null) ||
+      "dsa";
+    setOaTypeTab(preferred);
+    oaTypeTabInitializedRef.current = true;
+  }, [visibleMcqCount, visibleDsaCount, visibleLongCount, isAdmin, isGeneral]);
+
+  useEffect(() => {
+    oaTypeTabInitializedRef.current = false;
+  }, [safeCompany._id]);
 
   useEffect(() => {
     const idx = findFocusIndex(parsedQuestions, focusQuery);
     if (idx < 0) return;
     setActiveOaPrepRoleKey(String(oaPrepRoleKeys[idx] ?? ""));
+    setOaTypeTab(oaTypeFromKind(oaQuestionKinds[idx]));
     setOpenQuestionIndex(idx);
     scrollFocusNode(questionRowRefs.current[idx]);
   }, [focusQuery, company]);
@@ -940,7 +1095,7 @@ function OATab({
           busy={enhanceAllBusy}
           busyField={enhanceAllBusyField}
           progress={enhanceAllProgress}
-          disabled={actionLoading || Boolean(enhanceBusy)}
+          disabled={actionLoading || enhanceBusyKeys.size > 0}
           questionCount={parsedQuestions.filter(questionTextIsPresent).length}
           completedFields={enhanceCompletedFields}
           onEnhanceField={handleEnhanceAllOAField}
@@ -948,248 +1103,344 @@ function OATab({
         />
       ) : null}
 
-      {/* MCQ Questions Section */}
-      {visibleMcqCount > 0 && (
-        <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-indigo-400 flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Multiple Choice Questions (MCQs)
+      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg sm:text-xl font-semibold text-indigo-400 shrink-0">
+            Online Assessment
           </h2>
-          <div className="space-y-5 sm:space-y-6">
-            {mcqQuestions.map((q, qIndex) => {
-              if (!mcqVisible(q)) return null;
-              const displayNumber = mcqQuestions
-                .slice(0, qIndex + 1)
-                .filter((question) => mcqVisible(question)).length;
-              return (
-                <McqPracticeCard
-                  key={`${effectiveOaPrepRoleKey || "all"}-${qIndex}-${String(q.question || "").slice(0, 48)}`}
-                  question={q}
-                  displayNumber={displayNumber}
-                  testIdIndex={qIndex}
-                />
-              );
-            })}
-          </div>
+          {oaTypeTab === "mcq" && isAdmin && isGeneral ? (
+            <button
+              type="button"
+              className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
+              onClick={openAddMcq}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span>Add MCQ</span>
+            </button>
+          ) : null}
+          {oaTypeTab !== "mcq" ? (
+            <button
+              type="button"
+              className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
+              onClick={() => {
+                if (isAdmin && isGeneral) {
+                  openPlatformAddOAQuestion(oaTypeTab === "long" ? "non_coding" : "coding");
+                } else {
+                  setShowModal(true);
+                }
+              }}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              <span>{oaTypeTab === "dsa" ? "Add DSA Question" : "Add Long Answer"}</span>
+            </button>
+          ) : null}
         </div>
-      )}
 
-      <div className="bg-slate-900/70 backdrop-blur border border-slate-800 rounded-xl p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-indigo-400 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <span className="shrink-0">Online Assessment Questions</span>
-          <button
-            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
-            onClick={() => setShowModal(true)}
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Add Question</span>
-          </button>
-        </h2>
-
-        {visibleOaQuestionCount > 0 ? (
-          <div className="space-y-3 sm:space-y-4">
-            {parsedQuestions.map((q, index) => {
-              if (!oaQuestionVisible(index)) return null;
-              const displayNumber = parsedQuestions
-                .slice(0, index + 1)
-                .filter((_, itemIndex) => oaQuestionVisible(itemIndex)).length;
-              return (
-              <div
-                key={index}
-                ref={(el) => {
-                  questionRowRefs.current[index] = el;
-                }}
-                className={`border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden ${
-                  focusQuery && openQuestionIndex === index ? PREP_FOCUS_HIGHLIGHT_CLASS : ""
+        <div
+          className="flex w-full min-w-0 flex-wrap gap-2 rounded-xl border border-slate-700 bg-slate-950/50 p-1.5"
+          role="tablist"
+          aria-label="OA question types"
+        >
+          {OA_TYPE_TABS.map((tab) => {
+            const selected = oaTypeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setOaTypeTab(tab.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors sm:text-sm ${
+                  selected
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 }`}
               >
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <button
-                    onClick={() => toggleQuestionAccordion(index)}
-                    className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
-                  >
-                    <span className="truncate min-w-0 flex items-center gap-2">
-                      Question {displayNumber}
-                      {oaKindBadge(oaQuestionKinds[index]) ? (
-                        <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
-                          {oaKindBadge(oaQuestionKinds[index])}
-                        </span>
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div role="tabpanel">
+          {oaTypeTab === "mcq" ? (
+            visibleMcqCount > 0 ? (
+              <div className="space-y-5 sm:space-y-6">
+                {mcqQuestions.map((q, qIndex) => {
+                  if (!mcqVisible(q)) return null;
+                  const displayNumber = mcqQuestions
+                    .slice(0, qIndex + 1)
+                    .filter((question) => mcqVisible(question)).length;
+                  return (
+                    <div
+                      key={`${effectiveOaPrepRoleKey || "all"}-${qIndex}-${String(q.question || "").slice(0, 48)}`}
+                      className="relative"
+                    >
+                      {isAdmin && isGeneral ? (
+                        <div className="mb-2 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEditMcq(qIndex, q)}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-600 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
+                            disabled={actionLoading}
+                          >
+                            <FaEdit className="w-3 h-3" /> Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMcq(qIndex)}
+                            className="inline-flex items-center gap-1 rounded-md border border-red-700/60 px-2 py-1 text-xs text-red-300 hover:bg-red-900/30"
+                            disabled={actionLoading}
+                          >
+                            <FaTrash className="w-3 h-3" /> Delete
+                          </button>
+                        </div>
                       ) : null}
-                    </span>
-                    <span className="text-base sm:text-lg text-slate-400 shrink-0">
-                      {openQuestionIndex === index ? "−" : "+"}
-                    </span>
-                  </button>
-                  {isAdmin && (
-                    <div className="flex items-center gap-1 pr-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => handleEditOA(index, q, solutions[index])}
-                        className="p-2 rounded-md text-amber-400 hover:bg-slate-700 transition-colors"
-                        title="Edit question"
-                      >
-                        <FaEdit className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteOA(index)}
-                        disabled={actionLoading}
-                        className="p-2 rounded-md text-red-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
-                        title="Delete question"
-                      >
-                        <FaTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {openQuestionIndex === index && (
-                  <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
-                    <p className="min-w-0">{q}</p>
-
-                    {isAdmin && isGeneral ? (
-                      <PlatformQuestionEnhanceBar
-                        busyField={
-                          enhanceBusy?.index === index ? enhanceBusy.field : null
-                        }
-                        disabled={actionLoading || enhanceAllBusy}
-                        isCoding={isCodingQuestionKind(oaQuestionKinds[index])}
-                        onEnhance={(field) => handleEnhanceOAField(index, field)}
+                      <McqPracticeCard
+                        question={q}
+                        displayNumber={displayNumber}
+                        testIdIndex={qIndex}
                       />
-                    ) : null}
-
-                    {(() => {
-                      const langSol = safeCompany.onlineQuestions_solutions?.[index];
-                      const intuition = String(
-                        safeCompany.onlineQuestions_intuition?.[index] || ""
-                      ).trim();
-                      const explanation = String(
-                        safeCompany.onlineQuestions_explanation?.[index] || ""
-                      ).trim();
-                      const hasLang =
-                        Boolean(String(langSol?.cpp || "").trim()) ||
-                        Boolean(String(langSol?.java || "").trim()) ||
-                        Boolean(String(langSol?.python || "").trim()) ||
-                        Boolean(intuition) ||
-                        Boolean(explanation);
-                      const fallback = solutions[index];
-                      const hasAny = hasLang || Boolean(String(fallback || "").trim());
-                      if (!hasAny) {
-                        return (
-                          <p className="text-xs sm:text-sm text-slate-400 italic">
-                            No solution submitted yet.
-                          </p>
-                        );
-                      }
-                      return (
-                      <div className="min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60">
-                        <button
-                          type="button"
-                          onClick={() => toggleSolutionAccordion(index)}
-                          className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-indigo-400 flex justify-between items-center gap-2 border-b border-slate-700 bg-slate-900/40"
-                        >
-                          <span>View Solution</span>
-                          <span className="text-base sm:text-lg text-slate-400 shrink-0">
-                            {openSolutionIndex[index] ? "−" : "+"}
-                          </span>
-                        </button>
-                        {openSolutionIndex[index] &&
-                          (hasLang ? (
-                            <div className="p-2 sm:p-3">
-                              <LanguageSolutionPanel
-                                solutions={langSol}
-                                intuition={intuition}
-                                explanation={explanation}
-                                fallbackCode={fallback}
-                                copied={copiedIndex === index}
-                                onCopy={(code) => handleCopySolution(code, index)}
-                                embedded
-                                richTextVariant="theme"
-                                platformAdminCodeDisplay={isGeneral}
-                              />
-                            </div>
-                          ) : (
-                            <div className="p-2 sm:p-3">
-                              {isGeneral &&
-                              ["cpp", "java", "python"].includes(
-                                inferSolutionLanguage(formatSolutionCode(solutions[index]))
-                              ) ? (
-                                <PlatformAdminCodeBlock
-                                  code={solutions[index]}
-                                  language={inferSolutionLanguage(
-                                    formatSolutionCode(solutions[index])
-                                  )}
-                                  toolbar={
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopySolution(solutions[index], index)}
-                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
-                                      title="Copy solution"
-                                    >
-                                      {copiedIndex === index ? (
-                                        <>
-                                          <FaCheck className="w-3 h-3 shrink-0" />
-                                          <span>Copied!</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <FaCopy className="w-3 h-3 shrink-0" />
-                                          <span>Copy</span>
-                                        </>
-                                      )}
-                                    </button>
-                                  }
-                                />
-                              ) : (
-                                <PrepSolutionBody
-                                  code={solutions[index]}
-                                  richTextVariant="theme"
-                                  toolbar={
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCopySolution(solutions[index], index)}
-                                      className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
-                                      title="Copy solution"
-                                    >
-                                      {copiedIndex === index ? (
-                                        <>
-                                          <FaCheck className="w-3 h-3 shrink-0" />
-                                          <span>Copied!</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <FaCopy className="w-3 h-3 shrink-0" />
-                                          <span>Copy</span>
-                                        </>
-                                      )}
-                                    </button>
-                                  }
-                                />
-                              )}
-                            </div>
-                          ))}
-                      </div>
-                      );
-                    })()}
-                  </div>
-                )}
+                    </div>
+                  );
+                })}
               </div>
+            ) : (
+              <p className="text-slate-400 text-sm">
+                {isAdmin && isGeneral
+                  ? "No MCQs yet. Use Add MCQ to create one."
+                  : showOaRoleChrome && oaRoleItemKeys.length > 0
+                    ? "No MCQs for this role yet."
+                    : "No MCQs yet."}
+              </p>
+            )
+          ) : (
+            (() => {
+              const typeId = oaTypeTab === "dsa" ? "dsa" : "long";
+              const typeCount = typeId === "dsa" ? visibleDsaCount : visibleLongCount;
+              if (typeCount > 0) {
+                return (
+                  <div className="space-y-3 sm:space-y-4">
+                    {parsedQuestions.map((q, index) => {
+                      if (!oaQuestionVisibleInType(index, typeId)) return null;
+                      const displayNumber = parsedQuestions
+                        .slice(0, index + 1)
+                        .filter((_, itemIndex) => oaQuestionVisibleInType(itemIndex, typeId))
+                        .length;
+                      return (
+                        <div
+                          key={index}
+                          ref={(el) => {
+                            questionRowRefs.current[index] = el;
+                          }}
+                          className={`border border-slate-700 rounded-lg bg-slate-800/60 min-w-0 overflow-hidden ${
+                            focusQuery && openQuestionIndex === index
+                              ? PREP_FOCUS_HIGHLIGHT_CLASS
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <button
+                              onClick={() => toggleQuestionAccordion(index)}
+                              className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
+                            >
+                              <span className="truncate min-w-0">
+                                Question {displayNumber}
+                              </span>
+                              <span className="text-base sm:text-lg text-slate-400 shrink-0">
+                                {openQuestionIndex === index ? "−" : "+"}
+                              </span>
+                            </button>
+                            {isAdmin && (
+                              <div
+                                className="flex items-center gap-1 pr-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditOA(index, q, solutions[index])}
+                                  className="p-2 rounded-md text-amber-400 hover:bg-slate-700 transition-colors"
+                                  title="Edit question"
+                                >
+                                  <FaEdit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteOA(index)}
+                                  disabled={actionLoading}
+                                  className="p-2 rounded-md text-red-400 hover:bg-slate-700 transition-colors disabled:opacity-50"
+                                  title="Delete question"
+                                >
+                                  <FaTrash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {openQuestionIndex === index && (
+                            <div className="px-3 pb-4 sm:px-4 text-slate-300 text-sm sm:text-base leading-7 sm:leading-relaxed space-y-4 break-words whitespace-pre-wrap">
+                              <p className="min-w-0">{q}</p>
+
+                              {isAdmin && isGeneral ? (
+                                <PlatformQuestionEnhanceBar
+                                  busyFields={platformEnhanceBusyFieldsForIndex(
+                                    enhanceBusyKeys,
+                                    index
+                                  )}
+                                  disabled={actionLoading || enhanceAllBusy}
+                                  isCoding={isCodingQuestionKind(oaQuestionKinds[index])}
+                                  onEnhance={(field) => handleEnhanceOAField(index, field)}
+                                />
+                              ) : null}
+
+                              {(() => {
+                                const langSol = safeCompany.onlineQuestions_solutions?.[index];
+                                const intuition = String(
+                                  safeCompany.onlineQuestions_intuition?.[index] || ""
+                                ).trim();
+                                const explanation = String(
+                                  safeCompany.onlineQuestions_explanation?.[index] || ""
+                                ).trim();
+                                const hasLang =
+                                  Boolean(String(langSol?.cpp || "").trim()) ||
+                                  Boolean(String(langSol?.java || "").trim()) ||
+                                  Boolean(String(langSol?.python || "").trim()) ||
+                                  Boolean(intuition) ||
+                                  Boolean(explanation);
+                                const fallback = solutions[index];
+                                const hasAny =
+                                  hasLang || Boolean(String(fallback || "").trim());
+                                if (!hasAny) {
+                                  return (
+                                    <p className="text-xs sm:text-sm text-slate-400 italic">
+                                      No solution submitted yet.
+                                    </p>
+                                  );
+                                }
+                                return (
+                                  <div className="min-w-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800/60">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleSolutionAccordion(index)}
+                                      className="w-full text-left px-3 py-2.5 sm:px-4 sm:py-2 font-medium text-indigo-400 flex justify-between items-center gap-2 border-b border-slate-700 bg-slate-900/40"
+                                    >
+                                      <span>View Solution</span>
+                                      <span className="text-base sm:text-lg text-slate-400 shrink-0">
+                                        {openSolutionIndex[index] ? "−" : "+"}
+                                      </span>
+                                    </button>
+                                    {openSolutionIndex[index] &&
+                                      (hasLang ? (
+                                        <div className="p-2 sm:p-3">
+                                          <LanguageSolutionPanel
+                                            solutions={langSol}
+                                            intuition={intuition}
+                                            explanation={explanation}
+                                            fallbackCode={fallback}
+                                            copied={copiedIndex === index}
+                                            onCopy={(code) => handleCopySolution(code, index)}
+                                            embedded
+                                            richTextVariant="theme"
+                                            platformAdminCodeDisplay={isGeneral}
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="p-2 sm:p-3">
+                                          {isGeneral &&
+                                          ["cpp", "java", "python"].includes(
+                                            inferSolutionLanguage(
+                                              formatSolutionCode(solutions[index])
+                                            )
+                                          ) ? (
+                                            <PlatformAdminCodeBlock
+                                              code={solutions[index]}
+                                              language={inferSolutionLanguage(
+                                                formatSolutionCode(solutions[index])
+                                              )}
+                                              toolbar={
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleCopySolution(solutions[index], index)
+                                                  }
+                                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                                  title="Copy solution"
+                                                >
+                                                  {copiedIndex === index ? (
+                                                    <>
+                                                      <FaCheck className="w-3 h-3 shrink-0" />
+                                                      <span>Copied!</span>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <FaCopy className="w-3 h-3 shrink-0" />
+                                                      <span>Copy</span>
+                                                    </>
+                                                  )}
+                                                </button>
+                                              }
+                                            />
+                                          ) : (
+                                            <PrepSolutionBody
+                                              code={solutions[index]}
+                                              richTextVariant="theme"
+                                              toolbar={
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    handleCopySolution(solutions[index], index)
+                                                  }
+                                                  className="rounded-lg bg-slate-800/95 hover:bg-slate-700 text-slate-200 px-2 py-1.5 text-xs font-medium transition-colors border border-slate-600 flex items-center gap-1.5"
+                                                  title="Copy solution"
+                                                >
+                                                  {copiedIndex === index ? (
+                                                    <>
+                                                      <FaCheck className="w-3 h-3 shrink-0" />
+                                                      <span>Copied!</span>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <FaCopy className="w-3 h-3 shrink-0" />
+                                                      <span>Copy</span>
+                                                    </>
+                                                  )}
+                                                </button>
+                                              }
+                                            />
+                                          )}
+                                        </div>
+                                      ))}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              if (hasAnyOaCoding && showOaRoleChrome) {
+                return (
+                  <p className="text-slate-400">
+                    No {typeId === "dsa" ? "DSA" : "long answer"} questions for this role yet.
+                    Use Add Question to contribute one.
+                  </p>
+                );
+              }
+              return (
+                <p className="text-slate-400">
+                  No {typeId === "dsa" ? "DSA" : "long answer"} questions yet.
+                </p>
               );
-            })}
-          </div>
-        ) : hasAnyOaCoding && showOaRoleChrome ? (
-          <p className="text-slate-400">No questions for this role yet. Use Add Question to contribute one.</p>
-        ) : visibleMcqCount === 0 ? (
-          <p className="text-slate-400">
-            {showOaRoleChrome && oaRoleItemKeys.length > 0
-              ? "No questions for this role yet. Use Add Question to contribute one."
-              : "No online assessment questions yet."}
-          </p>
-        ) : null}
+            })()
+          )}
+        </div>
       </div>
       </>
       )}
@@ -1249,6 +1500,20 @@ function OATab({
         </div>
       )}
 
+      {isGeneral && platformAddDraft ? (
+        <PlatformQuestionEditModal
+          title="Add Online Assessment Question"
+          draft={platformAddDraft}
+          onChange={setPlatformAddDraft}
+          onSubmit={handleSavePlatformAddOAQuestion}
+          onCancel={closePlatformAddOAQuestion}
+          saving={actionLoading}
+          showKindSelect
+          showCodingFields
+          requireExplanation={false}
+        />
+      ) : null}
+
       {isGeneral && editIndex !== null && platformDraft ? (
         <PlatformQuestionEditModal
           title={`Edit OA Question ${editIndex + 1}`}
@@ -1256,6 +1521,19 @@ function OATab({
           onChange={setPlatformDraft}
           onSubmit={handleSaveEditOA}
           onCancel={closeEditOA}
+          saving={actionLoading}
+          showCodingFields={isCodingDraftKind(platformDraft.kind)}
+          requireExplanation={false}
+        />
+      ) : null}
+
+      {isGeneral && mcqDraft ? (
+        <PlatformMcqEditModal
+          title={editMcqIndex == null ? "Add MCQ" : `Edit MCQ ${editMcqIndex + 1}`}
+          draft={mcqDraft}
+          onChange={setMcqDraft}
+          onSubmit={handleSaveMcq}
+          onCancel={closeMcqModal}
           saving={actionLoading}
         />
       ) : null}

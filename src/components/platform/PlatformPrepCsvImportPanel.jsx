@@ -62,18 +62,6 @@ function fromEditDraft(item, draft) {
 function validateStagingItem(item, index) {
   if (!String(item?.question || "").trim()) return `Question ${index + 1}: question is required.`;
   if (!String(item?.answer || "").trim()) return `Question ${index + 1}: answer is required.`;
-  if (item?.kind === "coding") {
-    if (!String(item?.intuition || "").trim()) {
-      return `Question ${index + 1}: intuition is required for coding questions.`;
-    }
-    if (
-      !String(item?.solutions?.cpp || "").trim() ||
-      !String(item?.solutions?.java || "").trim() ||
-      !String(item?.solutions?.python || "").trim()
-    ) {
-      return `Question ${index + 1}: C++, Java, and Python solutions are required for coding questions.`;
-    }
-  }
   return "";
 }
 
@@ -304,8 +292,8 @@ export default function PlatformPrepCsvImportPanel({ companyId, companyName }) {
             CSV import · interview questions
           </h2>
           <p className="mt-1 text-sm text-theme-secondary">
-            Upload role-wise questions for {companyName || "this company"}. Coding rows must
-            include intuition and C++ / Java / Python solutions. Review, edit or delete, then
+            Upload role-wise questions for {companyName || "this company"}. For coding rows,
+            intuition and C++ / Java / Python solutions are optional. Review, edit or delete, then
             finalize into the company card.
           </p>
         </div>

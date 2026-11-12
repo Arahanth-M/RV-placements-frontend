@@ -109,8 +109,10 @@ function RoundHeading({ round, index }) {
   const type = String(round.type || "").trim();
   return (
     <div className="experience-round-heading">
-      <h3 className="experience-round-index">Round {number}</h3>
-      {type ? <span className="experience-round-type">{type}</span> : null}
+      <h3 className="round-title">
+        Round <span className="round-number">{number}</span>
+      </h3>
+      {type ? <span className="round-badge">{type}</span> : null}
     </div>
   );
 }
@@ -266,9 +268,7 @@ export function ExperienceStoryCard({
                       index={index}
                     />
                     {String(round.title || "").trim() ? (
-                      <p className="mt-3 text-base font-semibold leading-6 text-theme-primary">
-                        {round.title}
-                      </p>
+                      <p className="round-subtitle">{round.title}</p>
                     ) : null}
                     {String(round.details || "").trim() ? (
                       <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-theme-secondary sm:text-[15px] sm:leading-7">
@@ -314,9 +314,7 @@ export function ExperienceStoryCard({
             >
               <RoundHeading round={round} index={index} />
               {showSubtitle ? (
-                <p className="mt-3 text-base font-semibold leading-6 text-theme-primary">
-                  {subtitle}
-                </p>
+                <p className="round-subtitle">{subtitle}</p>
               ) : null}
               {body ? (
                 <ExpandableBody

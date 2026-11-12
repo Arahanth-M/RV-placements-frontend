@@ -111,14 +111,19 @@ import PlatformQuestionEnhanceAllButton, {
 } from "../platform/PlatformQuestionEnhanceAllButton.jsx";
 import PlatformEnhanceConfirmModal from "../platform/PlatformEnhanceConfirmModal.jsx";
 import {
+  addPlatformEnhanceBusyKey,
   loadPlatformEnhanceCompletion,
   mergePlatformEnhanceCompletion,
+  platformEnhanceBusyFieldsForIndex,
+  platformEnhanceBusyKey,
+  removePlatformEnhanceBusyKey,
   resolveEnhanceRunIndexes,
   savePlatformEnhanceCompletion,
   shouldEnhanceIndexForRetry,
 } from "../../utils/platformEnhanceCompletion.js";
 import { clearGeneralCompanyListCache } from "../../utils/generalCompanyListCache.js";
 import {
+  isCodingDraftKind,
   platformQuestionEditDraft,
   platformQuestionEditPayload,
 } from "../../utils/platformQuestionEdit.js";
@@ -187,13 +192,14 @@ function InterviewTab({
   const [editIQQuestion, setEditIQQuestion] = useState("");
   const [editIQSolution, setEditIQSolution] = useState("");
   const [platformDraft, setPlatformDraft] = useState(null);
+  const [platformAddDraft, setPlatformAddDraft] = useState(null);
   const [editIPIndex, setEditIPIndex] = useState(null);
   const [editIPContent, setEditIPContent] = useState("");
   const [editIPOverview, setEditIPOverview] = useState("");
   const [editIPRounds, setEditIPRounds] = useState([]);
   const [editIPUsesStoredShape, setEditIPUsesStoredShape] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [enhanceBusy, setEnhanceBusy] = useState(null);
+  const [enhanceBusyKeys, setEnhanceBusyKeys] = useState(() => new Set());
   const [enhanceAllBusy, setEnhanceAllBusy] = useState(false);
   const [enhanceAllBusyField, setEnhanceAllBusyField] = useState(null);
   const [enhanceAllProgress, setEnhanceAllProgress] = useState(null);
@@ -584,6 +590,7 @@ function InterviewTab({
           solutions: company?.interviewQuestions_solutions?.[index],
           intuition: company?.interviewQuestions_intuition?.[index],
           explanation: company?.interviewQuestions_explanation?.[index],
+          kind: company?.interviewQuestions_kind?.[index] || "non_coding",
         })
       );
       return;
@@ -591,6 +598,50 @@ function InterviewTab({
     setPlatformDraft(null);
     setEditIQQuestion(questionText || "");
     setEditIQSolution(solutionText || "");
+  };
+
+  const openPlatformAddInterviewQuestion = () => {
+    setPlatformAddDraft(
+      platformQuestionEditDraft({
+        kind: "coding",
+        prepRoleKey: contributionRoleKeyRef.current || effectiveInterviewPrepRoleKey || "",
+      })
+    );
+  };
+
+  const closePlatformAddInterviewQuestion = () => {
+    setPlatformAddDraft(null);
+  };
+
+  const handleSavePlatformAddInterviewQuestion = async (e) => {
+    e.preventDefault();
+    if (!company?._id || !platformAddDraft || !contentAdmin.createInterviewQuestion) return;
+    setActionLoading(true);
+    try {
+      await contentAdmin.createInterviewQuestion(
+        company._id,
+        platformQuestionEditPayload({
+          ...platformAddDraft,
+          prepRoleKey:
+            platformAddDraft.prepRoleKey ||
+            contributionRoleKeyRef.current ||
+            effectiveInterviewPrepRoleKey ||
+            "",
+        })
+      );
+      clearGeneralCompanyListCache();
+      if (onCompanyUpdate) onCompanyUpdate();
+      closePlatformAddInterviewQuestion();
+    } catch (err) {
+      console.error(err);
+      alert(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Failed to create interview question."
+      );
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleSaveEditIQ = async (e) => {
@@ -631,7 +682,9 @@ function InterviewTab({
   const handleEnhanceIQField = async (index, field) => {
     if (!isGeneral || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
     if (enhanceAllBusy) return;
-    setEnhanceBusy({ index, field });
+    const key = platformEnhanceBusyKey(index, field);
+    if (enhanceBusyKeys.has(key)) return;
+    setEnhanceBusyKeys((prev) => addPlatformEnhanceBusyKey(prev, index, field));
     try {
       await contentAdmin.enhanceInterviewQuestionField(company._id, index, field);
       if (onCompanyUpdate) onCompanyUpdate();
@@ -643,7 +696,7 @@ function InterviewTab({
           "Enhance failed. Try again."
       );
     } finally {
-      setEnhanceBusy(null);
+      setEnhanceBusyKeys((prev) => removePlatformEnhanceBusyKey(prev, index, field));
     }
   };
 
@@ -657,7 +710,7 @@ function InterviewTab({
     codingOnly = false,
   }) => {
     if (!isGeneral || !company?._id || !contentAdmin.enhanceInterviewQuestionField) return;
-    if (enhanceAllBusy || enhanceBusy || actionLoading || enhanceAllConfirm) return;
+    if (enhanceAllBusy || enhanceBusyKeys.size > 0 || actionLoading || enhanceAllConfirm) return;
     const allIndexes = interviewQuestions
       .map((q, index) => {
         if (!questionTextIsPresent(q)) return -1;
@@ -714,7 +767,6 @@ function InterviewTab({
         },
         onProgress: (progress) => {
           setEnhanceAllProgress(progress);
-          setEnhanceBusy({ index: progress.index, field: progress.field });
         },
       });
       const nextCompletion = mergePlatformEnhanceCompletion(enhanceCompletedFields, {
@@ -756,7 +808,6 @@ function InterviewTab({
           "Enhance failed. Try again."
       );
     } finally {
-      setEnhanceBusy(null);
       setEnhanceAllBusy(false);
       setEnhanceAllBusyField(null);
       setEnhanceAllProgress(null);
@@ -1125,7 +1176,7 @@ function InterviewTab({
           busy={enhanceAllBusy}
           busyField={enhanceAllBusyField}
           progress={enhanceAllProgress}
-          disabled={actionLoading || Boolean(enhanceBusy)}
+          disabled={actionLoading || enhanceBusyKeys.size > 0}
           questionCount={totalInterviewQuestionCount}
           completedFields={enhanceCompletedFields}
           onEnhanceField={handleEnhanceAllIQField}
@@ -1140,7 +1191,10 @@ function InterviewTab({
             type="button"
             data-tour="company-add-interview-question"
             className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 sm:py-1.5 rounded-md shadow-sm hover:shadow-md transition-all duration-200 text-xs sm:text-sm font-medium w-full sm:w-auto"
-            onClick={() => setShowAddQuestionModal(true)}
+            onClick={() => {
+              if (isAdmin && isGeneral) openPlatformAddInterviewQuestion();
+              else setShowAddQuestionModal(true);
+            }}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -1207,9 +1261,10 @@ function InterviewTab({
 
                     {isAdmin && isGeneral ? (
                       <PlatformQuestionEnhanceBar
-                        busyField={
-                          enhanceBusy?.index === index ? enhanceBusy.field : null
-                        }
+                        busyFields={platformEnhanceBusyFieldsForIndex(
+                          enhanceBusyKeys,
+                          index
+                        )}
                         disabled={actionLoading || enhanceAllBusy}
                         isCoding={isCodingQuestionKind(interviewQuestionKinds[index])}
                         onEnhance={(field) => handleEnhanceIQField(index, field)}
@@ -1585,6 +1640,20 @@ function InterviewTab({
         </div>
       )}
 
+      {isGeneral && platformAddDraft ? (
+        <PlatformQuestionEditModal
+          title="Add Interview Question"
+          draft={platformAddDraft}
+          onChange={setPlatformAddDraft}
+          onSubmit={handleSavePlatformAddInterviewQuestion}
+          onCancel={closePlatformAddInterviewQuestion}
+          saving={actionLoading}
+          showKindSelect
+          showCodingFields
+          requireExplanation={false}
+        />
+      ) : null}
+
       {isGeneral && editIQIndex !== null && platformDraft ? (
         <PlatformQuestionEditModal
           title={`Edit Interview Question ${editIQIndex + 1}`}
@@ -1593,6 +1662,8 @@ function InterviewTab({
           onSubmit={handleSaveEditIQ}
           onCancel={closeEditIQ}
           saving={actionLoading}
+          showCodingFields={isCodingDraftKind(platformDraft.kind)}
+          requireExplanation={false}
         />
       ) : null}
 

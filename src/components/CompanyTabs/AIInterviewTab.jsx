@@ -1237,9 +1237,7 @@ function AIInterviewTab({
     return "";
   }, [isGeneral, normalizedCustomRounds, selectedRole]);
 
-  const showPlanValidationMessage =
-    Boolean(customPlanValidationError) &&
-    customPlanValidationError !== "Select a round type for each round.";
+  const showPlanValidationMessage = Boolean(customPlanValidationError);
 
   const [slotBookModalOpen, setSlotBookModalOpen] = useState(false);
   const [slotBookingStatus, setSlotBookingStatus] = useState(null);
@@ -1306,8 +1304,8 @@ function AIInterviewTab({
   }, [planRequiresDsaSlot]);
 
   const refreshSlotBookingStatus = useCallback(async () => {
-    const authUserId = user?.userId || user?._id;
-    if (!authUserId || normalizedCustomRounds.length < 1) {
+    const uid = user?.userId || user?._id;
+    if (!uid || normalizedCustomRounds.length < 1) {
       setSlotBookingStatus(null);
       return;
     }
@@ -1353,14 +1351,16 @@ function AIInterviewTab({
     currentHourIsFull,
   });
 
+  const authUserId = user?.userId || user?._id;
+
   const canStart = useMemo(() => {
     return (
-      Boolean(user?.userId && company?._id) &&
+      Boolean(authUserId && company?._id) &&
       !loading &&
       !customPlanValidationError
     );
   }, [
-    user?.userId,
+    authUserId,
     company?._id,
     loading,
     customPlanValidationError,
@@ -2015,7 +2015,6 @@ function AIInterviewTab({
     setTipsCompanySpecific(false);
     setCurrentTipIndex(0);
     setVisibleTestCases([]);
-    setPreviewSqlContext(null);
     setPreviewExecutionResult(null);
     setPreviewExecutionLoading(false);
     setPreviewLastRunAtMs(0);
@@ -2178,7 +2177,7 @@ function AIInterviewTab({
 
     try {
       const { data } = await interviewAPI.startInterview({
-        userId: user.userId,
+        userId: user.userId || user._id,
         companyId: company._id,
         placementVisitType: "",
         mergePlacementByType: true,
@@ -2623,13 +2622,15 @@ function AIInterviewTab({
       setPreviewExecutionResult(data?.execution || null);
       setPreviewLastRunAtMs(Date.now());
     } catch (err) {
+      const serverMessage =
+        err?.response?.data?.message || err?.response?.data?.error || "";
       const timedOut =
         err?.code === "ECONNABORTED" || /timeout/i.test(String(err?.message || ""));
-      const message = timedOut
-        ? "Preview timed out. The first C++/Java run can take longer while the runtime image loads — try again."
-        : err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Failed to run preview.";
+      const message = serverMessage
+        ? serverMessage
+        : timedOut
+          ? "Preview timed out. The first C++/Java run can take longer while the runtime image loads — try again."
+          : "Failed to run preview.";
       setError(message);
     } finally {
       previewRunInFlightRef.current = false;
@@ -3155,6 +3156,11 @@ function AIInterviewTab({
 
   const showStartPrompt = !sessionId || status === "idle";
   const interviewCompleted = status === "completed";
+
+  useEffect(() => {
+    if (!showStartPrompt || !(user?.userId || user?._id)) return;
+    refreshSlotBookingStatus();
+  }, [showStartPrompt, user?.userId, user?._id, refreshSlotBookingStatus]);
 
   const showInterviewQuestionHero = useMemo(() => {
     return (
@@ -3839,13 +3845,13 @@ function AIInterviewTab({
         </div>
       </div>
 
-      {!user?.userId && (
+      {!authUserId && (
         <p className="text-sm text-theme-accent mb-3">
           Please login to start your AI interview.
         </p>
       )}
 
-      {user?.userId && user?.betaAccess !== false && showStartPrompt && (
+      {authUserId && user?.betaAccess !== false && showStartPrompt && (
         <div data-tour="company-ai-interview-setup" className="space-y-4">
         {hasActiveDsaSlotNow ? (
           <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-theme-secondary">

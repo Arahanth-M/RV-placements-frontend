@@ -249,9 +249,27 @@ export default function PlatformQuestionEnhanceAllButton({
   );
 }
 
+const ENHANCE_ALL_CONCURRENCY = 3;
+
+async function runWithConcurrency(items, concurrency, worker) {
+  const list = Array.isArray(items) ? items : [];
+  if (list.length < 1) return;
+  const limit = Math.max(1, Math.min(Number(concurrency) || 1, list.length));
+  let cursor = 0;
+  async function runWorker() {
+    while (cursor < list.length) {
+      const current = cursor;
+      cursor += 1;
+      await worker(list[current], current);
+    }
+  }
+  await Promise.all(Array.from({ length: limit }, () => runWorker()));
+}
+
 /**
  * Run the existing per-field enhance API across every question index.
  * Continues after individual failures so one bad field does not abort the run.
+ * Runs up to ENHANCE_ALL_CONCURRENCY question jobs in parallel per field.
  * Optional shouldEnhance(index, field) skips coding-only fields on non-coding items.
  */
 export async function runEnhanceEverythingForCompany({
@@ -260,6 +278,7 @@ export async function runEnhanceEverythingForCompany({
   enhanceOne,
   onProgress,
   shouldEnhance,
+  concurrency = ENHANCE_ALL_CONCURRENCY,
 }) {
   const list = Array.isArray(indexes) ? indexes : [];
   const fieldList =
@@ -268,6 +287,7 @@ export async function runEnhanceEverythingForCompany({
   let failureCount = 0;
   let skippedCount = 0;
   let attempted = 0;
+  let completedQuestions = 0;
   /** @type {Record<string, { attempted: number, successCount: number, failureCount: number, skippedCount: number, failedIndexes: number[] }>} */
   const fieldStats = {};
   for (const field of fieldList) {
@@ -280,20 +300,25 @@ export async function runEnhanceEverythingForCompany({
     };
   }
 
-  for (let qi = 0; qi < list.length; qi += 1) {
-    const index = list[qi];
-    for (const field of fieldList) {
-      const stats = fieldStats[field];
+  for (const field of fieldList) {
+    const stats = fieldStats[field];
+    const jobs = [];
+    for (let qi = 0; qi < list.length; qi += 1) {
+      const index = list[qi];
       if (typeof shouldEnhance === "function" && !shouldEnhance(index, field)) {
         skippedCount += 1;
         stats.skippedCount += 1;
         continue;
       }
+      jobs.push({ index, qi });
+    }
+
+    await runWithConcurrency(jobs, concurrency, async ({ index, qi }) => {
       attempted += 1;
       stats.attempted += 1;
       if (typeof onProgress === "function") {
         onProgress({
-          question: qi + 1,
+          question: Math.min(completedQuestions + 1, list.length),
           totalQuestions: list.length,
           index,
           field,
@@ -304,10 +329,10 @@ export async function runEnhanceEverythingForCompany({
         if (out?.skipped || out?.data?.skipped) {
           skippedCount += 1;
           stats.skippedCount += 1;
-          continue;
+        } else {
+          successCount += 1;
+          stats.successCount += 1;
         }
-        successCount += 1;
-        stats.successCount += 1;
       } catch (error) {
         console.error(
           `[enhance-all] question ${index} field ${field}:`,
@@ -316,8 +341,10 @@ export async function runEnhanceEverythingForCompany({
         failureCount += 1;
         stats.failureCount += 1;
         stats.failedIndexes.push(index);
+      } finally {
+        completedQuestions += 1;
       }
-    }
+    });
   }
 
   return {

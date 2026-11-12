@@ -12,9 +12,11 @@ const ACTIONS = [
 /**
  * Platform-admin only controls to rewrite one OA/interview question field via LLM.
  * Coding-only actions (intuition + languages) hide for explanation-only questions.
+ * Multiple fields/questions can enhance concurrently — only the in-flight button is locked.
  */
 export default function PlatformQuestionEnhanceBar({
   busyField = null,
+  busyFields = null,
   disabled = false,
   onEnhance,
   isCoding = true,
@@ -26,6 +28,14 @@ export default function PlatformQuestionEnhanceBar({
   );
   if (actions.length < 1) return null;
 
+  const busySet = new Set(
+    Array.isArray(busyFields)
+      ? busyFields
+      : busyField
+        ? [busyField]
+        : []
+  );
+
   return (
     <div
       className="flex flex-wrap gap-1.5 sm:gap-2"
@@ -34,12 +44,12 @@ export default function PlatformQuestionEnhanceBar({
       aria-label="Enhance or refill question content"
     >
       {actions.map(({ field, label }) => {
-        const isBusy = busyField === field;
+        const isBusy = busySet.has(field);
         return (
           <button
             key={field}
             type="button"
-            disabled={disabled || Boolean(busyField)}
+            disabled={disabled || isBusy}
             onClick={() => onEnhance(field)}
             className={`rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:text-[11px] ${
               isBusy

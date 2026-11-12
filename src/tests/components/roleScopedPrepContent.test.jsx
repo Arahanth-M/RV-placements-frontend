@@ -25,25 +25,31 @@ describe("OA questions by role", () => {
     render(<OATab company={company} isGeneral />);
 
     expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /MCQ/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("General MCQ")).toBeInTheDocument();
     expect(screen.queryByText("Analyst MCQ")).not.toBeInTheDocument();
     expect(screen.queryByTestId("mcq-answer-1")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /View answer/i }));
     expect(screen.getByTestId("mcq-answer-1")).toHaveTextContent("Correct Answer: B");
+
+    fireEvent.click(screen.getByRole("tab", { name: /Long answer/ }));
     expect(screen.getByRole("button", { name: /Question 1/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Question 2/ })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "SDE" }));
     await waitFor(() => {
-      expect(screen.queryByText("General MCQ")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Question 1/ })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("tab", { name: "Analyst" }));
+    fireEvent.click(screen.getByRole("tab", { name: /MCQ/ }));
     await waitFor(() => {
       expect(screen.getByText("Analyst MCQ")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("tab", { name: /Long answer/ }));
+    await waitFor(() => {
       expect(
-        screen.getByText("No questions for this role yet. Use Add Question to contribute one.")
+        screen.getByText("No long answer questions for this role yet. Use Add Question to contribute one.")
       ).toBeInTheDocument();
     });
   });
@@ -51,8 +57,10 @@ describe("OA questions by role", () => {
   it("shows every OA question together when the page is not the general platform", () => {
     render(<OATab company={company} />);
     expect(screen.queryByRole("tab", { name: "General" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /MCQ/ })).toBeInTheDocument();
     expect(screen.getByText("Analyst MCQ")).toBeInTheDocument();
     expect(screen.getByText("General MCQ")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: /Long answer/ }));
     expect(screen.getByRole("button", { name: /Question 2/ })).toBeInTheDocument();
   });
 });

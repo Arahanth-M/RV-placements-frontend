@@ -18,6 +18,28 @@ describe("generalCompanyPrepSummary", () => {
     expect(labels).toEqual(["SDE", "Business analyst"]);
   });
 
+  it("dedupes duplicate prepRoles catalog entries in the roles line", () => {
+    const labels = prepRoleLabelsWithContent({
+      prepRoles: [
+        { key: "software-engineer", label: "Software Engineer" },
+        { key: "data-engineer", label: "Data Engineer" },
+        { key: "software-engineer", label: "Software Engineer" },
+        { key: "data-engineer", label: "Data Engineer" },
+      ],
+      onlineQuestions_prepRoleKey: ["software-engineer", "data-engineer"],
+    });
+    expect(labels).toEqual(["Software Engineer", "Data Engineer"]);
+
+    const summary = buildGeneralCompanyPrepSummary({
+      prepRoles: [
+        { key: "software-engineer", label: "Software Engineer" },
+        { key: "software-engineer", label: "Software Engineer" },
+      ],
+      onlineQuestions_prepRoleKey: ["software-engineer"],
+    });
+    expect(summary.rolesLine).toBe("Software Engineer");
+  });
+
   it("treats MCQs as OA content when coverage counts are missing", () => {
     const labels = prepRoleLabelsWithContent({
       prepRoles: [

@@ -365,3 +365,32 @@ export function mergePlatformEnhanceCompletion(
 
   return next;
 }
+
+/** Key for one in-flight per-question enhance job. */
+export function platformEnhanceBusyKey(index, field) {
+  return `${Number(index)}:${String(field || "")}`;
+}
+
+/** Fields currently enhancing for a question index. */
+export function platformEnhanceBusyFieldsForIndex(busyKeys, index) {
+  const prefix = `${Number(index)}:`;
+  const keys = busyKeys instanceof Set ? busyKeys : new Set(busyKeys || []);
+  const fields = [];
+  for (const key of keys) {
+    if (!String(key).startsWith(prefix)) continue;
+    fields.push(String(key).slice(prefix.length));
+  }
+  return fields;
+}
+
+export function addPlatformEnhanceBusyKey(busyKeys, index, field) {
+  const next = new Set(busyKeys instanceof Set ? busyKeys : []);
+  next.add(platformEnhanceBusyKey(index, field));
+  return next;
+}
+
+export function removePlatformEnhanceBusyKey(busyKeys, index, field) {
+  const next = new Set(busyKeys instanceof Set ? busyKeys : []);
+  next.delete(platformEnhanceBusyKey(index, field));
+  return next;
+}

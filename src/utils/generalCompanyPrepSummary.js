@@ -1,9 +1,25 @@
 import { formatExperienceMonth } from "./parseExperienceStoredEntry.js";
 import { formatPlatformPrepCoverage } from "./platformPrepCoverage.js";
 
+/** Dedupe prep-role catalog rows by key (keeps first label). */
+export function uniquePrepRoleCatalog(prepRoles = []) {
+  const seen = new Set();
+  const out = [];
+  for (const row of Array.isArray(prepRoles) ? prepRoles : []) {
+    const key = String(row?.key ?? "").trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({
+      key,
+      label: String(row?.label || row?.key || "").trim() || key,
+    });
+  }
+  return out;
+}
+
 /** Prep role labels that have at least one tagged row on the company. */
 export function prepRoleLabelsWithContent(company = {}) {
-  const catalog = Array.isArray(company.prepRoles) ? company.prepRoles : [];
+  const catalog = uniquePrepRoleCatalog(company.prepRoles);
   const keysWithContent = new Set();
 
   const addKeys = (arr) => {
@@ -78,19 +94,24 @@ export function buildGeneralCompanyPrepSummary(company = {}) {
 function roleCoverageFromCompany(company = {}) {
   const raw = company.platformPrepCoverageByRole;
   if (!Array.isArray(raw) || raw.length === 0) return [];
-  return raw
-    .map((row) => {
-      const key = String(row?.key ?? "").trim();
-      const label = String(row?.label || "").trim() || (key || "General");
-      const coverage = formatPlatformPrepCoverage(row);
-      return {
-        key,
-        label,
-        oa: coverage.oa,
-        interview: coverage.interview,
-        experiences: coverage.experiences,
-        line: coverage.line,
-      };
-    })
-    .filter((row) => row.label);
+  const seen = new Set();
+  const rows = [];
+  for (const row of raw) {
+    const key = String(row?.key ?? "").trim();
+    const label = String(row?.label || "").trim() || (key || "General");
+    if (!label) continue;
+    const dedupeKey = key || `label:${label.toLowerCase()}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    const coverage = formatPlatformPrepCoverage(row);
+    rows.push({
+      key,
+      label,
+      oa: coverage.oa,
+      interview: coverage.interview,
+      experiences: coverage.experiences,
+      line: coverage.line,
+    });
+  }
+  return rows;
 }

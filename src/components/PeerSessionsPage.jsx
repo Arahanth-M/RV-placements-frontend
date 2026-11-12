@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaCopy, FaExternalLinkAlt, FaTimes, FaUsers, FaVideo } from "react-icons/fa";
 import { useAuth } from "../utils/AuthContext";
-import { interviewAPI } from "../utils/api";
+import { billingAPI, interviewAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
+import PaywallModal from "./PaywallPanel.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -448,6 +449,9 @@ export default function PeerSessionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [hasPeerAccess, setHasPeerAccess] = useState(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallMessage, setPaywallMessage] = useState("");
 
   const [sessionType, setSessionType] = useState("mock_interview");
   const [topic, setTopic] = useState("");
@@ -496,8 +500,49 @@ export default function PeerSessionsPage() {
     setCodeResult((prev) => (prev?.id === session.id ? session : prev));
   }, []);
 
+  const openPeerPaywall = useCallback((message) => {
+    setPaywallMessage(
+      message ||
+        "Peer sessions are included in All premium features. Unlock the ₹599 plan to create and join peer sessions."
+    );
+    setPaywallOpen(true);
+  }, []);
+
+  const handlePeerApiError = useCallback(
+    (err, fallback) => {
+      if (err?.response?.status === 402 || err?.response?.data?.code === "PAYWALL") {
+        setHasPeerAccess(false);
+        openPeerPaywall(err?.response?.data?.error);
+        return;
+      }
+      setError(err?.response?.data?.error || err?.message || fallback);
+    },
+    [openPeerPaywall]
+  );
+
+  const loadAccess = useCallback(async () => {
+    if (!user?.userId && !user?._id) return;
+    try {
+      const { data } = await billingAPI.getAccess();
+      const allowed =
+        data?.unlimitedPeerSessions === true || data?.summary?.peerSessions === true;
+      setHasPeerAccess(allowed);
+      if (!allowed) {
+        setLoading(false);
+        setOpenSessions([]);
+        setMySessions([]);
+      }
+    } catch {
+      // API still enforces access; leave hasPeerAccess null until lists resolve.
+    }
+  }, [user?.userId, user?._id]);
+
   const loadLists = useCallback(async ({ silent = false } = {}) => {
     if (!user?.userId && !user?._id) return;
+    if (hasPeerAccess === false) {
+      if (!silent) setLoading(false);
+      return;
+    }
     if (!silent) {
       setLoading(true);
       setError("");
@@ -509,9 +554,20 @@ export default function PeerSessionsPage() {
         }),
         interviewAPI.listMyPeerSessions(),
       ]);
+      setHasPeerAccess(true);
       setOpenSessions(Array.isArray(openRes?.data?.sessions) ? openRes.data.sessions : []);
       setMySessions(Array.isArray(mineRes?.data?.sessions) ? mineRes.data.sessions : []);
     } catch (err) {
+      if (err?.response?.status === 402 || err?.response?.data?.code === "PAYWALL") {
+        setHasPeerAccess(false);
+        setOpenSessions([]);
+        setMySessions([]);
+        if (!silent) {
+          openPeerPaywall(err?.response?.data?.error);
+          setError("");
+        }
+        return;
+      }
       if (!silent) {
         setError(
           err?.response?.data?.error || err?.message || "Could not load peer sessions."
@@ -520,7 +576,11 @@ export default function PeerSessionsPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [user?.userId, user?._id, filterType]);
+  }, [user?.userId, user?._id, filterType, hasPeerAccess, openPeerPaywall]);
+
+  useEffect(() => {
+    loadAccess();
+  }, [loadAccess]);
 
   useEffect(() => {
     loadLists();
@@ -597,7 +657,7 @@ export default function PeerSessionsPage() {
       setTab(TAB_ALL);
       await loadLists();
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Could not create session.");
+      handlePeerApiError(err, "Could not create session.");
     } finally {
       setBusyId("");
     }
@@ -621,7 +681,7 @@ export default function PeerSessionsPage() {
       setCodeResult(data.session || null);
       if (!data.session) setError("No session found for that code.");
     } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Could not find session.");
+      handlePeerApiError(err, "Could not find session.");
     } finally {
       setBusyId("");
     }
@@ -667,14 +727,19 @@ export default function PeerSessionsPage() {
       setTab(TAB_ALL);
       await loadLists({ silent: true });
     } catch (err) {
-      const data = err?.response?.data;
-      setJoinFormError(
-        data?.error ||
-          data?.errors?.[0] ||
-          data?.message ||
-          err?.message ||
-          "Could not request to join."
-      );
+      if (err?.response?.status === 402 || err?.response?.data?.code === "PAYWALL") {
+        closeJoinRequest();
+        handlePeerApiError(err, "Could not request to join.");
+      } else {
+        const data = err?.response?.data;
+        setJoinFormError(
+          data?.error ||
+            data?.errors?.[0] ||
+            data?.message ||
+            err?.message ||
+            "Could not request to join."
+        );
+      }
     } finally {
       setBusyId("");
     }
@@ -766,9 +831,22 @@ export default function PeerSessionsPage() {
     { id: TAB_ALL, label: "All sessions" },
   ];
 
+  const peerLocked = hasPeerAccess === false;
+
   return (
     <div className={pageShellOuterClassCompact}>
       <PageHeroFontStyles />
+      <PaywallModal
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        title="Unlock peer sessions"
+        message={
+          paywallMessage ||
+          "Peer sessions are included in All premium features. Unlock the ₹599 plan to create and join peer sessions."
+        }
+        pricingPath={appPath("/pricing")}
+        feature="peer_sessions"
+      />
       <div className={pageShellInnerClass}>
         <PageBackNavRow>
           <PageBackButton onClick={() => navigate(appPath("/"))} label="Back" />
@@ -780,11 +858,32 @@ export default function PeerSessionsPage() {
         </PageHeroHeader>
 
         <div className="mx-auto max-w-3xl space-y-5">
+          {peerLocked ? (
+            <div className="rounded-2xl border border-theme bg-theme-card px-5 py-8 text-center">
+              <p className="text-sm leading-relaxed text-theme-secondary sm:text-base">
+                Peer sessions are part of{" "}
+                <span className="font-semibold text-theme-primary">All premium features</span>{" "}
+                (₹599). Unlock that plan to host or join peer interviews, study groups, and
+                doubt sessions.
+              </p>
+              <button
+                type="button"
+                onClick={() => openPeerPaywall()}
+                className="mt-5 rounded-xl bg-theme-accent px-6 py-3 text-sm font-semibold text-white hover:opacity-95"
+              >
+                View pricing
+              </button>
+            </div>
+          ) : null}
+
           {error ? (
             <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
               {error}
             </p>
           ) : null}
+
+          {peerLocked ? null : (
+            <>
 
           {joinTarget ? (
             <div
@@ -1211,6 +1310,8 @@ export default function PeerSessionsPage() {
               )}
             </section>
           ) : null}
+            </>
+          )}
         </div>
       </div>
     </div>

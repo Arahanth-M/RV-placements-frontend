@@ -63,6 +63,17 @@ const COMPARISON_ROWS = [
       all_premium: "Unlimited",
     },
   },
+  {
+    id: "peer_sessions",
+    label: "Peer sessions",
+    hint: "Peer interviews, study groups, doubt sessions",
+    values: {
+      category: false,
+      prep_path: false,
+      mocks: false,
+      all_premium: "Included",
+    },
+  },
 ];
 
 const PLAN_INFO = {
@@ -78,6 +89,7 @@ const PLAN_INFO = {
       "Unlimited AI mocks",
       "Unlimited PrepPath",
       "Unlimited behavioural coach",
+      "Peer sessions",
     ],
   },
   category: {
@@ -88,6 +100,7 @@ const PLAN_INFO = {
     excludes: [
       "AI mock interviews",
       "PrepPath",
+      "Peer sessions",
       "Companies in other categories",
     ],
   },
@@ -97,7 +110,7 @@ const PLAN_INFO = {
       "Full company-card details for every company",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
-    excludes: ["Unlimited AI mock interviews"],
+    excludes: ["Unlimited AI mock interviews", "Peer sessions"],
   },
   mocks: {
     includes: [
@@ -105,13 +118,14 @@ const PLAN_INFO = {
       "Full company-card details for every company",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
-    excludes: ["Unlimited PrepPath"],
+    excludes: ["Unlimited PrepPath", "Peer sessions"],
   },
   all_premium: {
     includes: [
       "Full company-card details for every company",
       "Unlimited AI mock interviews for 6 months",
       "Unlimited PrepPath for 6 months",
+      "Peer sessions (interviews, study groups, doubts)",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
     excludes: [],
@@ -121,7 +135,7 @@ const PLAN_INFO = {
       "Full company-card details for every company",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
-    excludes: ["AI mock interviews", "PrepPath"],
+    excludes: ["AI mock interviews", "PrepPath", "Peer sessions"],
   },
   mocks_prep: {
     includes: [
@@ -129,7 +143,7 @@ const PLAN_INFO = {
       "Unlimited PrepPath",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
-    excludes: ["Unlocking extra company cards"],
+    excludes: ["Unlocking extra company cards", "Peer sessions"],
   },
 };
 
@@ -227,7 +241,9 @@ function categoryLabel(categoryId) {
 function alreadyOwnsPlan(summary, planId, categoryId = "") {
   const id = String(planId || "").trim();
   if (id === "all_premium") {
-    return Boolean(summary.allCards && summary.mocks && summary.prepPath);
+    return Boolean(
+      summary.allCards && summary.mocks && summary.prepPath && summary.peerSessions
+    );
   }
   if (id === "all_cards") return Boolean(summary.allCards);
   if (id === "mocks") return Boolean(summary.mocks);
@@ -408,6 +424,13 @@ export default function GeneralPricingPage() {
     }
     if (feature === "prep_path" && displayPlans.some((plan) => plan.id === "prep_path")) {
       setSelectedPlanId("prep_path");
+      return;
+    }
+    if (
+      (feature === "peer_sessions" || feature === "all_premium") &&
+      displayPlans.some((plan) => plan.id === "all_premium")
+    ) {
+      setSelectedPlanId("all_premium");
       return;
     }
     if (displayPlans.some((plan) => plan.id === "all_premium")) {

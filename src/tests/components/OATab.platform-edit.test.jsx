@@ -64,6 +64,8 @@ describe("OATab platform admin edit", () => {
         question: "Two Sum",
         intuition: "Use a hash map.",
         explanation: "One pass over the array.",
+        kind: "coding",
+        prepRoleKey: "",
         solutions: {
           cpp: "int twoSum() { return 1; }",
           java: "class Revised",

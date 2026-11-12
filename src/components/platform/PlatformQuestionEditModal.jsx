@@ -8,7 +8,7 @@ const fieldClass =
   "w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
 /**
- * Platform admin editor for a company question: explanation, intuition, and each language.
+ * Platform admin editor for a company question: explanation, optional intuition, and language solutions.
  */
 export default function PlatformQuestionEditModal({
   title,
@@ -18,8 +18,14 @@ export default function PlatformQuestionEditModal({
   onCancel,
   saving = false,
   showCodingFields = true,
+  showKindSelect = false,
+  requireExplanation = true,
 }) {
   if (!draft) return null;
+
+  const codingFieldsVisible =
+    showCodingFields &&
+    (!showKindSelect || String(draft.kind || "").toLowerCase() === "coding");
 
   const setField = (key, value) => onChange({ ...draft, [key]: value });
   const setSolution = (language, value) =>
@@ -33,9 +39,29 @@ export default function PlatformQuestionEditModal({
       <div className="flex max-h-[min(90vh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
         <div className="border-b border-slate-700 px-5 py-4">
           <h3 className="text-lg font-semibold text-amber-400">{title}</h3>
+          {codingFieldsVisible ? (
+            <p className="mt-1 text-sm text-slate-400">
+              Intuition and language solutions are optional — leave blank to fill later or via Enhance.
+            </p>
+          ) : null}
         </div>
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            {showKindSelect ? (
+              <label className="block space-y-1.5">
+                <span className="text-sm font-medium text-slate-200">Question type</span>
+                <select
+                  value={draft.kind || "non_coding"}
+                  onChange={(e) => setField("kind", e.target.value)}
+                  className={fieldClass}
+                  aria-label="Question type"
+                >
+                  <option value="coding">Coding / DSA</option>
+                  <option value="non_coding">Theory / non-coding</option>
+                  <option value="sql">SQL</option>
+                </select>
+              </label>
+            ) : null}
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-slate-200">Question</span>
               <textarea
@@ -46,39 +72,49 @@ export default function PlatformQuestionEditModal({
                 aria-label="Question"
               />
             </label>
-            {showCodingFields ? (
+            {codingFieldsVisible ? (
               <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-200">Intuition</span>
+                <span className="text-sm font-medium text-slate-200">
+                  Intuition <span className="font-normal text-slate-400">(optional)</span>
+                </span>
                 <textarea
                   value={draft.intuition}
                   onChange={(e) => setField("intuition", e.target.value)}
                   className={`${fieldClass} min-h-[90px]`}
                   aria-label="Intuition"
-                  required
+                  placeholder="Short approach insight"
                 />
               </label>
             ) : null}
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-200">Explanation</span>
+              <span className="text-sm font-medium text-slate-200">
+                Explanation
+                {!requireExplanation ? (
+                  <span className="font-normal text-slate-400"> (optional)</span>
+                ) : null}
+              </span>
               <textarea
                 value={draft.explanation}
                 onChange={(e) => setField("explanation", e.target.value)}
                 className={`${fieldClass} min-h-[120px]`}
                 aria-label="Explanation"
-                required
+                required={requireExplanation}
               />
             </label>
-            {showCodingFields
+            {codingFieldsVisible
               ? LANGUAGE_FIELDS.map((field) => (
                   <label key={field.id} className="block space-y-1.5">
-                    <span className="text-sm font-medium text-slate-200">{field.label}</span>
+                    <span className="text-sm font-medium text-slate-200">
+                      {field.label}{" "}
+                      <span className="font-normal text-slate-400">(optional)</span>
+                    </span>
                     <textarea
                       value={draft.solutions[field.id]}
                       onChange={(e) => setSolution(field.id, e.target.value)}
                       className={`${fieldClass} min-h-[140px] font-mono`}
                       aria-label={field.label}
                       spellCheck={false}
-                      required
+                      placeholder={`${field.label} — optional`}
                     />
                   </label>
                 ))

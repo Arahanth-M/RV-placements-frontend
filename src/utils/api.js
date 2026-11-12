@@ -667,10 +667,18 @@ export const platformAdminAPI = {
   rejectSubmission: (id) => API.delete(`/api/admin/platform/submissions/${id}/reject`),
   deleteApprovedSubmission: (id) =>
     API.delete(`/api/admin/platform/submissions/${id}/delete`),
+  createOAQuestion: (companyId, data) =>
+    API.post(`/api/admin/platform/companies/${companyId}/oa-questions`, data),
   updateOAQuestion: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/oa-questions/${index}`, data),
   deleteOAQuestion: (companyId, index) =>
     API.delete(`/api/admin/platform/companies/${companyId}/oa-questions/${index}`),
+  createMcqQuestion: (companyId, data) =>
+    API.post(`/api/admin/platform/companies/${companyId}/mcq-questions`, data),
+  updateMcqQuestion: (companyId, index, data) =>
+    API.put(`/api/admin/platform/companies/${companyId}/mcq-questions/${index}`, data),
+  deleteMcqQuestion: (companyId, index) =>
+    API.delete(`/api/admin/platform/companies/${companyId}/mcq-questions/${index}`),
   enhanceOAQuestionField: (companyId, index, field) =>
     API.post(
       `/api/admin/platform/companies/${companyId}/oa-questions/${index}/enhance-field`,
@@ -702,6 +710,8 @@ export const platformAdminAPI = {
     }
     return API.put(`/api/admin/platform/companies/${companyId}/verified`, body);
   },
+  createInterviewQuestion: (companyId, data) =>
+    API.post(`/api/admin/platform/companies/${companyId}/interview-questions`, data),
   updateInterviewQuestion: (companyId, index, data) =>
     API.put(`/api/admin/platform/companies/${companyId}/interview-questions/${index}`, data),
   deleteInterviewQuestion: (companyId, index) =>
@@ -1018,7 +1028,8 @@ export const interviewAPI = {
   },
   runPreview: ({ sessionId, code, language }) =>
     // C++/Java may need a first-time runtime image pull; keep headroom above default 30s.
-    interviewHttp.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 120000 }),
+    // Cold C++/Java image pulls can exceed 2m; keep above EXECUTION_TIMEOUT_MS (60s) + headroom.
+    interviewHttp.post('/api/interview/run-preview', { sessionId, code, language }, { timeout: 180000 }),
   async beginQuestionReattempt({ sessionId }) {
     const res = await interviewHttp.post('/api/interview/begin-question-reattempt', { sessionId });
     interviewDetailCache.delete(String(sessionId));
