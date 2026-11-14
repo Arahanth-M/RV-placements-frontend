@@ -34,6 +34,11 @@ import {
   PLATFORM_FRESHER_ROLES,
   PLATFORM_INTERVIEW_ROUND_TYPES,
 } from "../../constants/interviewCatalog.js";
+import {
+  FEATURE_CONSENT_COPY,
+  FEATURE_CONSENT_IDS,
+} from "../../constants/featureConsents.js";
+import { useFeatureConsent } from "../../hooks/useFeatureConsent.js";
 
 /** Languages shown in the mock-interview coding picker (backend may still support more). */
 const INTERVIEW_UI_CODING_LANGUAGES = ["python", "cpp", "java"];
@@ -940,6 +945,17 @@ function AIInterviewTab({
 }) {
   const { user, setUser } = useAuth();
   const { isGeneral, appPath } = useTenantShell();
+  const {
+    needsConsent: needsFeatureConsent,
+    ensureAccepted: ensureFeatureConsent,
+    busy: featureConsentBusy,
+    error: featureConsentError,
+    setError: setFeatureConsentError,
+  } = useFeatureConsent();
+  const aiInterviewConsentNeeded =
+    isGeneral && needsFeatureConsent(FEATURE_CONSENT_IDS.AI_INTERVIEW);
+  const aiInterviewConsentCopy =
+    FEATURE_CONSENT_COPY[FEATURE_CONSENT_IDS.AI_INTERVIEW];
   const [hasUnlimitedMocks, setHasUnlimitedMocks] = useState(false);
   const [billingAccessLoaded, setBillingAccessLoaded] = useState(!isGeneral);
   const { theme, toggleTheme } = useTheme();
@@ -987,6 +1003,7 @@ function AIInterviewTab({
   const [interviewLimitRequesting, setInterviewLimitRequesting] = useState(false);
   const [companyRequiredPromptOpen, setCompanyRequiredPromptOpen] = useState(false);
   const [interviewPlanPreviewOpen, setInterviewPlanPreviewOpen] = useState(false);
+  const [aiInterviewConsentChecked, setAiInterviewConsentChecked] = useState(false);
   const [roundTransitionMessage, setRoundTransitionMessage] = useState("");
   const [roundFeedbackView, setRoundFeedbackView] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -2131,13 +2148,17 @@ function AIInterviewTab({
       setError("Select a round type for each round.");
       return;
     }
+    setAiInterviewConsentChecked(false);
+    setFeatureConsentError("");
     setInterviewPlanPreviewOpen(true);
   };
 
   const closeInterviewPlanPreview = useCallback(() => {
-    if (loadingRef.current) return;
+    if (loadingRef.current || featureConsentBusy) return;
     setInterviewPlanPreviewOpen(false);
-  }, []);
+    setAiInterviewConsentChecked(false);
+    setFeatureConsentError("");
+  }, [featureConsentBusy, setFeatureConsentError]);
 
   const handleStartInterview = async () => {
     if (interviewLimitReached) {
@@ -2161,6 +2182,12 @@ function AIInterviewTab({
     }
 
     if (user?.betaAccess === false) return;
+
+    if (aiInterviewConsentNeeded) {
+      if (!aiInterviewConsentChecked) return;
+      const ok = await ensureFeatureConsent(FEATURE_CONSENT_IDS.AI_INTERVIEW);
+      if (!ok) return;
+    }
 
     loadingRef.current = true;
     roundFeedbackRef.current = null;
@@ -3420,9 +3447,16 @@ function AIInterviewTab({
       <InterviewPlanPreviewModal
         open={interviewPlanPreviewOpen}
         preview={interviewPlanPreview}
-        starting={loading}
+        starting={loading || featureConsentBusy}
         onCancel={closeInterviewPlanPreview}
         onConfirm={handleStartInterview}
+        requireFeatureConsent={aiInterviewConsentNeeded}
+        featureConsentChecked={aiInterviewConsentChecked}
+        onFeatureConsentCheckedChange={setAiInterviewConsentChecked}
+        featureConsentTitle={aiInterviewConsentCopy.title}
+        featureConsentSummary={aiInterviewConsentCopy.summary}
+        featureConsentCheckboxLabel={aiInterviewConsentCopy.checkboxLabel}
+        featureConsentError={featureConsentError}
       />
 
       {quitConfirmOpen && (

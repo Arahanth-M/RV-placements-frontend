@@ -109,6 +109,17 @@ export const authAPI = {
   submitCollegeOnboarding: (payload) =>
     API.post('/api/auth/college-onboarding', payload),
   getCollegeFeatures: () => API.get('/api/auth/college-features'),
+  acceptPrivacyConsent: ({ privacyPolicyVersion, accepted = true }) =>
+    API.post('/api/auth/privacy-consent', {
+      privacyPolicyVersion,
+      accepted,
+    }),
+  acceptFeatureConsent: ({ feature, version, accepted = true }) =>
+    API.post('/api/auth/feature-consent', {
+      feature,
+      version,
+      accepted,
+    }),
 };
 
 export const companyAPI = {

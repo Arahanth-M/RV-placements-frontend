@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router-dom";
 import { FaSpinner } from "react-icons/fa";
+import { GENERAL_BASE } from "../constants/tenant.js";
 
 export default function InterviewPlanPreviewModal({
   open,
@@ -8,6 +10,14 @@ export default function InterviewPlanPreviewModal({
   starting = false,
   onCancel,
   onConfirm,
+  /** When true, require an unticked-by-default checkbox before Begin. */
+  requireFeatureConsent = false,
+  featureConsentChecked = false,
+  onFeatureConsentCheckedChange,
+  featureConsentTitle = "",
+  featureConsentSummary = "",
+  featureConsentCheckboxLabel = "",
+  featureConsentError = "",
 }) {
   useEffect(() => {
     if (!open) return undefined;
@@ -105,6 +115,46 @@ export default function InterviewPlanPreviewModal({
           ))}
         </ol>
 
+        {requireFeatureConsent ? (
+          <div className="mt-5 rounded-xl border border-theme bg-theme-input/50 p-4">
+            {featureConsentTitle ? (
+              <p className="text-sm font-semibold text-theme-primary">{featureConsentTitle}</p>
+            ) : null}
+            {featureConsentSummary ? (
+              <p className="mt-1 text-sm leading-relaxed text-theme-secondary">
+                {featureConsentSummary}{" "}
+                <Link
+                  className="font-medium text-theme-accent underline"
+                  to={`${GENERAL_BASE}/privacy`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+            ) : null}
+            <label className="mt-3 flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0"
+                checked={featureConsentChecked}
+                disabled={starting}
+                onChange={(e) => onFeatureConsentCheckedChange?.(e.target.checked)}
+              />
+              <span className="text-sm text-theme-primary">
+                {featureConsentCheckboxLabel ||
+                  "I consent to processing my interview data for this mock."}
+              </span>
+            </label>
+            {featureConsentError ? (
+              <p className="mt-2 text-sm text-red-500" role="alert">
+                {featureConsentError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
           <button
             type="button"
@@ -117,7 +167,7 @@ export default function InterviewPlanPreviewModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={starting}
+            disabled={starting || (requireFeatureConsent && !featureConsentChecked)}
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition-colors disabled:bg-slate-700 disabled:text-slate-400"
           >
             {starting ? <FaSpinner className="h-4 w-4 animate-spin" aria-hidden /> : null}

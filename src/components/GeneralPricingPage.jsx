@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FaCheck, FaCheckCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
 import { billingAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { loadRazorpayCheckoutScript } from "../utils/loadRazorpay.js";
 import { GENERAL_COMPANY_CATEGORIES } from "../utils/generalCompanyCategory.js";
+import { GENERAL_BASE } from "../constants/tenant.js";
+import {
+  FEATURE_CONSENT_COPY,
+  FEATURE_CONSENT_IDS,
+} from "../constants/featureConsents.js";
+import { useFeatureConsent } from "../hooks/useFeatureConsent.js";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -14,6 +20,9 @@ import {
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 import ThemedSelect from "./ThemedSelect.jsx";
+
+const BILLING_CONSENT_COPY =
+  FEATURE_CONSENT_COPY[FEATURE_CONSENT_IDS.BILLING_CHECKOUT];
 
 const PLAN_ORDER = ["category", "prep_path", "mocks", "all_premium"];
 
@@ -336,6 +345,16 @@ function freeCreditLabel(unlimitedPaid, remaining, fallback = 1) {
 export default function GeneralPricingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const {
+    needsConsent: needsFeatureConsent,
+    ensureAccepted: ensureFeatureConsent,
+    busy: featureConsentBusy,
+    error: featureConsentError,
+    setError: setFeatureConsentError,
+  } = useFeatureConsent();
+  const billingConsentNeeded = needsFeatureConsent(
+    FEATURE_CONSENT_IDS.BILLING_CHECKOUT
+  );
   const [searchParams] = useSearchParams();
   const feature = String(searchParams.get("feature") || "").trim();
   const prefillCategory = String(searchParams.get("category") || "").trim();
@@ -347,6 +366,7 @@ export default function GeneralPricingPage() {
   const [busyPlan, setBusyPlan] = useState("");
   const [paying, setPaying] = useState(false);
   const [checkoutPreview, setCheckoutPreview] = useState(null);
+  const [billingConsentChecked, setBillingConsentChecked] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
@@ -463,9 +483,11 @@ export default function GeneralPricingPage() {
   }, [access?.entitlements, plans]);
 
   const closeCheckoutPreview = () => {
-    if (paying) return;
+    if (paying || featureConsentBusy) return;
     setCheckoutPreview(null);
     setBusyPlan("");
+    setBillingConsentChecked(false);
+    setFeatureConsentError("");
   };
 
   /** Quote first so we can show Base / GST / Total before Razorpay opens. */
@@ -492,6 +514,8 @@ export default function GeneralPricingPage() {
         setBusyPlan("");
         return;
       }
+      setBillingConsentChecked(false);
+      setFeatureConsentError("");
       setCheckoutPreview({
         plan,
         categoryId: plan.requiresCategory ? categoryId : "",
@@ -504,7 +528,14 @@ export default function GeneralPricingPage() {
   };
 
   const confirmCheckoutPreview = async () => {
-    if (!checkoutPreview?.plan || paying) return;
+    if (!checkoutPreview?.plan || paying || featureConsentBusy) return;
+    if (billingConsentNeeded && !billingConsentChecked) return;
+
+    if (billingConsentNeeded) {
+      const ok = await ensureFeatureConsent(FEATURE_CONSENT_IDS.BILLING_CHECKOUT);
+      if (!ok) return;
+    }
+
     const { plan, categoryId: previewCategoryId, quote } = checkoutPreview;
     setPaying(true);
     setError("");
@@ -931,10 +962,48 @@ export default function GeneralPricingPage() {
                 </dd>
               </div>
             </dl>
+
+            {billingConsentNeeded ? (
+              <div className="mt-5 rounded-xl border border-theme bg-theme-input/40 p-3">
+                <p className="text-sm font-semibold text-theme-primary">
+                  {BILLING_CONSENT_COPY.title}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-theme-secondary">
+                  {BILLING_CONSENT_COPY.summary}{" "}
+                  <Link
+                    className="font-medium text-theme-accent underline"
+                    to={`${GENERAL_BASE}/privacy`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
+                <label className="mt-3 flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    checked={billingConsentChecked}
+                    disabled={paying || featureConsentBusy}
+                    onChange={(e) => setBillingConsentChecked(e.target.checked)}
+                  />
+                  <span className="text-xs text-theme-primary sm:text-sm">
+                    {BILLING_CONSENT_COPY.checkboxLabel}
+                  </span>
+                </label>
+                {featureConsentError ? (
+                  <p className="mt-2 text-sm text-red-500" role="alert">
+                    {featureConsentError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                disabled={paying}
+                disabled={paying || featureConsentBusy}
                 onClick={closeCheckoutPreview}
                 className="rounded-xl border border-theme px-4 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-hero disabled:opacity-60"
               >
@@ -942,11 +1011,17 @@ export default function GeneralPricingPage() {
               </button>
               <button
                 type="button"
-                disabled={paying}
+                disabled={
+                  paying ||
+                  featureConsentBusy ||
+                  (billingConsentNeeded && !billingConsentChecked)
+                }
                 onClick={confirmCheckoutPreview}
                 className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
               >
-                {paying ? "Opening Razorpay…" : "Pay ₹" + checkoutPreview.quote.payableInr}
+                {paying || featureConsentBusy
+                  ? "Opening Razorpay…"
+                  : "Pay ₹" + checkoutPreview.quote.payableInr}
               </button>
             </div>
           </div>

@@ -36,7 +36,13 @@ import {
   writePrepProgress,
 } from "../utils/prepPathProgress.js";
 import { PLATFORM_FRESHER_ROLES } from "../constants/interviewCatalog.js";
+import {
+  FEATURE_CONSENT_COPY,
+  FEATURE_CONSENT_IDS,
+} from "../constants/featureConsents.js";
+import { useFeatureConsent } from "../hooks/useFeatureConsent.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
+import FeatureConsentInline from "./FeatureConsentInline.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
 import ThemedSelect from "./ThemedSelect.jsx";
 import {
@@ -1127,6 +1133,17 @@ function PrepPathPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isGeneral, appPath } = useTenantShell();
   const { user, setUser } = useAuth();
+  const {
+    needsConsent: needsFeatureConsent,
+    ensureAccepted: ensureFeatureConsent,
+    busy: featureConsentBusy,
+    error: featureConsentError,
+    setError: setFeatureConsentError,
+  } = useFeatureConsent();
+  const prepPathConsentNeeded =
+    isGeneral && needsFeatureConsent(FEATURE_CONSENT_IDS.PREP_PATH);
+  const prepPathConsentCopy = FEATURE_CONSENT_COPY[FEATURE_CONSENT_IDS.PREP_PATH];
+  const [prepPathConsentChecked, setPrepPathConsentChecked] = useState(false);
   const suggestRootRef = useRef(null);
   const companiesLoadPromiseRef = useRef(null);
 
@@ -1391,6 +1408,7 @@ function PrepPathPage() {
   const onGenerate = async (e) => {
     e.preventDefault();
     setError("");
+    setFeatureConsentError("");
     if (!selectedCompany?.id) {
       setError("Pick a company from the list.");
       return;
@@ -1409,6 +1427,10 @@ function PrepPathPage() {
     }
     if (!resumeFile) {
       setError("Upload a PDF or DOCX resume.");
+      return;
+    }
+    if (prepPathConsentNeeded && !prepPathConsentChecked) {
+      setError("Accept the PrepPath resume & JD consent to generate a plan.");
       return;
     }
     const dayCount = Math.round(Number(days));
@@ -1433,6 +1455,14 @@ function PrepPathPage() {
       }
       setError("Daily PrepPath limit reached. Try again tomorrow (IST).");
       return;
+    }
+
+    if (prepPathConsentNeeded) {
+      const ok = await ensureFeatureConsent(FEATURE_CONSENT_IDS.PREP_PATH);
+      if (!ok) {
+        setError("Could not save PrepPath consent. Please try again.");
+        return;
+      }
     }
 
     const autoOption = studyOptions.length === 1 ? studyOptions[0] : null;
@@ -1685,15 +1715,17 @@ function PrepPathPage() {
                       type="submit"
                       disabled={
                         generating ||
+                        featureConsentBusy ||
                         studyPromptOpen ||
                         applyingSchedule ||
+                        (prepPathConsentNeeded && !prepPathConsentChecked) ||
                         (quota &&
                           quota.unlimited !== true &&
                           Number(quota.remaining) <= 0)
                       }
                       className="inline-flex h-[38px] w-full items-center justify-center gap-1.5 rounded-lg bg-theme-accent px-3 text-xs font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60 sm:w-[6.75rem]"
                     >
-                      {generating ? (
+                      {generating || featureConsentBusy ? (
                         <>
                           <FaSpinner className="h-3 w-3 animate-spin" /> …
                         </>
@@ -1703,6 +1735,20 @@ function PrepPathPage() {
                     </button>
                   </div>
                 </div>
+
+                {prepPathConsentNeeded ? (
+                  <div className="mt-3">
+                    <FeatureConsentInline
+                      title={prepPathConsentCopy.title}
+                      summary={prepPathConsentCopy.summary}
+                      checkboxLabel={prepPathConsentCopy.checkboxLabel}
+                      checked={prepPathConsentChecked}
+                      onCheckedChange={setPrepPathConsentChecked}
+                      disabled={generating || featureConsentBusy}
+                      error={featureConsentError}
+                    />
+                  </div>
+                ) : null}
                 </div>
 
                 {formPeerDemand?.label ? (

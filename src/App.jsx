@@ -33,6 +33,7 @@ import StudentProfilePage from "./components/StudentProfilePage";
 import MySubmissionsPage from "./components/MySubmissionsPage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import CampusFeaturesTopup from "./components/CampusFeaturesTopup";
+import PrivacyConsentGate from "./components/PrivacyConsentGate";
 import Leaderboard from "./components/Leaderboard";
 import AIInterviews from "./components/AIInterviews";
 import GeneralMockInterviewPage from "./components/GeneralMockInterviewPage";
@@ -263,6 +264,7 @@ function AppShell({ base, homePath }) {
             <PlacementPopupWrapper />
           </>
         ) : null}
+        {base === GENERAL_BASE ? <PrivacyConsentGate /> : null}
       </div>
     </TenantShellProvider>
   );

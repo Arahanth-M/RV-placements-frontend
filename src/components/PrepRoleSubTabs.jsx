@@ -38,13 +38,14 @@ export default function PrepRoleSubTabs({
 
   return (
     <div
-      className={`flex w-full min-w-0 flex-col gap-3 rounded-2xl border px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-4 ${shell} ${className}`.trim()}
+      className={`flex w-full min-w-0 flex-row flex-wrap items-center gap-x-2 gap-y-2 rounded-2xl border px-3 py-3 sm:gap-x-4 sm:px-5 sm:py-4 ${shell} ${className}`.trim()}
       role="tablist"
       aria-label={ariaLabel}
       aria-busy={switching || undefined}
     >
-      <span className={labelClass}>Roles:</span>
-      <div className="flex min-w-0 flex-wrap gap-2">
+      <span className={`shrink-0 ${labelClass}`}>Roles:</span>
+      {/* Compact horizontal chips — wrap left-aligned, all visible (no scroll) */}
+      <div className="flex min-w-0 flex-1 flex-wrap content-start justify-start gap-1.5 sm:gap-2">
         {tabs.map((tab) => {
           const selected = tab.key === activeKey || (!activeKey && tab.key === "");
           return (
@@ -55,7 +56,7 @@ export default function PrepRoleSubTabs({
               aria-selected={selected}
               disabled={switching}
               onClick={() => onChange?.(tab.key)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 sm:px-5 sm:text-base ${
+              className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-semibold leading-none whitespace-nowrap transition-all duration-200 sm:px-4 sm:py-2 sm:text-sm md:px-5 md:text-base ${
                 selected ? activeTab : idleTab
               } ${switching ? "opacity-70" : ""}`}
             >

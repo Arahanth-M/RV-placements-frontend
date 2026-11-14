@@ -1286,11 +1286,11 @@ function CompanyDetails() {
         </div>
         )}
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation — compact horizontal chips that wrap evenly on mobile */}
         {!interviewFocusMode && (
         <div className="mb-4 sm:mb-6 min-w-0" ref={dropdownRef}>
           <div
-            className="flex w-full min-w-0 flex-wrap gap-2 p-1 bg-theme-card border border-theme rounded-xl md:gap-1.5 md:p-1.5"
+            className="flex w-full min-w-0 flex-wrap content-start justify-start gap-1.5 p-1.5 bg-theme-card border border-theme rounded-xl sm:gap-2 sm:p-2 md:gap-1.5 md:p-1.5"
             role="tablist"
             aria-label="Company sections"
             data-tour="company-details-tabs"
@@ -1301,7 +1301,7 @@ function CompanyDetails() {
               const isActive = activeTab === id;
 
               return (
-                <div key={id} className="relative">
+                <div key={id} className="relative shrink-0">
                   <button
                     type="button"
                     role="tab"
@@ -1312,7 +1312,7 @@ function CompanyDetails() {
                     onClick={() =>
                       isYearTab ? handleYearTabClick(id) : handleTabChange(id)
                     }
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold leading-tight transition-all duration-200 sm:px-3.5 sm:py-2 sm:text-sm md:rounded-lg md:px-4 md:py-2.5 md:text-base lg:px-5 lg:py-2.5 lg:text-lg whitespace-nowrap ${
+                    className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-semibold leading-none whitespace-nowrap transition-all duration-200 sm:gap-1.5 sm:px-3.5 sm:py-2 sm:text-sm md:rounded-lg md:px-4 md:py-2.5 md:text-base lg:px-5 lg:py-2.5 lg:text-lg ${
                       isActive
                         ? "bg-theme-hero text-theme-accent shadow-md"
                         : "text-theme-secondary hover:text-theme-primary hover:bg-theme-nav"

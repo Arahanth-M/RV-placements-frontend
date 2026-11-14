@@ -15,7 +15,13 @@ import { consumeTestEmailFeature } from "../utils/testEmailAccess.js";
 import { billingAPI, interviewAPI } from "../utils/api";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { getFocusOptionsForRoundType } from "../constants/interviewRoundFocus.js";
+import {
+  FEATURE_CONSENT_COPY,
+  FEATURE_CONSENT_IDS,
+} from "../constants/featureConsents.js";
+import { useFeatureConsent } from "../hooks/useFeatureConsent.js";
 import BrandLogo from "./BrandLogo.jsx";
+import FeatureConsentInline from "./FeatureConsentInline.jsx";
 import PaywallModal from "./PaywallPanel.jsx";
 import {
   PageBackButton,
@@ -377,6 +383,19 @@ export default function BehavioralCoachPage() {
   const navigate = useNavigate();
   const { user, setUser, loading: authLoading } = useAuth();
   const { appPath } = useTenantShell();
+  const {
+    needsConsent: needsFeatureConsent,
+    ensureAccepted: ensureFeatureConsent,
+    busy: featureConsentBusy,
+    error: featureConsentError,
+    setError: setFeatureConsentError,
+  } = useFeatureConsent();
+  const behavioralConsentNeeded = needsFeatureConsent(
+    FEATURE_CONSENT_IDS.BEHAVIORAL_COACH
+  );
+  const behavioralConsentCopy =
+    FEATURE_CONSENT_COPY[FEATURE_CONSENT_IDS.BEHAVIORAL_COACH];
+  const [behavioralConsentChecked, setBehavioralConsentChecked] = useState(false);
 
   const [phase, setPhase] = useState(PHASE_PICK);
   const [focus, setFocus] = useState("general");
@@ -506,6 +525,10 @@ export default function BehavioralCoachPage() {
       }
       return;
     }
+    if (behavioralConsentNeeded && !behavioralConsentChecked) {
+      setError("Accept the behavioural coach consent to get a question.");
+      return;
+    }
     const nextFocus =
       typeof focusOverride === "string" && focusOverride.trim()
         ? focusOverride.trim()
@@ -513,7 +536,15 @@ export default function BehavioralCoachPage() {
     setBusy(true);
     setBusyMode("generate");
     setError("");
+    setFeatureConsentError("");
     try {
+      if (behavioralConsentNeeded) {
+        const ok = await ensureFeatureConsent(FEATURE_CONSENT_IDS.BEHAVIORAL_COACH);
+        if (!ok) {
+          setError("Could not save behavioural coach consent. Please try again.");
+          return;
+        }
+      }
       const { data } = await interviewAPI.startBehavioralCoach({ focus: nextFocus });
       consumeTestEmailFeature(user, setUser, "behavioralRemaining");
       if (data?.unlimitedBehavioralCoach === true) {
@@ -688,14 +719,31 @@ export default function BehavioralCoachPage() {
                   );
                 })}
               </div>
+              {behavioralConsentNeeded ? (
+                <FeatureConsentInline
+                  title={behavioralConsentCopy.title}
+                  summary={behavioralConsentCopy.summary}
+                  checkboxLabel={behavioralConsentCopy.checkboxLabel}
+                  checked={behavioralConsentChecked}
+                  onCheckedChange={setBehavioralConsentChecked}
+                  disabled={busy || featureConsentBusy}
+                  error={featureConsentError}
+                />
+              ) : null}
+
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  disabled={busy || (behavioralLocked && !freeTierUsed)}
+                  disabled={
+                    busy ||
+                    featureConsentBusy ||
+                    (behavioralConsentNeeded && !behavioralConsentChecked) ||
+                    (behavioralLocked && !freeTierUsed)
+                  }
                   onClick={() => startPractice()}
                   className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
                 >
-                  {busy
+                  {busy || featureConsentBusy
                     ? "Generating question…"
                     : freeTierUsed
                       ? "Unlock unlimited"

@@ -3,6 +3,14 @@ import { GENERAL_BASE } from "../../constants/tenant.js";
 
 export const LEGAL_LAST_UPDATED = "15 September 2026";
 
+/**
+ * Bump when the Privacy Policy notice changes in a material way (consent re-prompt).
+ * Keep in sync with backend `PRIVACY_POLICY_VERSION` in
+ * RV-placements-backend/config/privacyPolicy.js
+ */
+export const PRIVACY_POLICY_VERSION = "2026-11-13";
+export const PRIVACY_POLICY_LAST_UPDATED = "13 November 2026";
+
 export const LEGAL_BRAND = "One Stop Placement Prep";
 export const LEGAL_OPERATOR = "Devomation AI";
 export const LEGAL_WEBSITE = "https://onestopplacementprep.in";
