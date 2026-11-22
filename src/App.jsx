@@ -74,6 +74,7 @@ import {
   isPlatformAdminUser,
 } from "./utils/collegeScope.js";
 import { TenantShellProvider } from "./context/TenantShellContext.jsx";
+import AuthLoadingShimmer from "./components/AuthLoadingShimmer.jsx";
 
 function PublicLegalShell() {
   return (
@@ -154,11 +155,7 @@ function TenantAccessGate() {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-theme-app text-theme-secondary">
-        Loading…
-      </div>
-    );
+    return <AuthLoadingShimmer />;
   }
 
   if (!user) {
@@ -182,11 +179,7 @@ function GeneralAccessGate() {
   const { loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-theme-app text-theme-secondary">
-        Loading…
-      </div>
-    );
+    return <AuthLoadingShimmer />;
   }
 
   return <Outlet />;

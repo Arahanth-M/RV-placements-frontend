@@ -59,9 +59,9 @@ export function SignInPanel({ onCollege, onGeneral }) {
       <button
         type="button"
         onClick={onGeneral}
-        className="flex w-full items-center gap-3 rounded-2xl border border-theme bg-theme-card px-3.5 py-3 text-left text-theme-primary transition hover:bg-theme-hero"
+        className="login-general-btn group flex w-full items-center gap-3 rounded-2xl border border-theme bg-theme-card px-3.5 py-3 text-left text-theme-primary shadow-sm transition duration-150 active:scale-[0.98] focus-visible:outline-none"
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-theme-hero">
+        <span className="login-general-btn-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-theme-hero">
           <GoogleMark />
         </span>
         <span className="min-w-0 flex-1">
@@ -70,7 +70,7 @@ export function SignInPanel({ onCollege, onGeneral }) {
             Use your personal email
           </span>
         </span>
-        <FaChevronRight className="h-3.5 w-3.5 shrink-0 text-theme-secondary" aria-hidden />
+        <FaChevronRight className="login-general-btn-chevron h-3.5 w-3.5 shrink-0 text-theme-secondary transition" aria-hidden />
       </button>
 
       <p className="mt-3 text-xs leading-relaxed text-theme-secondary">

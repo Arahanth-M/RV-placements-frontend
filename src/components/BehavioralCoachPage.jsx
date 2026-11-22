@@ -720,18 +720,20 @@ export default function BehavioralCoachPage() {
                 })}
               </div>
               {behavioralConsentNeeded ? (
-                <FeatureConsentInline
-                  title={behavioralConsentCopy.title}
-                  summary={behavioralConsentCopy.summary}
-                  checkboxLabel={behavioralConsentCopy.checkboxLabel}
-                  checked={behavioralConsentChecked}
-                  onCheckedChange={setBehavioralConsentChecked}
-                  disabled={busy || featureConsentBusy}
-                  error={featureConsentError}
-                />
+                <div className="min-w-0 w-full">
+                  <FeatureConsentInline
+                    title={behavioralConsentCopy.title}
+                    summary={behavioralConsentCopy.summary}
+                    checkboxLabel={behavioralConsentCopy.checkboxLabel}
+                    checked={behavioralConsentChecked}
+                    onCheckedChange={setBehavioralConsentChecked}
+                    disabled={busy || featureConsentBusy}
+                    error={featureConsentError}
+                  />
+                </div>
               ) : null}
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
                 <button
                   type="button"
                   disabled={
@@ -741,7 +743,7 @@ export default function BehavioralCoachPage() {
                     (behavioralLocked && !freeTierUsed)
                   }
                   onClick={() => startPractice()}
-                  className="rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                  className="min-h-[44px] w-full rounded-xl bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 sm:w-auto"
                 >
                   {busy || featureConsentBusy
                     ? "Generating question…"
@@ -760,7 +762,7 @@ export default function BehavioralCoachPage() {
                       );
                       setPaywallOpen(true);
                     }}
-                    className="rounded-xl border border-theme px-4 py-2.5 text-sm font-semibold text-theme-secondary hover:border-theme-accent/40 hover:text-theme-accent"
+                    className="min-h-[44px] w-full rounded-xl border border-theme px-4 py-2.5 text-sm font-semibold text-theme-secondary hover:border-theme-accent/40 hover:text-theme-accent sm:w-auto"
                   >
                     View pricing
                   </button>

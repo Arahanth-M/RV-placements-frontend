@@ -1737,7 +1737,7 @@ function PrepPathPage() {
                 </div>
 
                 {prepPathConsentNeeded ? (
-                  <div className="mt-3">
+                  <div className="mt-3 min-w-0 w-full">
                     <FeatureConsentInline
                       title={prepPathConsentCopy.title}
                       summary={prepPathConsentCopy.summary}

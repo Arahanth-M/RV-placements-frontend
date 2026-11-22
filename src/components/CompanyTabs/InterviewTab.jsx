@@ -591,6 +591,7 @@ function InterviewTab({
           intuition: company?.interviewQuestions_intuition?.[index],
           explanation: company?.interviewQuestions_explanation?.[index],
           kind: company?.interviewQuestions_kind?.[index] || "non_coding",
+          prepRoleKey: company?.interviewQuestions_prepRoleKey?.[index] || "",
         })
       );
       return;
@@ -651,7 +652,13 @@ function InterviewTab({
     try {
       const body =
         isGeneral && platformDraft
-          ? platformQuestionEditPayload(platformDraft)
+          ? platformQuestionEditPayload({
+              ...platformDraft,
+              prepRoleKey:
+                platformDraft.prepRoleKey ||
+                company?.interviewQuestions_prepRoleKey?.[editIQIndex] ||
+                "",
+            })
           : { question: editIQQuestion, solution: editIQSolution };
       await contentAdmin.updateInterviewQuestion(company._id, editIQIndex, body, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
@@ -1651,6 +1658,8 @@ function InterviewTab({
           showKindSelect
           showCodingFields
           requireExplanation={false}
+          showBrandLogo
+          subtitle="Submit a clear interview question with an optional solution."
         />
       ) : null}
 
@@ -1699,7 +1708,7 @@ function InterviewTab({
       {editIPIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4 py-6">
           <div className="flex max-h-[min(90vh,860px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
-            <div className="border-b border-theme px-6 py-4">
+            <div className="shrink-0 border-b border-theme px-6 py-4">
               <h3 className="text-xl font-semibold text-theme-primary">
                 Edit Interview Process {editIPIndex + 1}
               </h3>
@@ -1709,7 +1718,7 @@ function InterviewTab({
                   : "This entry is saved as one write-up."}
               </p>
             </div>
-            <form onSubmit={handleSaveEditIP} className="flex min-h-0 flex-1 flex-col">
+            <form onSubmit={handleSaveEditIP} className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
                 {editIPUsesStoredShape ? (
                   <InterviewProcessFields
@@ -1729,7 +1738,7 @@ function InterviewTab({
                   />
                 )}
               </div>
-              <div className="flex justify-end gap-3 border-t border-theme px-6 py-4">
+              <div className="flex shrink-0 justify-end gap-3 border-t border-theme bg-theme-card px-6 py-4">
                 <button
                   type="button"
                   className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-nav"

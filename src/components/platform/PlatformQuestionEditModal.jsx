@@ -1,3 +1,5 @@
+import BrandLogo from "../BrandLogo.jsx";
+
 const LANGUAGE_FIELDS = [
   { id: "cpp", label: "C++ solution" },
   { id: "java", label: "Java solution" },
@@ -5,10 +7,13 @@ const LANGUAGE_FIELDS = [
 ];
 
 const fieldClass =
-  "w-full rounded-lg border border-slate-600 bg-slate-900 p-3 text-sm text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+  "w-full rounded-xl border border-theme bg-theme-input px-4 py-3 text-sm text-theme-primary placeholder:text-theme-muted focus:outline-none focus:ring-2 focus:ring-theme-accent";
+
+const selectClass =
+  "w-full appearance-none rounded-xl border border-theme bg-theme-input px-4 py-3 text-sm text-theme-primary focus:outline-none focus:ring-2 focus:ring-theme-accent [color-scheme:light] dark:[color-scheme:dark]";
 
 /**
- * Platform admin editor for a company question: explanation, optional intuition, and language solutions.
+ * Platform admin / general editor for a company question: explanation, optional intuition, and language solutions.
  */
 export default function PlatformQuestionEditModal({
   title,
@@ -20,6 +25,8 @@ export default function PlatformQuestionEditModal({
   showCodingFields = true,
   showKindSelect = false,
   requireExplanation = true,
+  showBrandLogo = false,
+  subtitle = "",
 }) {
   if (!draft) return null;
 
@@ -34,36 +41,64 @@ export default function PlatformQuestionEditModal({
       solutions: { ...draft.solutions, [language]: value },
     });
 
+  const resolvedSubtitle =
+    subtitle ||
+    (codingFieldsVisible
+      ? "Intuition and language solutions are optional — leave blank to fill later or via Enhance."
+      : "");
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="flex max-h-[min(90vh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
-        <div className="border-b border-slate-700 px-5 py-4">
-          <h3 className="text-lg font-semibold text-amber-400">{title}</h3>
-          {codingFieldsVisible ? (
-            <p className="mt-1 text-sm text-slate-400">
-              Intuition and language solutions are optional — leave blank to fill later or via Enhance.
-            </p>
-          ) : null}
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/55 px-4 py-6 backdrop-blur-sm sm:items-center">
+      <div className="my-auto flex max-h-[min(90vh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-theme bg-theme-card shadow-2xl">
+        <div className="shrink-0 border-b border-theme bg-theme-card px-5 py-4 sm:px-6">
+          {showBrandLogo ? (
+            <div className="flex items-center gap-3">
+              <div className="h-14 w-52 shrink-0 rounded-lg border border-theme bg-white/95 px-3 py-2 shadow-sm">
+                <BrandLogo />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xl font-semibold text-theme-primary">{title}</h3>
+                {resolvedSubtitle ? (
+                  <p className="mt-1 text-sm text-theme-secondary">{resolvedSubtitle}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <>
+              <h3 className="text-lg font-semibold text-theme-accent sm:text-xl">{title}</h3>
+              {resolvedSubtitle ? (
+                <p className="mt-1 text-sm text-theme-secondary">{resolvedSubtitle}</p>
+              ) : null}
+            </>
+          )}
         </div>
-        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
             {showKindSelect ? (
               <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-200">Question type</span>
-                <select
-                  value={draft.kind || "non_coding"}
-                  onChange={(e) => setField("kind", e.target.value)}
-                  className={fieldClass}
-                  aria-label="Question type"
-                >
-                  <option value="coding">Coding / DSA</option>
-                  <option value="non_coding">Theory / non-coding</option>
-                  <option value="sql">SQL</option>
-                </select>
+                <span className="text-sm font-medium text-theme-primary">Question type</span>
+                <div className="relative">
+                  <select
+                    value={draft.kind || "non_coding"}
+                    onChange={(e) => setField("kind", e.target.value)}
+                    className={selectClass}
+                    aria-label="Question type"
+                  >
+                    <option value="coding">Coding / DSA</option>
+                    <option value="non_coding">Theory / non-coding</option>
+                    <option value="sql">SQL</option>
+                  </select>
+                  <span
+                    className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-theme-secondary"
+                    aria-hidden
+                  >
+                    ▾
+                  </span>
+                </div>
               </label>
             ) : null}
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-200">Question</span>
+              <span className="text-sm font-medium text-theme-primary">Question</span>
               <textarea
                 value={draft.question}
                 onChange={(e) => setField("question", e.target.value)}
@@ -74,8 +109,8 @@ export default function PlatformQuestionEditModal({
             </label>
             {codingFieldsVisible ? (
               <label className="block space-y-1.5">
-                <span className="text-sm font-medium text-slate-200">
-                  Intuition <span className="font-normal text-slate-400">(optional)</span>
+                <span className="text-sm font-medium text-theme-primary">
+                  Intuition <span className="font-normal text-theme-secondary">(optional)</span>
                 </span>
                 <textarea
                   value={draft.intuition}
@@ -87,10 +122,10 @@ export default function PlatformQuestionEditModal({
               </label>
             ) : null}
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium text-slate-200">
+              <span className="text-sm font-medium text-theme-primary">
                 Explanation
                 {!requireExplanation ? (
-                  <span className="font-normal text-slate-400"> (optional)</span>
+                  <span className="font-normal text-theme-secondary"> (optional)</span>
                 ) : null}
               </span>
               <textarea
@@ -104,9 +139,9 @@ export default function PlatformQuestionEditModal({
             {codingFieldsVisible
               ? LANGUAGE_FIELDS.map((field) => (
                   <label key={field.id} className="block space-y-1.5">
-                    <span className="text-sm font-medium text-slate-200">
+                    <span className="text-sm font-medium text-theme-primary">
                       {field.label}{" "}
-                      <span className="font-normal text-slate-400">(optional)</span>
+                      <span className="font-normal text-theme-secondary">(optional)</span>
                     </span>
                     <textarea
                       value={draft.solutions[field.id]}
@@ -120,10 +155,10 @@ export default function PlatformQuestionEditModal({
                 ))
               : null}
           </div>
-          <div className="flex justify-end gap-2 border-t border-slate-700 px-5 py-4">
+          <div className="flex shrink-0 justify-end gap-3 border-t border-theme bg-theme-card px-5 py-4 sm:px-6">
             <button
               type="button"
-              className="rounded-lg border border-slate-600 px-4 py-2 text-slate-300 transition-colors hover:bg-slate-700"
+              className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary transition-colors hover:bg-theme-nav"
               onClick={onCancel}
               disabled={saving}
             >
@@ -132,7 +167,7 @@ export default function PlatformQuestionEditModal({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+              className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>

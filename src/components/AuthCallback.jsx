@@ -12,6 +12,7 @@ import { useAuth } from '../utils/AuthContext';
 import { authAPI, studentAPI } from '../utils/api';
 import { canAccessRvceTenant, isPlatformAdminUser } from '../utils/collegeScope.js';
 import BlockedLoginInterestForm from './BlockedLoginInterestForm';
+import AuthLoadingShimmer from './AuthLoadingShimmer.jsx';
 import {
   LOGIN_INTENT_KEY,
   LOGIN_INTENT_SPC,
@@ -98,7 +99,15 @@ const AuthCallback = () => {
             
             // Skip student data fetch for admin users
             if (adminFlag) {
-              handleLoginComplete(fetchedUserData, signupFlag, adminFlag, loginIntent, null, campusUnlisted);
+              handleLoginComplete(
+                fetchedUserData,
+                signupFlag,
+                adminFlag,
+                loginIntent,
+                null,
+                campusUnlisted,
+                platformAdmin
+              );
               return;
             }
             
@@ -121,6 +130,24 @@ const AuthCallback = () => {
           setLoginError({
             title: "Login through ur official college emailId",
             message: "",
+          });
+        } else if (reason === 'email_unverified') {
+          setLoginError({
+            title: "Email not verified",
+            message:
+              "Sign in with a Google account that has a verified email address.",
+          });
+        } else if (reason === 'disposable_email') {
+          setLoginError({
+            title: "Temporary emails are not allowed",
+            message:
+              "Please sign in with a permanent email (for example Gmail, Outlook, or your college email).",
+          });
+        } else if (reason === 'login_limit') {
+          setLoginError({
+            title: "Too many sign-ins",
+            message:
+              "This email has reached the maximum of 3 sign-ins in 24 hours. Try again later, or use your own account.",
           });
         } else if (reason === 'domain') {
           const intent = urlParams.get('blocked_intent') || "";
@@ -203,10 +230,26 @@ const AuthCallback = () => {
       // Proceed without student data — user can still use other features
     }
     
-    handleLoginComplete(user, signup, admin, loginIntent, hasStudentProfile, campusUnlisted);
+    handleLoginComplete(
+      user,
+      signup,
+      admin,
+      loginIntent,
+      hasStudentProfile,
+      campusUnlisted,
+      false
+    );
   };
 
-  const handleLoginComplete = (user, signup, admin, loginIntent, hasStudentProfile, campusUnlisted) => {
+  const handleLoginComplete = (
+    user,
+    signup,
+    admin,
+    loginIntent,
+    hasStudentProfile,
+    campusUnlisted,
+    platformAdmin = false
+  ) => {
     const userId = user?.userId || user?._id;
     const useGeneral = !canAccessRvceTenant(user);
     sessionStorage.removeItem(LOGIN_INTENT_KEY);
@@ -235,22 +278,27 @@ const AuthCallback = () => {
       }
     }
 
+    // Soft navigate after refreshUser so auth context is already warm — avoids a
+    // full reload that flashes "Loading..." on admin/general gates.
     if (admin) {
       clearLoginRedirectPath();
-      window.location.replace(
-        isPlatformAdminUser(user)
+      navigate(
+        platformAdmin || isPlatformAdminUser(user)
           ? generalPath("/admin/dashboard")
-          : tenantPath("/admin/dashboard")
+          : tenantPath("/admin/dashboard"),
+        { replace: true }
       );
     } else if (loginIntent === LOGIN_INTENT_SPC) {
       clearLoginRedirectPath();
-      window.location.replace(tenantPath("/spc-dashboard"));
+      navigate(tenantPath("/spc-dashboard"), { replace: true });
     } else if (
       useGeneral &&
       (campusUnlisted || loginIntent === LOGIN_INTENT_CAMPUS)
     ) {
       clearLoginRedirectPath();
-      window.location.replace(`${GENERAL_POST_LOGIN_PATH}?reason=campus_not_onboarded`);
+      navigate(`${GENERAL_POST_LOGIN_PATH}?reason=campus_not_onboarded`, {
+        replace: true,
+      });
     } else {
       // Honor the route the user started from (e.g. /general/challenges → Login).
       const storedRedirect = consumeLoginRedirectPath();
@@ -260,8 +308,9 @@ const AuthCallback = () => {
       const safeRedirect = toPostLoginAppPath(storedRedirect, {
         useGeneral: preferGeneral,
       });
-      window.location.replace(
-        safeRedirect || (preferGeneral ? GENERAL_POST_LOGIN_PATH : TENANT_BASE)
+      navigate(
+        safeRedirect || (preferGeneral ? GENERAL_POST_LOGIN_PATH : TENANT_BASE),
+        { replace: true }
       );
     }
     setIsProcessing(false);
@@ -317,37 +366,7 @@ const AuthCallback = () => {
   }
 
   if (isProcessing) {
-    return (
-      <div className="min-h-screen bg-theme-app">
-        <div className="w-full py-6 sm:py-10 md:py-14 px-4 sm:px-6 bg-theme-hero">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
-              <div className="flex-1 w-full space-y-4">
-                <div className="shimmer-box h-12 sm:h-14 md:h-16 w-full rounded-xl" />
-                <div className="shimmer-box h-6 sm:h-7 w-[92%] rounded-lg" />
-                <div className="shimmer-box h-6 sm:h-7 w-[85%] rounded-lg" />
-              </div>
-              <div className="flex-1 w-full">
-                <div className="shimmer-box w-full rounded-xl" style={{ minHeight: '300px', maxHeight: '70vh' }} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-          <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="bg-theme-card border-2 border-theme-accent rounded-2xl p-6 sm:p-8 space-y-3">
-                <div className="shimmer-box h-10 w-10 rounded-full" />
-                <div className="shimmer-box h-5 w-3/4 rounded-md" />
-                <div className="shimmer-box h-4 w-full rounded-md" />
-                <div className="shimmer-box h-4 w-[90%] rounded-md" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <AuthLoadingShimmer />;
   }
 
   return null;

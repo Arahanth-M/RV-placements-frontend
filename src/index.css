@@ -399,6 +399,35 @@ select.spc-field-control {
 .login-menu-option:hover {
   background-color: var(--nav-hover);
 }
+
+/* General dashboard CTA — theme tokens (Tailwind opacity on CSS vars is unreliable). */
+.login-general-btn {
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+.login-general-btn:hover,
+.login-general-btn:focus-visible {
+  background-color: var(--bg-card-hover);
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent),
+    0 8px 20px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.login-general-btn:active {
+  background-color: var(--nav-active);
+  border-color: var(--accent);
+}
+.login-general-btn:hover .login-general-btn-icon,
+.login-general-btn:focus-visible .login-general-btn-icon {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.login-general-btn:hover .login-general-btn-chevron,
+.login-general-btn:focus-visible .login-general-btn-chevron {
+  color: var(--accent);
+}
 .login-intent-backdrop {
   background-color: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(8px);

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FaCheck, FaCheckCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
 import { billingAPI } from "../utils/api";
 import { useAuth } from "../utils/AuthContext";
 import { loadRazorpayCheckoutScript } from "../utils/loadRazorpay.js";
 import { GENERAL_COMPANY_CATEGORIES } from "../utils/generalCompanyCategory.js";
-import { GENERAL_BASE } from "../constants/tenant.js";
 import {
   FEATURE_CONSENT_COPY,
   FEATURE_CONSENT_IDS,
 } from "../constants/featureConsents.js";
 import { useFeatureConsent } from "../hooks/useFeatureConsent.js";
+import FeatureConsentInline from "./FeatureConsentInline.jsx";
 import {
   PageBackButton,
   PageBackNavRow,
@@ -382,6 +382,15 @@ export default function GeneralPricingPage() {
       setAccess(null);
     }
   };
+
+  useEffect(() => {
+    if (!checkoutPreview) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [checkoutPreview]);
 
   useEffect(() => {
     let cancelled = false;
@@ -931,81 +940,67 @@ export default function GeneralPricingPage() {
 
       {checkoutPreview ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="gst-checkout-title"
         >
-          <div className="w-full max-w-md rounded-2xl border border-theme bg-theme-card p-6 shadow-xl">
-            <h3 id="gst-checkout-title" className="text-lg font-semibold text-theme-primary">
-              Confirm payment
-            </h3>
-            <p className="mt-1 text-sm text-theme-secondary">
-              {checkoutPreview.plan?.name}
-              {checkoutPreview.plan?.requiresCategory && checkoutPreview.categoryId
-                ? ` · ${categoryLabel(checkoutPreview.categoryId)}`
-                : ""}
-            </p>
-            <dl className="mt-5 space-y-2.5 text-sm">
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-theme-secondary">Base</dt>
-                <dd className="font-medium text-theme-primary">₹{checkoutPreview.quote.baseInr}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <dt className="text-theme-secondary">GST (18%)</dt>
-                <dd className="font-medium text-theme-primary">₹{checkoutPreview.quote.gstInr}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-4 border-t border-theme pt-2.5">
-                <dt className="font-semibold text-theme-primary">Total</dt>
-                <dd className="text-lg font-semibold text-theme-primary">
-                  ₹{checkoutPreview.quote.payableInr}
-                </dd>
-              </div>
-            </dl>
+          <div className="flex max-h-[min(92dvh,92vh)] w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-theme bg-theme-card shadow-xl sm:rounded-2xl">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
+              <h3
+                id="gst-checkout-title"
+                className="text-base font-semibold text-theme-primary sm:text-lg"
+              >
+                Confirm payment
+              </h3>
+              <p className="mt-1 text-xs text-theme-secondary sm:text-sm">
+                {checkoutPreview.plan?.name}
+                {checkoutPreview.plan?.requiresCategory && checkoutPreview.categoryId
+                  ? ` · ${categoryLabel(checkoutPreview.categoryId)}`
+                  : ""}
+              </p>
+              <dl className="mt-4 space-y-2.5 text-sm sm:mt-5">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-theme-secondary">Base</dt>
+                  <dd className="font-medium text-theme-primary">
+                    ₹{checkoutPreview.quote.baseInr}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-theme-secondary">GST (18%)</dt>
+                  <dd className="font-medium text-theme-primary">
+                    ₹{checkoutPreview.quote.gstInr}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4 border-t border-theme pt-2.5">
+                  <dt className="font-semibold text-theme-primary">Total</dt>
+                  <dd className="text-lg font-semibold text-theme-primary">
+                    ₹{checkoutPreview.quote.payableInr}
+                  </dd>
+                </div>
+              </dl>
 
-            {billingConsentNeeded ? (
-              <div className="mt-5 rounded-xl border border-theme bg-theme-input/40 p-3">
-                <p className="text-sm font-semibold text-theme-primary">
-                  {BILLING_CONSENT_COPY.title}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-theme-secondary">
-                  {BILLING_CONSENT_COPY.summary}{" "}
-                  <Link
-                    className="font-medium text-theme-accent underline"
-                    to={`${GENERAL_BASE}/privacy`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Privacy Policy
-                  </Link>
-                  .
-                </p>
-                <label className="mt-3 flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-4 w-4 shrink-0"
+              {billingConsentNeeded ? (
+                <div className="mt-4 sm:mt-5">
+                  <FeatureConsentInline
+                    title={BILLING_CONSENT_COPY.title}
+                    summary={BILLING_CONSENT_COPY.summary}
+                    checkboxLabel={BILLING_CONSENT_COPY.checkboxLabel}
                     checked={billingConsentChecked}
+                    onCheckedChange={setBillingConsentChecked}
                     disabled={paying || featureConsentBusy}
-                    onChange={(e) => setBillingConsentChecked(e.target.checked)}
+                    error={featureConsentError}
                   />
-                  <span className="text-xs text-theme-primary sm:text-sm">
-                    {BILLING_CONSENT_COPY.checkboxLabel}
-                  </span>
-                </label>
-                {featureConsentError ? (
-                  <p className="mt-2 text-sm text-red-500" role="alert">
-                    {featureConsentError}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
+                </div>
+              ) : null}
+            </div>
 
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-theme p-4 sm:flex-row sm:justify-end sm:p-5">
               <button
                 type="button"
                 disabled={paying || featureConsentBusy}
                 onClick={closeCheckoutPreview}
-                className="rounded-xl border border-theme px-4 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-hero disabled:opacity-60"
+                className="min-h-[44px] w-full rounded-xl border border-theme px-4 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-hero disabled:opacity-60 sm:w-auto"
               >
                 Cancel
               </button>
@@ -1017,7 +1012,7 @@ export default function GeneralPricingPage() {
                   (billingConsentNeeded && !billingConsentChecked)
                 }
                 onClick={confirmCheckoutPreview}
-                className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+                className="min-h-[44px] w-full rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60 sm:w-auto"
               >
                 {paying || featureConsentBusy
                   ? "Opening Razorpay…"

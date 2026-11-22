@@ -705,20 +705,12 @@ const Header = () => {
         <div className="flex min-w-0 shrink-0 items-center gap-1.5 pl-2 pr-1.5 py-2 sm:gap-2.5 sm:pl-5 sm:pr-3 sm:py-2.5">
           <Link
             to={homePath || base}
-            className={
-              isGeneral
-                ? "flex h-9 max-w-[11rem] shrink-0 items-center rounded-xl border border-theme bg-theme-hero px-2.5 py-1 font-serif text-sm text-theme-primary tracking-tight sm:h-12 sm:max-w-none sm:px-3 sm:text-base"
-                : "flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-theme bg-white px-1.5 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-12 sm:w-[4.5rem] sm:px-2"
-            }
+            className="flex h-9 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-theme bg-white px-1.5 py-1 shadow-md transition hover:bg-white/95 hover:shadow-md sm:h-12 sm:w-[4.5rem] sm:px-2"
             title={isGeneral ? "One Stop Placement Prep — Home" : "RVCE Placement — Home"}
           >
-            {isGeneral ? (
-              <span className="truncate">
-                onestop<span className="italic text-theme-accent">placementprep</span>
-              </span>
-            ) : (
-              <BrandLogo alt="" />
-            )}
+            <BrandLogo
+              alt={isGeneral ? "One Stop Placement Prep" : "RVCE Placement"}
+            />
           </Link>
           <Link
             to={appPath("/feedback")}

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { TENANT_BASE, GENERAL_BASE, isGeneralAppPath } from "../constants/tenant.js";
 import { isPlatformAdminUser } from "../utils/collegeScope.js";
+import AuthLoadingShimmer from "./AuthLoadingShimmer.jsx";
 import Login from "./Login";
 
 const ProtectedAdminRoute = ({ children }) => {
@@ -19,11 +20,7 @@ const ProtectedAdminRoute = ({ children }) => {
   }, [user, canAccessCampusAdmin, loading, navigate, home]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <AuthLoadingShimmer />;
   }
 
   if (!user) {

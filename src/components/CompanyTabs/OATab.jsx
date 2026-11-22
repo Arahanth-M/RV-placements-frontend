@@ -472,6 +472,7 @@ function OATab({
           intuition: safeCompany.onlineQuestions_intuition?.[index],
           explanation: safeCompany.onlineQuestions_explanation?.[index],
           kind: safeCompany.onlineQuestions_kind?.[index] || "non_coding",
+          prepRoleKey: safeCompany.onlineQuestions_prepRoleKey?.[index] || "",
         })
       );
       return;
@@ -543,9 +544,18 @@ function OATab({
   const handleSaveMcq = async (e) => {
     e.preventDefault();
     if (!safeCompany._id || !mcqDraft) return;
+    const existingMcqRoleKey =
+      editMcqIndex != null
+        ? String(
+            (Array.isArray(safeCompany.mcqQuestions)
+              ? safeCompany.mcqQuestions
+              : [])[editMcqIndex]?.prepRoleKey ?? ""
+          )
+        : "";
     const payload = {
       ...platformMcqEditPayload(mcqDraft),
-      prepRoleKey: contributionRoleKeyRef.current || "",
+      prepRoleKey:
+        existingMcqRoleKey || contributionRoleKeyRef.current || "",
     };
     setActionLoading(true);
     try {
@@ -598,7 +608,13 @@ function OATab({
     try {
       const body =
         isGeneral && platformDraft
-          ? platformQuestionEditPayload(platformDraft)
+          ? platformQuestionEditPayload({
+              ...platformDraft,
+              prepRoleKey:
+                platformDraft.prepRoleKey ||
+                safeCompany.onlineQuestions_prepRoleKey?.[editIndex] ||
+                "",
+            })
           : { question: editQuestion, solution: editSolution };
       await contentAdmin.updateOAQuestion(safeCompany._id, editIndex, body, adminOpts);
       if (onCompanyUpdate) onCompanyUpdate();
@@ -1511,6 +1527,8 @@ function OATab({
           showKindSelect
           showCodingFields
           requireExplanation={false}
+          showBrandLogo
+          subtitle="Submit a clear OA question with an optional solution."
         />
       ) : null}
 

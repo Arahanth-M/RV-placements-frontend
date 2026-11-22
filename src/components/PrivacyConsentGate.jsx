@@ -64,6 +64,15 @@ export default function PrivacyConsentGate() {
     }
   }, [showGate, user?.userId, user?._id, requiredVersion]);
 
+  useEffect(() => {
+    if (!showGate) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showGate]);
+
   const handleAccept = useCallback(async () => {
     if (!checked || submitting) return;
     setSubmitting(true);
@@ -136,70 +145,72 @@ export default function PrivacyConsentGate() {
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:px-4 sm:py-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="privacy-consent-title"
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-theme bg-theme-card p-6 shadow-2xl sm:p-7">
-        <h2
-          id="privacy-consent-title"
-          className="text-xl font-bold text-theme-primary"
-        >
-          Privacy notice
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-theme-secondary">
-          Before you use {LEGAL_BRAND}, please review how we collect and use your personal
-          data (account, usage, AI interviews, payments, and related activity) under India&apos;s
-          Digital Personal Data Protection Act, 2023.
-        </p>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-theme-secondary">
-          <li>We process data only for stated product purposes.</li>
-          <li>You can request access, correction, or deletion later.</li>
-          <li>You can withdraw consent by contacting us or closing your account.</li>
-        </ul>
-        <p className="mt-3 text-sm text-theme-secondary">
-          Full notice:{" "}
-          <Link
-            className="font-medium text-theme-accent underline"
-            to={`${GENERAL_BASE}/privacy`}
-            target="_blank"
-            rel="noopener noreferrer"
+      <div className="flex max-h-[min(92dvh,92vh)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-theme bg-theme-card shadow-2xl sm:rounded-3xl">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-7">
+          <h2
+            id="privacy-consent-title"
+            className="text-lg font-bold text-theme-primary sm:text-xl"
           >
-            Privacy Policy
-          </Link>
-          <span className="text-theme-muted">
-            {" "}
-            (version {requiredVersion})
-          </span>
-        </p>
-
-        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-theme bg-theme-input/40 px-3 py-3">
-          <input
-            type="checkbox"
-            className="mt-1 h-4 w-4 shrink-0 accent-[var(--theme-accent,theme(colors.indigo.500))]"
-            checked={checked}
-            onChange={(e) => setChecked(e.target.checked)}
-            disabled={submitting || loggingOut}
-          />
-          <span className="text-sm text-theme-primary">
-            I have read the Privacy Policy and I consent to the processing of my personal data
-            as described in it for the general platform.
-          </span>
-        </label>
-
-        {error ? (
-          <p className="mt-3 text-sm text-red-500" role="alert">
-            {error}
+            Privacy notice
+          </h2>
+          <p className="mt-2 text-xs leading-relaxed text-theme-secondary sm:mt-3 sm:text-sm">
+            Before you use {LEGAL_BRAND}, please review how we collect and use your personal
+            data (account, usage, AI interviews, payments, and related activity) under India&apos;s
+            Digital Personal Data Protection Act, 2023.
           </p>
-        ) : null}
+          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-xs text-theme-secondary sm:text-sm">
+            <li>We process data only for stated product purposes.</li>
+            <li>You can request access, correction, or deletion later.</li>
+            <li>You can withdraw consent by contacting us or closing your account.</li>
+          </ul>
+          <p className="mt-3 text-xs text-theme-secondary sm:text-sm">
+            Full notice:{" "}
+            <Link
+              className="font-medium text-theme-accent underline underline-offset-2"
+              to={`${GENERAL_BASE}/privacy`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Privacy Policy
+            </Link>
+            <span className="text-theme-muted">
+              {" "}
+              (version {requiredVersion})
+            </span>
+          </p>
 
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <label className="mt-4 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-xl border border-theme bg-theme-input/40 px-3 py-3 sm:mt-5">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--theme-accent,theme(colors.indigo.500))] sm:mt-1 sm:h-4 sm:w-4"
+              checked={checked}
+              onChange={(e) => setChecked(e.target.checked)}
+              disabled={submitting || loggingOut}
+            />
+            <span className="min-w-0 flex-1 break-words text-xs leading-relaxed text-theme-primary sm:text-sm">
+              I have read the Privacy Policy and I consent to the processing of my personal data
+              as described in it for the general platform.
+            </span>
+          </label>
+
+          {error ? (
+            <p className="mt-3 text-xs text-red-500 sm:text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-theme bg-theme-card p-4 sm:flex-row sm:justify-end sm:gap-2 sm:p-5">
           <button
             type="button"
             onClick={handleDecline}
             disabled={submitting || loggingOut}
-            className="rounded-xl border border-theme px-4 py-2.5 text-sm font-medium text-theme-secondary hover:text-theme-primary disabled:opacity-50"
+            className="min-h-[44px] w-full rounded-xl border border-theme px-4 py-2.5 text-sm font-medium text-theme-secondary hover:text-theme-primary disabled:opacity-50 sm:w-auto"
           >
             {loggingOut ? "Signing out…" : "Decline & sign out"}
           </button>
@@ -207,7 +218,7 @@ export default function PrivacyConsentGate() {
             type="button"
             onClick={handleAccept}
             disabled={!checked || submitting || loggingOut}
-            className="rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-[44px] w-full rounded-xl bg-theme-accent px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {submitting ? "Saving…" : "Accept & continue"}
           </button>

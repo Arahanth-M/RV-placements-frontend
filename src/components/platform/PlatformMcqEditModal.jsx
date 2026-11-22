@@ -24,15 +24,15 @@ export default function PlatformMcqEditModal({
     });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
-      <div className="flex max-h-[min(90vh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
-        <div className="border-b border-slate-700 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/50 px-4 py-6 sm:items-center">
+      <div className="my-auto flex max-h-[min(90vh,860px)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
+        <div className="shrink-0 border-b border-slate-700 px-5 py-4">
           <h3 className="text-lg font-semibold text-amber-400">{title}</h3>
           <p className="mt-1 text-sm text-slate-400">
             Add the stem, at least two options, the correct choice, and an optional solution.
           </p>
         </div>
-        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+        <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-slate-200">Question</span>
@@ -96,7 +96,7 @@ export default function PlatformMcqEditModal({
               />
             </label>
           </div>
-          <div className="flex justify-end gap-2 border-t border-slate-700 px-5 py-4">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-slate-700 bg-slate-800 px-5 py-4">
             <button
               type="button"
               className="rounded-lg border border-slate-600 px-4 py-2 text-slate-300 transition-colors hover:bg-slate-700"

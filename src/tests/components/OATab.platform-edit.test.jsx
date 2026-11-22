@@ -25,6 +25,8 @@ const company = {
   onlineQuestions_intuition: ["Use a hash map."],
   onlineQuestions_explanation: ["One pass over the array."],
   onlineQuestions_kind: ["coding"],
+  onlineQuestions_prepRoleKey: ["sde"],
+  prepRoles: [{ key: "sde", label: "SDE" }],
 };
 
 function renderTab() {
@@ -65,7 +67,7 @@ describe("OATab platform admin edit", () => {
         intuition: "Use a hash map.",
         explanation: "One pass over the array.",
         kind: "coding",
-        prepRoleKey: "",
+        prepRoleKey: "sde",
         solutions: {
           cpp: "int twoSum() { return 1; }",
           java: "class Revised",
