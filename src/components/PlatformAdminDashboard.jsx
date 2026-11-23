@@ -41,8 +41,8 @@ const ONBOARDING_STATUSES = [
 ];
 const PLAN_LABELS = {
   category: "Unlock one category",
-  prep_path: "Unlimited PrepPath",
-  mocks: "Unlimited AI mock interviews",
+  prep_path: "PrepPath (10 / 30 days)",
+  mocks: "AI mock interviews (10 / 30 days)",
   all_premium: "All premium features",
   all_cards: "Unlock all company cards",
   mocks_prep: "AI mocks + PrepPath",

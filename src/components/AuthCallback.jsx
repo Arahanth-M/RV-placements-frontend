@@ -147,7 +147,7 @@ const AuthCallback = () => {
           setLoginError({
             title: "Too many sign-ins",
             message:
-              "This email has reached the maximum of 3 sign-ins in 24 hours. Try again later, or use your own account.",
+              "Paid accounts are limited to 3 sign-ins in 24 hours on this email. Try again later, or use your own account.",
           });
         } else if (reason === 'domain') {
           const intent = urlParams.get('blocked_intent') || "";

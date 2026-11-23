@@ -635,7 +635,7 @@ const Header = () => {
                 <div className="whitespace-nowrap px-3 py-2 text-xs text-theme-secondary border-b border-theme">
                   {user.email}
                 </div>
-                {!shouldHideViewProfile ? (
+                {isGeneral || !shouldHideViewProfile ? (
                   <button
                     onClick={() => { setAccountMenuOpen(false); navigate(appPath("/profile")); }}
                     className={dropdownItemClass}

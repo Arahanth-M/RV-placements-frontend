@@ -10,9 +10,13 @@ export default function PlatformEnhanceConfirmModal({
   message = "",
   confirmLabel = "Yes, enhance",
   cancelLabel = "Cancel",
+  /** `danger` uses destructive red styling for delete/erase confirms. */
+  variant = "default",
+  busy = false,
   onConfirm,
   onCancel,
 }) {
+  const isDanger = variant === "danger";
   useEffect(() => {
     if (!open) return undefined;
     const prevOverflow = document.body.style.overflow;
@@ -45,8 +49,8 @@ export default function PlatformEnhanceConfirmModal({
       >
         <div className="px-5 pt-5 pb-2 flex gap-3.5">
           <span
-            className="shrink-0 mt-0.5"
-            style={{ color: "var(--warning)" }}
+            className={`shrink-0 mt-0.5 ${isDanger ? "text-red-600 dark:text-red-400" : ""}`}
+            style={isDanger ? undefined : { color: "var(--warning)" }}
             aria-hidden
           >
             <FaExclamationCircle className="w-7 h-7" />
@@ -70,16 +74,22 @@ export default function PlatformEnhanceConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-secondary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]"
+            disabled={busy}
+            className="rounded-lg border border-theme px-5 py-2.5 text-sm font-medium text-theme-secondary hover:bg-theme-nav transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-secondary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-lg bg-theme-accent px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-secondary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]"
+            disabled={busy}
+            className={`rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] ${
+              isDanger
+                ? "bg-red-600 hover:bg-red-700 focus-visible:ring-red-500 dark:bg-red-700 dark:hover:bg-red-600"
+                : "bg-theme-accent hover:opacity-90 focus-visible:ring-[var(--accent-secondary)]"
+            }`}
           >
-            {confirmLabel}
+            {busy ? "Working…" : confirmLabel}
           </button>
         </div>
       </div>

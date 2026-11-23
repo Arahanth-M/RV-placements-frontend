@@ -934,7 +934,35 @@ export const prepPathAPI = {
     }),
   listPlans: () => API.get("/api/prep-path/plans"),
   getPlan: (id) => API.get(`/api/prep-path/plans/${encodeURIComponent(String(id || ""))}`),
-  generate: ({ companyId, role, track, days, hoursPerDay, resumeFile, jdFile, scope }) => {
+  getResumeDigest: () => API.get("/api/prep-path/resume-digest"),
+  deleteResumeDigest: (digestId) =>
+    digestId
+      ? API.delete(`/api/prep-path/resume-digest/${encodeURIComponent(String(digestId))}`)
+      : API.delete("/api/prep-path/resume-digest"),
+  saveResumeDigest: ({ digest, resumeMeta } = {}) =>
+    API.put("/api/prep-path/resume-digest", { digest, resumeMeta }),
+  parseResume: ({ resumeFile, scope } = {}) => {
+    const formData = new FormData();
+    formData.append("resume", resumeFile);
+    if (scope) formData.append("scope", String(scope));
+    return API.post("/api/prep-path/parse-resume", formData, {
+      timeout: 60000,
+    });
+  },
+  generate: ({
+    companyId,
+    role,
+    track,
+    days,
+    hoursPerDay,
+    resumeFile,
+    jdFile,
+    scope,
+    reuseResumeDigest = false,
+    resumeDigestId = "",
+    resumeDigest = "",
+    resumeMeta = null,
+  }) => {
     const formData = new FormData();
     formData.append("companyId", String(companyId || ""));
     formData.append("role", String(role || ""));
@@ -942,7 +970,19 @@ export const prepPathAPI = {
     formData.append("days", String(days ?? ""));
     formData.append("hoursPerDay", String(hoursPerDay ?? ""));
     if (scope) formData.append("scope", String(scope));
-    formData.append("resume", resumeFile);
+    if (resumeDigest) {
+      formData.append("resumeDigest", String(resumeDigest));
+      if (resumeMeta) {
+        formData.append("resumeMeta", JSON.stringify(resumeMeta));
+      }
+    } else if (reuseResumeDigest) {
+      formData.append("reuseResumeDigest", "true");
+      if (resumeDigestId) {
+        formData.append("resumeDigestId", String(resumeDigestId));
+      }
+    } else if (resumeFile) {
+      formData.append("resume", resumeFile);
+    }
     if (jdFile) formData.append("jd", jdFile);
     return API.post("/api/prep-path/generate", formData, {
       // Large LLM generation; avoid default short axios timeouts.
@@ -1186,6 +1226,7 @@ export const interviewAPI = {
     interviewAnalyticsCache.delete(`${base}:v2`);
     interviewAnalyticsPromises.delete(`${base}:v2`);
   },
+  deleteMyInterviewAnalytics: () => interviewHttp.delete("/api/interview/analytics"),
   getSlotAvailability: () => interviewHttp.get("/api/interview/slot-bookings/availability"),
   getMySlotBookings: () => interviewHttp.get("/api/interview/slot-bookings/mine"),
   getSlotBookingStatus: (customRounds) =>

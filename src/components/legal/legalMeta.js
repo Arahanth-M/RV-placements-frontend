@@ -52,21 +52,21 @@ export const PUBLIC_PLAN_PRICES = [
       "Company-card details for one category plus unlimited behavioural coach (up to 3 questions per hour). No AI mocks or PrepPath. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
   {
-    name: "Unlimited PrepPath",
+    name: "PrepPath (10 / 30 days)",
     price: "₹399 + 18% GST",
     detail:
-      "Unlimited PrepPath plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
+      "Up to 10 PrepPath plans every 30 days from purchase (previous months' unused PrepPaths won't be added to the next month), plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
   {
-    name: "Unlimited AI mock interviews",
+    name: "AI mock interviews (10 / 30 days)",
     price: "₹399 + 18% GST",
     detail:
-      "Unlimited AI mocks plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
+      "Up to 10 AI mock interviews every 30 days from purchase (previous months' unused mock interviews won't be added to the next month), plus all company cards and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
   {
     name: "All premium features",
     price: "₹599 + 18% GST",
     detail:
-      "All company cards, unlimited AI mocks, unlimited PrepPath, and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
+      "All company cards, up to 10 AI mocks every 30 days, up to 10 PrepPath plans every 30 days (previous months' unused mock interviews and PrepPaths won't be added to the next month), and unlimited behavioural coach. One-time, 6 months. No auto-renew. GST added at checkout.",
   },
 ];

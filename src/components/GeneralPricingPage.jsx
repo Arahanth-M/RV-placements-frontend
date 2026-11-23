@@ -46,8 +46,8 @@ const COMPARISON_ROWS = [
     values: {
       category: false,
       prep_path: false,
-      mocks: "Unlimited",
-      all_premium: "Unlimited",
+      mocks: "10 / 30 days",
+      all_premium: "10 / 30 days",
     },
   },
   {
@@ -56,9 +56,9 @@ const COMPARISON_ROWS = [
     hint: "Step-by-step prep plan",
     values: {
       category: false,
-      prep_path: "Unlimited",
+      prep_path: "10 / 30 days",
       mocks: false,
-      all_premium: "Unlimited",
+      all_premium: "10 / 30 days",
     },
   },
   {
@@ -85,6 +85,18 @@ const COMPARISON_ROWS = [
   },
 ];
 
+/** Catchy value lines under each paid plan card (no em dashes). */
+const PLAN_VALUE_HOOKS = {
+  category:
+    "Costs less than a pizza. Gets you more prepared and more confident for your dream company.",
+  prep_path:
+    "Costs less than two pizza nights. Gets you a clear plan and more confidence for your dream company.",
+  mocks:
+    "Costs less than two movie tickets. Gets you interview-ready and more confident for your dream company.",
+  all_premium:
+    "Costs less than a dinner out. Gets you fully prepared and more confident for your dream company.",
+};
+
 const PLAN_INFO = {
   trial: {
     includes: [
@@ -95,8 +107,8 @@ const PLAN_INFO = {
     ],
     excludes: [
       "Full details for other companies in a category",
-      "Unlimited AI mocks",
-      "Unlimited PrepPath",
+      "Paid AI mocks (up to 10 / 30 days)",
+      "Paid PrepPath (up to 10 / 30 days)",
       "Unlimited behavioural coach",
       "Peer sessions",
     ],
@@ -115,25 +127,25 @@ const PLAN_INFO = {
   },
   prep_path: {
     includes: [
-      "Unlimited PrepPath plans for 6 months",
+      "Up to 10 PrepPath plans every 30 days from purchase for 6 months (previous months' unused PrepPaths won't be added to the next month)",
       "Full company-card details for every company",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
-    excludes: ["Unlimited AI mock interviews", "Peer sessions"],
+    excludes: ["AI mock interviews", "Peer sessions"],
   },
   mocks: {
     includes: [
-      "Unlimited AI mock interviews for 6 months",
+      "Up to 10 AI mock interviews every 30 days from purchase for 6 months (previous months' unused mock interviews won't be added to the next month)",
       "Full company-card details for every company",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
-    excludes: ["Unlimited PrepPath", "Peer sessions"],
+    excludes: ["PrepPath", "Peer sessions"],
   },
   all_premium: {
     includes: [
       "Full company-card details for every company",
-      "Unlimited AI mock interviews for 6 months",
-      "Unlimited PrepPath for 6 months",
+      "Up to 10 AI mock interviews every 30 days from purchase for 6 months (previous months' unused mock interviews won't be added to the next month)",
+      "Up to 10 PrepPath plans every 30 days from purchase for 6 months (previous months' unused PrepPaths won't be added to the next month)",
       "Peer sessions (interviews, study groups, doubts)",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
@@ -148,8 +160,8 @@ const PLAN_INFO = {
   },
   mocks_prep: {
     includes: [
-      "Unlimited AI mock interviews",
-      "Unlimited PrepPath",
+      "Up to 10 AI mock interviews every 30 days from purchase (previous months' unused mock interviews won't be added to the next month)",
+      "Up to 10 PrepPath plans every 30 days from purchase (previous months' unused PrepPaths won't be added to the next month)",
       "Unlimited behavioural coach (up to 3 questions per hour)",
     ],
     excludes: ["Unlocking extra company cards", "Peer sessions"],
@@ -337,7 +349,7 @@ const PLAN_SHORT = {
 };
 
 function freeCreditLabel(unlimitedPaid, remaining, fallback = 1) {
-  if (unlimitedPaid) return "Unlimited (paid)";
+  if (unlimitedPaid) return "Up to 10 / 30 days (paid)";
   if (Number.isFinite(remaining) && remaining <= 0) return "Used";
   return `${Number.isFinite(remaining) ? remaining : fallback} remaining`;
 }
@@ -796,6 +808,11 @@ export default function GeneralPricingPage() {
                             / 6 months
                           </span>
                         </p>
+                        {PLAN_VALUE_HOOKS[plan.id] ? (
+                          <p className="mt-3 text-sm italic leading-relaxed text-theme-secondary">
+                            {PLAN_VALUE_HOOKS[plan.id]}
+                          </p>
+                        ) : null}
                         <button
                           type="button"
                           disabled={buyDisabled}

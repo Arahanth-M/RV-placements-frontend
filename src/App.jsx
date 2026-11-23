@@ -30,6 +30,7 @@ import Events from "./components/Events";
 import Analytics from "./components/Analytics";
 import Developers from "./components/Developers";
 import StudentProfilePage from "./components/StudentProfilePage";
+import AccountProfilePage from "./components/AccountProfilePage";
 import MySubmissionsPage from "./components/MySubmissionsPage";
 import PlacementPopupWrapper from "./components/PlacementPopupWrapper";
 import CampusFeaturesTopup from "./components/CampusFeaturesTopup";
@@ -281,6 +282,7 @@ function StudentFeatureRoutes({
   const generalOnlyFallback = (
     <Navigate to={includeGeneralOnlyFeatures ? GENERAL_BASE : TENANT_BASE} replace />
   );
+  const ProfilePage = includeGeneralOnlyFeatures ? AccountProfilePage : StudentProfilePage;
   return (
     <>
       {includeIndexHome ? <Route index element={<Home />} /> : null}
@@ -388,7 +390,7 @@ function StudentFeatureRoutes({
         path="profile"
         element={
           <ProtectedRoute>
-            <StudentProfilePage />
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

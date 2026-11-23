@@ -59,6 +59,26 @@ const INPUT =
 
 const LABEL = "mb-1 block text-xs font-medium text-theme-secondary whitespace-nowrap";
 
+function normalizeSavedResumes(payload) {
+  const list = Array.isArray(payload?.resumes) ? payload.resumes : [];
+  const cleaned = list.filter((row) => row?.hasDigest && row?.id);
+  if (cleaned.length) return cleaned;
+  const single = payload?.resume;
+  return single?.hasDigest && single?.id ? [single] : [];
+}
+
+function resumeOptionLabel(row) {
+  const name = String(row?.resumeMeta?.fileName || "").trim() || "Saved resume";
+  const when = row?.updatedAt
+    ? new Date(row.updatedAt).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : "";
+  return when ? `${name} · ${when}` : name;
+}
+
 const PrepTrackContext = React.createContext({
   completedIds: new Set(),
   onToggleTopic: () => {},
@@ -1162,6 +1182,10 @@ function PrepPathPage() {
   const [jdFile, setJdFile] = useState(null);
   const resumeInputRef = useRef(null);
   const jdInputRef = useRef(null);
+  const [savedResumes, setSavedResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState("");
+  /** null = undecided when a saved digest exists; true = reuse; false = upload new */
+  const [reuseSavedResume, setReuseSavedResume] = useState(null);
 
   const [quota, setQuota] = useState(null);
   const [history, setHistory] = useState([]);
@@ -1279,15 +1303,20 @@ function PrepPathPage() {
     (async () => {
       try {
         const planIdFromUrl = String(searchParams.get("plan") || "").trim();
-        const [quotaRes, plansRes, planRes] = await Promise.all([
+        const [quotaRes, plansRes, planRes, resumeRes] = await Promise.all([
           prepPathAPI.getQuota(isGeneral ? { scope: "platform" } : {}),
           prepPathAPI.listPlans(),
           planIdFromUrl ? prepPathAPI.getPlan(planIdFromUrl).catch(() => null) : Promise.resolve(null),
+          prepPathAPI.getResumeDigest().catch(() => null),
         ]);
         if (cancelled) return;
         setQuota(quotaRes?.data?.quota || null);
         setHistory(Array.isArray(plansRes?.data?.plans) ? plansRes.data.plans : []);
         if (planRes?.data?.plan) setActivePlan(planRes.data.plan);
+        const resumes = normalizeSavedResumes(resumeRes?.data);
+        setSavedResumes(resumes);
+        setSelectedResumeId(resumes[0]?.id || "");
+        setReuseSavedResume(resumes.length ? true : null);
       } catch (err) {
         if (!cancelled) {
           setError(err?.response?.data?.error || "Failed to load PrepPath.");
@@ -1349,6 +1378,14 @@ function PrepPathPage() {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [historyOpen]);
+
+  useEffect(() => {
+    if (String(searchParams.get("history") || "") !== "1") return;
+    setHistoryOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("history");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const openHistoryPlan = async (planId) => {
     setLoadingPlanId(String(planId));
@@ -1425,8 +1462,22 @@ function PrepPathPage() {
       setError("Choose Full-time or Summer internship.");
       return;
     }
-    if (!resumeFile) {
+    const hasSavedResumes = savedResumes.length > 0;
+    const usingSavedResume = Boolean(hasSavedResumes && reuseSavedResume === true);
+    if (hasSavedResumes && reuseSavedResume == null) {
+      setError("Choose whether to reuse a saved resume or upload a new one.");
+      return;
+    }
+    if (usingSavedResume && !selectedResumeId) {
+      setError("Select which saved resume to use.");
+      return;
+    }
+    if (!usingSavedResume && !resumeFile) {
       setError("Upload a PDF or DOCX resume.");
+      return;
+    }
+    if (!jdFile) {
+      setError("Upload a PDF or DOCX job description.");
       return;
     }
     if (prepPathConsentNeeded && !prepPathConsentChecked) {
@@ -1478,16 +1529,25 @@ function PrepPathPage() {
         track,
         days,
         hoursPerDay,
-        resumeFile,
-        jdFile: jdFile || undefined,
+        jdFile,
+        ...(usingSavedResume
+          ? { reuseResumeDigest: true, resumeDigestId: selectedResumeId }
+          : { resumeFile }),
         ...(isGeneral ? { scope: "platform" } : {}),
       });
       const plan = res?.data?.plan || null;
       if (isGeneral) consumeTestEmailFeature(user, setUser, "prepRemaining");
       if (res?.data?.peerDemand) setFormPeerDemand(res.data.peerDemand);
       if (res?.data?.quota) setQuota(res.data.quota);
-      const plansRes = await prepPathAPI.listPlans();
+      const [plansRes, resumeRes] = await Promise.all([
+        prepPathAPI.listPlans(),
+        prepPathAPI.getResumeDigest().catch(() => null),
+      ]);
       setHistory(Array.isArray(plansRes?.data?.plans) ? plansRes.data.plans : []);
+      const resumes = normalizeSavedResumes(resumeRes?.data);
+      setSavedResumes(resumes);
+      setSelectedResumeId(resumes[0]?.id || "");
+      setReuseSavedResume(resumes.length ? true : null);
       setResumeFile(null);
       setJdFile(null);
       if (resumeInputRef.current) resumeInputRef.current.value = "";
@@ -1560,14 +1620,18 @@ function PrepPathPage() {
                   <span className="text-xs text-theme-secondary">
                     {quota.unlimited
                       ? isGeneral
-                        ? "Unlimited PrepPath"
+                        ? quota.adminBypass
+                          ? "PrepPath · unlimited (admin)"
+                          : "PrepPath (paid)"
                         : `Generated today: ${quota.used}`
                       : isGeneral
-                        ? quota.remaining > 0
-                          ? `${quota.remaining} free PrepPath${
-                              quota.remaining === 1 ? "" : "s"
-                            } remaining`
-                          : "Free PrepPath used"
+                        ? quota.monthly
+                          ? `${quota.remaining} of ${quota.limit} PrepPath plans left this month`
+                          : quota.remaining > 0
+                            ? `${quota.remaining} free PrepPath${
+                                quota.remaining === 1 ? "" : "s"
+                              } remaining`
+                            : "Free PrepPath used"
                         : `Today: ${quota.used}/${quota.limit} used · ${quota.remaining} left`}
                   </span>
                 </div>
@@ -1689,20 +1753,118 @@ function PrepPathPage() {
                   </div>
                 </div>
 
+                {savedResumes.length ? (
+                  <div className="rounded-xl border border-theme bg-theme-app/40 px-3 py-3">
+                    <p className="text-xs font-semibold text-theme-primary">
+                      {savedResumes.length === 1
+                        ? "Saved resume available"
+                        : `${savedResumes.length} saved resumes`}
+                    </p>
+                    <p className="mt-1 text-[11px] text-theme-secondary">
+                      Reuse a resume from your profile, or upload a new one (each new upload is kept).
+                      Job descriptions are always uploaded fresh and are not stored.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReuseSavedResume(true);
+                          setResumeFile(null);
+                          if (!selectedResumeId && savedResumes[0]?.id) {
+                            setSelectedResumeId(savedResumes[0].id);
+                          }
+                          if (resumeInputRef.current) resumeInputRef.current.value = "";
+                        }}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          reuseSavedResume === true
+                            ? "bg-theme-accent text-white"
+                            : "border border-theme text-theme-primary hover:bg-theme-accent/5"
+                        }`}
+                      >
+                        Use saved resume
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReuseSavedResume(false);
+                        }}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          reuseSavedResume === false
+                            ? "bg-theme-accent text-white"
+                            : "border border-theme text-theme-primary hover:bg-theme-accent/5"
+                        }`}
+                      >
+                        Upload new resume
+                      </button>
+                    </div>
+                    {reuseSavedResume === true ? (
+                      <div className="mt-3 space-y-2">
+                        {savedResumes.map((row) => {
+                          const selected = selectedResumeId === row.id;
+                          return (
+                            <button
+                              key={row.id}
+                              type="button"
+                              onClick={() => setSelectedResumeId(row.id)}
+                              className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition ${
+                                selected
+                                  ? "border-theme-accent bg-theme-accent/10 text-theme-primary"
+                                  : "border-theme text-theme-secondary hover:bg-theme-accent/5"
+                              }`}
+                            >
+                              <span className="min-w-0 truncate text-xs font-medium">
+                                {resumeOptionLabel(row)}
+                              </span>
+                              <span
+                                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                                  selected ? "bg-theme-accent" : "bg-theme-muted/40"
+                                }`}
+                                aria-hidden
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
-                    <PrepPathDocumentField
-                      id="prep-path-resume"
-                      label="Resume"
-                      required
-                      file={resumeFile}
-                      onChange={setResumeFile}
-                      inputRef={resumeInputRef}
-                    />
+                    {!(savedResumes.length && reuseSavedResume === true) ? (
+                      <PrepPathDocumentField
+                        id="prep-path-resume"
+                        label="Resume"
+                        required
+                        file={resumeFile}
+                        onChange={(file) => {
+                          setReuseSavedResume(savedResumes.length ? false : null);
+                          setResumeFile(file);
+                        }}
+                        inputRef={resumeInputRef}
+                      />
+                    ) : (
+                      <div className="min-w-0 w-full">
+                        <p className="mb-1 text-xs font-medium text-theme-secondary">
+                          Resume <span className="text-theme-accent">*</span>
+                        </p>
+                        <div className={`${INPUT} flex h-[38px] items-center px-3 text-xs text-theme-secondary`}>
+                          Using saved resume
+                          {selectedResumeId
+                            ? ` · ${
+                                resumeOptionLabel(
+                                  savedResumes.find((r) => r.id === selectedResumeId) ||
+                                    savedResumes[0]
+                                )
+                              }`
+                            : ""}
+                        </div>
+                      </div>
+                    )}
                     <PrepPathDocumentField
                       id="prep-path-jd"
                       label="Job description"
-                      optional
+                      required
                       file={jdFile}
                       onChange={setJdFile}
                       inputRef={jdInputRef}

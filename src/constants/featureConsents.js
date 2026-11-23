@@ -35,7 +35,7 @@ export const FEATURE_CONSENT_COPY = Object.freeze({
   [FEATURE_CONSENT_IDS.PREP_PATH]: {
     title: "PrepPath resume & JD consent",
     summary:
-      "To generate your plan we process your uploaded resume and optional job description (JD) with AI. We may store a short resume digest and plan outputs. If you do not agree, we will not generate a plan or keep the uploaded files.",
+      "To generate your plan we process your uploaded resume and job description (JD) with AI. We may store a short resume digest for reuse (you can delete it anytime in View Profile). JD text is not stored after generation. If you do not agree, we will not generate a plan or keep the uploaded files.",
     checkboxLabel:
       "I consent to processing my resume and JD to generate a PrepPath plan, as described in the Privacy Policy.",
   },
