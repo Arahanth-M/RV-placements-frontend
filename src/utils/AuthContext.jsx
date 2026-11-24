@@ -55,6 +55,8 @@ export const AuthProvider = ({ children }) => {
   const LOGIN_TIMESTAMP_KEY = 'loginTimestamp';
   const LAST_USER_KEY = 'lastUser';
   const LAST_USER_IS_ADMIN_KEY = 'lastUserIsAdmin';
+  /** Survives refresh: blocks cookie-based session restore after explicit logout. */
+  const FORCE_LOGGED_OUT_KEY = 'authForceLoggedOut';
 
   // Check if session has expired
   const isSessionExpired = () => {
@@ -77,6 +79,16 @@ export const AuthProvider = ({ children }) => {
   const clearLoginTimestamp = () => {
     localStorage.removeItem(LOGIN_TIMESTAMP_KEY);
   };
+
+  const markForceLoggedOut = () => {
+    localStorage.setItem(FORCE_LOGGED_OUT_KEY, '1');
+  };
+
+  const clearForceLoggedOut = () => {
+    localStorage.removeItem(FORCE_LOGGED_OUT_KEY);
+  };
+
+  const isForceLoggedOut = () => localStorage.getItem(FORCE_LOGGED_OUT_KEY) === '1';
 
   // Load student data from localStorage when user changes
   useEffect(() => {
@@ -126,16 +138,30 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
   };
 
+  const revokeServerSession = async () => {
+    try {
+      await authAPI.logout();
+    } catch {
+      /* still clear local state */
+    }
+  };
+
   const checkUser = async () => {
     try {
       // Back from Google without finishing OAuth must not revive a prior JWT.
       if (isAbandonedOAuthReturn()) {
         clearOAuthInProgress();
-        try {
-          await authAPI.logout();
-        } catch {
-          /* still clear local state */
-        }
+        markForceLoggedOut();
+        await revokeServerSession();
+        clearLocalAuthState();
+        setLoading(false);
+        return;
+      }
+
+      // Explicit logout (or expired session) must stick across refresh even if
+      // the JWT cookie somehow survives the logout response.
+      if (isForceLoggedOut()) {
+        await revokeServerSession();
         clearLocalAuthState();
         setLoading(false);
         return;
@@ -167,21 +193,19 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      // First check if session has expired
+      // First check if session has expired — also revoke JWT so refresh cannot revive it.
       if (isSessionExpired() && localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
         console.log('Session expired. Clearing user data.');
-        clearLoginTimestamp();
-        setUser(null);
-        setIsAdmin(false);
-        setIsSuperAdmin(false);
-        localStorage.removeItem(LAST_USER_KEY);
-        localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
+        markForceLoggedOut();
+        await revokeServerSession();
+        clearLocalAuthState();
         setLoading(false);
         return;
       }
 
       const response = await authAPI.getCurrentUser();
       if (response.data) {
+        clearForceLoggedOut();
         setUser(response.data);
         // Persist last-known user for offline read-only mode
         localStorage.setItem(LAST_USER_KEY, JSON.stringify(response.data));
@@ -226,6 +250,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = (isAdmin = false, options = {}) => {
+    // User is intentionally signing in — allow the next session to stick.
+    clearForceLoggedOut();
     persistLoginIntent(options?.intent);
     const intent = String(options?.intent || "").trim();
     const params = new URLSearchParams();
@@ -253,6 +279,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signup = () => {
+    clearForceLoggedOut();
     // ✅ Use signup endpoint that forces account selection
     const authUrl = `${BASE_URL}/api/auth/google/signup`;
     
@@ -264,14 +291,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = useCallback(async () => {
-    try {
-      clearOAuthInProgress();
-      await Promise.race([
-        flushDauPresence(),
-        new Promise((resolve) => setTimeout(resolve, 1500)),
-      ]);
-      await authAPI.logout();
-      
+    const finishLocalLogout = () => {
       // Clear user-specific sessionStorage items
       const keysToRemove = [
         'companystats_selectedYear',
@@ -284,8 +304,7 @@ export const AuthProvider = ({ children }) => {
         'companystats_page',
         'fromCompanyCards'
       ];
-      
-      // Remove all user-specific sessionStorage keys
+
       Object.keys(sessionStorage).forEach(key => {
         keysToRemove.forEach(baseKey => {
           if (key.startsWith(baseKey)) {
@@ -293,8 +312,7 @@ export const AuthProvider = ({ children }) => {
           }
         });
       });
-      
-      // Clear ALL student data keys from localStorage
+
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('studentData')) {
           localStorage.removeItem(key);
@@ -308,44 +326,22 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem(LAST_USER_KEY);
       localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
       clearAllResumeDraftCaches();
+    };
+
+    try {
+      clearOAuthInProgress();
+      // Mark before the network call so a refresh mid-logout cannot revive the JWT.
+      markForceLoggedOut();
+      await Promise.race([
+        flushDauPresence(),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
+      await authAPI.logout();
+      finishLocalLogout();
     } catch (error) {
       console.error('Logout failed:', error);
-      
-      // Clear sessionStorage even if logout API call fails
-      const keysToRemove = [
-        'companystats_selectedYear',
-        'companystats_search',
-        'companystats_category',
-        'companystats_cluster',
-        'companystats_dream_page',
-        'companystats_open_dream_page',
-        'companystats_placement_tier',
-        'companystats_page',
-        'fromCompanyCards'
-      ];
-      
-      Object.keys(sessionStorage).forEach(key => {
-        keysToRemove.forEach(baseKey => {
-          if (key.startsWith(baseKey)) {
-            sessionStorage.removeItem(key);
-          }
-        });
-      });
-      
-      // Clear ALL student data keys from localStorage
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('studentData')) {
-          localStorage.removeItem(key);
-        }
-      });
-      setStudentData(null);
-      setUser(null);
-      setIsAdmin(false);
-      setIsSuperAdmin(false);
-      clearLoginTimestamp();
-      localStorage.removeItem(LAST_USER_KEY);
-      localStorage.removeItem(LAST_USER_IS_ADMIN_KEY);
-      clearAllResumeDraftCaches();
+      markForceLoggedOut();
+      finishLocalLogout();
     }
   }, []);
 
@@ -394,6 +390,15 @@ export const AuthProvider = ({ children }) => {
     const force = options?.force === true;
     setLoading(true);
     try {
+      if (force) {
+        clearForceLoggedOut();
+      } else if (isForceLoggedOut()) {
+        await revokeServerSession();
+        clearLocalAuthState();
+        setLoading(false);
+        return null;
+      }
+
       // If offline, reuse last-known user rather than calling API
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
         const storedUser = localStorage.getItem(LAST_USER_KEY);
@@ -422,16 +427,16 @@ export const AuthProvider = ({ children }) => {
       // Check if session has expired before refreshing
       if (!force && isSessionExpired() && localStorage.getItem(LOGIN_TIMESTAMP_KEY)) {
         console.log('Session expired. Logging out...');
-        clearLoginTimestamp();
-        setUser(null);
-        setIsAdmin(false);
-        setIsSuperAdmin(false);
+        markForceLoggedOut();
+        await revokeServerSession();
+        clearLocalAuthState();
         setLoading(false);
         return null;
       }
 
       const response = await authAPI.getCurrentUser();
       if (response.data) {
+        clearForceLoggedOut();
         setUser(response.data);
         // Store login timestamp only if it doesn't exist (fresh login)
         // This prevents resetting the timer on manual refreshes

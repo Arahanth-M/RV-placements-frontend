@@ -53,7 +53,8 @@ const AuthCallback = () => {
           // Give the JWT cookie a brief moment to settle after the OAuth redirect,
           // then fetch the authenticated user once without retrying.
           await new Promise((resolve) => setTimeout(resolve, 100));
-          const fetchedUserData = await refreshUser();
+          // force: clear any prior logout latch so the new JWT is accepted.
+          const fetchedUserData = await refreshUser({ force: true });
           
           if (fetchedUserData) {
             const adminFlag = urlParams.get("admin") === "true";

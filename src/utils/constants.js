@@ -11,8 +11,9 @@ export const PRODUCTION_DOMAIN = "onestopplacementprep.in";
 /** Legacy campus / prior product hostname — still accepted for feature flags. */
 export const LEGACY_PRODUCTION_DOMAIN = "lastminuteplacementprep.in";
 
-export const PLATFORM_CONTACT_EMAIL = "onestopplacementprep@gmail.com";
 export const DEVOMATION_AI_EMAIL = "devomationai@gmail.com";
+/** Public support / contact address for the general (platform) product. */
+export const PLATFORM_CONTACT_EMAIL = DEVOMATION_AI_EMAIL;
 //export const PLATFORM_LINKEDIN_URL = "https://www.linkedin.com/company/devomation-ai";
 
 function trimApiBase(value) {

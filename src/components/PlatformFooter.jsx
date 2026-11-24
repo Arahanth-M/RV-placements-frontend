@@ -1,9 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
-import { FaEnvelope, FaLinkedin } from "react-icons/fa";
-import {
-  PLATFORM_CONTACT_EMAIL,
-  PLATFORM_LINKEDIN_URL,
-} from "../utils/constants";
+import { FaEnvelope } from "react-icons/fa";
+import { PLATFORM_CONTACT_EMAIL } from "../utils/constants";
 import { GENERAL_BASE } from "../constants/tenant.js";
 import { useAuth } from "../utils/AuthContext";
 import { getProductHomePathForUser } from "../utils/collegeScope.js";

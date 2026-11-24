@@ -81,7 +81,7 @@ function PublicLegalShell() {
   return (
     <TenantShellProvider base={GENERAL_BASE}>
       <div className="flex min-h-screen flex-col bg-theme-app text-theme-primary">
-        <header className="border-b border-theme bg-theme-sidebar px-6 py-4">
+        <header className="sticky top-0 z-50 border-b border-theme bg-theme-card/95 px-6 py-4 backdrop-blur-xl">
           <Link
             to="/"
             className="font-serif text-xl tracking-tight text-theme-primary"

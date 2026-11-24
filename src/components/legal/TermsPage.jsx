@@ -1,8 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  DEVOMATION_AI_EMAIL,
-  PLATFORM_CONTACT_EMAIL,
-} from "../../utils/constants";
+import { PLATFORM_CONTACT_EMAIL } from "../../utils/constants";
 import LegalPageLayout, { LegalSection } from "./LegalPageLayout.jsx";
 import { LEGAL_BRAND, LEGAL_OPERATOR, LEGAL_WEBSITE, useLegalPath } from "./legalMeta.js";
 
@@ -40,6 +37,16 @@ export default function TermsPage() {
           company insights, AI mock interviews, PrepPath study plans, resources, and related tools.
           It is not a university, employer, or placement office, and it does not guarantee
           internships, jobs, or interview outcomes.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="No placement guarantee">
+        <p>
+          Our platform does not guarantee placements, internships, job offers, or any hiring
+          outcome. We prepare you well for recruitment processes, help make you interview-ready,
+          and aim to boost your confidence through practice, insights, and preparation tools.
+          Final selection decisions rest solely with employers and your college placement
+          processes.
         </p>
       </LegalSection>
 
@@ -121,10 +128,6 @@ export default function TermsPage() {
           Questions:{" "}
           <a className="text-theme-accent underline" href={`mailto:${PLATFORM_CONTACT_EMAIL}`}>
             {PLATFORM_CONTACT_EMAIL}
-          </a>{" "}
-          or{" "}
-          <a className="text-theme-accent underline" href={`mailto:${DEVOMATION_AI_EMAIL}`}>
-            {DEVOMATION_AI_EMAIL}
           </a>
           . See{" "}
           <Link className="text-theme-accent underline" to={legalPath("/contact")}>

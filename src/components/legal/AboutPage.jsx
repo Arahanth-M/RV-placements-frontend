@@ -1,9 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-  DEVOMATION_AI_EMAIL,
-  PLATFORM_CONTACT_EMAIL,
-  PLATFORM_LINKEDIN_URL,
-} from "../../utils/constants";
+import { PLATFORM_CONTACT_EMAIL } from "../../utils/constants";
 import LegalPageLayout, { LegalSection } from "./LegalPageLayout.jsx";
 import {
   LEGAL_BRAND,
@@ -50,15 +46,9 @@ export default function AboutPage() {
           </li>
           <li>Operating location: {LEGAL_LOCATION}</li>
           <li>
-            Support:{" "}
+            Support / business:{" "}
             <a className="text-theme-accent underline" href={`mailto:${PLATFORM_CONTACT_EMAIL}`}>
               {PLATFORM_CONTACT_EMAIL}
-            </a>
-          </li>
-          <li>
-            Business:{" "}
-            <a className="text-theme-accent underline" href={`mailto:${DEVOMATION_AI_EMAIL}`}>
-              {DEVOMATION_AI_EMAIL}
             </a>
           </li>
           {/* <li>

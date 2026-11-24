@@ -10,10 +10,7 @@ import {
   pageShellOuterClassCompact,
 } from "./PageBackNav.jsx";
 import { RVCE_PLACEMENT_EMAIL, RVITM_PLACEMENT_EMAIL } from "../utils/collegeScope.js";
-import {
-  DEVOMATION_AI_EMAIL,
-  PLATFORM_CONTACT_EMAIL,
-} from "../utils/constants";
+import { PLATFORM_CONTACT_EMAIL } from "../utils/constants";
 import { GENERAL_BASE, TENANT_BASE } from "../constants/tenant.js";
 import { useTenantShell } from "../context/TenantShellContext.jsx";
 import { LEGAL_BRAND, LEGAL_LOCATION, LEGAL_OPERATOR, LEGAL_WEBSITE } from "./legal/legalMeta.js";
@@ -72,20 +69,12 @@ function GeneralContactBody() {
             </div>
             <h2 className="text-xl font-semibold text-indigo-400 sm:text-2xl">Email</h2>
           </div>
-          <p className="mb-2 text-sm text-slate-400 sm:text-base">Product support</p>
+          <p className="mb-2 text-sm text-slate-400 sm:text-base">Product support &amp; business</p>
           <a
             href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
             className="inline-flex items-center justify-center break-all text-sm font-medium text-indigo-400 hover:text-indigo-300 sm:text-base md:text-lg"
           >
             {PLATFORM_CONTACT_EMAIL}
-            <FaExternalLinkAlt className="ml-2 h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
-          </a>
-          <p className="mb-2 mt-4 text-sm text-slate-400 sm:text-base">Business</p>
-          <a
-            href={`mailto:${DEVOMATION_AI_EMAIL}`}
-            className="inline-flex items-center justify-center break-all text-sm font-medium text-indigo-400 hover:text-indigo-300 sm:text-base md:text-lg"
-          >
-            {DEVOMATION_AI_EMAIL}
             <FaExternalLinkAlt className="ml-2 h-3 w-3 flex-shrink-0 sm:h-4 sm:w-4" />
           </a>
           <p className="mt-4 text-sm text-slate-400">

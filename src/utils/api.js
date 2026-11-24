@@ -90,8 +90,11 @@ function clearInterviewSummaryCacheForUser(userId) {
 export const authAPI = {
   getCurrentUser: () => API.get('/api/auth/current_user'),
   logout: () =>
-    API.get('/api/auth/logout', {
-      headers: { Accept: 'application/json' },
+    API.get(`/api/auth/logout?_=${Date.now()}`, {
+      headers: {
+        Accept: 'application/json',
+        'Cache-Control': 'no-store',
+      },
     }),
   isAdmin: () => API.get('/api/auth/is_admin'),
   submitBlockedLoginInterest: ({ token, collegeName, wantsPlatformAtCollege }) =>

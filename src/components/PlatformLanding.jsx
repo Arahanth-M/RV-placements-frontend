@@ -27,6 +27,7 @@ import { persistLoginRedirectPath } from "../utils/loginIntent.js";
 import CompanyLogo from "./CompanyLogo";
 import { PageHeroFontStyles } from "./PageBackNav.jsx";
 import PlatformFooter from "./PlatformFooter.jsx";
+import { useLegalPath } from "./legal/legalMeta.js";
 
 const MotionDiv = motion.div;
 const MotionP = motion.p;
@@ -768,6 +769,7 @@ function LandingHeader({ user, loading }) {
 /** Public product home. College dashboard lives under /rvce; /general reuses this page embedded. */
 export default function PlatformLanding({ embedded = false }) {
   const { user, loading } = useAuth();
+  const legalPath = useLegalPath();
   const [searchParams, setSearchParams] = useSearchParams();
   const [companyLogos, setCompanyLogos] = useState(FALLBACK_COMPANIES);
   const [stats, setStats] = useState(FALLBACK_STATS);
@@ -1021,6 +1023,26 @@ export default function PlatformLanding({ embedded = false }) {
             </div>
           </div>
         </section>
+
+        {/* ── PLACEMENT DISCLAIMER MARQUEE ── */}
+        <div
+          className="overflow-hidden border-y border-theme bg-theme-card py-3"
+          role="note"
+          aria-label="Placement disclaimer"
+        >
+          <div className="animate-marquee-full whitespace-nowrap text-sm font-medium text-theme-secondary">
+            <span className="inline-block px-6">
+              Our platform does not guarantee placements — it prepares you well, makes you
+              interview-ready, and boosts your confidence.{" "}
+              <Link
+                to={legalPath("/terms")}
+                className="text-theme-accent underline underline-offset-2 hover:opacity-80"
+              >
+                Terms &amp; Conditions
+              </Link>
+            </span>
+          </div>
+        </div>
       </main>
 
       {!embedded ? <PlatformFooter /> : null}

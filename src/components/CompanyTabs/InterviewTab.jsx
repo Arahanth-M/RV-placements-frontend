@@ -1234,7 +1234,14 @@ function InterviewTab({
                     onClick={() => handleQuestionToggle(index)}
                     className="flex-1 text-left px-3 py-3 sm:px-4 sm:py-3 font-semibold text-slate-200 flex justify-between items-center min-w-0 gap-2 text-sm sm:text-base"
                   >
-                    <span className="truncate min-w-0">Question {displayNumber}</span>
+                    <span className="inline-flex items-center gap-2 min-w-0">
+                      <span className="truncate">Question {displayNumber}</span>
+                      {isCodingQuestionKind(interviewQuestionKinds[index]) ? (
+                        <span className="shrink-0 rounded-md border border-blue-700/50 bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800 dark:border-blue-400/50 dark:bg-blue-500/20 dark:text-blue-200">
+                          DSA
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="text-base sm:text-lg text-slate-400 shrink-0">
                       {openIndexQ === index ? "−" : "+"}
                     </span>
